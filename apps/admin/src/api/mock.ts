@@ -16,6 +16,7 @@ import type {
   ReviewItem,
   UploadSignature,
 } from "@/types/admin";
+import { isRightsActive } from "@/policies/admin";
 
 const now = new Date();
 const isoHoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();
@@ -220,6 +221,44 @@ function writeAudit(action: string, target: string, detail: string): void {
   });
 }
 
+function assertMockRights(drama: DramaRecord): void {
+  const hasRightsMaterial = Boolean(
+    drama.rightsHolder.trim() &&
+    drama.licenseNumber.trim() &&
+    drama.rightsValidFrom &&
+    drama.licenseExpiresAt &&
+    isRightsActive(drama.rightsValidFrom, drama.licenseExpiresAt) &&
+    drama.rightsReportNumber.trim() &&
+    drama.rightsMaterialObjectKey.trim() &&
+    /^[a-f0-9]{64}$/i.test(drama.rightsMaterialDigestSha256),
+  );
+  if (
+    !hasRightsMaterial ||
+    !drama.allowsWechatDistribution ||
+    !drama.allowsAdMonetization ||
+    !drama.allowsTranscoding ||
+    !drama.allowsPromotionalMaterial
+  ) {
+    throw new Error("Mock 发布前请补齐版权资料并确认全部授权范围");
+  }
+}
+
+function assertMockEpisodesReady(drama: DramaRecord): void {
+  if (
+    drama.episodes.length === 0 ||
+    drama.episodes.some(
+      (episode) =>
+        episode.mediaStatus !== MediaStatus.READY ||
+        episode.transcodeStatus !== "READY" ||
+        episode.machineReviewStatus !== "APPROVED" ||
+        episode.manualReviewStatus !== "APPROVED" ||
+        episode.wechatReviewStatus !== "APPROVED",
+    )
+  ) {
+    throw new Error("Mock 发布前请完成所有剧集的处理与审核");
+  }
+}
+
 export const mockApi = {
   async login(email: string, _otp: string, role: AdminRole): Promise<AdminSession> {
     return mockDelay({
@@ -321,6 +360,8 @@ export const mockApi = {
     if (drama) {
       drama.status = approved ? DramaStatus.READY : DramaStatus.DRAFT;
       drama.contentApproved = approved;
+      drama.copyrightVerified = approved;
+      drama.wechatApproved = approved;
     }
     writeAudit(approved ? "审核通过" : "审核拒绝", review.dramaTitle, reason || "未填写补充说明");
     return mockDelay(undefined);
@@ -328,6 +369,12 @@ export const mockApi = {
   async publish(id: string): Promise<void> {
     const drama = dramas.find((item) => item.id === id);
     if (!drama) throw new Error("未找到该剧目");
+    if (drama.status !== DramaStatus.READY) throw new Error("剧目尚未审核通过，不能发布");
+    if (!drama.contentApproved || !drama.copyrightVerified || !drama.wechatApproved) {
+      throw new Error("Mock 发布前请完成内容、版权和微信审核");
+    }
+    assertMockRights(drama);
+    assertMockEpisodesReady(drama);
     drama.status = DramaStatus.PUBLISHED;
     writeAudit("发布剧目", drama.title, "仅更新演示数据，未触发真实发布");
     return mockDelay(undefined);

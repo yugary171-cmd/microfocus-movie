@@ -221,7 +221,7 @@ onMounted(load);
       </div>
       <div class="page-header__actions">
         <button v-if="canEdit" class="button button--secondary" type="button" :disabled="saving || !dirty" @click="save">{{ saving ? "保存中…" : "保存草稿" }}</button>
-        <DramaActions v-if="auth.user && drama" :user="auth.user" :drama="drama" :gate="gate" :busy="actionBusy || saving" @submit="submitReview" @publish="dialog.type = 'publish'" @offline="dialog.type = 'offline'" />
+        <DramaActions v-if="auth.user && drama" :user="auth.user" :drama="drama" :gate="gate" :mock-mode="adminApi.mode === 'mock'" :busy="actionBusy || saving" @submit="submitReview" @publish="dialog.type = 'publish'" @offline="dialog.type = 'offline'" />
       </div>
     </header>
     <PageState v-if="loading" type="loading" message="正在加载剧目、许可与发布闸门…" />

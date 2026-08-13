@@ -8,13 +8,14 @@ const props = defineProps<{
   user: AdminUser;
   drama: DramaRecord;
   gate: ReleaseGateStatus;
+  mockMode?: boolean;
   busy?: boolean;
 }>();
 
 defineEmits<{ submit: []; publish: []; offline: [] }>();
 
 const submit = computed(() => canSubmitReview(props.user, props.drama));
-const publish = computed(() => publishDecision(props.user, props.drama, props.gate));
+const publish = computed(() => publishDecision(props.user, props.drama, props.gate, { allowMockInternal: props.mockMode }));
 const offline = computed(() => canOffline(props.user, props.drama));
 </script>
 

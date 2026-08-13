@@ -6,6 +6,19 @@ export interface ActionDecision {
   reason: string;
 }
 
+function parseRightsDate(value: string, endOfDay: boolean): number {
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? `${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}`
+    : value;
+  return Date.parse(normalized);
+}
+
+export function isRightsActive(validFrom: string, expiresAt: string, now = Date.now()): boolean {
+  const start = parseRightsDate(validFrom, false);
+  const end = parseRightsDate(expiresAt, true);
+  return Number.isFinite(start) && Number.isFinite(end) && start <= now && now <= end;
+}
+
 export function canReview(user: AdminUser, item: ReviewItem): ActionDecision {
   if (user.role !== AdminRole.REVIEWER) return { allowed: false, reason: "仅内容审核角色可以审核" };
   if (user.id === item.submitterId) return { allowed: false, reason: "不能审核本人提交的作品" };
@@ -17,11 +30,12 @@ export function publishDecision(
   user: AdminUser,
   drama: DramaRecord,
   gate: ReleaseGateStatus,
+  options: { allowMockInternal?: boolean } = {},
 ): ActionDecision {
   if (user.role !== AdminRole.ADMIN) {
     return { allowed: false, reason: "仅系统管理员可以发布" };
   }
-  if (!gate.readyForExternalTraffic) {
+  if (!gate.readyForExternalTraffic && !options.allowMockInternal) {
     return { allowed: false, reason: "合规发布闸门尚未通过" };
   }
   if (drama.status !== DramaStatus.READY) {
@@ -29,6 +43,9 @@ export function publishDecision(
   }
   if (!drama.contentApproved || !drama.copyrightVerified || !drama.wechatApproved) {
     return { allowed: false, reason: "内容、版权或微信审核尚未全部通过" };
+  }
+  if (!isRightsActive(drama.rightsValidFrom, drama.licenseExpiresAt)) {
+    return { allowed: false, reason: "版权许可当前不在有效期内" };
   }
   if (drama.episodes.length === 0) {
     return { allowed: false, reason: "至少需要一集内容" };
@@ -60,6 +77,7 @@ export function canSubmitReview(user: AdminUser, drama: DramaRecord): ActionDeci
     !drama.licenseNumber.trim() ||
     !drama.rightsValidFrom ||
     !drama.licenseExpiresAt ||
+    !isRightsActive(drama.rightsValidFrom, drama.licenseExpiresAt) ||
     !drama.rightsReportNumber.trim() ||
     !drama.rightsMaterialObjectKey.trim() ||
     !/^[a-f0-9]{64}$/i.test(drama.rightsMaterialDigestSha256) ||
@@ -71,6 +89,18 @@ export function canSubmitReview(user: AdminUser, drama: DramaRecord): ActionDeci
     return { allowed: false, reason: "请先补齐版权材料、摘要与全部授权范围" };
   }
   if (drama.episodes.length === 0) return { allowed: false, reason: "请至少添加一集" };
+  if (
+    drama.episodes.some(
+      (episode) =>
+        episode.mediaStatus !== MediaStatus.READY ||
+        episode.transcodeStatus !== "READY" ||
+        episode.machineReviewStatus !== "APPROVED" ||
+        episode.manualReviewStatus !== "APPROVED" ||
+        episode.wechatReviewStatus !== "APPROVED",
+    )
+  ) {
+    return { allowed: false, reason: "请先完成每集的 Mock 处理与审核" };
+  }
   return { allowed: true, reason: "" };
 }
 

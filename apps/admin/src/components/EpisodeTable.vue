@@ -85,6 +85,19 @@ function statusTone(status: MediaStatus): "neutral" | "info" | "warning" | "succ
   if (status === MediaStatus.PENDING_MANUAL_REVIEW || status === MediaStatus.PENDING_WECHAT) return "warning";
   return "info";
 }
+
+function completeMockProcessing(episode: EpisodeRecord): void {
+  if (adminApi.mode !== "mock" || uploads[episode.id]?.state !== "success") return;
+  update(episode.id, {
+    mediaStatus: MediaStatus.READY,
+    transcodeStatus: "READY",
+    machineReviewStatus: "APPROVED",
+    manualReviewStatus: "APPROVED",
+    wechatReviewStatus: "APPROVED",
+    vodFileId: episode.vodFileId ?? `mock-vod-${crypto.randomUUID()}`,
+    updatedAt: new Date().toISOString(),
+  });
+}
 </script>
 
 <template>
@@ -116,7 +129,15 @@ function statusTone(status: MediaStatus): "neutral" | "info" | "warning" | "succ
               <span><i :style="{ width: `${uploads[episode.id]?.progress ?? 0}%` }" /></span>
               <small>{{ uploads[episode.id]?.state === "signing" ? "正在获取签名…" : `上传 ${uploads[episode.id]?.progress ?? 0}%` }}</small>
             </div>
-            <div v-else-if="uploads[episode.id]?.state === 'success'" class="upload-success" role="status">已完成模拟直传，等待媒体处理</div>
+            <div v-else-if="uploads[episode.id]?.state === 'success'" class="upload-success" role="status">
+              <span>已完成模拟直传，等待媒体处理</span>
+              <button
+                v-if="adminApi.mode === 'mock' && episode.mediaStatus !== MediaStatus.READY"
+                class="link"
+                type="button"
+                @click="completeMockProcessing(episode)"
+              >模拟处理完成并通过审核</button>
+            </div>
             <div v-else-if="uploads[episode.id]?.state === 'error'" class="upload-error" role="alert">
               <span>{{ uploads[episode.id]?.error }}</span>
               <button class="link" type="button" @click="startUpload(episode)">重试上传</button>
