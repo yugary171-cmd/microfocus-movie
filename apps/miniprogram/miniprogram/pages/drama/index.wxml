@@ -1,0 +1,56 @@
+<view class="page">
+  <internal-banner visible="{{isMock}}" />
+  <view wx:if="{{loading}}" class="state-card" role="status">正在加载详情…</view>
+  <view wx:elif="{{error}}" class="state-card" role="alert">
+    <view class="state-title">无法打开短剧</view>
+    <view>{{error}}</view>
+    <button class="secondary-button retry" bindtap="loadDetail">重新加载</button>
+  </view>
+  <block wx:elif="{{drama}}">
+    <view class="overview">
+      <image wx:if="{{drama.coverUrl}}" class="cover" src="{{drama.coverUrl}}" mode="aspectFill" aria-label="{{drama.title}}封面" />
+      <view wx:else class="cover placeholder" aria-hidden="true">剧</view>
+      <view class="overview-content">
+        <view class="title">{{drama.title}}</view>
+        <view class="meta">{{drama.category}} · 全 {{drama.episodeCount}} 集</view>
+        <view class="tags"><text wx:for="{{drama.tags}}" wx:key="*this">#{{item}} </text></view>
+      </view>
+    </view>
+    <view class="summary">{{drama.summary}}</view>
+    <view class="filing">
+      <view>网络剧片发行许可证/备案号</view>
+      <view class="filing-number">{{drama.licenseNumber || '暂未配置，请勿对外发布'}}</view>
+      <view class="rights">版权方：{{drama.rightsHolder || '暂未配置'}}</view>
+    </view>
+    <view class="entitlement" role="status">
+      <view><text class="muted">当前短剧剩余</text> {{remainingLabel}}</view>
+      <view class="expiry">最近到期：{{expiryLabel}}</view>
+      <navigator class="detail-link" url="/pages/entitlements/index?dramaId={{drama.id}}">查看权益明细</navigator>
+    </view>
+    <view class="section-title">选集</view>
+    <view class="episode-grid">
+      <button
+        wx:for="{{drama.episodes}}"
+        wx:key="id"
+        class="episode {{item.episodeNumber <= 2 ? 'free' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="selectEpisode"
+        aria-label="第 {{item.episodeNumber}} 集，{{item.episodeNumber <= 2 ? '免费' : '需要当前短剧观看时长'}}"
+      >
+        <text>{{item.episodeNumber}}</text>
+        <text class="episode-state">{{item.episodeNumber <= 2 ? '免费' : '🔒'}}</text>
+      </button>
+    </view>
+  </block>
+</view>
+
+<view wx:if="{{unlockVisible}}" class="overlay" bindtap="closeUnlock">
+  <view class="dialog" role="dialog" aria-modal="true" aria-label="观看广告解锁" catchtap="noop">
+    <view class="dialog-title">观看广告，获得本剧时长</view>
+    <view class="dialog-copy">第 {{unlockEpisode.episodeNumber}} 集需要“{{drama.title}}”的观看时长。请主动点击下方按钮；只有完整观看广告后才会提交领取。</view>
+    <view class="safety-note">广告完成回调并非绝对安全证明，最终发放结果以服务端校验为准。</view>
+    <view wx:if="{{rewardError}}" class="reward-error" role="alert">{{rewardError}}</view>
+    <button class="primary-button" bindtap="watchRewardAd" loading="{{rewardLoading}}" disabled="{{rewardLoading}}">{{rewardRetryPending ? '重试确认奖励' : '主动观看激励广告'}}</button>
+    <button class="secondary-button cancel" bindtap="closeUnlock" disabled="{{rewardLoading}}">暂不观看</button>
+  </view>
+</view>

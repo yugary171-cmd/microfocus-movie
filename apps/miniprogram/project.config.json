@@ -1,0 +1,17 @@
+{
+  "appid": "touristappid",
+  "projectname": "microfocus-movie",
+  "description": "免费短剧小程序用户端",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "miniprogram/",
+  "setting": {
+    "useCompilerPlugins": ["typescript"],
+    "es6": true,
+    "enhance": true,
+    "minified": true,
+    "postcss": true,
+    "urlCheck": true,
+    "checkSiteMap": true
+  },
+  "condition": {}
+}

@@ -1,0 +1,133 @@
+import { Body, Controller, Module, Post } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { API_ROUTES, type WechatLoginResponse } from "@microfocus/contracts";
+import { IsEmail, IsString, MinLength } from "class-validator";
+import { compare } from "bcryptjs";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { controllerPath } from "../common/http.js";
+import { Errors } from "../common/app-error.js";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { WechatProviderService } from "../providers/providers.js";
+import { AppConfigService } from "../config/config.service.js";
+import { decryptTotpSecret } from "../security/totp-crypto.js";
+
+class WechatLoginDto {
+  @IsString()
+  @MinLength(1)
+  code!: string;
+}
+
+class AdminLoginDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @IsString()
+  @MinLength(6)
+  otp!: string;
+}
+
+@Controller()
+export class AuthController {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly wechat: WechatProviderService,
+    private readonly config: AppConfigService
+  ) {}
+
+  @Post(controllerPath(API_ROUTES.auth.wechat))
+  async wechatLogin(@Body() body: WechatLoginDto): Promise<WechatLoginResponse> {
+    const identity = await this.wechat.exchangeCode(body.code);
+    const user = await this.prisma.user.upsert({
+      where: { openId: identity.openId },
+      create: { openId: identity.openId, displayName: "微信用户" },
+      update: {}
+    });
+    return {
+      accessToken: await this.jwt.signAsync(
+        { sub: user.id, kind: "user" },
+        { expiresIn: "2h" }
+      ),
+      user: { id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl }
+    };
+  }
+
+  @Post(controllerPath(API_ROUTES.admin.login))
+  async adminLogin(@Body() body: AdminLoginDto) {
+    const admin = await this.prisma.adminUser.findUnique({ where: { email: body.email } });
+    if (!admin?.active || !(await compare(body.password, admin.passwordHash))) {
+      throw Errors.unauthorized("Invalid administrator credentials");
+    }
+    if (!this.verifyOtp(admin.totpEnabled, admin.totpSecretEncrypted, body.otp)) {
+      throw Errors.unauthorized("Invalid administrator one-time password");
+    }
+    return {
+      accessToken: await this.jwt.signAsync(
+        { sub: admin.id, kind: "admin", role: admin.role },
+        { expiresIn: "1h" }
+      ),
+      admin: { id: admin.id, email: admin.email, role: admin.role }
+    };
+  }
+
+  private verifyOtp(enabled: boolean, encryptedSecret: string | null, otp: string): boolean {
+    if (this.config.env.NODE_ENV !== "production" && this.config.env.ADMIN_TEST_OTP) {
+      return otp === this.config.env.ADMIN_TEST_OTP;
+    }
+    if (!enabled || !encryptedSecret) return false;
+    if (encryptedSecret.startsWith("plain:")) {
+      if (this.config.env.NODE_ENV === "production") return false;
+      return verifyTotp(encryptedSecret.slice(6), otp);
+    }
+    const key = this.config.env.TOTP_ENCRYPTION_KEY;
+    if (!key) throw Errors.providerNotConfigured("administrator TOTP decryption");
+    try {
+      return verifyTotp(decryptTotpSecret(encryptedSecret, key), otp);
+    } catch {
+      return false;
+    }
+  }
+}
+
+function verifyTotp(base32Secret: string, token: string, now = Date.now()): boolean {
+  const secret = decodeBase32(base32Secret);
+  for (const offset of [-1, 0, 1]) {
+    const counter = Math.floor(now / 30_000) + offset;
+    const buffer = Buffer.alloc(8);
+    buffer.writeBigUInt64BE(BigInt(counter));
+    const digest = createHmac("sha1", secret).update(buffer).digest();
+    const position = (digest[digest.length - 1] ?? 0) & 0x0f;
+    const binary = ((digest.readUInt32BE(position) & 0x7fffffff) % 1_000_000)
+      .toString()
+      .padStart(6, "0");
+    if (
+      binary.length === token.length &&
+      timingSafeEqual(Buffer.from(binary), Buffer.from(token))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function decodeBase32(value: string): Buffer {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const character of value.toUpperCase().replace(/=+$/g, "")) {
+    const index = alphabet.indexOf(character);
+    if (index < 0) throw Errors.badRequest("INVALID_TOTP_SECRET", "TOTP secret is invalid");
+    bits += index.toString(2).padStart(5, "0");
+  }
+  const bytes: number[] = [];
+  for (let index = 0; index + 8 <= bits.length; index += 8) {
+    bytes.push(Number.parseInt(bits.slice(index, index + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
+@Module({ controllers: [AuthController] })
+export class AuthModule {}

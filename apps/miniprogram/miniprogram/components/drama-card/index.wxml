@@ -1,0 +1,18 @@
+<view
+  class="card {{compact ? 'compact' : ''}} focusable"
+  role="button"
+  tabindex="0"
+  aria-label="查看短剧 {{drama.title}}，共 {{drama.episodeCount}} 集"
+  bindtap="open"
+>
+  <image wx:if="{{drama.coverUrl}}" class="cover" src="{{drama.coverUrl}}" mode="aspectFill" lazy-load aria-label="{{drama.title}}封面" />
+  <view wx:else class="cover placeholder" aria-hidden="true">剧</view>
+  <view class="content">
+    <view class="title">{{drama.title}}</view>
+    <view class="meta">{{drama.category}} · {{drama.episodeCount}} 集</view>
+    <view class="summary">{{drama.summary}}</view>
+    <view class="tags">
+      <text wx:for="{{drama.tags}}" wx:key="*this" class="tag">{{item}}</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,107 @@
+import { z } from "zod";
+
+const booleanString = z
+  .enum(["true", "false"])
+  .default("false")
+  .transform((value) => value === "true");
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  PUBLIC_API_URL: z.string().url().default("http://localhost:3000"),
+  ADMIN_ORIGIN: z.string().url().default("http://localhost:5173"),
+  DATABASE_URL: z.string().min(1),
+  JWT_SECRET: z.string().min(32),
+  ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
+  ADMIN_BOOTSTRAP_PASSWORD: z.string().min(12).optional(),
+  ADMIN_TEST_OTP: z.string().regex(/^\d{6}$/).optional(),
+  TOTP_ENCRYPTION_KEY: z.string().min(32).optional(),
+  RELEASE_GATE_ENABLED: booleanString,
+  COMPLIANCE_ENTITY_APPROVED: booleanString,
+  COMPLIANCE_MINIPROGRAM_FILING: booleanString,
+  COMPLIANCE_WECHAT_CATEGORY: booleanString,
+  COMPLIANCE_ADS_APPROVED: booleanString,
+  WECHAT_MODE: z.enum(["mock", "live"]).default("mock"),
+  WECHAT_APP_ID: z.string().optional(),
+  WECHAT_APP_SECRET: z.string().optional(),
+  WECHAT_REWARDED_AD_UNIT_ID: z.string().default("mock-rewarded-ad"),
+  WECHAT_REWARD_VERIFICATION: z
+    .enum(["server_verified", "client_attestation"])
+    .default("client_attestation"),
+  INTERNAL_CLIENT_ATTESTATION: booleanString,
+  VOD_MODE: z.enum(["mock", "live"]).default("mock"),
+  TENCENTCLOUD_SECRET_ID: z.string().optional(),
+  TENCENTCLOUD_SECRET_KEY: z.string().optional(),
+  TENCENTCLOUD_VOD_SUB_APP_ID: z.string().optional(),
+  TENCENTCLOUD_VOD_PROCEDURE: z.string().optional(),
+  TENCENTCLOUD_VOD_CALLBACK_SECRET: z.string().optional(),
+  WECHAT_CALLBACK_SECRET: z.string().optional(),
+  VOD_PLAYBACK_KEY: z.string().optional(),
+  VOD_MEDIA_HOST: z.string().default("media.example.com")
+});
+
+export type AppEnv = z.infer<typeof envSchema>;
+
+let cached: AppEnv | undefined;
+
+export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
+  if (source === process.env && cached) return cached;
+  const parsed = envSchema.safeParse(source);
+  if (!parsed.success) {
+    const fields = parsed.error.issues.map((issue) => issue.path.join(".")).join(", ");
+    throw new Error(`Invalid environment configuration: ${fields}`);
+  }
+  assertProductionSafety(parsed.data);
+  if (source === process.env) cached = parsed.data;
+  return parsed.data;
+}
+
+export function assertProductionSafety(env: AppEnv): void {
+  if (env.NODE_ENV !== "production") return;
+  const complianceReady =
+    env.COMPLIANCE_ENTITY_APPROVED &&
+    env.COMPLIANCE_MINIPROGRAM_FILING &&
+    env.COMPLIANCE_WECHAT_CATEGORY &&
+    env.COMPLIANCE_ADS_APPROVED;
+  if (!complianceReady) {
+    throw new Error("Production startup refused: release gate is incomplete");
+  }
+  if (!env.PUBLIC_API_URL.startsWith("https://")) {
+    throw new Error("Production startup refused: PUBLIC_API_URL must use HTTPS");
+  }
+  if (!env.ADMIN_ORIGIN.startsWith("https://")) {
+    throw new Error("Production startup refused: ADMIN_ORIGIN must use HTTPS");
+  }
+  if (/replace|example|change.?me/i.test(env.JWT_SECRET)) {
+    throw new Error("Production startup refused: JWT_SECRET is an example value");
+  }
+  if (env.WECHAT_MODE !== "live" || env.VOD_MODE !== "live") {
+    throw new Error("Production startup refused: mock providers are forbidden");
+  }
+  if (env.WECHAT_REWARD_VERIFICATION !== "server_verified") {
+    throw new Error("Production startup refused: rewarded ads must be server verified");
+  }
+  const liveValues = [
+    env.WECHAT_APP_ID,
+    env.WECHAT_APP_SECRET,
+    env.WECHAT_REWARDED_AD_UNIT_ID,
+    env.WECHAT_CALLBACK_SECRET,
+    env.TENCENTCLOUD_SECRET_ID,
+    env.TENCENTCLOUD_SECRET_KEY,
+    env.TENCENTCLOUD_VOD_SUB_APP_ID,
+    env.TENCENTCLOUD_VOD_PROCEDURE,
+    env.TENCENTCLOUD_VOD_CALLBACK_SECRET,
+    env.VOD_PLAYBACK_KEY,
+    env.TOTP_ENCRYPTION_KEY
+  ];
+  if (liveValues.some((value) => !value || /replace|example|change.?me/i.test(value))) {
+    throw new Error("Production startup refused: live provider or TOTP configuration is incomplete");
+  }
+  throw new Error(
+    "Production startup refused: live VOD signing and rewarded-ad verification are not implemented"
+  );
+}
+
+export function resetEnvForTests(): void {
+  cached = undefined;
+}

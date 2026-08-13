@@ -1,0 +1,44 @@
+<view class="page">
+  <internal-banner visible="{{isMock}}" />
+  <view class="profile">
+    <view class="avatar" aria-hidden="true">我</view>
+    <view>
+      <view class="page-title profile-title">我的短剧</view>
+      <view class="muted">观看记录与服务说明</view>
+    </view>
+  </view>
+
+  <view class="section-title">继续观看</view>
+  <view wx:if="{{loading}}" class="state-card" role="status">正在读取观看记录…</view>
+  <view wx:elif="{{error}}" class="state-card" role="alert">
+    <view class="state-title">观看记录加载失败</view>
+    <view>{{error}}</view>
+    <button class="secondary-button retry" bindtap="loadHistory">重试</button>
+  </view>
+  <view wx:elif="{{!history.length}}" class="state-card">
+    <view class="state-title">还没有观看记录</view>
+    <view>看过的短剧会出现在这里。</view>
+  </view>
+  <view wx:else>
+    <view wx:for="{{history}}" wx:key="historyKey" class="history-card">
+      <view class="history-main" role="button" tabindex="0" data-id="{{item.drama.id}}" bindtap="openDrama" aria-label="查看{{item.drama.title}}详情">
+        <image wx:if="{{item.drama.coverUrl}}" class="history-cover" src="{{item.drama.coverUrl}}" mode="aspectFill" />
+        <view wx:else class="history-cover placeholder">剧</view>
+        <view class="history-copy">
+          <view class="history-title">{{item.drama.title}}</view>
+          <view class="muted">第 {{item.episodeNumber}} 集 · {{item.positionLabel}}</view>
+          <view class="updated">{{item.updatedLabel}}</view>
+        </view>
+      </view>
+      <button class="resume" data-drama-id="{{item.drama.id}}" data-episode-number="{{item.episodeNumber}}" bindtap="resume" loading="{{resumingId === item.drama.id}}" disabled="{{!!resumingId}}">继续观看</button>
+    </view>
+  </view>
+
+  <view class="section-title">服务与规则</view>
+  <view class="menu">
+    <navigator class="menu-item" url="/pages/legal/index?section=privacy">隐私政策 <text>›</text></navigator>
+    <navigator class="menu-item" url="/pages/legal/index?section=terms">用户协议 <text>›</text></navigator>
+    <navigator class="menu-item" url="/pages/legal/index?section=ads">广告与权益规则 <text>›</text></navigator>
+    <navigator class="menu-item" url="/pages/legal/index?section=support">客服与投诉 <text>›</text></navigator>
+  </view>
+</view>

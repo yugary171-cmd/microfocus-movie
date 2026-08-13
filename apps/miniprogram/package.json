@@ -1,0 +1,18 @@
+{
+  "name": "@microfocus/miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "build": "npm run typecheck && node -e \"console.log('TypeScript checked. Open this directory in WeChat DevTools to compile the native mini program.')\""
+  },
+  "dependencies": {
+    "@microfocus/contracts": "0.1.0"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^4.0.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

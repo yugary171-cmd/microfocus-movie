@@ -1,0 +1,62 @@
+import { describe, expect, it, vi } from "vitest";
+import { PlaybackController } from "./playback.module.js";
+
+function readyAsset() {
+  return {
+    fileId: "file",
+    mediaStatus: "READY",
+    transcodeStatus: "READY",
+    machineReviewStatus: "APPROVED",
+    manualReviewStatus: "APPROVED",
+    wechatReviewStatus: "APPROVED"
+  };
+}
+
+describe("playback renewal", () => {
+  it("closes a paid lease whose entitlement balance is zero", async () => {
+    const now = Date.now();
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const prisma = {
+      circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) },
+      playbackLease: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "lease",
+          episodeId: "episode",
+          userId: "user",
+          status: "ACTIVE",
+          lastSeq: 1,
+          lastHeartbeatAt: new Date(now),
+          episode: {
+            episodeNumber: 3,
+            dramaId: "drama",
+            drama: {
+              status: "PUBLISHED",
+              rightsRecords: [
+                {
+                  validFrom: new Date(now - 1_000),
+                  validUntil: new Date(now + 60_000)
+                }
+              ]
+            },
+            mediaAssets: [readyAsset()]
+          }
+        }),
+        updateMany,
+        update: vi.fn()
+      },
+      entitlementGrant: {
+        aggregate: vi.fn().mockResolvedValue({ _sum: { remainingSeconds: null } })
+      }
+    };
+    const controller = new PlaybackController(prisma as never, {} as never);
+
+    await expect(
+      controller.renew({ kind: "user", sub: "user" }, "lease")
+    ).rejects.toMatchObject({ code: "ENTITLEMENT_REQUIRED" });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "CLOSED", activeKey: null })
+      })
+    );
+  });
+});

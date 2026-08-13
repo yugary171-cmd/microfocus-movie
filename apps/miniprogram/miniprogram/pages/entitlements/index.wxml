@@ -1,0 +1,33 @@
+<view class="page">
+  <internal-banner visible="{{isMock}}" />
+  <view class="page-title">权益明细</view>
+  <view wx:if="{{loading}}" class="state-card" role="status">正在加载权益…</view>
+  <view wx:elif="{{error}}" class="state-card" role="alert">
+    <view class="state-title">无法读取权益</view>
+    <view>{{error}}</view>
+    <button wx:if="{{dramaId}}" class="secondary-button retry" bindtap="loadEntitlement">重试</button>
+  </view>
+  <block wx:elif="{{summary}}">
+    <view class="summary-card">
+      <view class="summary-label">当前短剧可用时长</view>
+      <view class="remaining">{{remainingLabel}}</view>
+      <view class="expiry">最近到期：{{nearestExpiryLabel}}</view>
+    </view>
+    <view class="section-title">发放记录</view>
+    <view wx:if="{{!grants.length}}" class="state-card">
+      <view class="state-title">暂无权益记录</view>
+      <view>完整观看激励广告且服务端校验通过后，记录会显示在这里。</view>
+    </view>
+    <view wx:else>
+      <view wx:for="{{grants}}" wx:key="id" class="grant-card">
+        <view class="grant-head">
+          <view class="grant-source">{{item.sourceLabel}}</view>
+          <view class="grant-remaining">剩 {{item.remainingLabel}}</view>
+        </view>
+        <view class="grant-row"><text>发放</text><text>{{item.grantedLabel}}</text></view>
+        <view class="grant-row"><text>发放时间</text><text>{{item.grantedAtLabel}}</text></view>
+        <view class="grant-row"><text>到期时间</text><text>{{item.expiresAtLabel}}</text></view>
+      </view>
+    </view>
+  </block>
+</view>

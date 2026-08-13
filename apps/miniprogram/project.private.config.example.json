@@ -1,0 +1,8 @@
+{
+  "appid": "请在本机 project.private.config.json 中填写已备案的小程序 AppID",
+  "projectname": "microfocus-movie-local",
+  "setting": {
+    "urlCheck": false,
+    "compileHotReLoad": true
+  }
+}

@@ -1,0 +1,48 @@
+<view class="player-page">
+  <view class="topbar">
+    <button class="back" bindtap="goBack" aria-label="返回短剧详情">‹</button>
+    <view class="heading">
+      <view class="drama-title">{{dramaTitle}}</view>
+      <view class="episode-title">第 {{episodeNumber}} 集</view>
+    </view>
+    <view class="remaining" aria-label="剩余观看时长 {{remainingLabel}}">{{remainingLabel}}</view>
+  </view>
+
+  <internal-banner visible="{{isMock}}" />
+  <view wx:if="{{loading}}" class="player-state" role="status">正在获取播放授权…</view>
+  <view wx:elif="{{error}}" class="player-state" role="alert">
+    <view class="state-title">无法开始播放</view>
+    <view>{{error}}</view>
+    <button class="secondary-button retry" bindtap="openLease">重新获取授权</button>
+  </view>
+  <view wx:elif="{{!hasPlaybackUrl}}" class="player-state configuration" role="status">
+    <view class="state-title">尚未配置可播放视频</view>
+    <view>服务端已返回播放授权，但没有视频地址。为避免误导，这里不会使用演示视频代替。</view>
+  </view>
+  <video
+    wx:else
+    id="player"
+    class="video"
+    src="{{playbackUrl}}"
+    autoplay
+    controls
+    show-center-play-btn
+    enable-progress-gesture
+    object-fit="contain"
+    bindplay="onPlay"
+    bindpause="onPause"
+    bindwaiting="onWaiting"
+    bindended="onEnded"
+    bindtimeupdate="onTimeUpdate"
+    binderror="onVideoError"
+    bindloadedmetadata="onVideoReady"
+    aria-label="{{dramaTitle}}第{{episodeNumber}}集播放器"
+  />
+
+  <view wx:if="{{notice}}" class="notice" role="status">{{notice}}</view>
+  <view class="controls" aria-label="播放速度">
+    <view class="control-label">倍速</view>
+    <button wx:for="{{rates}}" wx:key="*this" class="rate {{playbackRate === item ? 'active' : ''}}" data-rate="{{item}}" bindtap="changeRate" aria-pressed="{{playbackRate === item}}">{{item}}x</button>
+  </view>
+  <view class="tip">仅在实际播放时每 5 秒同步一次进度；暂停、缓冲或进入后台不会发送扣减心跳。</view>
+</view>

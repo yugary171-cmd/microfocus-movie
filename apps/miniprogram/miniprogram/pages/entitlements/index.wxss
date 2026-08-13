@@ -1,0 +1,59 @@
+.summary-card {
+  padding: 36rpx 30rpx;
+  background: linear-gradient(135deg, #30291a, #17181e);
+  border: 2rpx solid #5f5129;
+  border-radius: 24rpx;
+}
+
+.summary-label,
+.expiry {
+  color: #b4b0a3;
+  font-size: 24rpx;
+}
+
+.remaining {
+  margin: 14rpx 0;
+  color: #ffcf5a;
+  font-size: 58rpx;
+  font-weight: 800;
+}
+
+.grant-card {
+  margin-bottom: 20rpx;
+  padding: 26rpx;
+  background: #17181e;
+  border-radius: 20rpx;
+}
+
+.grant-head,
+.grant-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.grant-head {
+  margin-bottom: 18rpx;
+}
+
+.grant-source {
+  font-weight: 700;
+}
+
+.grant-remaining {
+  color: #ffcf5a;
+}
+
+.grant-row {
+  margin-top: 10rpx;
+  color: #a1a4ae;
+  font-size: 23rpx;
+}
+
+.grant-row text:last-child {
+  text-align: right;
+}
+
+.retry {
+  margin-top: 20rpx;
+}

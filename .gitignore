@@ -1,0 +1,18 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.turbo/
+.cache/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+apps/api/prisma/dev.db
+apps/miniprogram/miniprogram_npm/
+apps/miniprogram/.miniprogram/
+.codex/wiki/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/

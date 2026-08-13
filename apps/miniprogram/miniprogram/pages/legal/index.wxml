@@ -1,0 +1,10 @@
+<view class="page legal-page">
+  <internal-banner visible="{{isMock}}" />
+  <view class="page-title">{{title}}</view>
+  <view class="updated">{{updatedAt}}</view>
+  <view wx:for="{{paragraphs}}" wx:key="heading" class="legal-section">
+    <view class="heading">{{item.heading}}</view>
+    <view class="body">{{item.body}}</view>
+  </view>
+  <view class="review-note" role="note">本页文字用于首版产品与开发评审，不替代正式法律文本。上线前须由运营主体与法务审核并补齐生效日期、主体信息和有效联系渠道。</view>
+</view>

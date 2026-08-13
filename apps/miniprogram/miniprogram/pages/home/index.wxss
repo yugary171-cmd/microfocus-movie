@@ -1,0 +1,62 @@
+.hero {
+  padding: 32rpx 0 24rpx;
+}
+
+.eyebrow {
+  color: #ffcf5a;
+  font-size: 24rpx;
+  font-weight: 650;
+  letter-spacing: 3rpx;
+}
+
+.tabs {
+  display: flex;
+  gap: 12rpx;
+  margin: 30rpx 0 20rpx;
+}
+
+.tab {
+  flex: 1;
+  min-height: 72rpx;
+  margin: 0;
+  color: #a1a4ae;
+  background: #17181e;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+}
+
+.tab.active {
+  color: #17130a;
+  background: #ffcf5a;
+  font-weight: 700;
+}
+
+.rail {
+  width: calc(100vw - 28rpx);
+  margin-right: -28rpx;
+}
+
+.rail-inner {
+  display: flex;
+  gap: 20rpx;
+  padding-right: 28rpx;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.category-button {
+  margin: 0;
+  padding: 28rpx 20rpx;
+  color: #f7f7f8;
+  background: #17181e;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}
+
+.retry {
+  margin-top: 24rpx;
+}

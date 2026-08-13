@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "权益明细",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "internal-banner": "/components/internal-banner/index"
+  }
+}

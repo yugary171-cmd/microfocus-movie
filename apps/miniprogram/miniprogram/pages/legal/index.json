@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "服务说明",
+  "usingComponents": {
+    "internal-banner": "/components/internal-banner/index"
+  }
+}

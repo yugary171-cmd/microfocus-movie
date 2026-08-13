@@ -1,0 +1,32 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/category/index",
+    "pages/drama/index",
+    "pages/player/index",
+    "pages/my/index",
+    "pages/entitlements/index",
+    "pages/legal/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "微光短剧",
+    "navigationBarBackgroundColor": "#101115",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0b0c0f",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8d9099",
+    "selectedColor": "#ffcf5a",
+    "backgroundColor": "#121319",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/category/index", "text": "分类" },
+      { "pagePath": "pages/my/index", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

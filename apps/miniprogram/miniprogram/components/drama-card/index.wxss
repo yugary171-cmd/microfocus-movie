@@ -1,0 +1,91 @@
+.card {
+  display: flex;
+  width: 520rpx;
+  min-height: 260rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #17181e;
+  border: 2rpx solid transparent;
+  border-radius: 24rpx;
+}
+
+.card:active,
+.card:focus {
+  border-color: #ffcf5a;
+}
+
+.compact {
+  width: 100%;
+  margin-bottom: 20rpx;
+}
+
+.cover {
+  flex: none;
+  width: 184rpx;
+  height: 260rpx;
+  background: #272a33;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffcf5a;
+  font-size: 72rpx;
+  font-weight: 800;
+}
+
+.content {
+  min-width: 0;
+  padding: 24rpx;
+}
+
+.title {
+  overflow: hidden;
+  font-size: 32rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta,
+.summary {
+  margin-top: 12rpx;
+  color: #a1a4ae;
+  font-size: 24rpx;
+}
+
+.summary {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.tags {
+  margin-top: 16rpx;
+}
+
+.tag {
+  margin-right: 10rpx;
+  padding: 6rpx 10rpx;
+  color: #dedfe4;
+  background: #282a32;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+}
+
+@media (max-width: 360px) {
+  .card {
+    width: 470rpx;
+  }
+
+  .compact {
+    width: 100%;
+  }
+
+  .cover {
+    width: 154rpx;
+  }
+}
