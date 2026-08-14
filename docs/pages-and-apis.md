@@ -147,7 +147,7 @@ flowchart LR
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
 - 管理端剧目列表与审核队列 `page` 默认 1，`pageSize` 固定 50 且客户端不可修改，最多 100 页；关键词 `q` 最长 100，超过页上限返回空结果，不执行大 OFFSET。权益摘要不按页截断 grant。
-- 管理端回调事件列表 `take` 默认 50、上限 100；`skip` 超过 `(100-1)*take` 时返回空结果。
+- 路径与查询中的实体 ID（剧目、剧集、租约、challenge、回调事件、注销申请、熔断 provider）最长 191；超长返回 `INVALID_ENTITY_ID`，不执行数据库查找。公开详情、权益摘要、播放和注销查询仍先占限频桶。
 - 搜索默认按 `recommendationRank DESC, publishedAt DESC`；`latest` 必须按 `publishedAt DESC`；同值时以稳定 ID 作次级排序。
 - 空结果返回空数组及有效分页元数据，不使用 404。
 
@@ -155,7 +155,7 @@ flowchart LR
 
 | HTTP | 稳定错误码 | 可重试性与客户端行为 |
 | --- | --- | --- |
-| 400 | `INVALID_CHALLENGE_NONCE`、`IDEMPOTENCY_KEY_REQUIRED`、`AD_NOT_COMPLETED` | 终态；严禁自动重试同一错误请求 |
+| 400 | `INVALID_CHALLENGE_NONCE`、`IDEMPOTENCY_KEY_REQUIRED`、`AD_NOT_COMPLETED`、`INVALID_ENTITY_ID` | 终态；严禁自动重试同一错误请求 |
 | 401 | `UNAUTHORIZED` | 会话失效；清理令牌并由用户重新触发登录，严禁自动重试 |
 | 401 | `ANONYMOUS_SESSION_EXPIRED` | 清理匿名 token 并重新创建匿名会话，不触发微信登录授权 |
 | 403 | `FORBIDDEN`、`USER_TOKEN_REQUIRED` | 终态；展示登录或无权限状态，严禁自动重试 |

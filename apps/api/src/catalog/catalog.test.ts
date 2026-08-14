@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { SEARCH_MAX_PAGE, SEARCH_PAGE_SIZE } from "@microfocus/contracts";
+import { SEARCH_MAX_PAGE, SEARCH_PAGE_SIZE, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
 import { CatalogController, publicSearchWhere } from "./catalog.module.js";
 import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
@@ -108,6 +108,19 @@ describe("public catalog rate limits", () => {
         })
       })
     );
+    expect(prisma.drama.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized drama id after the IP bucket is consumed", async () => {
+    const prisma = {
+      rateLimitBucket: allowRateLimit(),
+      drama: { findFirst: vi.fn() }
+    };
+    const controller = new CatalogController(prisma as never);
+    await expect(
+      controller.detail({ socket: { remoteAddress: "10.0.0.8" } }, "d".repeat(ENTITY_ID_MAX_LENGTH + 1))
+    ).rejects.toMatchObject({ code: "INVALID_ENTITY_ID" });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalled();
     expect(prisma.drama.findFirst).not.toHaveBeenCalled();
   });
 });

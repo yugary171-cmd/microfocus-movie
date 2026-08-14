@@ -9,6 +9,7 @@ import {
   type DramaDetail
 } from "@microfocus/contracts";
 import { controllerPath } from "../common/http.js";
+import { requireEntityId } from "../common/entity-id.js";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
@@ -103,9 +104,10 @@ export class CatalogController {
     @Param("dramaId") dramaId: string
   ): Promise<DramaDetail> {
     await assertNamedRateLimit(this.prisma, "dramaDetail", requestIpKey(request));
+    const id = requireEntityId(dramaId, "dramaId");
     const drama = await this.prisma.drama.findFirst({
       where: {
-        id: dramaId,
+        id,
         status: "PUBLISHED",
         rightsRecords: { some: { status: "ACTIVE", validUntil: { gt: new Date() } } }
       },

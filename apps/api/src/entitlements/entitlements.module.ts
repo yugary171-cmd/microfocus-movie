@@ -8,6 +8,7 @@ import {
 } from "../security/security.js";
 import { requireUser } from "../history/history.module.js";
 import { assertNamedRateLimit } from "../security/rate-limit.js";
+import { requireEntityId } from "../common/entity-id.js";
 
 @Controller("v1/entitlements")
 @UseGuards(JwtAuthGuard)
@@ -21,17 +22,18 @@ export class EntitlementsController {
   ): Promise<EntitlementSummary> {
     const userId = requireUser(principal);
     await assertNamedRateLimit(this.prisma, "entitlementSummary", `user:${userId}`);
+    const id = requireEntityId(dramaId, "dramaId");
     const grants = await this.prisma.entitlementGrant.findMany({
       where: {
         userId,
-        dramaId,
+        dramaId: id,
         expiresAt: { gt: new Date() },
         remainingSeconds: { gt: 0 }
       },
       orderBy: { expiresAt: "asc" }
     });
     return {
-      dramaId,
+      dramaId: id,
       remainingSeconds: grants.reduce(
         (sum, grant) => sum + Math.max(0, grant.remainingSeconds),
         0

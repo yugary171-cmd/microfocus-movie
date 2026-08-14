@@ -31,6 +31,7 @@ import {
 } from "@microfocus/contracts";
 import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
 import { Errors } from "../common/app-error.js";
+import { requireEntityId } from "../common/entity-id.js";
 import {
   allocateFefo,
   assertHeartbeatAnchor,
@@ -319,6 +320,7 @@ export class PlaybackController {
   ): Promise<PlaybackHeartbeatResponse> {
     const actor = playbackActor(principal);
     await assertNamedRateLimit(this.prisma, "playbackHeartbeat", playbackRateLimitKey(actor));
+    leaseId = requireEntityId(leaseId, "leaseId");
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM PlaybackLease WHERE id = ${leaseId} FOR UPDATE`;
       const lease = await tx.playbackLease.findFirst({
@@ -568,6 +570,7 @@ export class PlaybackController {
   ): Promise<PlaybackLeaseView> {
     const actor = playbackActor(principal);
     await assertNamedRateLimit(this.prisma, "playbackRenew", playbackRateLimitKey(actor));
+    leaseId = requireEntityId(leaseId, "leaseId");
     const lease = await this.prisma.playbackLease.findFirst({
       where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },
       include: {
@@ -657,6 +660,7 @@ export class PlaybackController {
   ): Promise<ActivePlaybackLeaseResponse> {
     const userId = requireUser(principal);
     await assertNamedRateLimit(this.prisma, "playbackRecover", `user:${userId}`);
+    leaseId = requireEntityId(leaseId, "leaseId");
     const lease = await this.prisma.playbackLease.findFirst({
       where: { id: leaseId, userId }
     });
@@ -684,6 +688,7 @@ export class PlaybackController {
   async close(@CurrentPrincipal() principal: Principal, @Param("leaseId") leaseId: string) {
     const actor = playbackActor(principal);
     await assertNamedRateLimit(this.prisma, "playbackClose", playbackRateLimitKey(actor));
+    leaseId = requireEntityId(leaseId, "leaseId");
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.playbackLease.updateMany({
         where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },

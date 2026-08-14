@@ -6,6 +6,7 @@ import {
   type AdminCallbackEventView
 } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
+import { optionalEntityId } from "../common/entity-id.js";
 import { maxListSkip } from "../common/list-pagination.js";
 
 export const CALLBACK_BACKLOG_STATUSES: CallbackEventStatus[] = [
@@ -78,7 +79,7 @@ export async function listAdminCallbackEvents(
   input: { status?: string; provider?: string; take?: number; skip?: number; now?: Date } = {}
 ): Promise<AdminCallbackEventList> {
   const statuses = resolveCallbackListStatuses(input.status);
-  const provider = input.provider?.trim().toUpperCase();
+  const provider = optionalEntityId(input.provider, "provider")?.toUpperCase();
   const take = Math.min(
     ADMIN_LIST_PAGE_SIZE * 2,
     Math.max(1, Number.isFinite(input.take) ? Number(input.take) : ADMIN_LIST_PAGE_SIZE)

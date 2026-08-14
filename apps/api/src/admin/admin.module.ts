@@ -96,6 +96,7 @@ import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/cal
 import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
 import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
 import { boundedListWindow, emptyBoundedPage, parsePage } from "../common/list-pagination.js";
+import { requireEntityId, optionalEntityId } from "../common/entity-id.js";
 
 export class EpisodeInput {
   @IsInt()
@@ -465,7 +466,7 @@ export class AdminController {
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string
   ) {
-    return this.loadDramaView(dramaId, requireAdmin(principal));
+    return this.loadDramaView(requireEntityId(dramaId, "dramaId"), requireAdmin(principal));
   }
 
   @Patch("dramas/:dramaId")
@@ -476,7 +477,7 @@ export class AdminController {
     @Body() body: UpdateDramaDto
   ) {
     const admin = requireAdmin(principal);
-    await this.requireOwnedUnpublishedDrama(dramaId, admin);
+    await this.requireOwnedUnpublishedDrama(requireEntityId(dramaId, "dramaId"), admin);
     const updated = await this.prisma.drama.updateMany({
       where: {
         id: dramaId,
@@ -509,6 +510,7 @@ export class AdminController {
     @Body() body: RightsDto
   ) {
     const admin = requireAdmin(principal);
+    dramaId = requireEntityId(dramaId, "dramaId");
     await this.requireOwnedUnpublishedDrama(dramaId, admin);
     const latest = await this.prisma.rightsRecord.aggregate({
       where: { dramaId },
@@ -547,6 +549,7 @@ export class AdminController {
     @Body() body: MediaAssetDto
   ) {
     const admin = requireAdmin(principal);
+    dramaId = requireEntityId(dramaId, "dramaId");
     await this.requireOwnedUnpublishedDrama(dramaId, admin);
     const episode = await this.prisma.episode.findFirst({
       where: { id: body.episodeId, dramaId }
@@ -589,7 +592,7 @@ export class AdminController {
     @Param("dramaId") dramaId: string
   ) {
     const admin = requireAdmin(principal);
-    await this.requireOwnedDrama(dramaId, admin);
+    await this.requireOwnedDrama(requireEntityId(dramaId, "dramaId"), admin);
     const updated = await this.prisma.drama.updateMany({
       where: { id: dramaId, editorId: admin.sub, status: { in: ["DRAFT", "READY"] } },
       data: { status: "PENDING_REVIEW" }
@@ -607,6 +610,7 @@ export class AdminController {
     @Body() body: ReviewDto
   ) {
     const admin = requireAdmin(principal);
+    dramaId = requireEntityId(dramaId, "dramaId");
     const drama = await this.prisma.drama.findUnique({ where: { id: dramaId } });
     if (!drama) throw Errors.notFound("Drama");
     if (drama.status !== "PENDING_REVIEW") {
@@ -637,6 +641,7 @@ export class AdminController {
     @Param("dramaId") dramaId: string
   ) {
     const admin = requireAdmin(principal);
+    dramaId = requireEntityId(dramaId, "dramaId");
     const gate = this.releaseGate();
     if (!gate.readyForExternalTraffic) {
       throw Errors.conflict("RELEASE_GATE_FAILED", gate.blockers.join(","));
@@ -688,6 +693,7 @@ export class AdminController {
     @Body() body: OfflineDto
   ) {
     const admin = requireAdmin(principal);
+    dramaId = requireEntityId(dramaId, "dramaId");
     const offlined = await this.prisma.$transaction(async (tx) =>
       tryOfflinePublishedDrama(tx as never, dramaId)
     );
@@ -727,6 +733,7 @@ export class AdminController {
     @Body() body: MediaReviewDto
   ) {
     const admin = requireAdmin(principal);
+    assetId = requireEntityId(assetId, "assetId");
     if (!body.manualReviewStatus && !body.wechatReviewStatus) {
       throw Errors.badRequest("REVIEW_STATUS_REQUIRED", "A media review status is required");
     }
@@ -895,6 +902,7 @@ export class AdminController {
     @Body() body: CircuitDto
   ) {
     const admin = requireAdmin(principal);
+    provider = requireEntityId(provider, "provider");
     const row = await this.prisma.circuitBreaker.upsert({
       where: { provider },
       create: {
@@ -978,9 +986,10 @@ export class AdminController {
     @Query("take") take?: string,
     @Query("skip") skip?: string
   ) {
+    const boundedProvider = optionalEntityId(provider, "provider");
     return listAdminCallbackEvents(this.prisma, {
       ...(status ? { status } : {}),
-      ...(provider ? { provider } : {}),
+      ...(boundedProvider ? { provider: boundedProvider } : {}),
       ...(take !== undefined ? { take: Number.parseInt(take, 10) } : {}),
       ...(skip !== undefined ? { skip: Number.parseInt(skip, 10) } : {})
     });
@@ -998,7 +1007,7 @@ export class AdminController {
     const view = await replayCallbackEvent(
       this.prisma,
       {
-        eventId,
+        eventId: requireEntityId(eventId, "eventId"),
         reason: body.reason,
         operatorAdminId: admin.sub,
         ...(idempotencyKey ? { idempotencyKey } : {}),
@@ -1027,13 +1036,15 @@ export class AdminController {
     if (!userId?.trim()) {
       throw Errors.badRequest("USER_ID_REQUIRED", "userId is required");
     }
-    return lookupAdminDeletionRequest(this.prisma, { userId });
+    return lookupAdminDeletionRequest(this.prisma, { userId: requireEntityId(userId, "userId") });
   }
 
   @Get("deletion-requests/:deletionRequestId")
   @Roles(AdminRole.ADMIN)
   getDeletionRequest(@Param("deletionRequestId") deletionRequestId: string) {
-    return lookupAdminDeletionRequest(this.prisma, { deletionRequestId });
+    return lookupAdminDeletionRequest(this.prisma, {
+      deletionRequestId: requireEntityId(deletionRequestId, "deletionRequestId")
+    });
   }
 
   @Post("deletion-requests/:deletionRequestId/query-tokens")
@@ -1046,7 +1057,7 @@ export class AdminController {
   ) {
     const admin = requireAdmin(principal);
     const view = await issueDeletionQueryToken(this.prisma, {
-      deletionRequestId,
+      deletionRequestId: requireEntityId(deletionRequestId, "deletionRequestId"),
       userId: body.userId,
       reason: body.reason,
       approvalNote: body.approvalNote,

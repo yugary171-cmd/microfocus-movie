@@ -1,4 +1,4 @@
-import { ADMIN_LIST_MAX_PAGE, ADMIN_LIST_PAGE_SIZE, AdminRole } from "@microfocus/contracts";
+import { ADMIN_LIST_MAX_PAGE, ADMIN_LIST_PAGE_SIZE, AdminRole, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { AdminController } from "./admin.module.js";
 
@@ -73,5 +73,13 @@ describe("admin list pagination", () => {
         })
       })
     );
+  });
+
+  it("rejects an oversized drama id without a database lookup", async () => {
+    const prisma = { drama: { findUnique: vi.fn() } };
+    await expect(controller(prisma).drama(admin, "d".repeat(ENTITY_ID_MAX_LENGTH + 1))).rejects.toMatchObject({
+      code: "INVALID_ENTITY_ID"
+    });
+    expect(prisma.drama.findUnique).not.toHaveBeenCalled();
   });
 });

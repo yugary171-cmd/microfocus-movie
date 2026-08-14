@@ -14,6 +14,7 @@ import { Prisma } from "@prisma/client";
 import { IsBoolean, IsISO8601, IsString, MaxLength, MinLength } from "class-validator";
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
+import { requireEntityId } from "../common/entity-id.js";
 import { AppConfigService } from "../config/config.service.js";
 import { requireUser } from "../history/history.module.js";
 import { assertCircuitsClosed } from "../domain/circuit.js";
@@ -142,6 +143,7 @@ export class RewardsController {
     }
     if (!body.isEnded) throw Errors.badRequest("AD_NOT_COMPLETED", "The rewarded ad was not completed");
     await assertNamedRateLimit(this.prisma, "rewardComplete", `user:${userId}`);
+    challengeId = requireEntityId(challengeId, "challengeId");
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM RewardChallenge WHERE id = ${challengeId} FOR UPDATE`;
       const challenge = await tx.rewardChallenge.findFirst({

@@ -1,4 +1,4 @@
-import { CallbackEventStatus } from "@microfocus/contracts";
+import { CallbackEventStatus, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   listAdminCallbackEvents,
@@ -93,6 +93,19 @@ describe("admin callback event list", () => {
         { take: 50, skip: 1_000_000 }
       )
     ).resolves.toEqual({ total: 0, items: [] });
+    expect(findMany).not.toHaveBeenCalled();
+    expect(count).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized provider without querying", async () => {
+    const findMany = vi.fn();
+    const count = vi.fn();
+    await expect(
+      listAdminCallbackEvents(
+        { callbackEvent: { count, findMany } },
+        { provider: "p".repeat(ENTITY_ID_MAX_LENGTH + 1) }
+      )
+    ).rejects.toMatchObject({ code: "INVALID_ENTITY_ID" });
     expect(findMany).not.toHaveBeenCalled();
     expect(count).not.toHaveBeenCalled();
   });

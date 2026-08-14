@@ -12,6 +12,7 @@ import {
 import { Prisma } from "@prisma/client";
 import { assertRecentWechatReauth } from "../auth/reauth.js";
 import { Errors } from "../common/app-error.js";
+import { requireEntityId } from "../common/entity-id.js";
 import { releaseOpenReservations } from "../playback/playback-reservations.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
 import type { WechatProvider } from "../providers/providers.js";
@@ -146,11 +147,12 @@ export async function lookupDeletionRequest(
   input: { deletionRequestId: string; queryToken: string; ipKey: string; now?: Date }
 ): Promise<DeletionRequestView> {
   await assertNamedRateLimit(prisma, "deletionLookup", input.ipKey);
+  const deletionRequestId = requireEntityId(input.deletionRequestId, "deletionRequestId");
   const token = input.queryToken.trim();
   if (!token) {
     throw Errors.unauthorized("Deletion query token is required", ERROR_CODES.DELETION_TOKEN_INVALID);
   }
-  const row = await prisma.deletionRequest.findUnique({ where: { id: input.deletionRequestId } });
+  const row = await prisma.deletionRequest.findUnique({ where: { id: deletionRequestId } });
   if (!row || !tokensMatch(row.queryTokenHash, token)) {
     throw Errors.unauthorized("Deletion query token is invalid", ERROR_CODES.DELETION_TOKEN_INVALID);
   }
