@@ -72,6 +72,7 @@ import { replayCallbackEvent } from "../callbacks/callback-replay.js";
 import { listAdminCallbackEvents } from "../callbacks/callback-list.js";
 import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/callback-payload.js";
 import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
+import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
 
 class EpisodeInput {
   @IsInt()
@@ -582,16 +583,10 @@ export class AdminController {
     @Body() body: OfflineDto
   ) {
     const admin = requireAdmin(principal);
-    const updated = await this.prisma.drama.updateMany({
-      where: { id: dramaId, status: "PUBLISHED" },
-      data: { status: "OFFLINE" }
-    });
-    if (!updated.count) throw Errors.conflict("INVALID_DRAMA_STATE", "Drama is not published");
-    const episodes = await this.prisma.episode.findMany({ where: { dramaId }, select: { id: true } });
-    await this.prisma.playbackLease.updateMany({
-      where: { episodeId: { in: episodes.map((episode) => episode.id) }, status: "ACTIVE" },
-      data: { status: "REVOKED", activeKey: null, revokedAt: new Date() }
-    });
+    const offlined = await this.prisma.$transaction(async (tx) =>
+      tryOfflinePublishedDrama(tx as never, dramaId)
+    );
+    if (!offlined) throw Errors.conflict("INVALID_DRAMA_STATE", "Drama is not published");
     await this.audit(admin.sub, "DRAMA_OFFLINED", "Drama", dramaId, {
       reason: body.reason
     });

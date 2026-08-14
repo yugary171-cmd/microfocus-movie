@@ -527,3 +527,11 @@ model CircuitBreaker {
   openedAt  DateTime?
   updatedAt DateTime     @updatedAt
 }
+
+model BackgroundJobLease {
+  jobName     String   @id @db.VarChar(64)
+  ownerId     String   @db.VarChar(128)
+  lockedUntil DateTime
+  lastRunAt   DateTime?
+  updatedAt   DateTime @updatedAt
+}

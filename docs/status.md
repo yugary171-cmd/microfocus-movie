@@ -25,7 +25,7 @@
 | 领域 | 当前已实现 | 部分实现或仅目标设计 |
 | --- | --- | --- |
 | 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致 | 可删除数据清理依赖未批准的保留矩阵 |
-| 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN | 真实 VOD 发布链路未实现 |
+| 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN；权利到期任务将无覆盖权利的已发布剧目自动下架并撤销活动租约 | 真实 VOD 发布链路未实现 |
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code` | 无真实 VOD 交付日志时 UNCONFIRMED 不自动扣费 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
@@ -55,7 +55,7 @@
 
 ## 历史
 
-- 2026-08-14：ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据（不含密文），运营控制页可筛选并填入重放。
+- 2026-08-14：权利到期后台任务每分钟尝试获取数据库租约后，将过期 `ACTIVE` 权利标为 `EXPIRED`，并把无覆盖权利的 `PUBLISHED` 剧目下架、撤销活动租约；不伪造 Live provider。
 - 2026-08-14：回调死信打开对应 `PROVIDER:VOD` / `PROVIDER:WECHAT` 熔断，并在管理端工作台展示死信数、可重试失败、最老未处理年龄；不自动打开 GLOBAL。重放后需管理员另行关闭 provider 熔断。
 - 2026-08-14：ADMIN 可在客服核验后补发注销查询令牌：`userId` 必须与申请一致，旧令牌立即失效，新令牌只返回一次；不恢复用户 JWT。法定清理仍依赖未批准的保留矩阵。
 - 2026-08-14：TOTP 加密密钥轮换：登录可在维护窗口回退 `TOTP_ENCRYPTION_KEY_PREVIOUS`；`npm run totp:reencrypt` 默认 dry-run，`--commit` 重加密，`--rollback --commit` 写回上一密钥。生产种子校验 Base32 并拒绝示例 TOTP secret。回调若仍回退 TOTP 密钥则拒绝轮换。

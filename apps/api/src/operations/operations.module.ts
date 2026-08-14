@@ -1,5 +1,6 @@
 import { Controller, Get, Module } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { RightsExpiryScheduler } from "../jobs/rights-expiry.scheduler.js";
 
 @Controller()
 export class OperationsController {
@@ -12,5 +13,5 @@ export class OperationsController {
   }
 }
 
-@Module({ controllers: [OperationsController] })
+@Module({ controllers: [OperationsController], providers: [RightsExpiryScheduler] })
 export class OperationsModule {}

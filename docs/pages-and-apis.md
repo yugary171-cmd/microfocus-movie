@@ -214,7 +214,7 @@ flowchart LR
 | `POST .../:id/submit-review` | EDITOR | 仅本人负责，材料完整 | 提交审核 |
 | `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容 | 审核队列 |
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计 | 内容和媒体审核 |
-| `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门 | 发布与下架 |
+| `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改 | 审计查询 |
 | `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者 | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key` | 关联用户、剧目、秒数、过期时间、原因及原 challenge（如适用） | 创建不可变补偿批次 |
