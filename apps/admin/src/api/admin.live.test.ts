@@ -131,6 +131,23 @@ describe("live admin API adapter", () => {
       approvalNote: "INC-9",
     });
     expect(new Headers(replayInit?.headers).get("Idempotency-Key")).toMatch(/^r:[a-f0-9]{64}$/);
+
+    await adminApi.reissueDeletionQueryToken({
+      deletionRequestId: "del-1",
+      userId: "user-1",
+      reason: "用户遗失查询令牌",
+      approvalNote: "工单 CS-1 已核验",
+    });
+    const reissueInit = vi.mocked(fetch).mock.calls[4]?.[1];
+    expect(String(vi.mocked(fetch).mock.calls[4]?.[0])).toBe(
+      "http://api.test/v1/admin/deletion-requests/del-1/query-tokens",
+    );
+    expect(JSON.parse(String(reissueInit?.body))).toEqual({
+      userId: "user-1",
+      reason: "用户遗失查询令牌",
+      approvalNote: "工单 CS-1 已核验",
+    });
+    expect(new Headers(reissueInit?.headers).get("Idempotency-Key")).toMatch(/^q:[a-f0-9]{64}$/);
   });
 
   it("sends the upload signing metadata contract", async () => {

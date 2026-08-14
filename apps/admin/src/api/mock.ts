@@ -1,7 +1,9 @@
 import {
   AdminRole,
+  DeletionRequestStatus,
   DramaStatus,
   MediaStatus,
+  type ReissueDeletionQueryTokenResponse,
   type ReleaseGateStatus,
 } from "@microfocus/contracts";
 import type {
@@ -11,6 +13,7 @@ import type {
   CompensationInput,
   AdjustmentInput,
   CallbackReplayInput,
+  DeletionQueryTokenReissueInput,
   DashboardData,
   DramaInput,
   DramaRecord,
@@ -442,5 +445,20 @@ export const mockApi = {
       `${input.reason}${input.approvalNote ? `；${input.approvalNote}` : ""}`,
     );
     return mockDelay(undefined);
+  },
+  async reissueDeletionQueryToken(
+    input: DeletionQueryTokenReissueInput,
+  ): Promise<ReissueDeletionQueryTokenResponse> {
+    writeAudit(
+      "注销查询令牌补发",
+      `申请 ${input.deletionRequestId}`,
+      `核验用户 ${input.userId}；${input.reason}；${input.approvalNote}`,
+    );
+    return mockDelay({
+      deletionRequestId: input.deletionRequestId,
+      status: DeletionRequestStatus.PENDING,
+      tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      replayed: false,
+    });
   },
 };

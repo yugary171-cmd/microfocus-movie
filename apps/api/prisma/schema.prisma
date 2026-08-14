@@ -162,8 +162,23 @@ model DeletionRequest {
   statusReason    String?                @db.VarChar(300)
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
+  queryTokenReissues DeletionQueryTokenReissue[]
 
   @@index([userId, status])
+}
+
+model DeletionQueryTokenReissue {
+  id                String          @id @default(cuid())
+  deletionRequestId String
+  deletionRequest   DeletionRequest @relation(fields: [deletionRequestId], references: [id])
+  operatorAdminId   String
+  reason            String          @db.VarChar(300)
+  approvalNote      String          @db.VarChar(300)
+  confirmedUserId   String          @db.VarChar(191)
+  idempotencyKey    String          @unique @db.VarChar(128)
+  createdAt         DateTime        @default(now())
+
+  @@index([deletionRequestId, createdAt])
 }
 
 model AdminUser {

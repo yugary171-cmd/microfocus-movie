@@ -4,7 +4,7 @@ import {
 } from "@microfocus/contracts";
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
-import { createDeletionRequest, hashDeletionQueryToken, lookupDeletionRequest } from "./deletion.js";
+import { createDeletionRequest, hashDeletionQueryToken, lookupDeletionRequest, reissueDeletionQueryToken } from "./deletion.js";
 
 const user = { id: "user-1", status: "ACTIVE", openId: "wx-open-id" };
 
@@ -181,5 +181,106 @@ describe("account deletion", () => {
     const result = await createDeletionRequest(prisma as never, deletionInput());
     expect(result.replayed).toBe(true);
     expect(result.deletionQueryToken).toBeUndefined();
+  });
+
+  it("reissues a query token only when the confirmed user matches", async () => {
+    const row = {
+      id: "del-1",
+      userId: user.id,
+      status: "PENDING",
+      tokenExpiresAt: new Date("2026-09-13T00:00:00.000Z"),
+      createdAt: new Date("2026-08-14T00:00:00.000Z"),
+      processedAt: null,
+      statusReason: null
+    };
+    const tx = {
+      $queryRaw: vi.fn(),
+      deletionRequest: {
+        findUnique: vi.fn().mockResolvedValue(row),
+        update: vi.fn()
+      },
+      deletionQueryTokenReissue: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn()
+      }
+    };
+    const prisma = {
+      deletionQueryTokenReissue: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)
+    };
+    const result = await reissueDeletionQueryToken(prisma as never, {
+      deletionRequestId: "del-1",
+      userId: user.id,
+      reason: "用户遗失查询令牌",
+      approvalNote: "工单 CS-1 已核验微焦号",
+      operatorAdminId: "admin-1",
+      idempotencyKey: "reissue-1",
+      now: new Date("2026-08-14T02:00:00.000Z")
+    });
+    expect(result.replayed).toBe(false);
+    expect(result.deletionQueryToken).toBeTruthy();
+    expect(tx.deletionRequest.update).toHaveBeenCalled();
+  });
+
+  it("rejects a query-token reissue when the confirmed user does not match", async () => {
+    const prisma = {
+      deletionQueryTokenReissue: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: async (fn: (client: {
+        $queryRaw: unknown;
+        deletionRequest: { findUnique: ReturnType<typeof vi.fn> };
+      }) => Promise<unknown>) =>
+        fn({
+          $queryRaw: vi.fn(),
+          deletionRequest: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: "del-1",
+              userId: user.id
+            })
+          }
+        })
+    };
+    await expect(
+      reissueDeletionQueryToken(prisma as never, {
+        deletionRequestId: "del-1",
+        userId: "other-user",
+        reason: "用户遗失查询令牌",
+        approvalNote: "工单 CS-1 已核验微焦号",
+        operatorAdminId: "admin-1",
+        idempotencyKey: "reissue-1"
+      })
+    ).rejects.toMatchObject({ code: ERROR_CODES.DELETION_IDENTITY_MISMATCH });
+  });
+
+  it("replays a query-token reissue without returning a new token", async () => {
+    const prisma = {
+      deletionQueryTokenReissue: {
+        findUnique: vi.fn().mockResolvedValue({
+          deletionRequestId: "del-1",
+          confirmedUserId: user.id,
+          reason: "用户遗失查询令牌",
+          approvalNote: "工单 CS-1 已核验微焦号",
+          operatorAdminId: "admin-1"
+        })
+      },
+      deletionRequest: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "del-1",
+          status: "PENDING",
+          tokenExpiresAt: new Date("2026-09-13T00:00:00.000Z")
+        })
+      },
+      $transaction: vi.fn()
+    };
+    const result = await reissueDeletionQueryToken(prisma as never, {
+      deletionRequestId: "del-1",
+      userId: user.id,
+      reason: "用户遗失查询令牌",
+      approvalNote: "工单 CS-1 已核验微焦号",
+      operatorAdminId: "admin-1",
+      idempotencyKey: "reissue-1"
+    });
+    expect(result).toMatchObject({ deletionRequestId: "del-1", replayed: true });
+    expect(result.deletionQueryToken).toBeUndefined();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

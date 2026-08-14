@@ -220,6 +220,9 @@ flowchart LR
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key` | 关联用户、剧目、秒数、过期时间、原因及原 challenge（如适用） | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key` | adjustment 类型、原事实/冻结记录 ID、秒数、原因和审批记录 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |
 | `POST /v1/admin/callback-events/:eventId/replay` | ADMIN + `Idempotency-Key` | 死信事件 ID、原因和审批记录 | 将 RETRYABLE_FAILURE/DEAD_LETTER 事件受审计地迁回 PROCESSING，沿用原 provider 事件幂等键；保留期内若有加密规范化载荷则立即执行 |
+| `GET /v1/admin/deletion-requests` | ADMIN | `userId` | 返回该用户最近一条注销申请状态，不含查询令牌明文 |
+| `GET /v1/admin/deletion-requests/:deletionRequestId` | ADMIN | 路径 ID | 返回申请状态，不含查询令牌明文 |
+| `POST /v1/admin/deletion-requests/:deletionRequestId/query-tokens` | ADMIN + `Idempotency-Key` | 已核验 `userId`、原因和审批记录 | 客服身份核验后轮换查询令牌摘要并延长有效期；新令牌只在首次成功响应出现一次；不恢复用户 JWT |
 
 ### 5.3 用户注销与数据请求
 
@@ -228,7 +231,7 @@ flowchart LR
 | `POST /v1/me/deletion-requests` | 用户 JWT + 近期重新认证证明 | 请求体含确认文案与一次性 `wechatCode`；在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
 | `GET /v1/me/deletion-requests/:deletionRequestId` | `X-Deletion-Query-Token` | 查询 `PENDING/PROCESSING/COMPLETED/REJECTED`、处理时间和可理解原因 |
 
-`deletionQueryToken` 只能查询对应申请，服务端仅保存摘要并执行限频；有效期应覆盖承诺的最长处理窗口。令牌遗失或过期后只能通过受控客服身份核验恢复查询能力，不能恢复已撤销的用户会话。
+`deletionQueryToken` 只能查询对应申请，服务端仅保存摘要并执行限频；有效期应覆盖承诺的最长处理窗口。令牌遗失或过期后只能通过受控客服身份核验恢复查询能力，不能恢复已撤销的用户会话。管理员补发会作废旧令牌。
 
 注销处理必须依据保留矩阵删除或匿名化可删除数据。依法或为权益、版权、安全和审计必须保留的记录应最小化、限制访问并与直接身份标识隔离；不得通过注销删除权益账本、事故证据或管理员审计事实。
 

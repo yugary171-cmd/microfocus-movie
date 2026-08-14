@@ -141,6 +141,13 @@ export interface CallbackReplayInput {
   approvalNote?: string;
 }
 
+export interface DeletionQueryTokenReissueInput {
+  deletionRequestId: string;
+  userId: string;
+  reason: string;
+  approvalNote: string;
+}
+
 export interface AuditLog {
   id: string;
   createdAt: string;

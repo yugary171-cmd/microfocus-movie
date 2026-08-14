@@ -1,4 +1,4 @@
-import { AdminRole, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -6,6 +6,7 @@ import type {
   CompensationInput,
   AdjustmentInput,
   CallbackReplayInput,
+  DeletionQueryTokenReissueInput,
   DashboardData,
   DramaInput,
   DramaRecord,
@@ -38,6 +39,8 @@ const endpoints = {
   compensate: "/v1/admin/entitlements/compensate",
   adjustments: "/v1/admin/entitlements/adjustments",
   callbackReplay: (eventId: string) => `/v1/admin/callback-events/${eventId}/replay`,
+  deletionQueryTokenReissue: (deletionRequestId: string) =>
+    `/v1/admin/deletion-requests/${deletionRequestId}/query-tokens`,
   releaseGate: "/v1/admin/release-gate",
 } as const;
 
@@ -331,6 +334,25 @@ export const adminApi = {
       body: json({
         reason: input.reason,
         ...(input.approvalNote ? { approvalNote: input.approvalNote } : {}),
+      }),
+    });
+  },
+  async reissueDeletionQueryToken(
+    input: DeletionQueryTokenReissueInput,
+  ): Promise<ReissueDeletionQueryTokenResponse> {
+    if (isMockMode) return mockApi.reissueDeletionQueryToken(input);
+    const payload = `${input.deletionRequestId}\n${input.userId}\n${input.reason}\n${input.approvalNote}`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    const idempotencyKey = `q:${Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("")}`;
+    return request(endpoints.deletionQueryTokenReissue(input.deletionRequestId), {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: json({
+        userId: input.userId,
+        reason: input.reason,
+        approvalNote: input.approvalNote,
       }),
     });
   },

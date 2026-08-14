@@ -17,6 +17,7 @@ import {
   EntitlementFactType,
   type CreateEntitlementAdjustmentRequest,
   type ReplayCallbackEventRequest,
+  type ReissueDeletionQueryTokenRequest,
   type ReleaseGateStatus
 } from "@microfocus/contracts";
 import {
@@ -68,6 +69,7 @@ import {
 import { createIdempotentAdjustment } from "./admin.adjust.js";
 import { replayCallbackEvent } from "../callbacks/callback-replay.js";
 import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/callback-payload.js";
+import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
 
 class EpisodeInput {
   @IsInt()
@@ -208,6 +210,21 @@ class ReplayCallbackDto implements ReplayCallbackEventRequest {
   @IsString()
   @MaxLength(300)
   approvalNote?: string;
+}
+
+class ReissueDeletionQueryTokenDto implements ReissueDeletionQueryTokenRequest {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(191)
+  userId!: string;
+
+  @IsString()
+  @Length(6, 300)
+  reason!: string;
+
+  @IsString()
+  @Length(6, 300)
+  approvalNote!: string;
 }
 
 class CircuitDto {
@@ -821,6 +838,48 @@ export class AdminController {
         status: view.status,
         attempts: String(view.attempts),
         executed: view.executed ? "true" : "false"
+      });
+    }
+    return view;
+  }
+
+  @Get("deletion-requests")
+  @Roles(AdminRole.ADMIN)
+  lookupDeletionRequestByUser(
+    @Query("userId") userId: string | undefined
+  ) {
+    if (!userId?.trim()) {
+      throw Errors.badRequest("USER_ID_REQUIRED", "userId is required");
+    }
+    return lookupAdminDeletionRequest(this.prisma, { userId });
+  }
+
+  @Get("deletion-requests/:deletionRequestId")
+  @Roles(AdminRole.ADMIN)
+  getDeletionRequest(@Param("deletionRequestId") deletionRequestId: string) {
+    return lookupAdminDeletionRequest(this.prisma, { deletionRequestId });
+  }
+
+  @Post("deletion-requests/:deletionRequestId/query-tokens")
+  @Roles(AdminRole.ADMIN)
+  async reissueDeletionQueryToken(
+    @CurrentPrincipal() principal: Principal,
+    @Param("deletionRequestId") deletionRequestId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: ReissueDeletionQueryTokenDto
+  ) {
+    const admin = requireAdmin(principal);
+    const view = await issueDeletionQueryToken(this.prisma, {
+      deletionRequestId,
+      userId: body.userId,
+      reason: body.reason,
+      approvalNote: body.approvalNote,
+      operatorAdminId: admin.sub,
+      ...(idempotencyKey ? { idempotencyKey } : {})
+    });
+    if (!view.replayed) {
+      await this.audit(admin.sub, "DELETION_QUERY_TOKEN_REISSUED", "DeletionRequest", view.deletionRequestId, {
+        userId: body.userId
       });
     }
     return view;

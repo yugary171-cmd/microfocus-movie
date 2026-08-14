@@ -8,7 +8,7 @@ import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
-import type { CircuitBreakerState, CompensationInput, AdjustmentInput, CallbackReplayInput } from "@/types/admin";
+import type { CircuitBreakerState, CompensationInput, AdjustmentInput, CallbackReplayInput, DeletionQueryTokenReissueInput } from "@/types/admin";
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -31,6 +31,13 @@ const adjustment = reactive<AdjustmentInput>({
 });
 const replayDialogOpen = ref(false);
 const replay = reactive<CallbackReplayInput>({ eventId: "", reason: "", approvalNote: "" });
+const reissueDialogOpen = ref(false);
+const reissue = reactive<DeletionQueryTokenReissueInput>({
+  deletionRequestId: "",
+  userId: "",
+  reason: "",
+  approvalNote: "",
+});
 
 async function load(): Promise<void> {
   if (!allowed.value) {
@@ -207,12 +214,57 @@ async function submitReplay(): Promise<void> {
   }
 }
 
+function validateReissue(): string {
+  if (!reissue.deletionRequestId.trim()) return "请输入注销申请 ID";
+  if (!reissue.userId.trim()) return "请输入已核验的用户 ID";
+  if (reissue.reason.trim().length < 6) return "请填写至少 6 个字的补发原因";
+  if (reissue.approvalNote.trim().length < 6) return "请填写至少 6 个字的审批/核验记录";
+  return "";
+}
+
+function requestReissue(): void {
+  error.value = validateReissue();
+  if (!error.value) reissueDialogOpen.value = true;
+}
+
+async function submitReissue(): Promise<void> {
+  const validation = validateReissue();
+  if (validation) {
+    error.value = validation;
+    reissueDialogOpen.value = false;
+    return;
+  }
+  busy.value = true;
+  error.value = "";
+  try {
+    const result = await adminApi.reissueDeletionQueryToken({
+      deletionRequestId: reissue.deletionRequestId.trim(),
+      userId: reissue.userId.trim(),
+      reason: reissue.reason.trim(),
+      approvalNote: reissue.approvalNote.trim(),
+    });
+    if (adminApi.mode === "mock") {
+      notice.value = "演示补发已记入审计视图；未签发真实查询令牌，也不能恢复已撤销登录。";
+    } else if (result.deletionQueryToken) {
+      notice.value = `查询令牌已补发（只显示一次）：${result.deletionQueryToken}`;
+    } else {
+      notice.value = "同一幂等键已处理过，不会再次返回查询令牌。";
+    }
+    Object.assign(reissue, { deletionRequestId: "", userId: "", reason: "", approvalNote: "" });
+    reissueDialogOpen.value = false;
+  } catch (caught) {
+    error.value = toErrorMessage(caught);
+  } finally {
+    busy.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
 <template>
   <div>
-    <header class="page-header"><div><p class="eyebrow">SAFETY OPERATIONS</p><h1>运营控制</h1><p>本页自上而下为：全站熔断、补偿权益、权益纠错、死信重放。高风险操作只对管理员开放，并要求原因与二次确认。</p></div></header>
+    <header class="page-header"><div><p class="eyebrow">SAFETY OPERATIONS</p><h1>运营控制</h1><p>本页自上而下为：全站熔断、补偿权益、权益纠错、死信重放、注销查询令牌补发。高风险操作只对管理员开放，并要求原因与二次确认。</p></div></header>
     <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以访问熔断、补偿和账本纠错。" />
     <PageState v-else-if="loading" type="loading" message="正在获取安全控制状态…" />
     <PageState v-else-if="error && !breaker" type="error" :message="error" @retry="load" />
@@ -279,12 +331,26 @@ onMounted(load);
             <button class="button button--primary" type="submit" :disabled="busy">核对并解锁重放</button>
           </form>
         </section>
+        <section class="panel panel--wide" aria-labelledby="reissue-title">
+          <div class="panel__header"><div><p class="eyebrow">PRIVACY</p><h2 id="reissue-title">注销查询令牌补发</h2></div><StatusBadge label="客服核验" tone="warning" /></div>
+          <form class="compensation-form" @submit.prevent="requestReissue">
+            <div class="form-grid">
+              <label class="field"><span>注销申请 ID *</span><input v-model="reissue.deletionRequestId" required autocomplete="off" placeholder="deletion-request-…" /></label>
+              <label class="field"><span>已核验用户 ID *</span><input v-model="reissue.userId" required autocomplete="off" placeholder="必须与申请所属用户一致" /></label>
+              <label class="field field--wide"><span>原因 *</span><textarea v-model="reissue.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明令牌遗失/过期、工单与核验方式" /></label>
+              <label class="field field--wide"><span>审批/核验记录 *</span><textarea v-model="reissue.approvalNote" rows="2" minlength="6" maxlength="300" required placeholder="审批人、工单号与身份核验结论" /></label>
+            </div>
+            <p class="form-help">旧 JWT 不会恢复。新令牌只在成功响应中出现一次，旧令牌立即失效。必须先核验用户身份，填写的用户 ID 必须与申请一致。Mock 模式只写演示审计。</p>
+            <button class="button button--primary" type="submit" :disabled="busy">核对并补发令牌</button>
+          </form>
+        </section>
       </div>
     </template>
     <ConfirmDialog :open="breakerDialogOpen" :title="breaker?.enabled ? '恢复全站播放' : '开启全站播放熔断'" :message="breaker?.enabled ? '恢复后将重新允许创建播放租约，请确认故障已处置。' : '开启后将阻止新的播放租约。这是高影响操作，请说明事故原因。'" :confirm-label="breaker?.enabled ? '确认恢复' : '确认熔断'" :tone="breaker?.enabled ? 'primary' : 'danger'" require-reason :reason-label="breaker?.enabled ? '恢复依据' : '事故原因'" :busy="busy" @close="breakerDialogOpen = false" @confirm="toggleBreaker" />
     <ConfirmDialog :open="compensationDialogOpen" title="确认授予补偿权益" :message="`将向用户 ${compensation.userId} 授予剧目 ${compensation.dramaId} 的 ${compensation.seconds} 秒权益。请确认工单信息准确。`" confirm-label="确认授予" :busy="busy" @close="compensationDialogOpen = false" @confirm="grantCompensation" />
     <ConfirmDialog :open="adjustmentDialogOpen" title="确认写入权益纠错" :message="adjustmentSummary" confirm-label="确认写入" :busy="busy" @close="adjustmentDialogOpen = false" @confirm="submitAdjustment" />
     <ConfirmDialog :open="replayDialogOpen" title="确认解锁回调重放" :message="`将事件 ${replay.eventId} 迁回 PROCESSING，并在有加密载荷时立即执行。不会复制 grant、媒体或奖励事实。`" confirm-label="确认解锁" :busy="busy" @close="replayDialogOpen = false" @confirm="submitReplay" />
+    <ConfirmDialog :open="reissueDialogOpen" title="确认补发注销查询令牌" :message="`将作废申请 ${reissue.deletionRequestId} 的旧查询令牌，并向已核验用户 ${reissue.userId} 签发新令牌。不会恢复登录会话。`" confirm-label="确认补发" :busy="busy" @close="reissueDialogOpen = false" @confirm="submitReissue" />
   </div>
 </template>
 

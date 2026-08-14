@@ -28,7 +28,8 @@ export const ERROR_CODES = {
   CALLBACK_DEAD_LETTER: "CALLBACK_DEAD_LETTER",
   CALLBACK_PAYLOAD_UNAVAILABLE: "CALLBACK_PAYLOAD_UNAVAILABLE",
   REAUTH_REQUIRED: "REAUTH_REQUIRED",
-  REAUTH_MISMATCH: "REAUTH_MISMATCH"
+  REAUTH_MISMATCH: "REAUTH_MISMATCH",
+  DELETION_IDENTITY_MISMATCH: "DELETION_IDENTITY_MISMATCH"
 } as const;
 
 export const API_ROUTES = {
@@ -75,6 +76,10 @@ export const API_ROUTES = {
     adjustments: "/v1/admin/entitlements/adjustments",
     callbackReplay: (eventId: string) =>
       `/v1/admin/callback-events/${eventId}/replay`,
+    deletionRequest: (deletionRequestId: string) =>
+      `/v1/admin/deletion-requests/${deletionRequestId}`,
+    deletionQueryTokenReissue: (deletionRequestId: string) =>
+      `/v1/admin/deletion-requests/${deletionRequestId}/query-tokens`,
     releaseGate: "/v1/admin/release-gate"
   }
 } as const;
@@ -296,6 +301,30 @@ export interface DeletionRequestView {
   processedAt: string | null;
   tokenExpiresAt: string;
   reason: string | null;
+}
+
+export interface AdminDeletionRequestView {
+  deletionRequestId: string;
+  userId: string;
+  status: DeletionRequestStatus;
+  createdAt: string;
+  processedAt: string | null;
+  tokenExpiresAt: string;
+  reason: string | null;
+}
+
+export interface ReissueDeletionQueryTokenRequest {
+  userId: string;
+  reason: string;
+  approvalNote: string;
+}
+
+export interface ReissueDeletionQueryTokenResponse {
+  deletionRequestId: string;
+  status: DeletionRequestStatus;
+  tokenExpiresAt: string;
+  deletionQueryToken?: string;
+  replayed: boolean;
 }
 
 export interface CreateRewardChallengeRequest {
