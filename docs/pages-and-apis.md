@@ -207,9 +207,9 @@ flowchart LR
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
 | `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围 | 列表和详情 |
-| `POST /v1/admin/dramas` | EDITOR | 创建者成为负责人 | 创建草稿 |
-| `PATCH /v1/admin/dramas/:id` | EDITOR | 仅本人负责且可编辑状态 | 修改元数据 |
-| `POST .../:id/rights` | EDITOR | 仅本人负责；新版本使内容回到待审链路 | 写入不可覆盖的权利版本 |
+| `POST /v1/admin/dramas` | EDITOR | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限 | 创建草稿 |
+| `PATCH /v1/admin/dramas/:id` | EDITOR | 仅本人负责且可编辑状态；字段上限与创建一致 | 修改元数据 |
+| `POST .../:id/rights` | EDITOR | 仅本人负责；新版本使内容回到待审链路；权利人/证号/材料键限长 | 写入不可覆盖的权利版本 |
 | `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR | 仅本人负责；禁止修改已发布内容 | 登记媒体版本和获取短期上传签名 |
 | `POST .../:id/submit-review` | EDITOR | 仅本人负责，材料完整 | 提交审核 |
 | `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容 | 审核队列 |

@@ -13,15 +13,29 @@ import {
 import {
   API_ROUTES,
   AdminRole,
+  COVER_URL_MAX_LENGTH,
   CallbackEventStatus,
+  DRAMA_CATEGORY_MAX_LENGTH,
+  DRAMA_EPISODE_MAX_COUNT,
+  DRAMA_SUMMARY_MAX_LENGTH,
+  DRAMA_TAG_MAX_COUNT,
+  DRAMA_TAG_MAX_LENGTH,
+  DRAMA_TITLE_MAX_LENGTH,
+  EPISODE_DURATION_SECONDS_MAX,
+  EPISODE_TITLE_MAX_LENGTH,
   EntitlementAdjustmentType,
   EntitlementFactType,
+  RIGHTS_DOCUMENT_MAX_LENGTH,
+  RIGHTS_HOLDER_MAX_LENGTH,
+  RIGHTS_MATERIAL_KEY_MAX_LENGTH,
   type CreateEntitlementAdjustmentRequest,
   type ReplayCallbackEventRequest,
   type ReissueDeletionQueryTokenRequest,
   type ReleaseGateStatus
 } from "@microfocus/contracts";
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -75,44 +89,57 @@ import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/cal
 import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
 import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
 
-class EpisodeInput {
+export class EpisodeInput {
   @IsInt()
   @Min(1)
   episodeNumber!: number;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(EPISODE_TITLE_MAX_LENGTH)
   title!: string;
 
   @IsInt()
   @Min(1)
+  @Max(EPISODE_DURATION_SECONDS_MAX)
   durationSeconds!: number;
 }
 
-class CreateDramaDto {
-  @IsString() @MinLength(1) title!: string;
-  @IsString() summary!: string;
-  @IsUrl() coverUrl!: string;
-  @IsString() category!: string;
-  @IsArray() @IsString({ each: true }) tags!: string[];
-  @IsInt() @Min(0) recommendationRank!: number;
+export class CreateDramaDto {
+  @IsString() @MinLength(1) @MaxLength(DRAMA_TITLE_MAX_LENGTH) title!: string;
+  @IsString() @MaxLength(DRAMA_SUMMARY_MAX_LENGTH) summary!: string;
+  @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) coverUrl!: string;
+  @IsString() @MinLength(1) @MaxLength(DRAMA_CATEGORY_MAX_LENGTH) category!: string;
   @IsArray()
+  @ArrayMaxSize(DRAMA_TAG_MAX_COUNT)
+  @IsString({ each: true })
+  @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })
+  tags!: string[];
+  @IsInt() @Min(0) @Max(9999) recommendationRank!: number;
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(DRAMA_EPISODE_MAX_COUNT)
   @ValidateNested({ each: true })
   @Type(() => EpisodeInput)
   episodes!: EpisodeInput[];
 }
 
-class UpdateDramaDto {
-  @IsOptional() @IsString() @MinLength(1) title?: string;
-  @IsOptional() @IsString() summary?: string;
-  @IsOptional() @IsUrl() coverUrl?: string;
-  @IsOptional() @IsString() category?: string;
-  @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
-  @IsOptional() @IsInt() @Min(0) recommendationRank?: number;
+export class UpdateDramaDto {
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(DRAMA_TITLE_MAX_LENGTH) title?: string;
+  @IsOptional() @IsString() @MaxLength(DRAMA_SUMMARY_MAX_LENGTH) summary?: string;
+  @IsOptional() @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) coverUrl?: string;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(DRAMA_CATEGORY_MAX_LENGTH) category?: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(DRAMA_TAG_MAX_COUNT)
+  @IsString({ each: true })
+  @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })
+  tags?: string[];
+  @IsOptional() @IsInt() @Min(0) @Max(9999) recommendationRank?: number;
 }
 
-class RightsDto {
-  @IsString() rightsHolder!: string;
+export class RightsDto {
+  @IsString() @MinLength(1) @MaxLength(RIGHTS_HOLDER_MAX_LENGTH) rightsHolder!: string;
   @IsDateString() validFrom!: string;
   @IsDateString() validUntil!: string;
   @IsIn(["CN"]) territory!: string;
@@ -120,15 +147,15 @@ class RightsDto {
   @IsBoolean() allowsAdMonetization!: boolean;
   @IsBoolean() allowsTranscoding!: boolean;
   @IsBoolean() allowsPromotionalMaterial!: boolean;
-  @IsString() licenseNumber!: string;
-  @IsString() reportNumber!: string;
-  @IsString() materialObjectKey!: string;
+  @IsString() @MinLength(1) @MaxLength(RIGHTS_DOCUMENT_MAX_LENGTH) licenseNumber!: string;
+  @IsString() @MinLength(1) @MaxLength(RIGHTS_DOCUMENT_MAX_LENGTH) reportNumber!: string;
+  @IsString() @MinLength(1) @MaxLength(RIGHTS_MATERIAL_KEY_MAX_LENGTH) materialObjectKey!: string;
   @Matches(/^[a-f0-9]{64}$/i) materialDigestSha256!: string;
 }
 
 class MediaAssetDto {
-  @IsString() episodeId!: string;
-  @IsString() fileId!: string;
+  @IsString() @MinLength(1) @MaxLength(191) episodeId!: string;
+  @IsString() @MinLength(1) @MaxLength(191) fileId!: string;
 }
 
 class ReviewDto {
