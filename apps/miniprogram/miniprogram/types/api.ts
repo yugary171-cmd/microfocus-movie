@@ -3,8 +3,11 @@ import type {
   CatalogResponse,
   CompleteRewardChallengeRequest,
   CreateAnonymousSessionRequest,
+  CreateDeletionRequest,
+  CreateDeletionRequestResponse,
   CreatePlaybackLeaseRequest,
   CreateRewardChallengeRequest,
+  DeletionRequestView,
   DramaCard,
   EntitlementSummary,
   ActivePlaybackLeaseResponse,
@@ -52,4 +55,6 @@ export interface ClientApi {
   ): Promise<PlaybackHeartbeatResponse>;
   renewPlaybackLease(leaseId: string): Promise<PlaybackLeaseView>;
   closePlaybackLease(leaseId: string): Promise<void>;
+  createDeletionRequest(input: CreateDeletionRequest): Promise<CreateDeletionRequestResponse>;
+  getDeletionRequest(deletionRequestId: string, queryToken: string): Promise<DeletionRequestView>;
 }

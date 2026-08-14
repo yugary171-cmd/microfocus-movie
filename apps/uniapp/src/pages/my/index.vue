@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { DELETION_CONFIRMATION } from "@microfocus/contracts";
 import { onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import { clearStoredSession, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { resolveHistoryPlayerUrl } from "../../utils/history-navigation";
 import {
@@ -34,6 +35,8 @@ const isMock = isMockMode();
 const user = ref<UserView | null>(null);
 const loginLoading = ref(false);
 const loginError = ref("");
+const deletionBusy = ref(false);
+const deletionNotice = ref("");
 const historyLoading = ref(false);
 const historyError = ref("");
 const activeHistoryTab = ref("历史");
@@ -84,6 +87,62 @@ function showFeature(label: string) {
   uni.showToast({ title: `${label}为体验数据`, icon: "none" });
 }
 
+function openLegal(section: string) {
+  uni.navigateTo({ url: `/pages/legal/index?section=${encodeURIComponent(section)}` });
+}
+
+async function requestDeletion() {
+  if (!user.value || deletionBusy.value) return;
+  const confirmed = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: "申请注销账号",
+      content: "提交后立即退出登录，活动播放授权会被撤销，未完成广告奖励不再发放。查询进度的令牌只会显示一次。确定继续？",
+      confirmText: "确认注销",
+      success: (result) => resolve(Boolean(result.confirm))
+    });
+  });
+  if (!confirmed) return;
+  deletionBusy.value = true;
+  deletionNotice.value = "";
+  try {
+    const result = await getApi().createDeletionRequest({ confirmation: DELETION_CONFIRMATION });
+    if (result.deletionQueryToken) {
+      uni.setStorageSync("microfocus.deletion-request", {
+        deletionRequestId: result.deletionRequestId,
+        deletionQueryToken: result.deletionQueryToken,
+        tokenExpiresAt: result.tokenExpiresAt
+      });
+    }
+    clearStoredSession();
+    user.value = null;
+    deletionNotice.value = result.deletionQueryToken
+      ? `注销已受理。请保存查询令牌（只显示一次）：${result.deletionQueryToken}`
+      : "注销已受理。若未看到查询令牌，请通过客服核验后查询进度。";
+  } catch (error) {
+    deletionNotice.value = toFriendlyErrorMessage(error);
+  } finally {
+    deletionBusy.value = false;
+  }
+}
+
+async function lookupDeletion() {
+  const stored = uni.getStorageSync("microfocus.deletion-request") as {
+    deletionRequestId?: string;
+    deletionQueryToken?: string;
+  } | "";
+  const record = stored && typeof stored === "object" ? stored : null;
+  if (!record?.deletionRequestId || !record.deletionQueryToken) {
+    uni.showToast({ title: "没有可查询的注销申请", icon: "none" });
+    return;
+  }
+  try {
+    const view = await getApi().getDeletionRequest(record.deletionRequestId, record.deletionQueryToken);
+    uni.showToast({ title: `注销状态：${view.status}`, icon: "none" });
+  } catch (error) {
+    uni.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
+  }
+}
+
 async function openHistory(id: string) {
   const item = historyItems.value.find((entry) => entry.id === id);
   if (!item) return;
@@ -126,6 +185,16 @@ async function openHistory(id: string) {
       <button class="edit-button" @tap="showFeature('编辑资料')">编辑资料</button>
     </view>
     <view v-if="loginError" class="login-error" role="alert">{{ loginError }}</view>
+    <view v-if="deletionNotice" class="login-error" role="status">{{ deletionNotice }}</view>
+
+    <view class="privacy-actions">
+      <button class="privacy-link" @tap="openLegal('privacy')">隐私政策</button>
+      <button class="privacy-link" @tap="openLegal('deletion')">注销说明</button>
+      <button v-if="user" class="privacy-link" :disabled="deletionBusy" @tap="requestDeletion">
+        {{ deletionBusy ? "提交中…" : "申请注销" }}
+      </button>
+      <button class="privacy-link" @tap="lookupDeletion">查询注销进度</button>
+    </view>
 
     <view v-if="user" class="stats">
       <view><strong>0</strong><text>关注</text></view>

@@ -19,5 +19,7 @@ export const API_ROUTES = {
   renewLease: (leaseId: string) => `/v1/playback/leases/${encodeURIComponent(leaseId)}/renew`,
   recoverLease: (leaseId: string) =>
     `/v1/playback/leases/${encodeURIComponent(leaseId)}/recover`,
-  closeLease: (leaseId: string) => `/v1/playback/leases/${encodeURIComponent(leaseId)}`
+  closeLease: (leaseId: string) => `/v1/playback/leases/${encodeURIComponent(leaseId)}`,
+  deletionRequests: "/v1/me/deletion-requests",
+  deletionRequest: (id: string) => `/v1/me/deletion-requests/${encodeURIComponent(id)}`
 } as const;

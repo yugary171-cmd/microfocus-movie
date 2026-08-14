@@ -3,6 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   API_ROUTES,
+  ERROR_CODES,
   type AnonymousSessionResponse,
   type WechatLoginResponse
 } from "@microfocus/contracts";
@@ -59,11 +60,15 @@ export class AuthController {
   @Post(controllerPath(API_ROUTES.auth.wechat))
   async wechatLogin(@Body() body: WechatLoginDto): Promise<WechatLoginResponse> {
     const identity = await this.wechat.exchangeCode(body.code);
-    const user = await this.prisma.user.upsert({
-      where: { openId: identity.openId },
-      create: { openId: identity.openId, displayName: "微信用户" },
-      update: {}
-    });
+    const existing = await this.prisma.user.findUnique({ where: { openId: identity.openId } });
+    if (existing && existing.status !== "ACTIVE") {
+      throw Errors.unauthorized("This account is unavailable", ERROR_CODES.ACCOUNT_UNAVAILABLE);
+    }
+    const user =
+      existing ??
+      (await this.prisma.user.create({
+        data: { openId: identity.openId, displayName: "微信用户" }
+      }));
     return {
       accessToken: await this.jwt.signAsync(
         { sub: user.id, kind: "user" },

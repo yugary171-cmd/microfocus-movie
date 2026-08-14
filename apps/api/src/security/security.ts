@@ -3,12 +3,14 @@ import {
   createParamDecorator,
   type ExecutionContext,
   Injectable,
+  Optional,
   SetMetadata
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import { AdminRole, ERROR_CODES } from "@microfocus/contracts";
-import { Errors } from "../common/app-error.js";
+import { AppError, Errors } from "../common/app-error.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 export type Principal =
   | { kind: "user"; sub: string }
@@ -22,7 +24,10 @@ export type AuthenticatedRequest = {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    @Optional() private readonly prisma?: PrismaService
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -30,9 +35,23 @@ export class JwtAuthGuard implements CanActivate {
     if (!authorization?.startsWith("Bearer ")) throw Errors.unauthorized();
     const token = authorization.slice(7);
     try {
-      request.principal = parsePrincipal(await this.jwt.verifyAsync(token));
+      const principal = parsePrincipal(await this.jwt.verifyAsync(token));
+      if (principal.kind === "user" && this.prisma) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: principal.sub },
+          select: { status: true }
+        });
+        if (!user || user.status !== "ACTIVE") {
+          throw Errors.unauthorized(
+            "This account is unavailable",
+            ERROR_CODES.ACCOUNT_UNAVAILABLE
+          );
+        }
+      }
+      request.principal = principal;
       return true;
     } catch (error) {
+      if (error instanceof AppError) throw error;
       if (isTokenExpiredError(error) && decodeKind(this.jwt, token) === "viewer") {
         throw Errors.unauthorized(
           "Anonymous viewer session expired",

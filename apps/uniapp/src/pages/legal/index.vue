@@ -3,7 +3,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { isMockMode } from "../../services/api";
 
-type LegalSection = "privacy" | "terms" | "ads" | "support";
+type LegalSection = "privacy" | "terms" | "ads" | "support" | "deletion";
 
 const LEGAL_CONTENT: Record<
   LegalSection,
@@ -15,7 +15,7 @@ const LEGAL_CONTENT: Record<
     paragraphs: [
       { heading: "我们处理的信息", body: "为提供登录、播放、进度同步与客服功能，服务可能处理微信登录临时凭证换取的服务端会话、设备标识、观看进度、网络状态及必要的故障信息。小程序端不保存微信登录 code，也不应包含服务端密钥。" },
       { heading: "使用目的", body: "相关信息仅用于身份识别、内容展示、播放授权、权益计时、观看记录同步、安全风控与问题处理。" },
-      { heading: "你的权利", body: "你可以通过客服与投诉入口申请查询、更正或删除依法可处理的个人信息，或反馈隐私问题。实际处理方式与时限以发布前审核通过的正式政策为准。" }
+      { heading: "你的权利", body: "你可以通过「我的」页申请账号注销，或通过客服申请查询、更正依法可处理的个人信息。注销提交后登录立即失效；查询进度需保存一次性查询令牌。实际处理时限以发布前审核通过的正式政策为准。" }
     ]
   },
   terms: {
@@ -34,6 +34,15 @@ const LEGAL_CONTENT: Record<
       { heading: "主动触发", body: "激励广告不会自动弹出。只有当你选择锁定剧集并主动点击“观看激励广告”时，才会尝试加载。" },
       { heading: "发放条件", body: "广告完整播放且客户端收到 isEnded=true 后，才会提交领取；中途关闭、加载失败或回调不完整均不提交完成。客户端回调不是绝对安全证明，服务端仍会校验挑战时效、状态、重放与风险信息，最终结果以服务端为准。" },
       { heading: "使用与到期", body: "权益仅适用于领取时对应的当前短剧，并按实际播放消耗；暂停、缓冲、进入后台不应扣减。不同批次权益可能有各自到期时间，优先消耗临近到期的时长。" }
+    ]
+  },
+  deletion: {
+    title: "账号注销",
+    updatedAt: "工程实现说明 · 保留矩阵尚未由法务批准",
+    paragraphs: [
+      { heading: "提交后立即生效的撤权", body: "注销申请提交后，账号进入待处理状态：用户登录失效，活动播放租约被撤销，未完成的奖励挑战不再发放。权益账本、事故证据和管理员审计不会因注销申请被删除。" },
+      { heading: "查询令牌", body: "首次成功响应会返回 deletionQueryToken。服务端只保存令牌摘要。令牌遗失后不能用旧登录恢复查询，需走受控客服核验。当前实现尚未接入「近期重新认证证明」。" },
+      { heading: "后续清理", body: "可删除个人信息的删除或匿名化依赖已批准的数据保留矩阵；在矩阵确认前，本申请只完成账户不可用与撤权，不假装已完成法定清理。" }
     ]
   },
   support: {

@@ -47,4 +47,22 @@ describe("jwt auth guard", () => {
       } as never)
     ).rejects.toMatchObject({ code: ERROR_CODES.ANONYMOUS_SESSION_EXPIRED });
   });
+
+  it("rejects user tokens after account deletion is pending", async () => {
+    const jwt = {
+      verifyAsync: async () => ({ kind: "user", sub: "user-1" }),
+      decode: () => ({ kind: "user", sub: "user-1" })
+    };
+    const prisma = {
+      user: { findUnique: async () => ({ status: "DELETION_PENDING" }) }
+    };
+    const guard = new JwtAuthGuard(jwt as never, prisma as never);
+    const request = { header: () => "Bearer user-token" };
+
+    await expect(
+      guard.canActivate({
+        switchToHttp: () => ({ getRequest: () => request })
+      } as never)
+    ).rejects.toMatchObject({ code: ERROR_CODES.ACCOUNT_UNAVAILABLE });
+  });
 });

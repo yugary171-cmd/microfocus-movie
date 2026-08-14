@@ -1,4 +1,5 @@
 import {
+  DeletionRequestStatus,
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
@@ -179,5 +180,22 @@ export const mockApi: ClientApi = {
       mayContinue: true
     }),
   renewPlaybackLease: () => Promise.reject(new Error("内部体验没有可续期的播放凭证")),
-  closePlaybackLease: () => delay(undefined)
+  closePlaybackLease: () => delay(undefined),
+  createDeletionRequest: () =>
+    delay({
+      deletionRequestId: "demo-deletion",
+      status: DeletionRequestStatus.PENDING,
+      deletionQueryToken: "demo-query-token",
+      tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      replayed: false
+    }),
+  getDeletionRequest: () =>
+    delay({
+      deletionRequestId: "demo-deletion",
+      status: DeletionRequestStatus.PENDING,
+      createdAt: new Date().toISOString(),
+      processedAt: null,
+      tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      reason: null
+    })
 };

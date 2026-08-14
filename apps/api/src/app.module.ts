@@ -8,6 +8,7 @@ import { HistoryModule } from "./history/history.module.js";
 import { OperationsModule } from "./operations/operations.module.js";
 import { InfrastructureModule } from "./infrastructure.module.js";
 import { PlaybackModule } from "./playback/playback.module.js";
+import { PrivacyModule } from "./privacy/privacy.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { RewardsModule } from "./rewards/rewards.module.js";
 
@@ -21,6 +22,7 @@ import { RewardsModule } from "./rewards/rewards.module.js";
     EntitlementsModule,
     RewardsModule,
     PlaybackModule,
+    PrivacyModule,
     CallbacksModule,
     AdminModule,
     OperationsModule

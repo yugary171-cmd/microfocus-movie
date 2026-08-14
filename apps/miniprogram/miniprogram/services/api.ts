@@ -166,13 +166,23 @@ async function request<T>(
     }
   });
   const body = response.data;
+  const code = readErrorCode(body);
+  if (code === ERROR_CODES.ACCOUNT_UNAVAILABLE) {
+    clearStoredSession();
+    const apiError = body as ApiError;
+    throw new ApiClientError(
+      apiError?.message || "账号已申请注销，登录已失效",
+      ERROR_CODES.ACCOUNT_UNAVAILABLE,
+      response.statusCode,
+      apiError?.requestId || ""
+    );
+  }
   if (
     response.statusCode === 401 &&
     retryAuthentication &&
     path !== API_ROUTES.authWechat &&
     path !== API_ROUTES.authAnonymous
   ) {
-    const code = readErrorCode(body);
     if (code === ERROR_CODES.ANONYMOUS_SESSION_EXPIRED || path.startsWith("/v1/playback/")) {
       clearViewerToken();
       await ensureViewerAccessToken();
@@ -235,14 +245,33 @@ const realApi: ClientApi = {
     request(API_ROUTES.recoverLease(leaseId), "POST", input),
   heartbeat: (leaseId, input) => request(API_ROUTES.heartbeat(leaseId), "POST", input),
   renewPlaybackLease: (leaseId) => request(API_ROUTES.renewLease(leaseId), "POST"),
-  closePlaybackLease: (leaseId) => request(API_ROUTES.closeLease(leaseId), "DELETE")
+  closePlaybackLease: (leaseId) => request(API_ROUTES.closeLease(leaseId), "DELETE"),
+  createDeletionRequest: (input) => {
+    const session = getStoredSession();
+    return request(
+      API_ROUTES.deletionRequests,
+      "POST",
+      input,
+      undefined,
+      { "Idempotency-Key": `d:${session?.user.id ?? "session"}` }
+    );
+  },
+  getDeletionRequest: (deletionRequestId, queryToken) =>
+    request(
+      API_ROUTES.deletionRequest(deletionRequestId),
+      "GET",
+      undefined,
+      undefined,
+      { "X-Deletion-Query-Token": queryToken },
+      false
+    )
 };
 
 export function getApi(): ClientApi {
   return isMockMode() ? mockApi : realApi;
 }
 
-function clearStoredSession(): void {
+export function clearStoredSession(): void {
   wx.removeStorageSync(ACCESS_TOKEN_KEY);
   wx.removeStorageSync(SESSION_USER_KEY);
 }

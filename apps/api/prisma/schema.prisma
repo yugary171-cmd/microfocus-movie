@@ -99,17 +99,31 @@ enum EntitlementFactType {
   ADJUSTMENT
 }
 
+enum UserAccountStatus {
+  ACTIVE
+  DELETION_PENDING
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
 model User {
   id          String            @id @default(cuid())
   openId      String            @unique
   displayName String
   avatarUrl   String?
+  status      UserAccountStatus @default(ACTIVE)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   challenges RewardChallenge[]
   grants      EntitlementGrant[]
   leases      PlaybackLease[]
   progress    WatchProgress[]
+  deletionRequests DeletionRequest[]
 }
 
 model AnonymousViewerSession {
@@ -123,6 +137,23 @@ model AnonymousViewerSession {
 
   @@unique([deviceId, sessionId])
   @@index([deviceId, createdAt])
+}
+
+model DeletionRequest {
+  id              String                 @id @default(cuid())
+  userId          String
+  user            User                   @relation(fields: [userId], references: [id])
+  status          DeletionRequestStatus  @default(PENDING)
+  idempotencyKey  String                 @unique @db.VarChar(128)
+  queryTokenHash  String                 @unique @db.VarChar(64)
+  tokenExpiresAt  DateTime
+  lastQueriedAt   DateTime?
+  processedAt     DateTime?
+  statusReason    String?                @db.VarChar(300)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([userId, status])
 }
 
 model AdminUser {

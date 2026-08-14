@@ -12,6 +12,13 @@
     <button class="edit-button" bindtap="showFeature" data-label="编辑资料">编辑资料</button>
   </view>
   <view wx:if="{{loginError}}" class="login-error" role="alert">{{loginError}}</view>
+  <view wx:if="{{deletionNotice}}" class="login-error" role="status">{{deletionNotice}}</view>
+  <view class="privacy-actions">
+    <button class="privacy-link" data-section="privacy" bindtap="openLegal">隐私政策</button>
+    <button class="privacy-link" data-section="deletion" bindtap="openLegal">注销说明</button>
+    <button wx:if="{{user}}" class="privacy-link" bindtap="requestDeletion" disabled="{{deletionBusy}}">{{deletionBusy ? '提交中…' : '申请注销'}}</button>
+    <button class="privacy-link" bindtap="lookupDeletion">查询注销进度</button>
+  </view>
 
   <view wx:if="{{user}}" class="stats"><view><strong>0</strong><text>关注</text></view><view><strong>0</strong><text>粉丝</text></view><view><strong>0</strong><text>获赞</text></view></view>
 

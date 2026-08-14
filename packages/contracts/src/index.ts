@@ -8,6 +8,8 @@ export const ANONYMOUS_VIEWER_TTL_SECONDS = 30 * 60;
 export const PLAYBACK_WINDOW_SECONDS = HEARTBEAT_INTERVAL_SECONDS;
 export const UNCONFIRMED_EXPOSURE_LIMIT = 3;
 export const PLAYBACK_RECOVERY_GRACE_LIMIT = 3;
+export const DELETION_QUERY_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+export const DELETION_CONFIRMATION = "DELETE_MY_ACCOUNT";
 
 export const ERROR_CODES = {
   ANONYMOUS_SESSION_EXPIRED: "ANONYMOUS_SESSION_EXPIRED",
@@ -16,7 +18,9 @@ export const ERROR_CODES = {
   CUSTOMER_SERVICE_REQUIRED: "CUSTOMER_SERVICE_REQUIRED",
   ADJUSTMENT_EXCEEDS_AVAILABLE: "ADJUSTMENT_EXCEEDS_AVAILABLE",
   ADJUSTMENT_RELEASE_EXCEEDS_FREEZE: "ADJUSTMENT_RELEASE_EXCEEDS_FREEZE",
-  ADJUSTMENT_INVALID_SOURCE: "ADJUSTMENT_INVALID_SOURCE"
+  ADJUSTMENT_INVALID_SOURCE: "ADJUSTMENT_INVALID_SOURCE",
+  ACCOUNT_UNAVAILABLE: "ACCOUNT_UNAVAILABLE",
+  DELETION_TOKEN_INVALID: "DELETION_TOKEN_INVALID"
 } as const;
 
 export const API_ROUTES = {
@@ -30,6 +34,9 @@ export const API_ROUTES = {
   history: "/v1/me/history",
   progress: "/v1/me/progress",
   entitlement: (dramaId: string) => `/v1/entitlements/${dramaId}`,
+  deletionRequests: "/v1/me/deletion-requests",
+  deletionRequest: (deletionRequestId: string) =>
+    `/v1/me/deletion-requests/${deletionRequestId}`,
   rewardChallenges: "/v1/rewards/challenges",
   rewardComplete: (challengeId: string) =>
     `/v1/rewards/challenges/${challengeId}/complete`,
@@ -114,6 +121,13 @@ export enum PlaybackLeaseStatus {
   REVOKED = "REVOKED",
   CLOSED = "CLOSED",
   EXPIRED = "EXPIRED"
+}
+
+export enum DeletionRequestStatus {
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  COMPLETED = "COMPLETED",
+  REJECTED = "REJECTED"
 }
 
 export enum EntitlementAdjustmentType {
@@ -240,6 +254,27 @@ export interface AnonymousSessionResponse {
   accessToken: string;
   expiresAt: string;
   tokenKind: "viewer";
+}
+
+export interface CreateDeletionRequest {
+  confirmation: typeof DELETION_CONFIRMATION;
+}
+
+export interface CreateDeletionRequestResponse {
+  deletionRequestId: string;
+  status: DeletionRequestStatus;
+  deletionQueryToken?: string;
+  tokenExpiresAt: string;
+  replayed: boolean;
+}
+
+export interface DeletionRequestView {
+  deletionRequestId: string;
+  status: DeletionRequestStatus;
+  createdAt: string;
+  processedAt: string | null;
+  tokenExpiresAt: string;
+  reason: string | null;
 }
 
 export interface CreateRewardChallengeRequest {
