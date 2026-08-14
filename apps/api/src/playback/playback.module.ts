@@ -32,6 +32,7 @@ import {
 import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
 import { Errors } from "../common/app-error.js";
 import { requireEntityId } from "../common/entity-id.js";
+import { controllerPath } from "../common/http.js";
 import {
   allocateFefo,
   assertHeartbeatAnchor,
@@ -122,7 +123,7 @@ export class RecoverLeaseDto implements RecoverPlaybackLeaseRequest {
   wechatCode!: string;
 }
 
-@Controller("v1/playback/leases")
+@Controller()
 @UseGuards(JwtAuthGuard)
 export class PlaybackController {
   constructor(
@@ -132,7 +133,7 @@ export class PlaybackController {
     private readonly config: AppConfigService
   ) {}
 
-  @Post()
+  @Post(controllerPath(API_ROUTES.playbackLeases))
   async create(
     @CurrentPrincipal() principal: Principal,
     @Body() body: CreateLeaseDto
@@ -232,7 +233,7 @@ export class PlaybackController {
     return this.view(lease.id, episode.id, asset.fileId, isFree, allocatable);
   }
 
-  @Get("active")
+  @Get(controllerPath(API_ROUTES.playbackActive))
   async active(@CurrentPrincipal() principal: Principal): Promise<ActivePlaybackLeaseResponse> {
     const userId = requireUser(principal);
     await assertNamedRateLimit(this.prisma, "playbackActive", `user:${userId}`);
@@ -312,7 +313,7 @@ export class PlaybackController {
     };
   }
 
-  @Post(":leaseId/heartbeats")
+  @Post(controllerPath(API_ROUTES.playbackHeartbeat(":leaseId")))
   async heartbeat(
     @CurrentPrincipal() principal: Principal,
     @Param("leaseId") leaseId: string,
@@ -563,7 +564,7 @@ export class PlaybackController {
     });
   }
 
-  @Post(":leaseId/renew")
+  @Post(controllerPath(API_ROUTES.playbackRenew(":leaseId")))
   async renew(
     @CurrentPrincipal() principal: Principal,
     @Param("leaseId") leaseId: string
@@ -652,7 +653,7 @@ export class PlaybackController {
     return renewed;
   }
 
-  @Post(":leaseId/recover")
+  @Post(controllerPath(API_ROUTES.playbackRecover(":leaseId")))
   async recover(
     @CurrentPrincipal() principal: Principal,
     @Param("leaseId") leaseId: string,
@@ -684,7 +685,7 @@ export class PlaybackController {
     return this.loadActiveLease(userId);
   }
 
-  @Delete(":leaseId")
+  @Delete(controllerPath(API_ROUTES.playbackLease(":leaseId")))
   async close(@CurrentPrincipal() principal: Principal, @Param("leaseId") leaseId: string) {
     const actor = playbackActor(principal);
     await assertNamedRateLimit(this.prisma, "playbackClose", playbackRateLimitKey(actor));

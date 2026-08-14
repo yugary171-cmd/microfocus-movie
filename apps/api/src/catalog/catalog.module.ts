@@ -98,7 +98,7 @@ export class CatalogController {
     };
   }
 
-  @Get("v1/dramas/:dramaId")
+  @Get(controllerPath(API_ROUTES.drama(":dramaId")))
   async detail(
     @Req() request: SocketRequest,
     @Param("dramaId") dramaId: string

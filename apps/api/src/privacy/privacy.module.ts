@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, Module, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
+  API_ROUTES,
   DELETION_CONFIRMATION,
   WECHAT_CODE_MAX_LENGTH,
   type CreateDeletionRequest,
@@ -7,6 +8,7 @@ import {
   type DeletionRequestView
 } from "@microfocus/contracts";
 import { Equals, IsString, MaxLength, MinLength } from "class-validator";
+import { controllerPath } from "../common/http.js";
 import { AppConfigService } from "../config/config.service.js";
 import { requireUser } from "../history/history.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -30,7 +32,7 @@ class CreateDeletionDto implements CreateDeletionRequest {
   wechatCode!: string;
 }
 
-@Controller("v1/me/deletion-requests")
+@Controller()
 export class DeletionController {
   constructor(
     private readonly prisma: PrismaService,
@@ -38,7 +40,7 @@ export class DeletionController {
     private readonly config: AppConfigService
   ) {}
 
-  @Post()
+  @Post(controllerPath(API_ROUTES.deletionRequests))
   @UseGuards(JwtAuthGuard)
   create(
     @CurrentPrincipal() principal: Principal,
@@ -55,7 +57,7 @@ export class DeletionController {
     });
   }
 
-  @Get(":deletionRequestId")
+  @Get(controllerPath(API_ROUTES.deletionRequest(":deletionRequestId")))
   lookup(
     @Req() request: SocketRequest,
     @Param("deletionRequestId") deletionRequestId: string,
