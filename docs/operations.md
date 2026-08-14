@@ -141,7 +141,7 @@
 ### 7.5 回调积压或死信
 
 1. 按 provider 开启奖励或媒体发布熔断，停止依赖未知结果推进业务。进入 `DEAD_LETTER` 时服务端会打开 `PROVIDER:VOD` 或 `PROVIDER:WECHAT`，不会自动打开 GLOBAL。
-2. 核对积压量、最老事件年龄、验签结果、重试次数、ACK 行为和 provider 状态。
+2. 核对积压量、最老事件年龄、验签结果、重试次数、ACK 行为和 provider 状态。`GET /v1/admin/callback-events` 列出积压元数据，不含加密载荷。
 3. 敏感规范化载荷只在受控工具内解密；不得复制到普通日志或工单。
 4. 修复后由 ADMIN 对指定事件执行受审计重放；状态从 `RETRYABLE_FAILURE/DEAD_LETTER` 原子迁回 `PROCESSING`，沿用原事件 ID 和幂等约束。若保留期内存在加密规范化载荷，服务端立即用该载荷执行；否则等待 provider 再次投递。不得复制新的业务事实。
 5. 奖励晚到只有在可信 provider 证明广告于原 challenge 有效期内完成且仍处允许延迟窗口时，才能完成原 challenge；否则进入独立人工补偿。

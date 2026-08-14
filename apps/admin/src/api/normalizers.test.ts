@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeAdminSession,
   normalizeAuditList,
+  normalizeCallbackEventList,
   normalizeCircuitBreaker,
   normalizeDashboard,
   normalizeDrama,
@@ -139,6 +140,32 @@ describe("admin API normalizers", () => {
       oldestUnprocessedAgeSeconds: null,
       openProviderCircuits: [],
     });
+  });
+
+  it("normalizes callback event lists without copying payload ciphertext", () => {
+    const result = normalizeCallbackEventList({
+      total: 1,
+      items: [
+        {
+          eventId: "event-1",
+          provider: "VOD",
+          eventType: "MEDIA_UPDATED",
+          status: "DEAD_LETTER",
+          attempts: 5,
+          receivedAt: "2026-08-14T10:00:00.000Z",
+          payloadAvailable: true,
+          replayable: true,
+          payloadCiphertext: "must-not-copy",
+        },
+      ],
+    });
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      eventId: "event-1",
+      payloadAvailable: true,
+      replayable: true,
+    });
+    expect(JSON.stringify(result)).not.toContain("must-not-copy");
   });
 
   it("adapts pending drama rows into review items with an explicit unknown-risk warning", () => {

@@ -74,6 +74,7 @@ export const API_ROUTES = {
     circuitBreakers: "/v1/admin/circuit-breakers",
     compensate: "/v1/admin/entitlements/compensate",
     adjustments: "/v1/admin/entitlements/adjustments",
+    callbackEvents: "/v1/admin/callback-events",
     callbackReplay: (eventId: string) =>
       `/v1/admin/callback-events/${eventId}/replay`,
     deletionRequest: (deletionRequestId: string) =>
@@ -411,6 +412,25 @@ export interface CallbackReplayView {
   attempts: number;
   replayed: boolean;
   executed: boolean;
+}
+
+export interface AdminCallbackEventView {
+  eventId: string;
+  provider: string;
+  eventType: string;
+  status: CallbackEventStatus;
+  attempts: number;
+  receivedAt: string;
+  processedAt: string | null;
+  processingUntil: string | null;
+  outcome: string | null;
+  payloadAvailable: boolean;
+  replayable: boolean;
+}
+
+export interface AdminCallbackEventList {
+  items: AdminCallbackEventView[];
+  total: number;
 }
 
 export interface WatchHistoryItem {

@@ -8,7 +8,7 @@ import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
-import type { CircuitBreakerState, CompensationInput, AdjustmentInput, CallbackReplayInput, DeletionQueryTokenReissueInput } from "@/types/admin";
+import type { CircuitBreakerState, CompensationInput, AdjustmentInput, AdminCallbackEvent, CallbackReplayInput, DeletionQueryTokenReissueInput } from "@/types/admin";
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -31,6 +31,8 @@ const adjustment = reactive<AdjustmentInput>({
 });
 const replayDialogOpen = ref(false);
 const replay = reactive<CallbackReplayInput>({ eventId: "", reason: "", approvalNote: "" });
+const callbackEvents = ref<AdminCallbackEvent[]>([]);
+const callbackFilter = ref("BACKLOG");
 const reissueDialogOpen = ref(false);
 const reissue = reactive<DeletionQueryTokenReissueInput>({
   deletionRequestId: "",
@@ -48,10 +50,21 @@ async function load(): Promise<void> {
   error.value = "";
   try {
     breaker.value = await adminApi.getCircuitBreaker();
+    await refreshCallbacks();
   } catch (caught) {
     error.value = toErrorMessage(caught);
   } finally {
     loading.value = false;
+  }
+}
+
+async function refreshCallbacks(): Promise<void> {
+  try {
+    const callbackList = await adminApi.listCallbackEvents(callbackFilter.value);
+    callbackEvents.value = Array.isArray(callbackList.items) ? callbackList.items : [];
+  } catch (caught) {
+    callbackEvents.value = [];
+    error.value = toErrorMessage(caught);
   }
 }
 
@@ -207,6 +220,7 @@ async function submitReplay(): Promise<void> {
       : "回调已解锁。若存有未过期的加密载荷，服务端已尝试执行；否则需等待 provider 再次投递。不会复制新的业务事实。";
     Object.assign(replay, { eventId: "", reason: "", approvalNote: "" });
     replayDialogOpen.value = false;
+    await refreshCallbacks();
   } catch (caught) {
     error.value = toErrorMessage(caught);
   } finally {
@@ -257,6 +271,12 @@ async function submitReissue(): Promise<void> {
   } finally {
     busy.value = false;
   }
+}
+
+function fillReplay(event: AdminCallbackEvent): void {
+  replay.eventId = event.eventId;
+  error.value = "";
+  notice.value = `已填入事件 ${event.eventId}，请补充原因后解锁。`;
 }
 
 onMounted(load);
@@ -321,6 +341,38 @@ onMounted(load);
         </section>
         <section class="panel panel--wide" aria-labelledby="replay-title">
           <div class="panel__header"><div><p class="eyebrow">CALLBACKS</p><h2 id="replay-title">死信重放</h2></div><StatusBadge label="受审计解锁" tone="warning" /></div>
+          <form class="callback-filter" @submit.prevent="refreshCallbacks">
+            <label class="field"><span>状态</span>
+              <select v-model="callbackFilter">
+                <option value="BACKLOG">积压（默认）</option>
+                <option value="DEAD_LETTER">死信</option>
+                <option value="RETRYABLE_FAILURE">可重试失败</option>
+                <option value="PROCESSING">处理中</option>
+                <option value="RECEIVED">已接收</option>
+              </select>
+            </label>
+            <button class="button button--secondary" type="submit" :disabled="busy">刷新列表</button>
+          </form>
+          <PageState v-if="callbackEvents.length === 0" type="empty" title="当前没有匹配的回调积压" message="死信与可重试失败会显示在此；列表不含加密载荷。" />
+          <div v-else class="table-wrap callback-table">
+            <table>
+              <thead><tr><th>事件</th><th>Provider</th><th>状态</th><th>尝试</th><th>收到时间</th><th>载荷</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="event in callbackEvents" :key="event.eventId">
+                  <td><code>{{ event.eventId }}</code><small>{{ event.eventType }}</small></td>
+                  <td>{{ event.provider }}</td>
+                  <td><StatusBadge :label="event.status" :tone="event.status === 'DEAD_LETTER' ? 'danger' : event.status === 'RETRYABLE_FAILURE' ? 'warning' : 'neutral'" /></td>
+                  <td>{{ event.attempts }}</td>
+                  <td class="nowrap">{{ formatDateTime(event.receivedAt) }}</td>
+                  <td>{{ event.payloadAvailable ? "可立即执行" : "需等待再投递" }}</td>
+                  <td>
+                    <button v-if="event.replayable" class="button button--secondary" type="button" :disabled="busy" @click="fillReplay(event)">填入重放</button>
+                    <span v-else>—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <form class="compensation-form" @submit.prevent="requestReplay">
             <div class="form-grid">
               <label class="field"><span>回调事件 ID *</span><input v-model="replay.eventId" required autocomplete="off" placeholder="provider 事件 ID" /></label>
@@ -368,6 +420,10 @@ onMounted(load);
 .breaker-panel dl div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
 .breaker-panel dt { color: var(--color-muted); font-size: 11px; }
 .breaker-panel dd { margin: 0; }
+.callback-filter { display: flex; align-items: end; gap: 12px; margin-bottom: 14px; }
+.callback-table { margin-bottom: 18px; }
+.callback-table td { vertical-align: top; }
+.callback-table small { display: block; color: var(--color-muted); }
 .compensation-form { display: grid; gap: 14px; }
 .form-help { margin: 0; padding: 9px 11px; border-radius: 7px; color: var(--color-muted); background: var(--color-surface-soft); font-size: 11px; }
 .operation-message { margin-bottom: 14px; padding: 10px 12px; border-radius: 8px; color: var(--color-success); background: var(--color-success-soft); }

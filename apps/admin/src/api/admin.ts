@@ -5,6 +5,7 @@ import type {
   CircuitBreakerState,
   CompensationInput,
   AdjustmentInput,
+  AdminCallbackEvent,
   CallbackReplayInput,
   DeletionQueryTokenReissueInput,
   DashboardData,
@@ -19,6 +20,7 @@ import { mockApi } from "./mock";
 import {
   normalizeAdminSession,
   normalizeAuditList,
+  normalizeCallbackEventList,
   normalizeCircuitBreaker,
   normalizeDashboard,
   normalizeDrama,
@@ -38,6 +40,7 @@ const endpoints = {
   circuitBreakers: "/v1/admin/circuit-breakers",
   compensate: "/v1/admin/entitlements/compensate",
   adjustments: "/v1/admin/entitlements/adjustments",
+  callbackEvents: "/v1/admin/callback-events",
   callbackReplay: (eventId: string) => `/v1/admin/callback-events/${eventId}/replay`,
   deletionQueryTokenReissue: (deletionRequestId: string) =>
     `/v1/admin/deletion-requests/${deletionRequestId}/query-tokens`,
@@ -273,6 +276,14 @@ export const adminApi = {
         )
       : normalized;
     return { items, total: items.length };
+  },
+  async listCallbackEvents(status = "BACKLOG"): Promise<PageResult<AdminCallbackEvent>> {
+    if (isMockMode) return mockApi.listCallbackEvents(status);
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    return normalizeCallbackEventList(
+      await request<unknown>(`${endpoints.callbackEvents}?${params}`),
+    );
   },
   async getCircuitBreaker(): Promise<CircuitBreakerState> {
     if (isMockMode) return mockApi.getCircuitBreaker();

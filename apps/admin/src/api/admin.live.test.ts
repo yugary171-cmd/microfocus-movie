@@ -132,14 +132,20 @@ describe("live admin API adapter", () => {
     });
     expect(new Headers(replayInit?.headers).get("Idempotency-Key")).toMatch(/^r:[a-f0-9]{64}$/);
 
+    vi.mocked(fetch).mockResolvedValueOnce(success({ items: [], total: 0 }));
+    await adminApi.listCallbackEvents("DEAD_LETTER");
+    expect(String(vi.mocked(fetch).mock.calls[4]?.[0])).toBe(
+      "http://api.test/v1/admin/callback-events?status=DEAD_LETTER",
+    );
+
     await adminApi.reissueDeletionQueryToken({
       deletionRequestId: "del-1",
       userId: "user-1",
       reason: "用户遗失查询令牌",
       approvalNote: "工单 CS-1 已核验",
     });
-    const reissueInit = vi.mocked(fetch).mock.calls[4]?.[1];
-    expect(String(vi.mocked(fetch).mock.calls[4]?.[0])).toBe(
+    const reissueInit = vi.mocked(fetch).mock.calls[5]?.[1];
+    expect(String(vi.mocked(fetch).mock.calls[5]?.[0])).toBe(
       "http://api.test/v1/admin/deletion-requests/del-1/query-tokens",
     );
     expect(JSON.parse(String(reissueInit?.body))).toEqual({

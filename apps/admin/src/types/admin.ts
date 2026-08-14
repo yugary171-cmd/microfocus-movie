@@ -149,6 +149,20 @@ export interface CallbackReplayInput {
   approvalNote?: string;
 }
 
+export interface AdminCallbackEvent {
+  eventId: string;
+  provider: string;
+  eventType: string;
+  status: string;
+  attempts: number;
+  receivedAt: string;
+  processedAt: string | null;
+  processingUntil: string | null;
+  outcome: string | null;
+  payloadAvailable: boolean;
+  replayable: boolean;
+}
+
 export interface DeletionQueryTokenReissueInput {
   deletionRequestId: string;
   userId: string;

@@ -18,6 +18,7 @@ import type {
   DramaInput,
   DramaRecord,
   PageResult,
+  AdminCallbackEvent,
   ReviewItem,
   UploadSignature,
 } from "@/types/admin";
@@ -451,6 +452,41 @@ export const mockApi = {
       `${input.reason}${input.approvalNote ? `；${input.approvalNote}` : ""}`,
     );
     return mockDelay(undefined);
+  },
+  async listCallbackEvents(status = "BACKLOG"): Promise<PageResult<AdminCallbackEvent>> {
+    const items: AdminCallbackEvent[] = [
+      {
+        eventId: "vod-dead-letter-1",
+        provider: "VOD",
+        eventType: "MEDIA_UPDATED",
+        status: "DEAD_LETTER",
+        attempts: 5,
+        receivedAt: isoHoursAgo(6),
+        processedAt: null,
+        processingUntil: null,
+        outcome: "RETRYABLE_FAILURE",
+        payloadAvailable: true,
+        replayable: true,
+      },
+      {
+        eventId: "wechat-retry-1",
+        provider: "WECHAT",
+        eventType: "REWARD_COMPLETED",
+        status: "RETRYABLE_FAILURE",
+        attempts: 2,
+        receivedAt: isoHoursAgo(1),
+        processedAt: null,
+        processingUntil: null,
+        outcome: "RETRYABLE_FAILURE",
+        payloadAvailable: false,
+        replayable: true,
+      },
+    ];
+    const filtered =
+      !status || status === "BACKLOG"
+        ? items
+        : items.filter((item) => item.status === status);
+    return mockDelay({ items: filtered, total: filtered.length });
   },
   async reissueDeletionQueryToken(
     input: DeletionQueryTokenReissueInput,

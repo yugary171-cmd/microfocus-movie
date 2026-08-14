@@ -69,6 +69,7 @@ import {
 } from "./admin.compensate.js";
 import { createIdempotentAdjustment } from "./admin.adjust.js";
 import { replayCallbackEvent } from "../callbacks/callback-replay.js";
+import { listAdminCallbackEvents } from "../callbacks/callback-list.js";
 import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/callback-payload.js";
 import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
 
@@ -840,6 +841,22 @@ export class AdminController {
       });
     }
     return view;
+  }
+
+  @Get("callback-events")
+  @Roles(AdminRole.ADMIN)
+  listCallbackEvents(
+    @Query("status") status?: string,
+    @Query("provider") provider?: string,
+    @Query("take") take?: string,
+    @Query("skip") skip?: string
+  ) {
+    return listAdminCallbackEvents(this.prisma, {
+      ...(status ? { status } : {}),
+      ...(provider ? { provider } : {}),
+      ...(take !== undefined ? { take: Number.parseInt(take, 10) } : {}),
+      ...(skip !== undefined ? { skip: Number.parseInt(skip, 10) } : {})
+    });
   }
 
   @Post("callback-events/:eventId/replay")

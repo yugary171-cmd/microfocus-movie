@@ -8,11 +8,17 @@ import type {
   AdminSession,
   AuditLog,
   CircuitBreakerState,
+  CompensationInput,
+  AdjustmentInput,
+  AdminCallbackEvent,
+  CallbackReplayInput,
+  DeletionQueryTokenReissueInput,
   DashboardData,
   DramaRecord,
   EpisodeRecord,
   ReviewItem,
   UploadSignature,
+  PageResult,
 } from "@/types/admin";
 
 type UnknownRecord = Record<string, unknown>;
@@ -293,6 +299,32 @@ export function normalizeAuditList(value: unknown): AuditLog[] {
       };
     })
     .filter((item) => item.id.length > 0);
+}
+
+export function normalizeCallbackEventList(value: unknown): PageResult<AdminCallbackEvent> {
+  const source = record(value);
+  const items = collection(value)
+    .map((item) => {
+      const row = record(item);
+      return {
+        eventId: text(row.eventId) || text(row.id),
+        provider: text(row.provider),
+        eventType: text(row.eventType),
+        status: text(row.status),
+        attempts: Math.max(0, Math.round(finiteNumber(row.attempts))),
+        receivedAt: dateText(row.receivedAt),
+        processedAt: dateText(row.processedAt) || null,
+        processingUntil: dateText(row.processingUntil) || null,
+        outcome: text(row.outcome) || null,
+        payloadAvailable: row.payloadAvailable === true,
+        replayable: row.replayable === true,
+      };
+    })
+    .filter((item) => item.eventId.length > 0);
+  return {
+    items,
+    total: Math.max(items.length, Math.round(finiteNumber(source.total))),
+  };
 }
 
 export function normalizeCircuitBreaker(value: unknown): CircuitBreakerState {
