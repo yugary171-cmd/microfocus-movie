@@ -29,7 +29,7 @@
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；创建 challenge 按认证用户限频（5 分钟 3 次），完成按认证用户限频；`dramaId`/`sessionId`/`nonce` 限长；完成 challenge 的 `Idempotency-Key` 与补偿共用规范化（trim、最长 128），空白或超长在限频前拒绝；权益摘要路径走 `API_ROUTES`，按认证用户限频；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一，秒数 60–86400、原因 6–300 字；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实（秒数上限同为 86400）；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant；后台任务按 grant/debit/冻结事实重建余额，差异打开 `PROVIDER:LEDGER` | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约、心跳、续签、恢复、关闭、活动租约查询和进度写入按认证主体限频；租约/心跳/进度的 ID、设备、seq 和媒体位置有长度或数值上限；播放租约路径走 `API_ROUTES`；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频；回调 `eventId`/`fileId`/`challengeId` 限长；`x-provider-signature` 最长 256；列表 `take` 默认 50、上限 100，过大 `skip` 返回空结果 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
-| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页；管理端剧目/审核队列/审计日志由服务端分页；首页 latest 按发布时间独立查询；观看历史按认证用户限频；注销进度查询按连接 IP 限频；剧目详情、权益、播放租约和注销由服务端走 `API_ROUTES` | 完整法定清理尚未实现 |
+| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页；管理端剧目/审核队列/审计日志由服务端分页；首页 latest 按发布时间独立查询；观看历史按认证用户限频；注销进度查询按连接 IP 限频；剧目详情、权益、播放租约和注销由服务端走 `API_ROUTES`；两套观看端 HTTP 路径同样走契约，路径 ID 会 URL-encode | 完整法定清理尚未实现 |
 | 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId`/模块/错误码/耗时/脱敏 actor）；熔断行保存 `updatedBy`（管理员或 `system:*`）；管理端只读 GET 按认证管理员限频；生产不挂载 OpenAPI/Swagger；JSON/urlencoded 请求体 64kb | Live provider 和真实发布证据尚未完成 |
 
 ## 下一步（Now）
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：两套观看端 HTTP 路径改走契约 `API_ROUTES`，不再各自维护一份字符串表；路径实体 ID 经 `encodedRoute` 做 URL-encode。管理端相对路径和 provider 回调仍未整表改写。不把灰度指标写成已接入。
 - 2026-08-14：观看端 Nest 路径改走 `API_ROUTES`：剧目详情、权益摘要、注销申请/查询、播放租约（签发/活动/心跳/续签/恢复/关闭）。管理端仍用 `/v1/admin` 前缀，provider 回调仍为纯服务端路径。不把灰度指标写成已接入。
 - 2026-08-14：奖励完成 `Idempotency-Key` 与补偿/注销共用规范化：trim 后最长 128，空白或超长返回 `IDEMPOTENCY_KEY_REQUIRED` 且不占完成限频桶。完成路径改走 `API_ROUTES.rewardComplete`。不把灰度指标写成已接入。
 - 2026-08-14：管理端剧目编辑表单与契约共用标题 120、简介 2000、分类 64、标签 20×32、封面 URL 2048、集标题 120、单集时长 3600、最多 200 集，以及权利人/证号/材料键上限；保存前在客户端拦截，Mock 保存同样拒绝超限草稿。不把灰度指标写成已接入。

@@ -131,6 +131,11 @@ export const API_ROUTES = {
   }
 } as const;
 
+/** URL-encode a path entity id before interpolating `API_ROUTES`. */
+export function encodedRoute(build: (id: string) => string, id: string): string {
+  return build(encodeURIComponent(id));
+}
+
 export type ApiSuccess<T> = {
   data: T;
   requestId: string;

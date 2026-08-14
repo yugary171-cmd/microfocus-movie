@@ -1,6 +1,6 @@
 import { ERROR_CODES, type AnonymousSessionResponse, type ApiError, type ApiSuccess } from "@microfocus/contracts";
 import { RUNTIME_CONFIG } from "../config/runtime";
-import { API_ROUTES } from "../constants/routes";
+import { API_ROUTES, encodedRoute } from "../constants/routes";
 import { mockApi } from "../mocks/data";
 import type { AuthSession, ClientApi, SearchResponse } from "../types/api";
 import { ApiClientError } from "../utils/errors";
@@ -95,7 +95,7 @@ async function ensureViewerAccessToken(): Promise<string> {
     const deviceId = getOrCreateStorageId(DEVICE_ID_KEY, "dev");
     const sessionId = getOrCreateStorageId(VIEWER_SESSION_ID_KEY, "ses");
     const session = await request<AnonymousSessionResponse>(
-      API_ROUTES.authAnonymous,
+      API_ROUTES.auth.anonymous,
       "POST",
       { deviceId, sessionId },
       undefined,
@@ -113,8 +113,8 @@ async function ensureViewerAccessToken(): Promise<string> {
 async function resolveRequestToken(path: string): Promise<string> {
   const userToken = getStoredAccessToken();
   if (userToken) return userToken;
-  if (path === API_ROUTES.authAnonymous || path === API_ROUTES.authWechat) return "";
-  if (path.startsWith("/v1/playback/")) return ensureViewerAccessToken();
+  if (path === API_ROUTES.auth.anonymous || path === API_ROUTES.auth.wechat) return "";
+  if (path.startsWith(API_ROUTES.playbackLeases)) return ensureViewerAccessToken();
   return "";
 }
 
@@ -180,10 +180,10 @@ async function request<T>(
   if (
     response.statusCode === 401 &&
     retryAuthentication &&
-    path !== API_ROUTES.authWechat &&
-    path !== API_ROUTES.authAnonymous
+    path !== API_ROUTES.auth.wechat &&
+    path !== API_ROUTES.auth.anonymous
   ) {
-    if (code === ERROR_CODES.ANONYMOUS_SESSION_EXPIRED || path.startsWith("/v1/playback/")) {
+    if (code === ERROR_CODES.ANONYMOUS_SESSION_EXPIRED || path.startsWith(API_ROUTES.playbackLeases)) {
       clearViewerToken();
       await ensureViewerAccessToken();
       return request<T>(path, method, data, query, extraHeaders, false);
@@ -207,9 +207,9 @@ async function request<T>(
 }
 
 const realApi: ClientApi = {
-  authWechat: (code) => request<AuthSession>(API_ROUTES.authWechat, "POST", { code }),
+  authWechat: (code) => request<AuthSession>(API_ROUTES.auth.wechat, "POST", { code }),
   authAnonymous: (input) =>
-    request<AnonymousSessionResponse>(API_ROUTES.authAnonymous, "POST", input, undefined, undefined, false),
+    request<AnonymousSessionResponse>(API_ROUTES.auth.anonymous, "POST", input, undefined, undefined, false),
   getCatalog: () => request(API_ROUTES.catalog),
   search: async (q, category, page) => {
     const result = await request<SearchResponse | SearchResponse["items"]>(
@@ -226,14 +226,14 @@ const realApi: ClientApi = {
           hasMore: Boolean(result?.hasMore)
         };
   },
-  getDrama: (id) => request(API_ROUTES.drama(id)),
+  getDrama: (id) => request(encodedRoute(API_ROUTES.drama, id)),
   getHistory: () => request(API_ROUTES.history),
   saveProgress: (input) => request<void>(API_ROUTES.progress, "PUT", input),
-  getEntitlement: (dramaId) => request(API_ROUTES.entitlement(dramaId)),
+  getEntitlement: (dramaId) => request(encodedRoute(API_ROUTES.entitlement, dramaId)),
   createRewardChallenge: (input) => request(API_ROUTES.rewardChallenges, "POST", input),
   completeRewardChallenge: (challengeId, input) =>
     request<void>(
-      API_ROUTES.completeReward(challengeId),
+      encodedRoute(API_ROUTES.rewardComplete, challengeId),
       "POST",
       input,
       undefined,
@@ -242,10 +242,10 @@ const realApi: ClientApi = {
   createPlaybackLease: (input) => request(API_ROUTES.playbackLeases, "POST", input),
   getActivePlaybackLease: () => request(API_ROUTES.playbackActive),
   recoverPlaybackLease: (leaseId, input) =>
-    request(API_ROUTES.recoverLease(leaseId), "POST", input),
-  heartbeat: (leaseId, input) => request(API_ROUTES.heartbeat(leaseId), "POST", input),
-  renewPlaybackLease: (leaseId) => request(API_ROUTES.renewLease(leaseId), "POST"),
-  closePlaybackLease: (leaseId) => request(API_ROUTES.closeLease(leaseId), "DELETE"),
+    request(encodedRoute(API_ROUTES.playbackRecover, leaseId), "POST", input),
+  heartbeat: (leaseId, input) => request(encodedRoute(API_ROUTES.playbackHeartbeat, leaseId), "POST", input),
+  renewPlaybackLease: (leaseId) => request(encodedRoute(API_ROUTES.playbackRenew, leaseId), "POST"),
+  closePlaybackLease: (leaseId) => request(encodedRoute(API_ROUTES.playbackLease, leaseId), "DELETE"),
   createDeletionRequest: (input) => {
     const session = getStoredSession();
     return request(
@@ -258,7 +258,7 @@ const realApi: ClientApi = {
   },
   getDeletionRequest: (deletionRequestId, queryToken) =>
     request(
-      API_ROUTES.deletionRequest(deletionRequestId),
+      encodedRoute(API_ROUTES.deletionRequest, deletionRequestId),
       "GET",
       undefined,
       undefined,
@@ -290,7 +290,7 @@ function refreshSession(): Promise<AuthSession> {
       return storeSession(await mockApi.authWechat(code));
     }
     const session = await request<AuthSession>(
-      API_ROUTES.authWechat,
+      API_ROUTES.auth.wechat,
       "POST",
       { code },
       undefined,
