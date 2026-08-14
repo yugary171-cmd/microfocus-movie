@@ -1,10 +1,10 @@
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module.js";
 import { GlobalExceptionFilter, requestContext, SuccessEnvelopeInterceptor } from "./common/http.js";
+import { mountOpenApiDocs, shouldMountOpenApiDocs } from "./common/open-api.js";
 import { RequestLogInterceptor } from "./common/request-log.js";
 import { AppConfigService } from "./config/config.service.js";
 
@@ -24,16 +24,9 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new RequestLogInterceptor(), new SuccessEnvelopeInterceptor());
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.enableShutdownHooks();
-
-  const document = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder()
-      .setTitle("Microfocus Movie API")
-      .setVersion("1.0")
-      .addBearerAuth()
-      .build()
-  );
-  SwaggerModule.setup("docs", app, document);
+  if (shouldMountOpenApiDocs(config.env.NODE_ENV)) {
+    mountOpenApiDocs(app);
+  }
   await app.listen(config.env.PORT, "0.0.0.0");
 }
 

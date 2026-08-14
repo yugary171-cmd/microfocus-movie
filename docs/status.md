@@ -30,7 +30,7 @@
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约、心跳、续签、恢复、关闭、活动租约查询和进度写入按认证主体限频；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页；首页 latest 按发布时间独立查询；观看历史按认证用户限频；注销进度查询按连接 IP 限频 | 完整法定清理尚未实现 |
-| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId`/模块/错误码/耗时/脱敏 actor）；熔断行保存 `updatedBy`（管理员或 `system:*`）；管理端只读 GET 按认证管理员限频 | Live provider 和真实发布证据尚未完成 |
+| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId`/模块/错误码/耗时/脱敏 actor）；熔断行保存 `updatedBy`（管理员或 `system:*`）；管理端只读 GET 按认证管理员限频；生产不挂载 OpenAPI/Swagger | Live provider 和真实发布证据尚未完成 |
 
 ## 下一步（Now）
 
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：OpenAPI/Swagger 仅在非生产挂载 `/docs`。生产 `NODE_ENV=production` 不生成也不暴露接口文档，避免公开管理端与回调路径。
 - 2026-08-14：管理端创建/修改剧目与权利版本限制输入范围：标题 120、简介 2000、标签最多 20 个、集数最多 200、单集时长不超过 3600 秒；权利人/许可证号/材料键同样限长。不把灰度指标写成已接入。
 - 2026-08-14：首页 `latest` 按 `publishedAt DESC, id DESC` 独立查询，不再从推荐榜按 ID 重排；`featured/popular` 仍按推荐分。同值以稳定 ID 作次级排序。
 - 2026-08-14：公开搜索最多返回前 100 页（每页 20 条）。超过上限直接返回空结果，不执行大 OFFSET 查询。同 rank/发布时间时按稳定 ID 排序。不把灰度指标写成已接入。

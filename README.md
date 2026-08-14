@@ -42,7 +42,7 @@ npm run dev:admin
 ```
 
 - API：`http://localhost:3000`
-- Swagger：`http://localhost:3000/docs`
+- Swagger（仅非生产）：`http://localhost:3000/docs`
 - 管理后台：`http://localhost:5174`
 - 观看端：运行 `npm run dev:uniapp` 后，在微信开发者工具导入 `apps/uniapp/dist/dev/mp-weixin`；也可用 HBuilderX 打开 `apps/uniapp`。过渡对照端可直接导入 `apps/miniprogram`。本地设置中允许调试时使用 HTTP。
 

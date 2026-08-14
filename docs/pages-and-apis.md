@@ -242,6 +242,7 @@ flowchart LR
 | --- | --- | --- |
 | `GET /health/live` | 受基础设施访问策略保护 | 进程存活，不查库、不返回秘密 |
 | `GET /health/ready`、`GET /health` | 受基础设施访问策略保护 | 就绪：数据库可连且进程未进入关闭排水；失败返回 `NOT_READY`，不泄露连接串 |
+| `GET /docs` | 仅非生产 | OpenAPI/Swagger；`NODE_ENV=production` 不挂载 |
 | `POST /v1/callbacks/vod` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | 转码和审核结果；事件幂等，失败可重试 |
 | `POST /v1/callbacks/reward` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | 可信广告完成验证；通常更新 PENDING challenge。若事件在允许延迟窗口内且证明广告在原有效期内完成，可将 EXPIRED 迁为 COMPLETED_LATE，仍只创建唯一 grant |
 

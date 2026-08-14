@@ -9,6 +9,7 @@ describe("structured request logs", () => {
       sanitizeRequestPath("/v1/me/deletion-requests/req-1?token=super-secret-query")
     ).toBe("/v1/me/deletion-requests/req-1");
     expect(shouldSkipRequestLog("/health/ready")).toBe(true);
+    expect(shouldSkipRequestLog("/docs")).toBe(true);
     expect(shouldSkipRequestLog("/v1/playback/leases")).toBe(false);
   });
 
