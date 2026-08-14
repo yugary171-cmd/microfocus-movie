@@ -1,4 +1,4 @@
-import { AdminRole, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -31,22 +31,7 @@ import {
   pageTotal,
 } from "./normalizers";
 
-const endpoints = {
-  login: "/v1/admin/auth/login",
-  dashboard: "/v1/admin/dashboard",
-  dramas: "/v1/admin/dramas",
-  reviews: "/v1/admin/reviews",
-  uploadSign: "/v1/admin/uploads/sign",
-  auditLogs: "/v1/admin/audit-logs",
-  circuitBreakers: "/v1/admin/circuit-breakers",
-  compensate: "/v1/admin/entitlements/compensate",
-  adjustments: "/v1/admin/entitlements/adjustments",
-  callbackEvents: "/v1/admin/callback-events",
-  callbackReplay: (eventId: string) => `/v1/admin/callback-events/${eventId}/replay`,
-  deletionQueryTokenReissue: (deletionRequestId: string) =>
-    `/v1/admin/deletion-requests/${deletionRequestId}/query-tokens`,
-  releaseGate: "/v1/admin/release-gate",
-} as const;
+const endpoints = API_ROUTES.admin;
 
 const json = (value: unknown): string => JSON.stringify(value);
 
@@ -113,7 +98,7 @@ export const adminApi = {
   },
   async getDrama(id: string): Promise<DramaRecord> {
     if (isMockMode) return mockApi.getDrama(id);
-    return normalizeDrama(await request<unknown>(`${endpoints.dramas}/${encodeURIComponent(id)}`));
+    return normalizeDrama(await request<unknown>(endpoints.drama(encodeURIComponent(id))));
   },
   async saveDrama(input: DramaInput, id?: string): Promise<DramaRecord> {
     if (isMockMode) return mockApi.saveDrama(input, id);
@@ -179,14 +164,14 @@ export const adminApi = {
             durationSeconds: episode.durationSeconds,
           })),
         };
-    const response = await request<unknown>(id ? `${endpoints.dramas}/${encodeURIComponent(id)}` : endpoints.dramas, {
+    const response = await request<unknown>(id ? endpoints.drama(encodeURIComponent(id)) : endpoints.dramas, {
       method: id ? "PATCH" : "POST",
       body: json(body),
     });
     const saved = normalizeDrama(response);
     const dramaId = id || saved.id;
     if (!dramaId) throw new Error("剧目已保存但响应缺少 ID，版权资料未写入");
-    await request(`${endpoints.dramas}/${encodeURIComponent(dramaId)}/rights`, {
+    await request(endpoints.rights(encodeURIComponent(dramaId)), {
       method: "POST",
       body: json({
         rightsHolder: input.rightsHolder,
@@ -204,12 +189,12 @@ export const adminApi = {
       }),
     });
     return normalizeDrama(
-      await request<unknown>(`${endpoints.dramas}/${encodeURIComponent(dramaId)}`),
+      await request<unknown>(endpoints.drama(encodeURIComponent(dramaId))),
     );
   },
   submitReview(id: string): Promise<void> {
     if (isMockMode) return mockApi.submitReview(id);
-    return request(`${endpoints.dramas}/${encodeURIComponent(id)}/submit-review`, { method: "POST" });
+    return request(endpoints.submitReview(encodeURIComponent(id)), { method: "POST" });
   },
   async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
     if (isMockMode) return mockApi.listReviews(page);
@@ -220,18 +205,18 @@ export const adminApi = {
   },
   review(dramaId: string, reviewId: string, approved: boolean, reason: string): Promise<void> {
     if (isMockMode) return mockApi.review(reviewId, approved, reason);
-    return request(`${endpoints.dramas}/${encodeURIComponent(dramaId)}/review`, {
+    return request(endpoints.review(encodeURIComponent(dramaId)), {
       method: "POST",
       body: json({ status: approved ? "APPROVED" : "REJECTED", notes: reason }),
     });
   },
   publish(id: string): Promise<void> {
     if (isMockMode) return mockApi.publish(id);
-    return request(`${endpoints.dramas}/${encodeURIComponent(id)}/publish`, { method: "POST" });
+    return request(endpoints.publish(encodeURIComponent(id)), { method: "POST" });
   },
   offline(id: string, reason: string): Promise<void> {
     if (isMockMode) return mockApi.offline(id, reason);
-    return request(`${endpoints.dramas}/${encodeURIComponent(id)}/offline`, {
+    return request(endpoints.offline(encodeURIComponent(id)), {
       method: "POST",
       body: json({ reason }),
     });
@@ -339,7 +324,7 @@ export const adminApi = {
     const idempotencyKey = `r:${Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, "0"),
     ).join("")}`;
-    return request(endpoints.callbackReplay(input.eventId), {
+    return request(endpoints.callbackReplay(encodeURIComponent(input.eventId)), {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: json({
@@ -357,7 +342,7 @@ export const adminApi = {
     const idempotencyKey = `q:${Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, "0"),
     ).join("")}`;
-    return request(endpoints.deletionQueryTokenReissue(input.deletionRequestId), {
+    return request(endpoints.deletionQueryTokenReissue(encodeURIComponent(input.deletionRequestId)), {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: json({

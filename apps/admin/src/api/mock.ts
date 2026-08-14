@@ -418,6 +418,7 @@ export const mockApi = {
     return mockDelay(undefined);
   },
   async signUpload(file: File, dramaId: string, episodeId: string): Promise<UploadSignature> {
+    writeAudit("签发上传签名", dramaId, `剧集 ${episodeId}`);
     return mockDelay({
       uploadUrl: "mock://vod-upload",
       headers: {},

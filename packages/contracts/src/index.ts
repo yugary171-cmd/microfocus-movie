@@ -94,20 +94,25 @@ export const API_ROUTES = {
     dashboard: "/v1/admin/dashboard",
     dramas: "/v1/admin/dramas",
     drama: (dramaId: string) => `/v1/admin/dramas/${dramaId}`,
+    rights: (dramaId: string) => `/v1/admin/dramas/${dramaId}/rights`,
+    mediaAssets: (dramaId: string) => `/v1/admin/dramas/${dramaId}/media-assets`,
     submitReview: (dramaId: string) =>
       `/v1/admin/dramas/${dramaId}/submit-review`,
     review: (dramaId: string) => `/v1/admin/dramas/${dramaId}/review`,
     publish: (dramaId: string) => `/v1/admin/dramas/${dramaId}/publish`,
     offline: (dramaId: string) => `/v1/admin/dramas/${dramaId}/offline`,
     uploadSign: "/v1/admin/uploads/sign",
+    mediaReview: (assetId: string) => `/v1/admin/media-assets/${assetId}/review`,
     reviews: "/v1/admin/reviews",
     auditLogs: "/v1/admin/audit-logs",
     circuitBreakers: "/v1/admin/circuit-breakers",
+    circuitBreaker: (provider: string) => `/v1/admin/circuit-breakers/${provider}`,
     compensate: "/v1/admin/entitlements/compensate",
     adjustments: "/v1/admin/entitlements/adjustments",
     callbackEvents: "/v1/admin/callback-events",
     callbackReplay: (eventId: string) =>
       `/v1/admin/callback-events/${eventId}/replay`,
+    deletionRequests: "/v1/admin/deletion-requests",
     deletionRequest: (deletionRequestId: string) =>
       `/v1/admin/deletion-requests/${deletionRequestId}`,
     deletionQueryTokenReissue: (deletionRequestId: string) =>

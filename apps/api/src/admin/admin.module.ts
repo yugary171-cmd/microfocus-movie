@@ -712,7 +712,11 @@ export class AdminController {
     if (!episode) throw Errors.notFound("Episode");
     assertEditorOwns(episode.drama, admin);
     assertNotPublished(episode.drama.status);
-    return this.vod.createUploadAuthorization(body.fileName);
+    const signed = await this.vod.createUploadAuthorization(body.fileName);
+    await this.audit(admin.sub, "UPLOAD_SIGNED", "Episode", body.episodeId, {
+      dramaId: body.dramaId
+    });
+    return signed;
   }
 
   @Patch("media-assets/:assetId/review")

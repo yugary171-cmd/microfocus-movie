@@ -212,7 +212,7 @@ flowchart LR
 | `POST /v1/admin/dramas` | EDITOR | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限 | 创建草稿 |
 | `PATCH /v1/admin/dramas/:id` | EDITOR | 仅本人负责且可编辑状态；字段上限与创建一致 | 修改元数据 |
 | `POST .../:id/rights` | EDITOR | 仅本人负责；新版本使内容回到待审链路；权利人/证号/材料键限长 | 写入不可覆盖的权利版本 |
-| `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR | 仅本人负责；禁止修改已发布内容 | 登记媒体版本和获取短期上传签名 |
+| `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR | 仅本人负责；禁止修改已发布内容；签发成功写入审计，不含签名 URL | 登记媒体版本和获取短期上传签名 |
 | `POST .../:id/submit-review` | EDITOR | 仅本人负责，材料完整 | 提交审核 |
 | `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页 | 审核队列 |
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计 | 内容和媒体审核 |

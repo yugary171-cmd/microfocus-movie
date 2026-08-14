@@ -185,6 +185,7 @@ describe("live admin API adapter", () => {
     await vi.runAllTimersAsync();
     await rejection;
 
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe("http://api.test/v1/admin/uploads/sign");
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
       dramaId: "drama-1",
       episodeId: "episode-1",
