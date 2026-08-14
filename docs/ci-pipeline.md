@@ -86,6 +86,8 @@ npm test
 npm run build
 ```
 
+`db:generate` / `db:migrate*` / `db:seed` 在仓库根存在 `.env` 时加载它。CI **不提交** `.env`，此时使用 workflow 注入的 `DATABASE_URL`。不要用 `node --env-file=.env`：文件缺失时 Node 会以退出码 9 失败。
+
 ### 4.2 合并前人工检查
 
 - [ ] PR 描述写明影响端（api / admin / uniapp / contracts）
