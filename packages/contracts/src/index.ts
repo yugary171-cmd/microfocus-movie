@@ -405,7 +405,7 @@ export interface PlaybackHeartbeatResponse {
   debitedSeconds: number;
   remainingSeconds: number | null;
   mayContinue: boolean;
-  reason?: "ENTITLEMENT_EXHAUSTED" | "LEASE_REVOKED" | "DRAMA_OFFLINE";
+  reason?: "ENTITLEMENT_EXHAUSTED" | "LEASE_REVOKED" | "DRAMA_OFFLINE" | "UNCONFIRMED_EXPOSURE";
 }
 
 export interface ReplayCallbackEventRequest {

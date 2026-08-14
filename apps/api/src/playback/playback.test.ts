@@ -145,4 +145,80 @@ describe("playback renewal", () => {
       )
     ).rejects.toMatchObject({ code: "UNCONFIRMED_EXPOSURE_LIMIT" });
   });
+
+  it("does not debit a playing heartbeat while unconfirmed windows lack VOD delivery logs", async () => {
+    const now = Date.now();
+    const entitlementDebit = { create: vi.fn() };
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      playbackLease: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "lease",
+          episodeId: "episode-3",
+          userId: "user",
+          status: "ACTIVE",
+          lastSeq: 1,
+          lastMediaPosition: 10,
+          lastHeartbeatAt: new Date(now),
+          updatedAt: new Date(now),
+          episode: {
+            episodeNumber: 3,
+            dramaId: "drama",
+            drama: {
+              status: "PUBLISHED",
+              rightsRecords: [
+                { validFrom: new Date(now - 1_000), validUntil: new Date(now + 60_000) }
+              ]
+            },
+            mediaAssets: [readyAsset()]
+          }
+        }),
+        update: vi.fn()
+      },
+      playbackHeartbeat: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: "hb-2" }),
+        update: vi.fn()
+      },
+      playbackReservation: {
+        count: vi.fn().mockResolvedValue(1),
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn(),
+        updateMany: vi.fn(),
+        create: vi.fn()
+      },
+      circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) },
+      entitlementGrant: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "grant", remainingSeconds: 600, expiresAt: new Date(now + 60_000) }
+        ]),
+        updateMany: vi.fn()
+      },
+      entitlementDebit
+    };
+    const prisma = {
+      $transaction: async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)
+    };
+    const controller = createController(prisma);
+
+    await expect(
+      controller.heartbeat(
+        { kind: "user", sub: "user" },
+        "lease",
+        {
+          seq: 2,
+          mediaPositionSeconds: 15,
+          previousMediaPositionSeconds: 10,
+          playbackRate: 1,
+          state: "playing"
+        }
+      )
+    ).resolves.toMatchObject({
+      debitedSeconds: 0,
+      mayContinue: false,
+      reason: "UNCONFIRMED_EXPOSURE"
+    });
+    expect(entitlementDebit.create).not.toHaveBeenCalled();
+    expect(tx.entitlementGrant.updateMany).not.toHaveBeenCalled();
+  });
 });

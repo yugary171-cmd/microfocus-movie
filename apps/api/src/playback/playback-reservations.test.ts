@@ -2,8 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { ERROR_CODES, PLAYBACK_RECOVERY_GRACE_LIMIT } from "@microfocus/contracts";
 import {
   assertCanOpenPaidLease,
+  allowedDebitSeconds,
+  confirmReservationWindow,
+  hasVodPlaybackDeliveryEvidence,
   recoverActionFor,
-  recoverReservations
+  recoverReservations,
+  unconfirmedAutoSettlement
 } from "./playback-reservations.js";
 
 describe("playback reservations", () => {
@@ -28,18 +32,28 @@ describe("playback reservations", () => {
     expect(recoverActionFor(0, 0)).toBe("none");
   });
 
+  it("never auto-debits unconfirmed windows when VOD delivery logs are absent", async () => {
+    expect(hasVodPlaybackDeliveryEvidence()).toBe(false);
+    expect(unconfirmedAutoSettlement()).toBe("release");
+    expect(allowedDebitSeconds({ requestedSeconds: 5, unconfirmedCount: 1 })).toBe(0);
+    expect(allowedDebitSeconds({ requestedSeconds: 5, unconfirmedCount: 0 })).toBe(5);
+  });
+
   it("releases unconfirmed windows and records a recovery event within grace", async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const create = vi.fn().mockResolvedValue({ id: "event" });
+    const entitlementDebit = { create: vi.fn() };
     const db = {
       playbackReservation: {
         count: vi.fn().mockResolvedValue(1),
-        updateMany
+        updateMany,
+        findFirst: vi.fn()
       },
       playbackRecoveryEvent: {
         count: vi.fn().mockResolvedValue(0),
         create
-      }
+      },
+      entitlementDebit
     };
 
     await expect(
@@ -57,6 +71,25 @@ describe("playback reservations", () => {
         data: expect.objectContaining({ status: "RELEASED" })
       })
     );
+    expect(entitlementDebit.create).not.toHaveBeenCalled();
+  });
+
+  it("does not confirm an unconfirmed window as a heartbeat settlement", async () => {
+    const update = vi.fn();
+    const db = {
+      playbackReservation: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        update
+      }
+    };
+    await expect(
+      confirmReservationWindow(db as never, {
+        leaseId: "lease",
+        windowId: "unconfirmed-window",
+        heartbeatId: "hb-1"
+      })
+    ).resolves.toBeNull();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("refuses automatic recovery after the grace limit", async () => {

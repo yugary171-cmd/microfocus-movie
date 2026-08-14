@@ -198,6 +198,7 @@ Page({
   getStopReason(reason?: string) {
     if (reason === "ENTITLEMENT_EXHAUSTED") return "本剧观看时长已用完，已暂停并保留当前位置";
     if (reason === "DRAMA_OFFLINE") return "本剧暂时下线，已暂停并保留当前位置";
+    if (reason === "UNCONFIRMED_EXPOSURE") return "有未确认播放窗口，需恢复后继续；未确认窗口不会自动扣费";
     return "播放授权已结束，已暂停并保留当前位置";
   },
 

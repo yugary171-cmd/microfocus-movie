@@ -47,6 +47,7 @@ import {
 import { assertNamedRateLimit } from "../security/rate-limit.js";
 import {
   assertCanOpenPaidLease,
+  allowedDebitSeconds,
   confirmReservationWindow,
   createReservationWindow,
   markReservationsUnconfirmed,
@@ -421,7 +422,18 @@ export class PlaybackController {
           },
           orderBy: { expiresAt: "asc" }
         });
-        const allocation = allocateFefo(grants, requested, now);
+        const unconfirmedCount = await tx.playbackReservation.count({
+          where: { leaseId, status: "UNCONFIRMED" }
+        });
+        const billableSeconds = allowedDebitSeconds({
+          requestedSeconds: requested,
+          unconfirmedCount
+        });
+        if (unconfirmedCount > 0) {
+          mayContinue = false;
+          reason = "UNCONFIRMED_EXPOSURE";
+        }
+        const allocation = allocateFefo(grants, billableSeconds, now);
         remainingSeconds = allocation.remainingSeconds;
         debitedSeconds = allocation.debitedSeconds;
         const heartbeat = await tx.playbackHeartbeat.create({
@@ -431,8 +443,13 @@ export class PlaybackController {
             mediaPositionSeconds: body.mediaPositionSeconds,
             debitedSeconds,
             remainingSeconds,
-            mayContinue: requested === debitedSeconds,
-            reason: requested === debitedSeconds ? null : "ENTITLEMENT_EXHAUSTED"
+            mayContinue: unconfirmedCount > 0 ? false : requested === debitedSeconds,
+            reason:
+              unconfirmedCount > 0
+                ? "UNCONFIRMED_EXPOSURE"
+                : requested === debitedSeconds
+                  ? null
+                  : "ENTITLEMENT_EXHAUSTED"
           }
         });
         for (const debit of allocation.debits) {
@@ -475,7 +492,7 @@ export class PlaybackController {
           where: { id: heartbeat.id },
           data: { remainingSeconds }
         });
-        if (requested > debitedSeconds) {
+        if (unconfirmedCount === 0 && requested > debitedSeconds) {
           mayContinue = false;
           reason = "ENTITLEMENT_EXHAUSTED";
         }
@@ -485,7 +502,7 @@ export class PlaybackController {
             lastSeq: body.seq,
             lastMediaPosition: nextAnchor,
             lastHeartbeatAt: now,
-            ...(mayContinue
+            ...(mayContinue || reason === "UNCONFIRMED_EXPOSURE"
               ? {}
               : { status: "CLOSED", activeKey: null, closedAt: now })
           }

@@ -10,6 +10,8 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { Errors } from "../common/app-error.js";
 import { ERROR_CODES } from "@microfocus/contracts";
 
+import { LIVE_PROVIDER_IMPLEMENTATIONS_READY } from "../providers/providers.js";
+
 type Db = PrismaClient | Prisma.TransactionClient;
 
 export function toReservationView(row: {
@@ -72,6 +74,23 @@ export async function assertCanOpenPaidLease(
   if (input.allocatableSeconds < PLAYBACK_WINDOW_SECONDS) {
     throw Errors.forbidden("ENTITLEMENT_REQUIRED", "No playback entitlement remains");
   }
+}
+
+export function hasVodPlaybackDeliveryEvidence(): boolean {
+  return LIVE_PROVIDER_IMPLEMENTATIONS_READY;
+}
+
+export function unconfirmedAutoSettlement(): "release" {
+  void hasVodPlaybackDeliveryEvidence();
+  return "release";
+}
+
+export function allowedDebitSeconds(input: {
+  requestedSeconds: number;
+  unconfirmedCount: number;
+}): number {
+  if (input.unconfirmedCount > 0) return 0;
+  return Math.max(0, input.requestedSeconds);
 }
 
 export async function createReservationWindow(
@@ -164,10 +183,12 @@ export async function recoverReservations(
         reason: input.reason.slice(0, 191)
       }
     });
-    await db.playbackReservation.updateMany({
-      where: { leaseId: input.leaseId, status: "UNCONFIRMED" },
-      data: { status: "RELEASED" }
-    });
+    if (unconfirmedAutoSettlement() === "release") {
+      await db.playbackReservation.updateMany({
+        where: { leaseId: input.leaseId, status: "UNCONFIRMED" },
+        data: { status: "RELEASED" }
+      });
+    }
   }
   await db.playbackReservation.updateMany({
     where: {

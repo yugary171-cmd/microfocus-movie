@@ -192,9 +192,9 @@ flowchart LR
 | `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key` | `nonce/isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
 | `POST /v1/playback/leases` | viewer token；锁定集必须为用户 JWT；按认证主体限频 | `episodeId/deviceId` | 服务端重新判断免费状态；锁定内容预留首个短窗口预算，返回租约、外层 120 秒凭证、窗口授权、心跳周期和可分配余额 |
 | `GET /v1/playback/leases/active` | 用户 JWT | 无 | 查询本人活动租约、预留、未确认窗口和恢复动作；不依赖客户端保存旧 lease ID |
-| `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token | `seq`、前后媒体位置、倍速、播放状态、已使用窗口标识 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算 |
+| `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token | `seq`、前后媒体位置、倍速、播放状态、已使用窗口标识 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算。存在 UNCONFIRMED 窗口时 `debitedSeconds=0` 且 `reason=UNCONFIRMED_EXPOSURE`，不自动扣费 |
 | `POST /v1/playback/leases/:leaseId/renew` | 租约所属 viewer token | 当前租约 | 最近心跳合规时续签短凭证 |
-| `POST /v1/playback/leases/:leaseId/recover` | 用户 JWT + 近期重新认证证明 | `reason/deviceId/wechatCode` | 核验媒体交付证据后幂等结算、释放或转客服；自动宽限受滚动风险上限约束 |
+| `POST /v1/playback/leases/:leaseId/recover` | 用户 JWT + 近期重新认证证明 | `reason/deviceId/wechatCode` | 核验媒体交付证据后幂等结算、释放或转客服；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费；自动宽限受滚动风险上限约束 |
 | `DELETE /v1/playback/leases/:leaseId` | 租约所属 viewer token | 当前租约 | 主动关闭；重复关闭不得产生额外扣费 |
 
 ### 5.2 管理端
@@ -256,7 +256,7 @@ flowchart LR
 | 媒体审核 | `transcodeStatus`、`machineReviewStatus`、`manualReviewStatus`、`wechatReviewStatus` 分维度记录 | 只有媒体和转码 READY，且机审、人工审核、微信审核全部 APPROVED 时，媒体版本才整体可发布 |
 | Challenge | `PENDING → COMPLETED / EXPIRED / REJECTED`；受控晚到验证 `EXPIRED → COMPLETED_LATE` | 晚到迁移仅限可信 provider 证明广告在原 challenge 有效期内完成且事件处于允许回调延迟窗口；所有完成状态共享唯一 grant 约束 |
 | 播放租约 | `ACTIVE → REVOKED / CLOSED / EXPIRED` | 同一用户只有一个锁定内容活动租约；新租约撤销旧租约 |
-| 播放预留 | `RESERVED → DEBITED / RELEASED / UNCONFIRMED` | 每个锁定媒体窗口最多预留一个小结算周期；未确认暴露达到上限后停止签发新窗口和新租约 |
+| 播放预留 | `RESERVED → CONFIRMED / RELEASED / UNCONFIRMED` | 每个锁定媒体窗口最多预留一个小结算周期；未确认暴露达到上限后停止签发新窗口和新租约；无 VOD 交付日志时 UNCONFIRMED 不得自动转为扣费 |
 | 权益账本 | 发放、消费和 adjustment 事实不可变 | grant 的来源、初始秒数、剧目、过期时间不可修改；消费追加 debit，冻结、释放冻结和核销追加 adjustment。单笔 grant 的结余按初始秒数减 debit 和未释放冻结重建；总账本结余为未过期 grant 结余之和。可分配余额再扣除活动 reservation，二者均不得为负；`WRITE_OFF` 不再次改变用户余额 |
 
 状态变化必须由服务端执行并写入审计或业务事件；客户端不得本地推进权威状态。
