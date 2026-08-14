@@ -86,12 +86,21 @@ export interface DashboardCallbackOps {
   openProviderCircuits: string[];
 }
 
+export interface DashboardLedgerOps {
+  mismatchCount: number;
+  mismatchedSeconds: number;
+  missingGrants: number;
+  lastReconciledAt: string | null;
+  ledgerCircuitOpen: boolean;
+}
+
 export interface DashboardData {
   releaseGate: ReleaseGateStatus;
   statusCounts: Partial<Record<DramaStatus, number>>;
   reviewBacklog: number;
   metricSourceConfigured: boolean;
   callbackOps: DashboardCallbackOps;
+  ledgerOps: DashboardLedgerOps;
 }
 
 export interface ReviewItem {

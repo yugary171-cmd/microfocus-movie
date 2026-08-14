@@ -140,6 +140,13 @@ describe("admin API normalizers", () => {
       oldestUnprocessedAgeSeconds: null,
       openProviderCircuits: [],
     });
+    expect(result.ledgerOps).toEqual({
+      mismatchCount: 0,
+      mismatchedSeconds: 0,
+      missingGrants: 0,
+      lastReconciledAt: null,
+      ledgerCircuitOpen: false,
+    });
   });
 
   it("normalizes callback event lists without copying payload ciphertext", () => {

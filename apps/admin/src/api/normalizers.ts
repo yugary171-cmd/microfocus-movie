@@ -166,6 +166,7 @@ export function normalizeDashboard(value: unknown, gateValue: unknown): Dashboar
     ),
     metricSourceConfigured: source.metricSourceConfigured === true,
     callbackOps: normalizeCallbackOps(source.callbackOps),
+    ledgerOps: normalizeLedgerOps(source.ledgerOps),
   };
 }
 
@@ -180,6 +181,18 @@ function normalizeCallbackOps(value: unknown): DashboardData["callbackOps"] {
     openProviderCircuits: array(source.openProviderCircuits).filter(
       (item): item is string => typeof item === "string" && item.startsWith("PROVIDER:"),
     ),
+  };
+}
+
+function normalizeLedgerOps(value: unknown): DashboardData["ledgerOps"] {
+  const source = record(value);
+  const lastReconciledAt = text(source.lastReconciledAt);
+  return {
+    mismatchCount: Math.max(0, Math.round(finiteNumber(source.mismatchCount))),
+    mismatchedSeconds: Math.max(0, Math.round(finiteNumber(source.mismatchedSeconds))),
+    missingGrants: Math.max(0, Math.round(finiteNumber(source.missingGrants))),
+    lastReconciledAt: lastReconciledAt || null,
+    ledgerCircuitOpen: source.ledgerCircuitOpen === true,
   };
 }
 

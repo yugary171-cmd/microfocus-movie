@@ -26,7 +26,7 @@
 | --- | --- | --- |
 | 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致；微信登录按连接 IP 限频，管理员登录按 IP+邮箱限频 | 可删除数据清理依赖未批准的保留矩阵 |
 | 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN；权利到期任务将无覆盖权利的已发布剧目自动下架并撤销活动租约 | 真实 VOD 发布链路未实现 |
-| 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant | 可信广告验证未接真实平台 |
+| 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant；后台任务按 grant/debit/冻结事实重建余额，差异打开 `PROVIDER:LEDGER` | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约按认证主体限频 | 无真实 VOD 交付日志时 UNCONFIRMED 不自动扣费 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌；搜索按连接 IP 限频 | 完整法定清理尚未实现 |
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：权益账本周期对账：按 grant、debit、冻结/解冻重建 `remainingSeconds`，并检查已完成 challenge 是否有唯一 grant。`WRITE_OFF` 不参与余额重建。发现差异写入 `LEDGER_RECONCILED` 并打开 `PROVIDER:LEDGER`，不改写原事实；工作台展示最近一次对账。不自动关闭熔断。
 - 2026-08-14：登录、搜索、播放租约签发和 VOD/奖励回调使用 Prisma `RateLimitBucket` 限频；键取连接 `socket.remoteAddress` 或已认证主体，不信任 `X-Forwarded-For`。超限返回 `RATE_LIMITED`。后台任务删除超过 24 小时的桶。
 - 2026-08-14：健康检查区分存活 `/health/live` 与就绪 `/health/ready`（`/health` 仍表示就绪）。进程关闭时进入排水，就绪返回 `NOT_READY`，后台任务停止新一轮；不抢其他实例的回调处理租约，未完成回调靠 `processingUntil` 到期后重试。
 - 2026-08-14：回调死信打开对应 `PROVIDER:VOD` / `PROVIDER:WECHAT` 熔断，并在管理端工作台展示死信数、可重试失败、最老未处理年龄；不自动打开 GLOBAL。重放后需管理员另行关闭 provider 熔断。

@@ -62,7 +62,7 @@ export class RewardsController {
       userId,
       dramaId: body.dramaId,
       adUnitId: this.config.env.WECHAT_REWARDED_AD_UNIT_ID,
-      providers: ["WECHAT"]
+      providers: ["WECHAT", "LEDGER"]
     });
     if (
       this.config.env.WECHAT_REWARD_VERIFICATION === "client_attestation" &&
@@ -147,7 +147,7 @@ export class RewardsController {
         userId,
         dramaId: challenge.dramaId,
         adUnitId: this.config.env.WECHAT_REWARDED_AD_UNIT_ID,
-        providers: ["WECHAT"]
+        providers: ["WECHAT", "LEDGER"]
       });
       if (challenge.grant) return grantResult(challenge.grant);
       if (challenge.status !== "PENDING") {

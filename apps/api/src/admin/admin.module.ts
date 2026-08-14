@@ -261,7 +261,16 @@ export class AdminController {
   async dashboard(@CurrentPrincipal() principal: Principal) {
     const admin = requireAdmin(principal);
     const scope = editorScope(admin);
-    const [statusGroups, pendingReviews, deadLetterCount, retryableCount, oldestUnprocessed, openProviderCircuits] =
+    const [
+      statusGroups,
+      pendingReviews,
+      deadLetterCount,
+      retryableCount,
+      oldestUnprocessed,
+      openProviderCircuits,
+      ledgerEvent,
+      ledgerCircuit
+    ] =
       await Promise.all([
       this.prisma.drama.groupBy({
         by: ["status"],
@@ -289,6 +298,15 @@ export class AdminController {
       this.prisma.circuitBreaker.findMany({
         where: { provider: { startsWith: "PROVIDER:" }, state: "OPEN" },
         select: { provider: true }
+      }),
+      this.prisma.operationalEvent.findFirst({
+        where: { eventType: "LEDGER_RECONCILED" },
+        orderBy: { occurredAt: "desc" },
+        select: { occurredAt: true, value: true, metadataJson: true }
+      }),
+      this.prisma.circuitBreaker.findUnique({
+        where: { provider: "PROVIDER:LEDGER" },
+        select: { state: true }
       })
     ]);
     const statusCounts = Object.fromEntries(
@@ -297,6 +315,11 @@ export class AdminController {
     const oldestUnprocessedAgeSeconds = oldestUnprocessed
       ? Math.max(0, Math.floor((Date.now() - oldestUnprocessed.receivedAt.getTime()) / 1000))
       : null;
+    const ledgerMeta = ledgerEvent?.metadataJson;
+    const ledgerRecord =
+      ledgerMeta && typeof ledgerMeta === "object" && !Array.isArray(ledgerMeta)
+        ? (ledgerMeta as Record<string, unknown>)
+        : {};
     return {
       releaseGate: this.releaseGate(),
       statusCounts,
@@ -307,6 +330,19 @@ export class AdminController {
         retryableCount,
         oldestUnprocessedAgeSeconds,
         openProviderCircuits: openProviderCircuits.map((row) => row.provider)
+      },
+      ledgerOps: {
+        mismatchCount: Math.max(0, ledgerEvent?.value ?? 0),
+        mismatchedSeconds:
+          typeof ledgerRecord.mismatchedSeconds === "number"
+            ? Math.max(0, Math.round(ledgerRecord.mismatchedSeconds))
+            : 0,
+        missingGrants:
+          typeof ledgerRecord.missingGrants === "number"
+            ? Math.max(0, Math.round(ledgerRecord.missingGrants))
+            : 0,
+        lastReconciledAt: ledgerEvent?.occurredAt.toISOString() ?? null,
+        ledgerCircuitOpen: ledgerCircuit?.state === "OPEN"
       }
     };
   }

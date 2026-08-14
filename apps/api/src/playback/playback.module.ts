@@ -139,7 +139,7 @@ export class PlaybackController {
     await assertCircuitsClosed(this.prisma, {
       ...(actor.kind === "user" ? { userId: actor.userId } : {}),
       ...(episode?.dramaId ? { dramaId: episode.dramaId } : {}),
-      providers: ["VOD"]
+      providers: ["VOD", "LEDGER"]
     });
     const rights = episode?.drama.rightsRecords.find(
       (record) => record.validFrom <= now && record.validUntil > now
@@ -368,7 +368,7 @@ export class PlaybackController {
       await assertCircuitsClosed(tx, {
         ...(actor.kind === "user" ? { userId: actor.userId } : {}),
         dramaId: lease.episode.dramaId,
-        providers: ["VOD"]
+        providers: ["VOD", "LEDGER"]
       });
       const online =
         lease.episode.drama.status === "PUBLISHED" &&
@@ -551,7 +551,7 @@ export class PlaybackController {
     await assertCircuitsClosed(this.prisma, {
       ...(actor.kind === "user" ? { userId: actor.userId } : {}),
       dramaId: lease.episode.dramaId,
-      providers: ["VOD"]
+      providers: ["VOD", "LEDGER"]
     });
     if (
       lease.episode.drama.status !== "PUBLISHED" ||

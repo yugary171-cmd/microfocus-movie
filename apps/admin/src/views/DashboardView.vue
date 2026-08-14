@@ -40,6 +40,13 @@ function formatAge(seconds: number): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
   return `${Math.floor(seconds / 3600)}h`;
 }
+
+function ledgerAgeLabel(value: string | null): string {
+  if (!value) return "—";
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return "—";
+  return formatAge(Math.max(0, Math.floor((Date.now() - parsed) / 1000)));
+}
 </script>
 
 <template>
@@ -90,6 +97,27 @@ function formatAge(seconds: number): string {
         </p>
         <RouterLink class="text-link" to="/operations">去运营控制处理 <span aria-hidden="true">→</span></RouterLink>
       </section>
+      <section class="panel ledger-panel" aria-labelledby="ledger-ops-title">
+        <div class="panel__header">
+          <div><p class="eyebrow">LEDGER</p><h2 id="ledger-ops-title">权益对账</h2></div>
+          <StatusBadge
+            :label="data.ledgerOps.ledgerCircuitOpen || data.ledgerOps.mismatchCount ? '账本差异' : '账本一致'"
+            :tone="data.ledgerOps.ledgerCircuitOpen || data.ledgerOps.mismatchCount ? 'danger' : 'success'"
+          />
+        </div>
+        <div class="status-grid callback-grid">
+          <div><strong>{{ data.ledgerOps.mismatchCount }}</strong><span>差异笔数</span></div>
+          <div><strong>{{ data.ledgerOps.mismatchedSeconds }}</strong><span>差异秒数</span></div>
+          <div><strong>{{ data.ledgerOps.missingGrants }}</strong><span>完成无 grant</span></div>
+          <div>
+            <strong>{{ ledgerAgeLabel(data.ledgerOps.lastReconciledAt) }}</strong>
+            <span>距上次对账</span>
+          </div>
+        </div>
+        <p class="callback-help">
+          周期对账只对照 grant、debit 和冻结/解冻事实重建余额，不改写原记录。发现差异会打开 `PROVIDER:LEDGER` 并暂停新奖励与锁定播放；需管理员核对后关闭熔断。
+        </p>
+      </section>
       <section class="panel metrics-panel" aria-labelledby="metrics-title">
         <div class="panel__header">
           <div><p class="eyebrow">GREY RELEASE</p><h2 id="metrics-title">关键灰度指标</h2></div>
@@ -121,6 +149,7 @@ function formatAge(seconds: number): string {
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr); gap: 18px; }
 .metrics-panel { grid-column: 1 / 2; }
 .callback-panel { grid-column: 1 / -1; }
+.ledger-panel { grid-column: 1 / -1; }
 .callback-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .callback-help { margin: 14px 0 0; color: var(--color-muted); font-size: 12px; line-height: 1.5; }
 .status-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
@@ -138,6 +167,6 @@ function formatAge(seconds: number): string {
 .principles-panel li { display: flex; align-items: center; gap: 11px; }
 .principles-panel li > span { color: #9ba8b9; font-size: 11px; font-weight: 800; }
 .principles-panel li > div { display: flex; flex-direction: column; }
-@media (max-width: 1150px) { .dashboard-grid { grid-template-columns: 1fr; } .metrics-panel, .callback-panel { grid-column: auto; } }
+@media (max-width: 1150px) { .dashboard-grid { grid-template-columns: 1fr; } .metrics-panel, .callback-panel, .ledger-panel { grid-column: auto; } }
 @media (max-width: 580px) { .status-grid, .callback-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>

@@ -204,7 +204,7 @@ flowchart LR
 | 方法与路径 | 角色 | 所有权/状态约束 | 用途 |
 | --- | --- | --- | --- |
 | `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱、密码、OTP | 换管理员 JWT |
-| `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断 |
+| `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
 | `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围 | 列表和详情 |
 | `POST /v1/admin/dramas` | EDITOR | 创建者成为负责人 | 创建草稿 |

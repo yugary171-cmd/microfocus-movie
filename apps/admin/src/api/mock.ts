@@ -293,6 +293,13 @@ export const mockApi = {
         oldestUnprocessedAgeSeconds: null,
         openProviderCircuits: [],
       },
+      ledgerOps: {
+        mismatchCount: 0,
+        mismatchedSeconds: 0,
+        missingGrants: 0,
+        lastReconciledAt: null,
+        ledgerCircuitOpen: false,
+      },
     });
   },
   async releaseGate(): Promise<ReleaseGateStatus> {

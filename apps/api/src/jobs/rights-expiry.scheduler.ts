@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { ProcessDrain } from "../operations/process-drain.js";
 import { pruneRateLimitBuckets } from "../security/rate-limit.js";
 import { runCallbackPayloadPurgeJob } from "./callback-payload-purge.js";
+import { runLedgerReconcileJob } from "./ledger-reconcile.js";
 import { runRightsExpiryJob } from "./rights-expiry.js";
 
 const TICK_MS = 60_000;
@@ -49,6 +50,12 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
       const pruned = await pruneRateLimitBuckets(this.prisma);
       if (pruned > 0) {
         this.logger.log(`rate limit buckets pruned=${pruned}`);
+      }
+      const ledger = await runLedgerReconcileJob(this.prisma as never, { ownerId });
+      if (ledger.acquired && ledger.mismatchCount > 0) {
+        this.logger.warn(
+          `ledger reconcile mismatches=${ledger.mismatchCount} seconds=${ledger.mismatchedSeconds}`
+        );
       }
     } catch (error) {
       this.logger.error("background jobs failed", error instanceof Error ? error.stack : error);
