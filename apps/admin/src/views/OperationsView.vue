@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { AdminRole } from "@microfocus/contracts";
+import {
+  ADMIN_REASON_MAX_LENGTH,
+  ADMIN_REASON_MIN_LENGTH,
+  AdminRole,
+  COMPENSATION_SECONDS_MIN,
+  ENTITLEMENT_SECONDS_MAX
+} from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -88,8 +94,16 @@ async function toggleBreaker(reason: string): Promise<void> {
 function validateCompensation(): string {
   if (!compensation.userId.trim()) return "请输入用户 ID";
   if (!compensation.dramaId.trim()) return "请输入剧目 ID";
-  if (!Number.isInteger(compensation.seconds) || compensation.seconds < 60 || compensation.seconds > 86_400) return "补偿时长应为 60–86400 秒的整数";
-  if (compensation.reason.trim().length < 6) return "请填写至少 6 个字的补偿原因";
+  if (
+    !Number.isInteger(compensation.seconds) ||
+    compensation.seconds < COMPENSATION_SECONDS_MIN ||
+    compensation.seconds > ENTITLEMENT_SECONDS_MAX
+  ) {
+    return `补偿时长应为 ${COMPENSATION_SECONDS_MIN}–${ENTITLEMENT_SECONDS_MAX} 秒的整数`;
+  }
+  if (compensation.reason.trim().length < ADMIN_REASON_MIN_LENGTH) {
+    return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的补偿原因`;
+  }
   return "";
 }
 
@@ -133,10 +147,16 @@ async function grantCompensation(): Promise<void> {
 
 function validateAdjustment(): string {
   if (!adjustment.grantId.trim()) return "请输入 grant ID";
-  if (!Number.isInteger(adjustment.seconds) || adjustment.seconds < 1 || adjustment.seconds > 86_400) {
-    return "纠错秒数应为 1–86400 的整数";
+  if (
+    !Number.isInteger(adjustment.seconds) ||
+    adjustment.seconds < 1 ||
+    adjustment.seconds > ENTITLEMENT_SECONDS_MAX
+  ) {
+    return `纠错秒数应为 1–${ENTITLEMENT_SECONDS_MAX} 的整数`;
   }
-  if (adjustment.reason.trim().length < 6) return "请填写至少 6 个字的纠错原因";
+  if (adjustment.reason.trim().length < ADMIN_REASON_MIN_LENGTH) {
+    return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的纠错原因`;
+  }
   if (adjustment.type === "RELEASE_FREEZE" && !adjustment.freezeAdjustmentId?.trim()) {
     return "释放冻结必须填写原冻结记录 ID";
   }
@@ -311,8 +331,8 @@ onMounted(load);
             <div class="form-grid">
               <label class="field"><span>用户 ID *</span><input v-model="compensation.userId" required autocomplete="off" placeholder="用户内部 ID" /></label>
               <label class="field"><span>剧目 ID *</span><input v-model="compensation.dramaId" required autocomplete="off" placeholder="drama-…" /></label>
-              <label class="field"><span>补偿时长（秒）*</span><input v-model.number="compensation.seconds" type="number" min="60" max="86400" step="60" required /></label>
-              <label class="field field--wide"><span>补偿原因 *</span><textarea v-model="compensation.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明事故、工单或用户影响" /></label>
+              <label class="field"><span>补偿时长（秒）*</span><input v-model.number="compensation.seconds" type="number" :min="COMPENSATION_SECONDS_MIN" :max="ENTITLEMENT_SECONDS_MAX" :step="COMPENSATION_SECONDS_MIN" required /></label>
+              <label class="field field--wide"><span>补偿原因 *</span><textarea v-model="compensation.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单或用户影响" /></label>
             </div>
             <p class="form-help">权益授予不可在浏览器中撤回；服务端将验证管理员权限、范围和幂等性。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并授予</button>
@@ -330,10 +350,10 @@ onMounted(load);
                 </select>
               </label>
               <label class="field"><span>Grant ID *</span><input v-model="adjustment.grantId" required autocomplete="off" placeholder="grant-…" /></label>
-              <label class="field"><span>秒数 *</span><input v-model.number="adjustment.seconds" type="number" min="1" max="86400" required /></label>
+              <label class="field"><span>秒数 *</span><input v-model.number="adjustment.seconds" type="number" min="1" :max="ENTITLEMENT_SECONDS_MAX" required /></label>
               <label v-if="adjustment.type === 'RELEASE_FREEZE'" class="field"><span>原冻结记录 ID *</span><input v-model="adjustment.freezeAdjustmentId" required autocomplete="off" placeholder="adjustment-…" /></label>
-              <label class="field field--wide"><span>原因 *</span><textarea v-model="adjustment.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明事故、工单与为何不能改原 grant/debit" /></label>
-              <label class="field field--wide"><span>审批记录</span><textarea v-model="adjustment.approvalNote" rows="2" maxlength="300" placeholder="可选：审批人/工单号" /></label>
+              <label class="field field--wide"><span>原因 *</span><textarea v-model="adjustment.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单与为何不能改原 grant/debit" /></label>
+              <label class="field field--wide"><span>审批记录</span><textarea v-model="adjustment.approvalNote" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
             <p class="form-help">冻结会降低可播放余额；释放冻结必须引用原冻结记录且不超过未释放秒数；核销只记事故，不再次改变用户余额。补偿请用上方独立授予，不要改历史 grant。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并写入纠错</button>

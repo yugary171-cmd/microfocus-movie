@@ -2,12 +2,17 @@ import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_REASON_MAX_LENGTH,
+  ADMIN_REASON_MIN_LENGTH,
+  COMPENSATION_SECONDS_MIN,
   DRAMA_EPISODE_MAX_COUNT,
   DRAMA_TAG_MAX_COUNT,
   DRAMA_TITLE_MAX_LENGTH,
+  ENTITY_ID_MAX_LENGTH,
+  ENTITLEMENT_SECONDS_MAX,
   EPISODE_DURATION_SECONDS_MAX
 } from "@microfocus/contracts";
-import { CreateDramaDto, RightsDto } from "./admin.module.js";
+import { AdjustEntitlementDto, CompensateDto, CreateDramaDto, RightsDto } from "./admin.module.js";
 
 function validDrama(overrides: Record<string, unknown> = {}) {
   return {
@@ -85,5 +90,60 @@ describe("admin content input limits", () => {
       })
     );
     expect(rights.some((error) => error.property === "rightsHolder")).toBe(true);
+  });
+});
+
+function validCompensation(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: "user-1",
+    dramaId: "drama-1",
+    seconds: 600,
+    expiresAt: "2026-08-15T00:00:00.000Z",
+    reason: "事故补偿工单",
+    ...overrides
+  };
+}
+
+describe("admin entitlement write input limits", () => {
+  it("accepts a bounded compensation payload", async () => {
+    expect(await validate(plainToInstance(CompensateDto, validCompensation()))).toEqual([]);
+  });
+
+  it("rejects compensation seconds outside 60–86400 and oversized ids or reasons", async () => {
+    const tooSmall = await validate(
+      plainToInstance(CompensateDto, validCompensation({ seconds: COMPENSATION_SECONDS_MIN - 1 }))
+    );
+    expect(tooSmall.some((error) => error.property === "seconds")).toBe(true);
+
+    const tooLarge = await validate(
+      plainToInstance(CompensateDto, validCompensation({ seconds: ENTITLEMENT_SECONDS_MAX + 1 }))
+    );
+    expect(tooLarge.some((error) => error.property === "seconds")).toBe(true);
+
+    const longUserId = await validate(
+      plainToInstance(CompensateDto, validCompensation({ userId: "u".repeat(ENTITY_ID_MAX_LENGTH + 1) }))
+    );
+    expect(longUserId.some((error) => error.property === "userId")).toBe(true);
+
+    const shortReason = await validate(
+      plainToInstance(CompensateDto, validCompensation({ reason: "x".repeat(ADMIN_REASON_MIN_LENGTH - 1) }))
+    );
+    expect(shortReason.some((error) => error.property === "reason")).toBe(true);
+
+    const longReason = await validate(
+      plainToInstance(CompensateDto, validCompensation({ reason: "x".repeat(ADMIN_REASON_MAX_LENGTH + 1) }))
+    );
+    expect(longReason.some((error) => error.property === "reason")).toBe(true);
+  });
+
+  it("rejects entitlement adjustment seconds above the shared max", async () => {
+    const dto = plainToInstance(AdjustEntitlementDto, {
+      type: "WRITE_OFF",
+      grantId: "grant-1",
+      seconds: ENTITLEMENT_SECONDS_MAX + 1,
+      reason: "事故核销说明"
+    });
+    const errors = await validate(dto);
+    expect(errors.some((error) => error.property === "seconds")).toBe(true);
   });
 });

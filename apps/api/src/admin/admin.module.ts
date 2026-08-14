@@ -12,7 +12,10 @@ import {
 } from "@nestjs/common";
 import {
   API_ROUTES,
+  ADMIN_REASON_MAX_LENGTH,
+  ADMIN_REASON_MIN_LENGTH,
   AdminRole,
+  COMPENSATION_SECONDS_MIN,
   COVER_URL_MAX_LENGTH,
   CallbackEventStatus,
   DRAMA_CATEGORY_MAX_LENGTH,
@@ -21,6 +24,8 @@ import {
   DRAMA_TAG_MAX_COUNT,
   DRAMA_TAG_MAX_LENGTH,
   DRAMA_TITLE_MAX_LENGTH,
+  ENTITY_ID_MAX_LENGTH,
+  ENTITLEMENT_SECONDS_MAX,
   EPISODE_DURATION_SECONDS_MAX,
   EPISODE_TITLE_MAX_LENGTH,
   EntitlementAdjustmentType,
@@ -190,28 +195,30 @@ class OfflineDto {
   @IsString() @Length(6, 500) reason!: string;
 }
 
-class CompensateDto {
-  @IsString() userId!: string;
-  @IsString() dramaId!: string;
-  @IsInt() @Min(1) seconds!: number;
+export class CompensateDto {
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) userId!: string;
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) dramaId!: string;
+  @IsInt() @Min(COMPENSATION_SECONDS_MIN) @Max(ENTITLEMENT_SECONDS_MAX) seconds!: number;
   @IsDateString() expiresAt!: string;
-  @IsString() @Length(1, 500) reason!: string;
+  @IsString() @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH) reason!: string;
 }
 
-class AdjustEntitlementDto implements CreateEntitlementAdjustmentRequest {
+export class AdjustEntitlementDto implements CreateEntitlementAdjustmentRequest {
   @IsIn(Object.values(EntitlementAdjustmentType))
   type!: EntitlementAdjustmentType;
 
   @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   grantId!: string;
 
   @IsInt()
   @Min(1)
-  @Max(86_400)
+  @Max(ENTITLEMENT_SECONDS_MAX)
   seconds!: number;
 
   @IsString()
-  @Length(6, 300)
+  @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH)
   reason!: string;
 
   @IsOptional()
@@ -220,15 +227,17 @@ class AdjustEntitlementDto implements CreateEntitlementAdjustmentRequest {
 
   @IsOptional()
   @IsString()
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   sourceFactId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   freezeAdjustmentId?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(300)
+  @MaxLength(ADMIN_REASON_MAX_LENGTH)
   approvalNote?: string;
 }
 

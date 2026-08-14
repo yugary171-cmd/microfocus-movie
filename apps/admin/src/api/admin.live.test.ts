@@ -85,7 +85,7 @@ describe("live admin API adapter", () => {
       userId: "user-1",
       dramaId: "drama-1",
       seconds: 600,
-      reason: "事故补偿",
+      reason: "事故补偿工单",
     });
 
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
@@ -97,7 +97,7 @@ describe("live admin API adapter", () => {
       userId: "user-1",
       dramaId: "drama-1",
       seconds: 600,
-      reason: "事故补偿",
+      reason: "事故补偿工单",
       expiresAt: "2026-08-13T00:00:00.000Z",
     });
     expect(new Headers(compensateInit?.headers).get("Idempotency-Key")).toMatch(/^c:[a-f0-9]{64}$/);
