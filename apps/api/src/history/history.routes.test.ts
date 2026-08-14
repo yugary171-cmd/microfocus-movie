@@ -41,4 +41,29 @@ describe("history routes", () => {
     );
     expect(prisma.episode.findFirst).not.toHaveBeenCalled();
   });
+
+  it("rate-limits history reads by authenticated user", async () => {
+    expect(RATE_LIMITS.watchHistory).toEqual({ limit: 30, windowMs: 60_000 });
+    const prisma = {
+      rateLimitBucket: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ windowStart: new Date(), count: 99 }),
+        create: vi.fn(),
+        deleteMany: vi.fn()
+      },
+      watchProgress: { findMany: vi.fn() }
+    };
+    const controller = new HistoryController(prisma as never);
+    await expect(
+      controller.history({ kind: "user", sub: "user-1" } as never)
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("watchHistory", "user:user-1")
+        })
+      })
+    );
+    expect(prisma.watchProgress.findMany).not.toHaveBeenCalled();
+  });
 });

@@ -221,6 +221,11 @@ export class PlaybackController {
   @Get("active")
   async active(@CurrentPrincipal() principal: Principal): Promise<ActivePlaybackLeaseResponse> {
     const userId = requireUser(principal);
+    await assertNamedRateLimit(this.prisma, "playbackActive", `user:${userId}`);
+    return this.loadActiveLease(userId);
+  }
+
+  private async loadActiveLease(userId: string): Promise<ActivePlaybackLeaseResponse> {
     const now = new Date();
     const activeLease = await this.prisma.playbackLease.findFirst({
       where: { userId, status: "ACTIVE" },
@@ -659,7 +664,7 @@ export class PlaybackController {
         now: new Date()
       });
     });
-    return this.active(principal);
+    return this.loadActiveLease(userId);
   }
 
   @Delete(":leaseId")

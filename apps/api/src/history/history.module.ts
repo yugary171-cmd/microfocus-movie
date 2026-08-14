@@ -36,6 +36,7 @@ export class HistoryController {
   @Get(controllerPath(API_ROUTES.history))
   async history(@CurrentPrincipal() principal: Principal): Promise<WatchHistoryItem[]> {
     const userId = requireUser(principal);
+    await assertNamedRateLimit(this.prisma, "watchHistory", `user:${userId}`);
     const rows = await this.prisma.watchProgress.findMany({
       where: { userId },
       include: {

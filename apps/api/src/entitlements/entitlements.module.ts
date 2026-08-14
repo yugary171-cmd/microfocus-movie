@@ -7,6 +7,7 @@ import {
   type Principal
 } from "../security/security.js";
 import { requireUser } from "../history/history.module.js";
+import { assertNamedRateLimit } from "../security/rate-limit.js";
 
 @Controller("v1/entitlements")
 @UseGuards(JwtAuthGuard)
@@ -19,6 +20,7 @@ export class EntitlementsController {
     @Param("dramaId") dramaId: string
   ): Promise<EntitlementSummary> {
     const userId = requireUser(principal);
+    await assertNamedRateLimit(this.prisma, "entitlementSummary", `user:${userId}`);
     const grants = await this.prisma.entitlementGrant.findMany({
       where: {
         userId,

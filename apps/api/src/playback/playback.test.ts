@@ -325,4 +325,29 @@ describe("playback renewal", () => {
       })
     );
   });
+
+  it("rate-limits active lease reads by authenticated user", async () => {
+    expect(RATE_LIMITS.playbackActive).toEqual({ limit: 30, windowMs: 60_000 });
+    const prisma = {
+      rateLimitBucket: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ windowStart: new Date(), count: 99 }),
+        create: vi.fn(),
+        deleteMany: vi.fn()
+      },
+      playbackLease: { findFirst: vi.fn() }
+    };
+    const controller = createController(prisma);
+    await expect(controller.active({ kind: "user", sub: "user-1" })).rejects.toMatchObject({
+      code: "RATE_LIMITED"
+    });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("playbackActive", "user:user-1")
+        })
+      })
+    );
+    expect(prisma.playbackLease.findFirst).not.toHaveBeenCalled();
+  });
 });
