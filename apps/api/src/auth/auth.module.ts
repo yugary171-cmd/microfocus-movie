@@ -1,7 +1,12 @@
 import { Body, Controller, Module, Post } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { API_ROUTES, type WechatLoginResponse } from "@microfocus/contracts";
-import { IsEmail, IsString, MinLength } from "class-validator";
+import {
+  ANONYMOUS_VIEWER_TTL_SECONDS,
+  API_ROUTES,
+  type AnonymousSessionResponse,
+  type WechatLoginResponse
+} from "@microfocus/contracts";
+import { IsEmail, IsString, MaxLength, MinLength } from "class-validator";
 import { compare } from "bcryptjs";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { controllerPath } from "../common/http.js";
@@ -15,6 +20,18 @@ class WechatLoginDto {
   @IsString()
   @MinLength(1)
   code!: string;
+}
+
+class AnonymousSessionDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  deviceId!: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  sessionId!: string;
 }
 
 class AdminLoginDto {
@@ -53,6 +70,39 @@ export class AuthController {
         { expiresIn: "2h" }
       ),
       user: { id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl }
+    };
+  }
+
+  @Post(controllerPath(API_ROUTES.auth.anonymous))
+  async anonymousSession(@Body() body: AnonymousSessionDto): Promise<AnonymousSessionResponse> {
+    const deviceId = body.deviceId.trim().slice(0, 128);
+    const sessionId = body.sessionId.trim().slice(0, 128);
+    const now = new Date();
+    const existing = await this.prisma.anonymousViewerSession.findUnique({
+      where: { deviceId_sessionId: { deviceId, sessionId } }
+    });
+    if (!existing) {
+      const windowStart = new Date(now.getTime() - 10 * 60 * 1000);
+      const recent = await this.prisma.anonymousViewerSession.count({
+        where: { deviceId, createdAt: { gte: windowStart } }
+      });
+      if (recent >= 10) {
+        throw Errors.rateLimited("Too many anonymous sessions for this device");
+      }
+    }
+    const expiresAt = new Date(now.getTime() + ANONYMOUS_VIEWER_TTL_SECONDS * 1000);
+    const session = await this.prisma.anonymousViewerSession.upsert({
+      where: { deviceId_sessionId: { deviceId, sessionId } },
+      create: { deviceId, sessionId, expiresAt, lastIssuedAt: now },
+      update: { expiresAt, lastIssuedAt: now }
+    });
+    return {
+      accessToken: await this.jwt.signAsync(
+        { sub: session.id, kind: "viewer", deviceId },
+        { expiresIn: ANONYMOUS_VIEWER_TTL_SECONDS }
+      ),
+      expiresAt: expiresAt.toISOString(),
+      tokenKind: "viewer"
     };
   }
 

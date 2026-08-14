@@ -93,6 +93,19 @@ model User {
   progress    WatchProgress[]
 }
 
+model AnonymousViewerSession {
+  id           String          @id @default(cuid())
+  deviceId     String          @db.VarChar(128)
+  sessionId    String          @db.VarChar(128)
+  expiresAt    DateTime
+  lastIssuedAt DateTime
+  createdAt    DateTime        @default(now())
+  leases       PlaybackLease[]
+
+  @@unique([deviceId, sessionId])
+  @@index([deviceId, createdAt])
+}
+
 model AdminUser {
   id           String      @id @default(cuid())
   email        String      @unique
@@ -249,8 +262,10 @@ model EntitlementGrant {
 
 model PlaybackLease {
   id               String              @id @default(cuid())
-  userId           String
-  user             User                @relation(fields: [userId], references: [id])
+  userId           String?
+  user             User?               @relation(fields: [userId], references: [id])
+  viewerSessionId  String?
+  viewerSession    AnonymousViewerSession? @relation(fields: [viewerSessionId], references: [id])
   episodeId        String
   episode           Episode             @relation(fields: [episodeId], references: [id])
   deviceId         String
@@ -268,6 +283,7 @@ model PlaybackLease {
   debits           EntitlementDebit[]
 
   @@index([userId, status])
+  @@index([viewerSessionId, status])
 }
 
 model PlaybackHeartbeat {

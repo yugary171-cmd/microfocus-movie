@@ -103,6 +103,12 @@ export const mockApi: ClientApi = {
       }
     });
   },
+  authAnonymous: (input) =>
+    delay({
+      accessToken: `internal-mock-viewer-${input.sessionId.slice(0, 8)}`,
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      tokenKind: "viewer" as const
+    }),
   getCatalog: () => delay(catalog),
   search: (query, category, page): Promise<SearchResponse> => {
     const normalized = query.trim().toLowerCase();

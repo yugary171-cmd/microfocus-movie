@@ -24,19 +24,19 @@
 
 | 领域 | 当前已实现 | 部分实现或仅目标设计 |
 | --- | --- | --- |
-| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP | 匿名 viewer token、注销申请及原子撤权尚未实现 |
+| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约） | 注销申请及原子撤权尚未实现 |
 | 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN | 真实 VOD 发布链路未实现 |
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一 | 可信广告验证未接真实平台；adjustment、晚到奖励和死信重放尚未实现 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费 | 当前仍主要依赖客户端心跳；短媒体窗口、reservation、未确认暴露、活动租约查询/恢复尚未实现 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重和处理租约 | 加密规范化载荷、明确死信状态、管理员审计重放尚未实现 |
-| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描 | 目标匿名/恢复/注销交互尚未实现 |
+| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话 | 目标恢复/注销交互尚未实现 |
 | 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门 | Live provider、TOTP 安全轮换和真实发布证据尚未完成 |
 
 ## 下一步（Now）
 
 工程（不加功能）：
 
-1. 按实现矩阵逐项补齐匿名会话、播放 reservation/恢复、权益 adjustment、注销和死信重放；每项先更新 `packages/contracts`，再实现服务端和客户端。
+1. 按实现矩阵逐项补齐播放 reservation/恢复、权益 adjustment、注销和死信重放；每项先更新 `packages/contracts`，再实现服务端和客户端。
 2. 不自动推送；后续提交需人工确认。
 
 产品（与工程并行）：
@@ -55,7 +55,7 @@
 
 ## 历史
 
-- 2026-08-14：管理端/观看端统一 Live API 构建注入；`build:admin:live` / `build:uniapp:live` 缺少 HTTPS API 或含 Demo 媒体时失败。
+- 2026-08-14：实现匿名 viewer token（`POST /v1/auth/anonymous`），仅可申请和维护免费集租约；用户/管理员令牌不可互换。
 - 2026-08-14：本地 Docker MySQL 为 Prisma `migrate dev` 影子库补齐 `CREATE DATABASE` 权限（init 脚本；已有数据卷需一次性 GRANT）。
 - 2026-08-14：新增 [deployment.md](./deployment.md)，集中说明数据库、API 托管与各端共用关系。
 - 2026-08-14：收紧管理端角色/所有权，并为人工补偿增加 `Idempotency-Key` 与 `EntitlementGrant.compensationKey` 唯一约束。

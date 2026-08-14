@@ -1,4 +1,4 @@
-import type { ApiError, ApiSuccess } from "@microfocus/contracts";
+import { ERROR_CODES, type AnonymousSessionResponse, type ApiError, type ApiSuccess } from "@microfocus/contracts";
 import { RUNTIME_CONFIG } from "../config/runtime";
 import { API_ROUTES } from "../constants/routes";
 import { mockApi } from "../mocks/data";
@@ -14,7 +14,11 @@ import { ApiClientError } from "../utils/errors";
 
 const ACCESS_TOKEN_KEY = "microfocus.access-token";
 const SESSION_USER_KEY = "microfocus.session-user";
+const VIEWER_TOKEN_KEY = "microfocus.viewer-token";
+const DEVICE_ID_KEY = "microfocus.device-id";
+const VIEWER_SESSION_ID_KEY = "microfocus.viewer-session-id";
 let sessionRefreshPromise: Promise<AuthSession> | null = null;
+let viewerTokenPromise: Promise<string> | null = null;
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -67,6 +71,72 @@ export function getStoredSession(): AuthSession | null {
   }
 }
 
+function createLocalId(prefix: string): string {
+  return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getOrCreateStorageId(key: string, prefix: string): string {
+  try {
+    const existing = getStorageSync<string>(key);
+    if (typeof existing === "string" && existing.length >= 8) return existing;
+  } catch {
+    // continue
+  }
+  const created = createLocalId(prefix);
+  setStorageSync(key, created);
+  return created;
+}
+
+function getStoredViewerToken(): string {
+  try {
+    return (getStorageSync<string>(VIEWER_TOKEN_KEY) as string) || "";
+  } catch {
+    return "";
+  }
+}
+
+function clearViewerToken(): void {
+  removeStorageSync(VIEWER_TOKEN_KEY);
+}
+
+async function ensureViewerAccessToken(): Promise<string> {
+  const existing = getStoredViewerToken();
+  if (existing) return existing;
+  if (viewerTokenPromise) return viewerTokenPromise;
+  viewerTokenPromise = (async () => {
+    const deviceId = getOrCreateStorageId(DEVICE_ID_KEY, "dev");
+    const sessionId = getOrCreateStorageId(VIEWER_SESSION_ID_KEY, "ses");
+    const session = await request<AnonymousSessionResponse>(
+      API_ROUTES.authAnonymous,
+      "POST",
+      { deviceId, sessionId },
+      undefined,
+      undefined,
+      false
+    );
+    setStorageSync(VIEWER_TOKEN_KEY, session.accessToken);
+    return session.accessToken;
+  })().finally(() => {
+    viewerTokenPromise = null;
+  });
+  return viewerTokenPromise;
+}
+
+async function resolveRequestToken(path: string): Promise<string> {
+  const userToken = getStoredAccessToken();
+  if (userToken) return userToken;
+  if (path === API_ROUTES.authAnonymous || path === API_ROUTES.authWechat) return "";
+  if (path.startsWith("/v1/playback/")) return ensureViewerAccessToken();
+  return "";
+}
+
+function readErrorCode(body: unknown): string {
+  if (body && typeof body === "object" && "code" in body && typeof (body as ApiError).code === "string") {
+    return (body as ApiError).code;
+  }
+  return "";
+}
+
 function isEnvelope<T>(body: T | ApiSuccess<T>): body is ApiSuccess<T> {
   return typeof body === "object" && body !== null && "data" in body && "requestId" in body;
 }
@@ -88,7 +158,7 @@ async function request<T>(
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
         .join("&")}`
     : "";
-  const token = getStoredAccessToken();
+  const token = await resolveRequestToken(path);
   const response = await platformRequest<T | ApiSuccess<T> | ApiError>({
     url: `${RUNTIME_CONFIG.apiBaseUrl.replace(/\/$/, "")}${path}${queryString}`,
     method,
@@ -101,7 +171,13 @@ async function request<T>(
     }
   });
   const body = response.data;
-  if (response.statusCode === 401 && retryAuthentication && path !== API_ROUTES.authWechat) {
+  if (response.statusCode === 401 && retryAuthentication && path !== API_ROUTES.authWechat && path !== API_ROUTES.authAnonymous) {
+    const code = readErrorCode(body);
+    if (code === ERROR_CODES.ANONYMOUS_SESSION_EXPIRED || path.startsWith("/v1/playback/")) {
+      clearViewerToken();
+      await ensureViewerAccessToken();
+      return request<T>(path, method, data, query, extraHeaders, false);
+    }
     clearStoredSession();
     await refreshSession();
     return request<T>(path, method, data, query, extraHeaders, false);
@@ -120,6 +196,8 @@ async function request<T>(
 
 const realApi: ClientApi = {
   authWechat: (code) => request<AuthSession>(API_ROUTES.authWechat, "POST", { code }),
+  authAnonymous: (input) =>
+    request<AnonymousSessionResponse>(API_ROUTES.authAnonymous, "POST", input, undefined, undefined, false),
   getCatalog: () => request(API_ROUTES.catalog),
   search: async (q, category, page) => {
     const result = await request<

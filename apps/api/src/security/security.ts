@@ -7,11 +7,12 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
-import type { AdminRole } from "@microfocus/contracts";
+import { AdminRole, ERROR_CODES } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 
 export type Principal =
   | { kind: "user"; sub: string }
+  | { kind: "viewer"; sub: string; deviceId: string }
   | { kind: "admin"; sub: string; role: AdminRole };
 
 export type AuthenticatedRequest = {
@@ -27,10 +28,17 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authorization = request.header("authorization");
     if (!authorization?.startsWith("Bearer ")) throw Errors.unauthorized();
+    const token = authorization.slice(7);
     try {
-      request.principal = await this.jwt.verifyAsync<Principal>(authorization.slice(7));
+      request.principal = parsePrincipal(await this.jwt.verifyAsync(token));
       return true;
-    } catch {
+    } catch (error) {
+      if (isTokenExpiredError(error) && decodeKind(this.jwt, token) === "viewer") {
+        throw Errors.unauthorized(
+          "Anonymous viewer session expired",
+          ERROR_CODES.ANONYMOUS_SESSION_EXPIRED
+        );
+      }
       throw Errors.unauthorized("Invalid or expired access token");
     }
   }
@@ -64,3 +72,42 @@ export const CurrentPrincipal = createParamDecorator(
     return principal;
   }
 );
+
+export function parsePrincipal(payload: unknown): Principal {
+  if (!payload || typeof payload !== "object") {
+    throw Errors.unauthorized("Invalid or expired access token");
+  }
+  const record = payload as Record<string, unknown>;
+  const sub = typeof record.sub === "string" ? record.sub : "";
+  if (!sub) throw Errors.unauthorized("Invalid or expired access token");
+  if (record.kind === "user") return { kind: "user", sub };
+  if (record.kind === "viewer") {
+    const deviceId = typeof record.deviceId === "string" ? record.deviceId : "";
+    if (!deviceId) throw Errors.unauthorized("Invalid or expired access token");
+    return { kind: "viewer", sub, deviceId };
+  }
+  if (record.kind === "admin") {
+    const role = record.role;
+    if (role !== AdminRole.ADMIN && role !== AdminRole.EDITOR && role !== AdminRole.REVIEWER) {
+      throw Errors.unauthorized("Invalid or expired access token");
+    }
+    return { kind: "admin", sub, role };
+  }
+  throw Errors.unauthorized("Invalid or expired access token");
+}
+
+function isTokenExpiredError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "name" in error &&
+      (error as { name?: string }).name === "TokenExpiredError"
+  );
+}
+
+function decodeKind(jwt: JwtService, token: string): string | undefined {
+  const decoded = jwt.decode(token);
+  if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) return undefined;
+  const kind = (decoded as { kind?: unknown }).kind;
+  return typeof kind === "string" ? kind : undefined;
+}

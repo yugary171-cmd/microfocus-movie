@@ -1,6 +1,7 @@
 /** Flattened mini-program adapter around the shared HTTP contract. */
 export const API_ROUTES = {
   authWechat: "/v1/auth/wechat",
+  authAnonymous: "/v1/auth/anonymous",
   catalog: "/v1/catalog",
   search: "/v1/search",
   history: "/v1/me/history",

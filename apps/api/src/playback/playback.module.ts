@@ -8,6 +8,7 @@ import {
   UseGuards
 } from "@nestjs/common";
 import {
+  ERROR_CODES,
   FREE_EPISODE_COUNT,
   HEARTBEAT_INTERVAL_SECONDS,
   OFFLINE_GRACE_SECONDS,
@@ -28,7 +29,6 @@ import {
   nextMediaAnchor
 } from "../domain/policies.js";
 import { assertCircuitsClosed } from "../domain/circuit.js";
-import { requireUser } from "../history/history.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { VodProviderService } from "../providers/providers.js";
 import {
@@ -80,7 +80,7 @@ export class PlaybackController {
     @CurrentPrincipal() principal: Principal,
     @Body() body: CreateLeaseDto
   ): Promise<PlaybackLeaseView> {
-    const userId = requireUser(principal);
+    const actor = playbackActor(principal);
     const episode = await this.prisma.episode.findUnique({
       where: { id: body.episodeId },
       include: {
@@ -90,7 +90,7 @@ export class PlaybackController {
     });
     const now = new Date();
     await assertCircuitsClosed(this.prisma, {
-      userId,
+      ...(actor.kind === "user" ? { userId: actor.userId } : {}),
       ...(episode?.dramaId ? { dramaId: episode.dramaId } : {})
     });
     const rights = episode?.drama.rightsRecords.find(
@@ -104,22 +104,40 @@ export class PlaybackController {
       throw Errors.conflict("MEDIA_NOT_READY", "Episode media is not approved and ready");
     }
     const isFree = episode.episodeNumber <= FREE_EPISODE_COUNT;
-    const remaining = isFree ? null : await activeBalance(this.prisma, userId, episode.dramaId, now);
+    if (actor.kind === "viewer" && !isFree) {
+      throw Errors.forbidden(
+        ERROR_CODES.USER_TOKEN_REQUIRED,
+        "Locked episodes require a signed-in user"
+      );
+    }
+    if (actor.kind === "viewer" && body.deviceId.trim() !== actor.deviceId) {
+      throw Errors.forbidden("DEVICE_MISMATCH", "Anonymous lease device does not match the viewer session");
+    }
+    const remaining =
+      isFree || actor.kind !== "user"
+        ? null
+        : await activeBalance(this.prisma, actor.userId, episode.dramaId, now);
     if (!isFree && remaining === 0) {
       throw Errors.forbidden("ENTITLEMENT_REQUIRED", "No playback entitlement remains");
     }
     const lease = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM User WHERE id = ${userId} FOR UPDATE`;
+      if (actor.kind === "user") {
+        await tx.$queryRaw`SELECT id FROM User WHERE id = ${actor.userId} FOR UPDATE`;
+      } else {
+        await tx.$queryRaw`SELECT id FROM AnonymousViewerSession WHERE id = ${actor.viewerSessionId} FOR UPDATE`;
+      }
       await tx.playbackLease.updateMany({
-        where: { userId, status: "ACTIVE" },
+        where: { ...leaseOwnerWhere(actor), status: "ACTIVE" },
         data: { status: "REVOKED", activeKey: null, revokedAt: now }
       });
       return tx.playbackLease.create({
         data: {
-          userId,
+          ...(actor.kind === "user"
+            ? { userId: actor.userId }
+            : { viewerSessionId: actor.viewerSessionId }),
           episodeId: episode.id,
           deviceId: body.deviceId.slice(0, 128),
-          activeKey: userId,
+          activeKey: leaseActiveKey(actor),
           lastHeartbeatAt: now,
           tokenExpiresAt: new Date(now.getTime() + PLAYBACK_TOKEN_TTL_SECONDS * 1000)
         }
@@ -134,11 +152,11 @@ export class PlaybackController {
     @Param("leaseId") leaseId: string,
     @Body() body: HeartbeatDto
   ): Promise<PlaybackHeartbeatResponse> {
-    const userId = requireUser(principal);
+    const actor = playbackActor(principal);
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM PlaybackLease WHERE id = ${leaseId} FOR UPDATE`;
       const lease = await tx.playbackLease.findFirst({
-        where: { id: leaseId, userId },
+        where: { id: leaseId, ...leaseOwnerWhere(actor) },
         include: {
           episode: {
             include: {
@@ -197,7 +215,7 @@ export class PlaybackController {
         );
       }
       await assertCircuitsClosed(tx, {
-        userId,
+        ...(actor.kind === "user" ? { userId: actor.userId } : {}),
         dramaId: lease.episode.dramaId
       });
       const online =
@@ -235,10 +253,16 @@ export class PlaybackController {
         mayContinue = false;
         reason = "DRAMA_OFFLINE";
       } else if (!isFree) {
-        await tx.$queryRaw`SELECT id FROM EntitlementGrant WHERE userId = ${userId} AND dramaId = ${lease.episode.dramaId} AND expiresAt > ${now} AND remainingSeconds > 0 ORDER BY expiresAt ASC FOR UPDATE`;
+        if (actor.kind !== "user") {
+          throw Errors.forbidden(
+            ERROR_CODES.USER_TOKEN_REQUIRED,
+            "Locked episodes require a signed-in user"
+          );
+        }
+        await tx.$queryRaw`SELECT id FROM EntitlementGrant WHERE userId = ${actor.userId} AND dramaId = ${lease.episode.dramaId} AND expiresAt > ${now} AND remainingSeconds > 0 ORDER BY expiresAt ASC FOR UPDATE`;
         const grants = await tx.entitlementGrant.findMany({
           where: {
-            userId,
+            userId: actor.userId,
             dramaId: lease.episode.dramaId,
             expiresAt: { gt: now },
             remainingSeconds: { gt: 0 }
@@ -336,9 +360,9 @@ export class PlaybackController {
     @CurrentPrincipal() principal: Principal,
     @Param("leaseId") leaseId: string
   ): Promise<PlaybackLeaseView> {
-    const userId = requireUser(principal);
+    const actor = playbackActor(principal);
     const lease = await this.prisma.playbackLease.findFirst({
-      where: { id: leaseId, userId, status: "ACTIVE" },
+      where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },
       include: {
         episode: {
           include: {
@@ -351,7 +375,7 @@ export class PlaybackController {
     if (!lease) throw Errors.notFound("Active playback lease");
     const now = new Date();
     await assertCircuitsClosed(this.prisma, {
-      userId,
+      ...(actor.kind === "user" ? { userId: actor.userId } : {}),
       dramaId: lease.episode.dramaId
     });
     if (
@@ -386,7 +410,9 @@ export class PlaybackController {
     const isFree = lease.episode.episodeNumber <= FREE_EPISODE_COUNT;
     const remaining = isFree
       ? null
-      : await activeBalance(this.prisma, userId, lease.episode.dramaId, now);
+      : actor.kind === "user"
+        ? await activeBalance(this.prisma, actor.userId, lease.episode.dramaId, now)
+        : 0;
     if (!isFree && remaining === 0) {
       await this.prisma.playbackLease.updateMany({
         where: { id: lease.id, status: "ACTIVE" },
@@ -407,9 +433,9 @@ export class PlaybackController {
 
   @Delete(":leaseId")
   async close(@CurrentPrincipal() principal: Principal, @Param("leaseId") leaseId: string) {
-    const userId = requireUser(principal);
+    const actor = playbackActor(principal);
     const updated = await this.prisma.playbackLease.updateMany({
-      where: { id: leaseId, userId, status: "ACTIVE" },
+      where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },
       data: { status: "CLOSED", activeKey: null, closedAt: new Date() }
     });
     if (!updated.count) throw Errors.notFound("Active playback lease");
@@ -483,6 +509,28 @@ function isPlayableAsset(asset: {
     asset.manualReviewStatus === "APPROVED" &&
     asset.wechatReviewStatus === "APPROVED"
   );
+}
+
+type PlaybackActor =
+  | { kind: "user"; userId: string }
+  | { kind: "viewer"; viewerSessionId: string; deviceId: string };
+
+function playbackActor(principal: Principal): PlaybackActor {
+  if (principal.kind === "user") return { kind: "user", userId: principal.sub };
+  if (principal.kind === "viewer") {
+    return { kind: "viewer", viewerSessionId: principal.sub, deviceId: principal.deviceId };
+  }
+  throw Errors.forbidden(ERROR_CODES.USER_TOKEN_REQUIRED, "A viewer or user token is required");
+}
+
+function leaseOwnerWhere(actor: PlaybackActor): { userId: string } | { viewerSessionId: string } {
+  return actor.kind === "user"
+    ? { userId: actor.userId }
+    : { viewerSessionId: actor.viewerSessionId };
+}
+
+function leaseActiveKey(actor: PlaybackActor): string {
+  return actor.kind === "user" ? actor.userId : `viewer:${actor.viewerSessionId}`;
 }
 
 @Module({ controllers: [PlaybackController] })

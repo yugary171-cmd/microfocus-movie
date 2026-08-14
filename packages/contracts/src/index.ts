@@ -4,10 +4,17 @@ export const REWARD_TTL_SECONDS = 24 * 60 * 60;
 export const HEARTBEAT_INTERVAL_SECONDS = 5;
 export const OFFLINE_GRACE_SECONDS = 15;
 export const PLAYBACK_TOKEN_TTL_SECONDS = 120;
+export const ANONYMOUS_VIEWER_TTL_SECONDS = 30 * 60;
+
+export const ERROR_CODES = {
+  ANONYMOUS_SESSION_EXPIRED: "ANONYMOUS_SESSION_EXPIRED",
+  USER_TOKEN_REQUIRED: "USER_TOKEN_REQUIRED"
+} as const;
 
 export const API_ROUTES = {
   auth: {
-    wechat: "/v1/auth/wechat"
+    wechat: "/v1/auth/wechat",
+    anonymous: "/v1/auth/anonymous"
   },
   catalog: "/v1/catalog",
   search: "/v1/search",
@@ -166,6 +173,17 @@ export interface AuthenticatedUser {
 export interface WechatLoginResponse {
   accessToken: string;
   user: AuthenticatedUser;
+}
+
+export interface CreateAnonymousSessionRequest {
+  deviceId: string;
+  sessionId: string;
+}
+
+export interface AnonymousSessionResponse {
+  accessToken: string;
+  expiresAt: string;
+  tokenKind: "viewer";
 }
 
 export interface CreateRewardChallengeRequest {

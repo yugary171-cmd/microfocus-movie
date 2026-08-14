@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Module, Put, UseGuards } from "@nestjs/common";
 import {
   API_ROUTES,
+  ERROR_CODES,
   type UpdateWatchProgressRequest,
   type WatchHistoryItem
 } from "@microfocus/contracts";
@@ -98,7 +99,7 @@ export class HistoryController {
 
 export function requireUser(principal: Principal): string {
   if (principal.kind !== "user") {
-    throw Errors.forbidden("USER_TOKEN_REQUIRED", "A user token is required");
+    throw Errors.forbidden(ERROR_CODES.USER_TOKEN_REQUIRED, "A user token is required");
   }
   return principal.sub;
 }

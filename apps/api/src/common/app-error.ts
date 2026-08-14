@@ -13,8 +13,8 @@ export class AppError extends HttpException {
 export const Errors = {
   badRequest: (code: string, message: string) =>
     new AppError(code, message, HttpStatus.BAD_REQUEST),
-  unauthorized: (message = "Authentication required") =>
-    new AppError("UNAUTHORIZED", message, HttpStatus.UNAUTHORIZED),
+  unauthorized: (message = "Authentication required", code = "UNAUTHORIZED") =>
+    new AppError(code, message, HttpStatus.UNAUTHORIZED),
   forbidden: (code = "FORBIDDEN", message = "Permission denied") =>
     new AppError(code, message, HttpStatus.FORBIDDEN),
   notFound: (resource: string) =>

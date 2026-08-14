@@ -1,6 +1,8 @@
 import type {
+  AnonymousSessionResponse,
   CatalogResponse,
   CompleteRewardChallengeRequest,
+  CreateAnonymousSessionRequest,
   CreatePlaybackLeaseRequest,
   CreateRewardChallengeRequest,
   DramaCard,
@@ -24,6 +26,7 @@ export interface SearchResponse {
 
 export interface ClientApi {
   authWechat(code: string): Promise<AuthSession>;
+  authAnonymous(input: CreateAnonymousSessionRequest): Promise<AnonymousSessionResponse>;
   getCatalog(): Promise<CatalogResponse>;
   search(query: string, category: string, page: number): Promise<SearchResponse>;
   getDrama(id: string): Promise<import("@microfocus/contracts").DramaDetail>;

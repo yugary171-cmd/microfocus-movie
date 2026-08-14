@@ -59,4 +59,32 @@ describe("playback renewal", () => {
       })
     );
   });
+
+  it("refuses locked-episode leases for anonymous viewers", async () => {
+    const prisma = {
+      episode: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "episode-3",
+          episodeNumber: 3,
+          dramaId: "drama",
+          drama: {
+            status: "PUBLISHED",
+            rightsRecords: [
+              { validFrom: new Date(Date.now() - 1000), validUntil: new Date(Date.now() + 60_000) }
+            ]
+          },
+          mediaAssets: [readyAsset()]
+        })
+      },
+      circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) }
+    };
+    const controller = new PlaybackController(prisma as never, {} as never);
+
+    await expect(
+      controller.create(
+        { kind: "viewer", sub: "viewer-1", deviceId: "device-1" },
+        { episodeId: "episode-3", deviceId: "device-1" }
+      )
+    ).rejects.toMatchObject({ code: "USER_TOKEN_REQUIRED" });
+  });
 });
