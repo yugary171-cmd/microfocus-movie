@@ -101,6 +101,21 @@ describe("live admin API adapter", () => {
       expiresAt: "2026-08-13T00:00:00.000Z",
     });
     expect(new Headers(compensateInit?.headers).get("Idempotency-Key")).toMatch(/^c:[a-f0-9]{64}$/);
+
+    await adminApi.adjustEntitlement({
+      type: "FREEZE_REMAINDER",
+      grantId: "grant-1",
+      seconds: 120,
+      reason: "错误发放冻结",
+    });
+    const adjustInit = vi.mocked(fetch).mock.calls[2]?.[1];
+    expect(JSON.parse(String(adjustInit?.body))).toEqual({
+      type: "FREEZE_REMAINDER",
+      grantId: "grant-1",
+      seconds: 120,
+      reason: "错误发放冻结",
+    });
+    expect(new Headers(adjustInit?.headers).get("Idempotency-Key")).toMatch(/^a:[a-f0-9]{64}$/);
   });
 
   it("sends the upload signing metadata contract", async () => {

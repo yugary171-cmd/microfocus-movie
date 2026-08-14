@@ -9,6 +9,7 @@ import type {
   AuditLog,
   CircuitBreakerState,
   CompensationInput,
+  AdjustmentInput,
   DashboardData,
   DramaInput,
   DramaRecord,
@@ -423,6 +424,14 @@ export const mockApi = {
   },
   async compensate(input: CompensationInput): Promise<void> {
     writeAudit("补偿权益", `用户 ${input.userId}`, `剧目 ${input.dramaId}，${input.seconds} 秒；${input.reason}`);
+    return mockDelay(undefined);
+  },
+  async adjustEntitlement(input: AdjustmentInput): Promise<void> {
+    writeAudit(
+      "权益纠错",
+      `grant ${input.grantId}`,
+      `${input.type} ${input.seconds} 秒；${input.reason}`,
+    );
     return mockDelay(undefined);
   },
 };

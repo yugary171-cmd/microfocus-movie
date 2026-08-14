@@ -13,7 +13,10 @@ export const ERROR_CODES = {
   ANONYMOUS_SESSION_EXPIRED: "ANONYMOUS_SESSION_EXPIRED",
   USER_TOKEN_REQUIRED: "USER_TOKEN_REQUIRED",
   UNCONFIRMED_EXPOSURE_LIMIT: "UNCONFIRMED_EXPOSURE_LIMIT",
-  CUSTOMER_SERVICE_REQUIRED: "CUSTOMER_SERVICE_REQUIRED"
+  CUSTOMER_SERVICE_REQUIRED: "CUSTOMER_SERVICE_REQUIRED",
+  ADJUSTMENT_EXCEEDS_AVAILABLE: "ADJUSTMENT_EXCEEDS_AVAILABLE",
+  ADJUSTMENT_RELEASE_EXCEEDS_FREEZE: "ADJUSTMENT_RELEASE_EXCEEDS_FREEZE",
+  ADJUSTMENT_INVALID_SOURCE: "ADJUSTMENT_INVALID_SOURCE"
 } as const;
 
 export const API_ROUTES = {
@@ -54,6 +57,7 @@ export const API_ROUTES = {
     auditLogs: "/v1/admin/audit-logs",
     circuitBreakers: "/v1/admin/circuit-breakers",
     compensate: "/v1/admin/entitlements/compensate",
+    adjustments: "/v1/admin/entitlements/adjustments",
     releaseGate: "/v1/admin/release-gate"
   }
 } as const;
@@ -112,6 +116,18 @@ export enum PlaybackLeaseStatus {
   EXPIRED = "EXPIRED"
 }
 
+export enum EntitlementAdjustmentType {
+  FREEZE_REMAINDER = "FREEZE_REMAINDER",
+  RELEASE_FREEZE = "RELEASE_FREEZE",
+  WRITE_OFF = "WRITE_OFF"
+}
+
+export enum EntitlementFactType {
+  GRANT = "GRANT",
+  DEBIT = "DEBIT",
+  ADJUSTMENT = "ADJUSTMENT"
+}
+
 export enum PlaybackReservationStatus {
   RESERVED = "RESERVED",
   CONFIRMED = "CONFIRMED",
@@ -165,6 +181,31 @@ export interface EntitlementSummary {
   remainingSeconds: number;
   nearestExpiresAt: string | null;
   grants: EntitlementGrantView[];
+}
+
+export interface CreateEntitlementAdjustmentRequest {
+  type: EntitlementAdjustmentType;
+  grantId: string;
+  seconds: number;
+  reason: string;
+  sourceFactType?: EntitlementFactType;
+  sourceFactId?: string;
+  freezeAdjustmentId?: string;
+  approvalNote?: string;
+}
+
+export interface EntitlementAdjustmentView {
+  id: string;
+  type: EntitlementAdjustmentType;
+  grantId: string;
+  sourceFactType: EntitlementFactType;
+  sourceFactId: string;
+  freezeAdjustmentId: string | null;
+  seconds: number;
+  reason: string;
+  remainingSeconds: number;
+  createdAt: string;
+  replayed: boolean;
 }
 
 export interface RewardChallengeView {

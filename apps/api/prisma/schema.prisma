@@ -87,6 +87,18 @@ enum CircuitState {
   OPEN
 }
 
+enum EntitlementAdjustmentType {
+  FREEZE_REMAINDER
+  RELEASE_FREEZE
+  WRITE_OFF
+}
+
+enum EntitlementFactType {
+  GRANT
+  DEBIT
+  ADJUSTMENT
+}
+
 model User {
   id          String            @id @default(cuid())
   openId      String            @unique
@@ -263,6 +275,7 @@ model EntitlementGrant {
   note             String?
   compensationKey  String?         @unique @db.VarChar(128)
   debits           EntitlementDebit[]
+  adjustments      EntitlementAdjustment[]
 
   @@index([userId, dramaId, expiresAt])
 }
@@ -351,6 +364,27 @@ model EntitlementDebit {
 
   @@unique([grantId, leaseId, heartbeatSeq])
   @@index([leaseId, heartbeatSeq])
+}
+
+model EntitlementAdjustment {
+  id                 String                     @id @default(cuid())
+  type               EntitlementAdjustmentType
+  grantId            String
+  grant              EntitlementGrant           @relation(fields: [grantId], references: [id])
+  sourceFactType     EntitlementFactType
+  sourceFactId       String
+  freezeAdjustmentId String?
+  freezeSource       EntitlementAdjustment?     @relation("FreezeReleases", fields: [freezeAdjustmentId], references: [id])
+  freezeReleases     EntitlementAdjustment[]    @relation("FreezeReleases")
+  seconds            Int
+  reason             String                     @db.VarChar(300)
+  approvalNote       String?                    @db.VarChar(300)
+  operatorAdminId    String
+  idempotencyKey     String                     @unique @db.VarChar(128)
+  createdAt          DateTime                   @default(now())
+
+  @@index([grantId, type, createdAt])
+  @@index([freezeAdjustmentId])
 }
 
 model WatchProgress {

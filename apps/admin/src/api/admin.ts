@@ -4,6 +4,7 @@ import type {
   AuditLog,
   CircuitBreakerState,
   CompensationInput,
+  AdjustmentInput,
   DashboardData,
   DramaInput,
   DramaRecord,
@@ -34,6 +35,7 @@ const endpoints = {
   auditLogs: "/v1/admin/audit-logs",
   circuitBreakers: "/v1/admin/circuit-breakers",
   compensate: "/v1/admin/entitlements/compensate",
+  adjustments: "/v1/admin/entitlements/adjustments",
   releaseGate: "/v1/admin/release-gate",
 } as const;
 
@@ -291,6 +293,26 @@ export const adminApi = {
       body: json({
         ...input,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString(),
+      }),
+    });
+  },
+  async adjustEntitlement(input: AdjustmentInput): Promise<void> {
+    if (isMockMode) return mockApi.adjustEntitlement(input);
+    const payload = `${input.type}\n${input.grantId}\n${input.seconds}\n${input.reason}\n${input.freezeAdjustmentId ?? ""}\n${input.approvalNote ?? ""}`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    const idempotencyKey = `a:${Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("")}`;
+    return request(endpoints.adjustments, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: json({
+        type: input.type,
+        grantId: input.grantId,
+        seconds: input.seconds,
+        reason: input.reason,
+        ...(input.freezeAdjustmentId ? { freezeAdjustmentId: input.freezeAdjustmentId } : {}),
+        ...(input.approvalNote ? { approvalNote: input.approvalNote } : {}),
       }),
     });
   },

@@ -8,7 +8,7 @@ import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
-import type { CircuitBreakerState, CompensationInput } from "@/types/admin";
+import type { CircuitBreakerState, CompensationInput, AdjustmentInput } from "@/types/admin";
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -20,6 +20,15 @@ const breaker = ref<CircuitBreakerState | null>(null);
 const breakerDialogOpen = ref(false);
 const compensationDialogOpen = ref(false);
 const compensation = reactive<CompensationInput>({ userId: "", dramaId: "", seconds: 600, reason: "" });
+const adjustmentDialogOpen = ref(false);
+const adjustment = reactive<AdjustmentInput>({
+  type: "FREEZE_REMAINDER",
+  grantId: "",
+  seconds: 60,
+  reason: "",
+  freezeAdjustmentId: "",
+  approvalNote: "",
+});
 
 async function load(): Promise<void> {
   if (!allowed.value) {
@@ -67,6 +76,11 @@ function requestCompensation(): void {
   if (!error.value) compensationDialogOpen.value = true;
 }
 
+const adjustmentSummary = computed(() => {
+  const freeze = adjustment.type === "RELEASE_FREEZE" ? `，冻结记录 ${adjustment.freezeAdjustmentId}` : "";
+  return `将对 grant ${adjustment.grantId} 追加 ${adjustment.type} ${adjustment.seconds} 秒${freeze}。不会修改原 grant 或 debit。`;
+});
+
 async function grantCompensation(): Promise<void> {
   const validation = validateCompensation();
   if (validation) {
@@ -95,13 +109,71 @@ async function grantCompensation(): Promise<void> {
   }
 }
 
+function validateAdjustment(): string {
+  if (!adjustment.grantId.trim()) return "请输入 grant ID";
+  if (!Number.isInteger(adjustment.seconds) || adjustment.seconds < 1 || adjustment.seconds > 86_400) {
+    return "纠错秒数应为 1–86400 的整数";
+  }
+  if (adjustment.reason.trim().length < 6) return "请填写至少 6 个字的纠错原因";
+  if (adjustment.type === "RELEASE_FREEZE" && !adjustment.freezeAdjustmentId?.trim()) {
+    return "释放冻结必须填写原冻结记录 ID";
+  }
+  return "";
+}
+
+function requestAdjustment(): void {
+  error.value = validateAdjustment();
+  if (!error.value) adjustmentDialogOpen.value = true;
+}
+
+async function submitAdjustment(): Promise<void> {
+  const validation = validateAdjustment();
+  if (validation) {
+    error.value = validation;
+    adjustmentDialogOpen.value = false;
+    return;
+  }
+  busy.value = true;
+  error.value = "";
+  try {
+    await adminApi.adjustEntitlement({
+      type: adjustment.type,
+      grantId: adjustment.grantId.trim(),
+      seconds: adjustment.seconds,
+      reason: adjustment.reason.trim(),
+      ...(adjustment.type === "RELEASE_FREEZE" && adjustment.freezeAdjustmentId?.trim()
+        ? { freezeAdjustmentId: adjustment.freezeAdjustmentId.trim() }
+        : {}),
+      ...(adjustment.approvalNote?.trim() ? { approvalNote: adjustment.approvalNote.trim() } : {}),
+    });
+    notice.value = adminApi.mode === "mock"
+      ? "演示纠错已记入审计视图；未改真实账本。"
+      : adjustment.type === "WRITE_OFF"
+        ? "核销事实已追加，用户余额未改动。"
+        : "权益纠错已写入账本。";
+    Object.assign(adjustment, {
+      type: "FREEZE_REMAINDER",
+      grantId: "",
+      seconds: 60,
+      reason: "",
+      freezeAdjustmentId: "",
+      approvalNote: "",
+    });
+    adjustmentDialogOpen.value = false;
+  } catch (caught) {
+    error.value = toErrorMessage(caught);
+  } finally {
+    busy.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
 <template>
   <div>
     <header class="page-header"><div><p class="eyebrow">SAFETY OPERATIONS</p><h1>运营控制</h1><p>高风险操作只对管理员开放，并要求原因与二次确认。</p></div></header>
-    <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以访问熔断和补偿权益。" />
+    <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以访问熔断、补偿和账本纠错。" />
     <PageState v-else-if="loading" type="loading" message="正在获取安全控制状态…" />
     <PageState v-else-if="error && !breaker" type="error" :message="error" @retry="load" />
     <template v-else>
@@ -134,15 +206,38 @@ onMounted(load);
             <button class="button button--primary" type="submit" :disabled="busy">核对并授予</button>
           </form>
         </section>
+        <section class="panel panel--wide" aria-labelledby="adjustment-title">
+          <div class="panel__header"><div><p class="eyebrow">LEDGER</p><h2 id="adjustment-title">权益纠错</h2></div><StatusBadge label="追加事实" tone="warning" /></div>
+          <form class="compensation-form" @submit.prevent="requestAdjustment">
+            <div class="form-grid">
+              <label class="field"><span>类型 *</span>
+                <select v-model="adjustment.type">
+                  <option value="FREEZE_REMAINDER">冻结剩余</option>
+                  <option value="RELEASE_FREEZE">释放冻结</option>
+                  <option value="WRITE_OFF">核销（不改余额）</option>
+                </select>
+              </label>
+              <label class="field"><span>Grant ID *</span><input v-model="adjustment.grantId" required autocomplete="off" placeholder="grant-…" /></label>
+              <label class="field"><span>秒数 *</span><input v-model.number="adjustment.seconds" type="number" min="1" max="86400" required /></label>
+              <label v-if="adjustment.type === 'RELEASE_FREEZE'" class="field"><span>原冻结记录 ID *</span><input v-model="adjustment.freezeAdjustmentId" required autocomplete="off" placeholder="adjustment-…" /></label>
+              <label class="field field--wide"><span>原因 *</span><textarea v-model="adjustment.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明事故、工单与为何不能改原 grant/debit" /></label>
+              <label class="field field--wide"><span>审批记录</span><textarea v-model="adjustment.approvalNote" rows="2" maxlength="300" placeholder="可选：审批人/工单号" /></label>
+            </div>
+            <p class="form-help">冻结会降低可播放余额；释放冻结必须引用原冻结记录且不超过未释放秒数；核销只记事故，不再次改变用户余额。补偿请用上方独立授予，不要改历史 grant。</p>
+            <button class="button button--primary" type="submit" :disabled="busy">核对并写入纠错</button>
+          </form>
+        </section>
       </div>
     </template>
     <ConfirmDialog :open="breakerDialogOpen" :title="breaker?.enabled ? '恢复全站播放' : '开启全站播放熔断'" :message="breaker?.enabled ? '恢复后将重新允许创建播放租约，请确认故障已处置。' : '开启后将阻止新的播放租约。这是高影响操作，请说明事故原因。'" :confirm-label="breaker?.enabled ? '确认恢复' : '确认熔断'" :tone="breaker?.enabled ? 'primary' : 'danger'" require-reason :reason-label="breaker?.enabled ? '恢复依据' : '事故原因'" :busy="busy" @close="breakerDialogOpen = false" @confirm="toggleBreaker" />
     <ConfirmDialog :open="compensationDialogOpen" title="确认授予补偿权益" :message="`将向用户 ${compensation.userId} 授予剧目 ${compensation.dramaId} 的 ${compensation.seconds} 秒权益。请确认工单信息准确。`" confirm-label="确认授予" :busy="busy" @close="compensationDialogOpen = false" @confirm="grantCompensation" />
+    <ConfirmDialog :open="adjustmentDialogOpen" title="确认写入权益纠错" :message="adjustmentSummary" confirm-label="确认写入" :busy="busy" @close="adjustmentDialogOpen = false" @confirm="submitAdjustment" />
   </div>
 </template>
 
 <style scoped>
 .operation-grid { display: grid; grid-template-columns: minmax(320px, .8fr) minmax(420px, 1.2fr); gap: 18px; align-items: start; }
+.panel--wide { grid-column: 1 / -1; }
 .breaker-panel { border-top: 3px solid var(--color-success); }
 .breaker-panel.is-enabled { border-top-color: var(--color-danger); background: linear-gradient(#fff, #fffafa); }
 .breaker-visual { display: flex; align-items: center; gap: 13px; padding: 15px; border-radius: 10px; background: var(--color-success-soft); }

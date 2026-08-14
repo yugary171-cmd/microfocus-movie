@@ -126,6 +126,15 @@ export interface CompensationInput {
   reason: string;
 }
 
+export interface AdjustmentInput {
+  type: "FREEZE_REMAINDER" | "RELEASE_FREEZE" | "WRITE_OFF";
+  grantId: string;
+  seconds: number;
+  reason: string;
+  freezeAdjustmentId?: string;
+  approvalNote?: string;
+}
+
 export interface AuditLog {
   id: string;
   createdAt: string;

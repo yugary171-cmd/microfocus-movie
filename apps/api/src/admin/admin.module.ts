@@ -10,7 +10,14 @@ import {
   Query,
   UseGuards
 } from "@nestjs/common";
-import { API_ROUTES, AdminRole, type ReleaseGateStatus } from "@microfocus/contracts";
+import {
+  API_ROUTES,
+  AdminRole,
+  EntitlementAdjustmentType,
+  EntitlementFactType,
+  type CreateEntitlementAdjustmentRequest,
+  type ReleaseGateStatus
+} from "@microfocus/contracts";
 import {
   IsArray,
   IsBoolean,
@@ -56,6 +63,7 @@ import {
   createIdempotentCompensation,
   normalizeIdempotencyKey
 } from "./admin.compensate.js";
+import { createIdempotentAdjustment } from "./admin.adjust.js";
 
 class EpisodeInput {
   @IsInt()
@@ -151,6 +159,40 @@ class CompensateDto {
   @IsInt() @Min(1) seconds!: number;
   @IsDateString() expiresAt!: string;
   @IsString() @Length(1, 500) reason!: string;
+}
+
+class AdjustEntitlementDto implements CreateEntitlementAdjustmentRequest {
+  @IsIn(Object.values(EntitlementAdjustmentType))
+  type!: EntitlementAdjustmentType;
+
+  @IsString()
+  grantId!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(86_400)
+  seconds!: number;
+
+  @IsString()
+  @Length(6, 300)
+  reason!: string;
+
+  @IsOptional()
+  @IsIn(Object.values(EntitlementFactType))
+  sourceFactType?: EntitlementFactType;
+
+  @IsOptional()
+  @IsString()
+  sourceFactId?: string;
+
+  @IsOptional()
+  @IsString()
+  freezeAdjustmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  approvalNote?: string;
 }
 
 class CircuitDto {
@@ -704,6 +746,35 @@ export class AdminController {
       await this.audit(admin.sub, "ENTITLEMENT_COMPENSATED", "EntitlementGrant", grant.id);
     }
     return grant;
+  }
+
+  @Post("entitlements/adjustments")
+  @Roles(AdminRole.ADMIN)
+  async adjust(
+    @CurrentPrincipal() principal: Principal,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: AdjustEntitlementDto
+  ) {
+    const admin = requireAdmin(principal);
+    const view = await createIdempotentAdjustment(this.prisma, {
+      type: body.type,
+      grantId: body.grantId,
+      seconds: body.seconds,
+      reason: body.reason,
+      operatorAdminId: admin.sub,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+      ...(body.sourceFactType ? { sourceFactType: body.sourceFactType } : {}),
+      ...(body.sourceFactId ? { sourceFactId: body.sourceFactId } : {}),
+      ...(body.freezeAdjustmentId ? { freezeAdjustmentId: body.freezeAdjustmentId } : {}),
+      ...(body.approvalNote ? { approvalNote: body.approvalNote } : {})
+    });
+    if (!view.replayed) {
+      await this.audit(admin.sub, "ENTITLEMENT_ADJUSTED", "EntitlementAdjustment", view.id, {
+        type: view.type,
+        grantId: view.grantId
+      });
+    }
+    return view;
   }
 
   @Get("release-gate")
