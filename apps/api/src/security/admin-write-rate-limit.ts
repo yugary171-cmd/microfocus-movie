@@ -5,9 +5,14 @@ import { assertNamedRateLimit } from "./rate-limit.js";
 import type { AuthenticatedRequest } from "./security.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const READ_METHODS = new Set(["GET", "HEAD"]);
 
 export function isAdminWriteMethod(method: string | undefined): boolean {
   return WRITE_METHODS.has((method ?? "GET").toUpperCase());
+}
+
+export function isAdminReadMethod(method: string | undefined): boolean {
+  return READ_METHODS.has((method ?? "").toUpperCase());
 }
 
 export function adminWriteRateLimitKey(adminId: string): string {
@@ -22,10 +27,15 @@ export class AdminWriteRateLimitGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AdminWriteRequest>();
-    if (!isAdminWriteMethod(request.method)) return true;
+    const policy = isAdminWriteMethod(request.method)
+      ? "adminWrite"
+      : isAdminReadMethod(request.method)
+        ? "adminRead"
+        : null;
+    if (!policy) return true;
     const principal = request.principal;
     if (principal?.kind !== "admin") throw Errors.forbidden();
-    await assertNamedRateLimit(this.prisma, "adminWrite", adminWriteRateLimitKey(principal.sub));
+    await assertNamedRateLimit(this.prisma, policy, adminWriteRateLimitKey(principal.sub));
     return true;
   }
 }

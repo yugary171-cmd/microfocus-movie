@@ -20,6 +20,7 @@ export const RATE_LIMITS = {
   callbackVod: { limit: 120, windowMs: 60_000 },
   callbackReward: { limit: 60, windowMs: 60_000 },
   adminWrite: { limit: 40, windowMs: 60_000 },
+  adminRead: { limit: 60, windowMs: 60_000 },
   rewardChallenge: { limit: 3, windowMs: 5 * 60_000 },
   rewardComplete: { limit: 20, windowMs: 60_000 },
   deletionCreate: { limit: 5, windowMs: 10 * 60_000 }
