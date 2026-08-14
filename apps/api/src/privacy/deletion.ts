@@ -15,6 +15,7 @@ import { Errors } from "../common/app-error.js";
 import { releaseOpenReservations } from "../playback/playback-reservations.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
 import type { WechatProvider } from "../providers/providers.js";
+import { assertNamedRateLimit } from "../security/rate-limit.js";
 
 export function hashDeletionQueryToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -65,6 +66,7 @@ export async function createDeletionRequest(
       replayed: true
     };
   }
+  await assertNamedRateLimit(prisma, "deletionCreate", `user:${input.userId}`);
   await assertRecentWechatReauth({
     prisma,
     wechat: input.wechat,

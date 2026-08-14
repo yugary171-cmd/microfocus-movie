@@ -5,8 +5,18 @@ import {
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { createDeletionRequest, hashDeletionQueryToken, lookupDeletionRequest, reissueDeletionQueryToken } from "./deletion.js";
+import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
 const user = { id: "user-1", status: "ACTIVE", openId: "wx-open-id" };
+
+function allowRateLimit() {
+  return {
+    updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn()
+  };
+}
 
 function deletionInput(overrides: Record<string, unknown> = {}) {
   return {
@@ -45,6 +55,7 @@ describe("account deletion", () => {
     const prisma = {
       user: { findUnique: vi.fn().mockResolvedValue(user) },
       deletionRequest: { findUnique: vi.fn().mockResolvedValue(null) },
+      rateLimitBucket: allowRateLimit(),
       $transaction: async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)
     };
     const result = await createDeletionRequest(prisma as never, deletionInput({
@@ -68,6 +79,7 @@ describe("account deletion", () => {
     };
     const prisma = {
       deletionRequest: { findUnique: vi.fn().mockResolvedValue(existing) },
+      rateLimitBucket: allowRateLimit(),
       $transaction: vi.fn()
     };
     const wechat = { exchangeCode: vi.fn() };
@@ -79,6 +91,7 @@ describe("account deletion", () => {
     expect(result.deletionQueryToken).toBeUndefined();
     expect(prisma.$transaction).not.toHaveBeenCalled();
     expect(wechat.exchangeCode).not.toHaveBeenCalled();
+    expect(prisma.rateLimitBucket.updateMany).not.toHaveBeenCalled();
   });
 
   it("rejects a reused key from another user", async () => {
@@ -171,6 +184,7 @@ describe("account deletion", () => {
       deletionRequest: {
         findUnique: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(raced)
       },
+      rateLimitBucket: allowRateLimit(),
       $transaction: vi.fn().mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
           code: "P2002",
@@ -181,6 +195,33 @@ describe("account deletion", () => {
     const result = await createDeletionRequest(prisma as never, deletionInput());
     expect(result.replayed).toBe(true);
     expect(result.deletionQueryToken).toBeUndefined();
+  });
+
+  it("rate-limits new deletion requests by authenticated user before WeChat reauth", async () => {
+    expect(RATE_LIMITS.deletionCreate).toEqual({ limit: 5, windowMs: 10 * 60_000 });
+    const wechat = { exchangeCode: vi.fn() };
+    const prisma = {
+      deletionRequest: { findUnique: vi.fn().mockResolvedValue(null) },
+      rateLimitBucket: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ windowStart: new Date(), count: 99 }),
+        create: vi.fn(),
+        deleteMany: vi.fn()
+      },
+      $transaction: vi.fn()
+    };
+    await expect(
+      createDeletionRequest(prisma as never, deletionInput({ wechat }))
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(wechat.exchangeCode).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("deletionCreate", "user:user-1")
+        })
+      })
+    );
   });
 
   it("reissues a query token only when the confirmed user matches", async () => {

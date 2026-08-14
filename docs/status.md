@@ -24,7 +24,7 @@
 
 | 领域 | 当前已实现 | 部分实现或仅目标设计 |
 | --- | --- | --- |
-| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致；微信登录按连接 IP 限频，匿名新建会话按连接 IP 限频，管理员登录按 IP+邮箱限频；管理端写操作按认证管理员身份限频 | 可删除数据清理依赖未批准的保留矩阵 |
+| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致；微信登录按连接 IP 限频，匿名新建会话按连接 IP 限频，注销新建申请按认证用户限频，管理员登录按 IP+邮箱限频；管理端写操作按认证管理员身份限频 | 可删除数据清理依赖未批准的保留矩阵 |
 | 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN，写入时保存 HTTP `requestId` 并支持按该字段检索；权利到期任务将无覆盖权利的已发布剧目自动下架并撤销活动租约 | 真实 VOD 发布链路未实现 |
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；创建 challenge 按认证用户限频（5 分钟 3 次），完成按认证用户限频；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant；后台任务按 grant/debit/冻结事实重建余额，差异打开 `PROVIDER:LEDGER` | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约、心跳、续签、恢复、关闭和进度写入按认证主体限频；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：注销新建申请按认证用户限频（10 分钟 5 次），在微信 `code` 兑换前拦截；同一 `Idempotency-Key` 重放不占桶、不消耗新 code。查询进度仍为令牌 1 秒冷却。法定清理仍依赖未批准的保留矩阵。
 - 2026-08-14：播放恢复（每分钟 10 次，在微信 `code` 兑换前）和关闭租约（每分钟 20 次）使用 Prisma `RateLimitBucket`，键为认证用户或匿名 viewer。自动宽限仍受 24 小时次数上限约束。
 - 2026-08-14：公开目录 `GET /v1/catalog` 与剧目详情 `GET /v1/dramas/:id` 按连接 IP 限频（各每分钟 60 次），与搜索分桶，避免用首页或详情绕过搜索限频。不信任 `X-Forwarded-For`。
 - 2026-08-14：匿名 viewer 新建会话改用 Prisma `RateLimitBucket`，按连接 IP 限频（10 分钟 10 次），不再只按可伪造的 `deviceId` 计数。同一 device/session 刷新不占桶。
@@ -67,7 +68,7 @@
 - 2026-08-14：HTTP 访问写单行 JSON 结构化日志，含 `requestId`、模块、稳定错误码、耗时和脱敏 actor；去掉查询串，不记录 Authorization、请求体或健康检查。
 - 2026-08-14：无真实 VOD 交付日志时，UNCONFIRMED 窗口只能宽限释放，不能自动扣费；心跳遇到未确认窗口返回 `UNCONFIRMED_EXPOSURE` 且 `debitedSeconds=0`。Live VOD 交付证据仍保持 fail-closed。
 - 2026-08-14：权益账本周期对账：按 grant、debit、冻结/解冻重建 `remainingSeconds`，并检查已完成 challenge 是否有唯一 grant。`WRITE_OFF` 不参与余额重建。发现差异写入 `LEDGER_RECONCILED` 并打开 `PROVIDER:LEDGER`，不改写原事实；工作台展示最近一次对账。不自动关闭熔断。
-- 2026-08-14：登录、匿名新建会话、目录/剧目详情/搜索、播放租约签发/心跳/续签/恢复/关闭、观看进度、奖励 challenge 创建/完成和 VOD/奖励回调使用 Prisma `RateLimitBucket` 限频；键取连接 `socket.remoteAddress` 或已认证主体，不信任 `X-Forwarded-For`。超限返回 `RATE_LIMITED`。后台任务删除超过 24 小时的桶。
+- 2026-08-14：登录、匿名新建会话、目录/剧目详情/搜索、播放租约签发/心跳/续签/恢复/关闭、观看进度、奖励 challenge 创建/完成、注销新建申请和 VOD/奖励回调使用 Prisma `RateLimitBucket` 限频；键取连接 `socket.remoteAddress` 或已认证主体，不信任 `X-Forwarded-For`。超限返回 `RATE_LIMITED`。后台任务删除超过 24 小时的桶。
 - 2026-08-14：健康检查区分存活 `/health/live` 与就绪 `/health/ready`（`/health` 仍表示就绪）。进程关闭时进入排水，就绪返回 `NOT_READY`，后台任务停止新一轮；不抢其他实例的回调处理租约，未完成回调靠 `processingUntil` 到期后重试。
 - 2026-08-14：回调死信打开对应 `PROVIDER:VOD` / `PROVIDER:WECHAT` 熔断，并在管理端工作台展示死信数、可重试失败、最老未处理年龄；不自动打开 GLOBAL。重放后需管理员另行关闭 provider 熔断。
 - 2026-08-14：ADMIN 可在客服核验后补发注销查询令牌：`userId` 必须与申请一致，旧令牌立即失效，新令牌只返回一次；不恢复用户 JWT。法定清理仍依赖未批准的保留矩阵。

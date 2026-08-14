@@ -229,7 +229,7 @@ flowchart LR
 
 | 方法与路径 | 认证 | 语义 |
 | --- | --- | --- |
-| `POST /v1/me/deletion-requests` | 用户 JWT + 近期重新认证证明 | 请求体含确认文案与一次性 `wechatCode`；在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
+| `POST /v1/me/deletion-requests` | 用户 JWT + 近期重新认证证明；按认证用户限频；幂等重放不占桶 | 请求体含确认文案与一次性 `wechatCode`；在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
 | `GET /v1/me/deletion-requests/:deletionRequestId` | `X-Deletion-Query-Token` | 查询 `PENDING/PROCESSING/COMPLETED/REJECTED`、处理时间和可理解原因 |
 
 `deletionQueryToken` 只能查询对应申请，服务端仅保存摘要并执行限频；有效期应覆盖承诺的最长处理窗口。令牌遗失或过期后只能通过受控客服身份核验恢复查询能力，不能恢复已撤销的用户会话。管理员补发会作废旧令牌。
