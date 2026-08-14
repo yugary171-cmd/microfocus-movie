@@ -865,7 +865,7 @@ export class AdminController {
     };
   }
 
-  @Get("circuit-breakers")
+  @Get(adminPath(API_ROUTES.admin.circuitBreakers))
   @Roles(AdminRole.ADMIN)
   async circuitBreakers() {
     const row = await this.prisma.circuitBreaker.findUnique({
@@ -879,7 +879,7 @@ export class AdminController {
     };
   }
 
-  @Patch("circuit-breakers")
+  @Patch(adminPath(API_ROUTES.admin.circuitBreakers))
   @Roles(AdminRole.ADMIN)
   async setCircuitCollection(
     @CurrentPrincipal() principal: Principal,
@@ -916,7 +916,7 @@ export class AdminController {
     };
   }
 
-  @Patch("circuit-breakers/:provider")
+  @Patch(adminPath(API_ROUTES.admin.circuitBreaker(":provider")))
   @Roles(AdminRole.ADMIN)
   async setCircuit(
     @CurrentPrincipal() principal: Principal,
@@ -945,7 +945,7 @@ export class AdminController {
     return row;
   }
 
-  @Post("entitlements/compensate")
+  @Post(adminPath(API_ROUTES.admin.compensate))
   @Roles(AdminRole.ADMIN)
   async compensate(
     @CurrentPrincipal() principal: Principal,
@@ -971,7 +971,7 @@ export class AdminController {
     return grant;
   }
 
-  @Post("entitlements/adjustments")
+  @Post(adminPath(API_ROUTES.admin.adjustments))
   @Roles(AdminRole.ADMIN)
   async adjust(
     @CurrentPrincipal() principal: Principal,
@@ -1000,7 +1000,7 @@ export class AdminController {
     return view;
   }
 
-  @Get("callback-events")
+  @Get(adminPath(API_ROUTES.admin.callbackEvents))
   @Roles(AdminRole.ADMIN)
   listCallbackEvents(
     @Query("status") status?: string,
@@ -1017,7 +1017,7 @@ export class AdminController {
     });
   }
 
-  @Post("callback-events/:eventId/replay")
+  @Post(adminPath(API_ROUTES.admin.callbackReplay(":eventId")))
   @Roles(AdminRole.ADMIN)
   async replayCallback(
     @CurrentPrincipal() principal: Principal,
@@ -1050,7 +1050,7 @@ export class AdminController {
     return view;
   }
 
-  @Get("deletion-requests")
+  @Get(adminPath(API_ROUTES.admin.deletionRequests))
   @Roles(AdminRole.ADMIN)
   lookupDeletionRequestByUser(
     @Query("userId") userId: string | undefined
@@ -1061,7 +1061,7 @@ export class AdminController {
     return lookupAdminDeletionRequest(this.prisma, { userId: requireEntityId(userId, "userId") });
   }
 
-  @Get("deletion-requests/:deletionRequestId")
+  @Get(adminPath(API_ROUTES.admin.deletionRequest(":deletionRequestId")))
   @Roles(AdminRole.ADMIN)
   getDeletionRequest(@Param("deletionRequestId") deletionRequestId: string) {
     return lookupAdminDeletionRequest(this.prisma, {
@@ -1069,7 +1069,7 @@ export class AdminController {
     });
   }
 
-  @Post("deletion-requests/:deletionRequestId/query-tokens")
+  @Post(adminPath(API_ROUTES.admin.deletionQueryTokenReissue(":deletionRequestId")))
   @Roles(AdminRole.ADMIN)
   async reissueDeletionQueryToken(
     @CurrentPrincipal() principal: Principal,
@@ -1094,7 +1094,7 @@ export class AdminController {
     return view;
   }
 
-  @Get("release-gate")
+  @Get(adminPath(API_ROUTES.admin.releaseGate))
   releaseGate(): ReleaseGateStatus {
     const env = this.config.env;
     return releaseGateStatus({

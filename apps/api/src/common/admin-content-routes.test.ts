@@ -83,4 +83,51 @@ describe("admin content Nest routes follow contracts", () => {
       method: RequestMethod.GET
     });
   });
+
+  it("binds circuit, compensation, callback, deletion, and release-gate handlers to API_ROUTES.admin", () => {
+    expect(routeOf(AdminController.prototype.circuitBreakers)).toEqual({
+      path: adminMethod(API_ROUTES.admin.circuitBreakers),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(AdminController.prototype.setCircuitCollection)).toEqual({
+      path: adminMethod(API_ROUTES.admin.circuitBreakers),
+      method: RequestMethod.PATCH
+    });
+    expect(routeOf(AdminController.prototype.setCircuit)).toEqual({
+      path: adminMethod(API_ROUTES.admin.circuitBreaker(":provider")),
+      method: RequestMethod.PATCH
+    });
+    expect(routeOf(AdminController.prototype.compensate)).toEqual({
+      path: adminMethod(API_ROUTES.admin.compensate),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(AdminController.prototype.adjust)).toEqual({
+      path: adminMethod(API_ROUTES.admin.adjustments),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(AdminController.prototype.listCallbackEvents)).toEqual({
+      path: adminMethod(API_ROUTES.admin.callbackEvents),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(AdminController.prototype.replayCallback)).toEqual({
+      path: adminMethod(API_ROUTES.admin.callbackReplay(":eventId")),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(AdminController.prototype.lookupDeletionRequestByUser)).toEqual({
+      path: adminMethod(API_ROUTES.admin.deletionRequests),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(AdminController.prototype.getDeletionRequest)).toEqual({
+      path: adminMethod(API_ROUTES.admin.deletionRequest(":deletionRequestId")),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(AdminController.prototype.reissueDeletionQueryToken)).toEqual({
+      path: adminMethod(API_ROUTES.admin.deletionQueryTokenReissue(":deletionRequestId")),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(AdminController.prototype.releaseGate)).toEqual({
+      path: adminMethod(API_ROUTES.admin.releaseGate),
+      method: RequestMethod.GET
+    });
+  });
 });
