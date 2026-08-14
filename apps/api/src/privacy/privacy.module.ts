@@ -9,6 +9,7 @@ import {
 } from "@microfocus/contracts";
 import { Equals, IsString, MaxLength, MinLength } from "class-validator";
 import { controllerPath } from "../common/http.js";
+import { normalizeIdempotencyKey } from "../common/idempotency.js";
 import { AppConfigService } from "../config/config.service.js";
 import { requireUser } from "../history/history.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -42,7 +43,7 @@ export class DeletionController {
 
   @Post(controllerPath(API_ROUTES.deletionRequests))
   @UseGuards(JwtAuthGuard)
-  create(
+  async create(
     @CurrentPrincipal() principal: Principal,
     @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: CreateDeletionDto
@@ -53,7 +54,7 @@ export class DeletionController {
       wechatCode: body.wechatCode,
       wechatMode: this.config.env.WECHAT_MODE,
       wechat: this.wechat,
-      ...(idempotencyKey ? { idempotencyKey } : {})
+      idempotencyKey: normalizeIdempotencyKey(idempotencyKey)
     });
   }
 

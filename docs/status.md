@@ -24,7 +24,7 @@
 
 | 领域 | 当前已实现 | 部分实现或仅目标设计 |
 | --- | --- | --- |
-| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致；微信登录 `code` 最长 256，管理员登录限制邮箱/密码/OTP 长度，匿名 device/session 最长 128；路径与查询实体 ID 最长 191；Bearer 令牌最长 4096；注销查询令牌最长 128；`Idempotency-Key` 最长 128；微信登录按连接 IP 限频，匿名新建会话按连接 IP 限频，注销新建申请按认证用户限频，注销进度查询按连接 IP 限频且成功查询另有 1 秒冷却，管理员登录按 IP+邮箱限频；管理端写操作和只读 GET 分别按认证管理员身份限频；注销路径走 `API_ROUTES` | 可删除数据清理依赖未批准的保留矩阵 |
+| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致；微信登录 `code` 最长 256，管理员登录限制邮箱/密码/OTP 长度，匿名 device/session 最长 128；路径与查询实体 ID 最长 191；Bearer 令牌最长 4096；注销查询令牌最长 128；`Idempotency-Key` 最长 128；微信登录按连接 IP 限频，匿名新建会话按连接 IP 限频，注销新建申请按认证用户限频，空白或超长 `Idempotency-Key` 在限频前拒绝，注销进度查询按连接 IP 限频且成功查询另有 1 秒冷却，管理员登录按 IP+邮箱限频；管理端写操作和只读 GET 分别按认证管理员身份限频；注销路径走 `API_ROUTES` | 可删除数据清理依赖未批准的保留矩阵 |
 | 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN，写入时保存 HTTP `requestId`；权利到期任务将无覆盖权利的已发布剧目自动下架并撤销活动租约；创建/修改剧目与权利版本限制标题、简介、标签、集数和权利字段长度；管理端编辑表单与契约共用这些上限；下架与熔断原因 6–300 字；剧目列表、审核队列与审计日志每页 50 条、最多 100 页，超页返回空结果且不打大 OFFSET；剧目关键词在服务端按标题/负责人邮箱过滤；审计关键词在服务端按动作/目标/`requestId`/操作人邮箱过滤；上传签名签发成功写入审计（不含签名 URL）；`AdminController` 路径全部走 `API_ROUTES.admin`（登录仍在 AuthController）；管理端请求路径 ID 经 `encodedRoute` | 真实 VOD 发布链路未实现 |
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；创建 challenge 按认证用户限频（5 分钟 3 次），完成按认证用户限频；`dramaId`/`sessionId`/`nonce` 限长；完成 challenge 的 `Idempotency-Key` 与补偿共用规范化（trim、最长 128），空白或超长在限频前拒绝；权益摘要路径走 `API_ROUTES`，按认证用户限频；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一，秒数 60–86400、原因 6–300 字；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实（秒数上限同为 86400）；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant；后台任务按 grant/debit/冻结事实重建余额，差异打开 `PROVIDER:LEDGER` | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约、心跳、续签、恢复、关闭、活动租约查询和进度写入按认证主体限频；租约/心跳/进度的 ID、设备、seq 和媒体位置有长度或数值上限；播放租约路径走 `API_ROUTES`；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：注销申请控制器始终把 `Idempotency-Key` 交给与奖励完成/补偿共用的规范化；空白或 trim 后超过 128 的键返回 `IDEMPOTENCY_KEY_REQUIRED`，不占 `deletionCreate` 桶、不查库、不兑换微信 `code`。管理端纠错/重放/补发令牌仍在写 Guard 之后规范化。不把灰度指标写成已接入。
 - 2026-08-14：provider 回调入口改走 `API_ROUTES.callbacks`（`/v1/callbacks/vod` 与 `/v1/callbacks/reward`）。该路径是 provider 专用，不给观看端或管理端客户端调用。Nest HTTP 装饰器不再硬编码路径字符串。不把灰度指标写成已接入。
 - 2026-08-14：管理端剩余 Nest 路径改走 `API_ROUTES.admin`：熔断、补偿/纠错、回调列表/重放、注销查询/补发令牌、发布闸门。`AdminController` 不再硬编码相对路径。provider 回调入口仍为纯服务端路径。不把灰度指标写成已接入。
 - 2026-08-14：管理端剧目/权利/媒体/审核/发布/下架/上传签名/审核队列/审计日志 Nest 路径改走 `API_ROUTES.admin`，控制器仍用 `/v1/admin` 前缀；熔断、补偿、回调和注销路径留待下一批。管理端请求路径 ID 改用 `encodedRoute`。不把灰度指标写成已接入。

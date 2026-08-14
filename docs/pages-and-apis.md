@@ -142,7 +142,7 @@ flowchart LR
 
 ### 4.2 幂等、分页与排序
 
-- 完成奖励和人工补偿必须携带 `Idempotency-Key`；同一业务请求的重试返回同一 grant，不得重复发放。`Idempotency-Key` 会 trim，最长 128。
+- 完成奖励、人工补偿和注销申请必须携带 `Idempotency-Key`；同一业务请求的重试返回同一结果，不得重复发放或重复创建申请。`Idempotency-Key` 会 trim，最长 128。
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
@@ -231,7 +231,7 @@ flowchart LR
 
 | 方法与路径 | 认证 | 语义 |
 | --- | --- | --- |
-| `POST /v1/me/deletion-requests` | 用户 JWT + 近期重新认证证明；按认证用户限频；幂等重放不占桶 | 请求体含确认文案与一次性 `wechatCode`；在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
+| `POST /v1/me/deletion-requests` | 用户 JWT + `Idempotency-Key`（trim、最长 128）+ 近期重新认证证明；按认证用户限频；空白或超长键不占桶；幂等重放不占桶 | 请求体含确认文案与一次性 `wechatCode`；在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
 | `GET /v1/me/deletion-requests/:deletionRequestId` | `X-Deletion-Query-Token` 最长 128；验令牌前按连接 IP 限频；同一令牌成功查询另有 1 秒冷却 | 查询 `PENDING/PROCESSING/COMPLETED/REJECTED`、处理时间和可理解原因 |
 
 `deletionQueryToken` 只能查询对应申请，服务端仅保存摘要并执行限频；有效期应覆盖承诺的最长处理窗口。令牌遗失或过期后只能通过受控客服身份核验恢复查询能力，不能恢复已撤销的用户会话。管理员补发会作废旧令牌。

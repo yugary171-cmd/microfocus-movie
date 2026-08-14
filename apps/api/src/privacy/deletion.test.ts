@@ -2,11 +2,13 @@ import {
   DELETION_CONFIRMATION,
   DELETION_QUERY_TOKEN_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
-  ERROR_CODES
+  ERROR_CODES,
+  IDEMPOTENCY_KEY_MAX_LENGTH
 } from "@microfocus/contracts";
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { createDeletionRequest, hashDeletionQueryToken, lookupDeletionRequest, reissueDeletionQueryToken } from "./deletion.js";
+import { DeletionController } from "./privacy.module.js";
 import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
 const user = { id: "user-1", status: "ACTIVE", openId: "wx-open-id" };
@@ -298,6 +300,99 @@ describe("account deletion", () => {
         })
       })
     );
+  });
+
+  it("rejects blank or oversized deletion keys before the rate-limit bucket", async () => {
+    const wechat = { exchangeCode: vi.fn() };
+    const prisma = {
+      deletionRequest: { findUnique: vi.fn().mockResolvedValue(null) },
+      rateLimitBucket: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ windowStart: new Date(), count: 99 }),
+        create: vi.fn(),
+        deleteMany: vi.fn()
+      },
+      $transaction: vi.fn()
+    };
+
+    await expect(
+      createDeletionRequest(prisma as never, deletionInput({ wechat, idempotencyKey: undefined }))
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    await expect(
+      createDeletionRequest(prisma as never, deletionInput({ wechat, idempotencyKey: "   " }))
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    await expect(
+      createDeletionRequest(
+        prisma as never,
+        deletionInput({ wechat, idempotencyKey: "x".repeat(IDEMPOTENCY_KEY_MAX_LENGTH + 1) })
+      )
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    expect(prisma.deletionRequest.findUnique).not.toHaveBeenCalled();
+    expect(prisma.rateLimitBucket.updateMany).not.toHaveBeenCalled();
+    expect(wechat.exchangeCode).not.toHaveBeenCalled();
+
+    await expect(
+      createDeletionRequest(
+        prisma as never,
+        deletionInput({
+          wechat,
+          idempotencyKey: `  ${"k".repeat(IDEMPOTENCY_KEY_MAX_LENGTH)}  `
+        })
+      )
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(prisma.deletionRequest.findUnique).toHaveBeenCalledWith({
+      where: { idempotencyKey: "k".repeat(IDEMPOTENCY_KEY_MAX_LENGTH) }
+    });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalled();
+  });
+
+  it("normalizes the controller Idempotency-Key before lookup or rate limiting", async () => {
+    const prisma = {
+      deletionRequest: { findUnique: vi.fn() },
+      rateLimitBucket: {
+        updateMany: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        deleteMany: vi.fn()
+      }
+    };
+    const controller = new DeletionController(
+      prisma as never,
+      { exchangeCode: vi.fn() } as never,
+      { env: { WECHAT_MODE: "mock" } } as never
+    );
+    const body = { confirmation: DELETION_CONFIRMATION, wechatCode: "fresh-login-code" };
+
+    await expect(
+      controller.create({ kind: "user", sub: "user-1" } as never, undefined, body)
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    await expect(
+      controller.create({ kind: "user", sub: "user-1" } as never, "   ", body)
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    await expect(
+      controller.create(
+        { kind: "user", sub: "user-1" } as never,
+        "x".repeat(IDEMPOTENCY_KEY_MAX_LENGTH + 1),
+        body
+      )
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    expect(prisma.deletionRequest.findUnique).not.toHaveBeenCalled();
+    expect(prisma.rateLimitBucket.updateMany).not.toHaveBeenCalled();
+
+    prisma.rateLimitBucket.updateMany.mockResolvedValue({ count: 0 });
+    prisma.rateLimitBucket.findUnique.mockResolvedValue({ windowStart: new Date(), count: 99 });
+    prisma.deletionRequest.findUnique.mockResolvedValue(null);
+    await expect(
+      controller.create(
+        { kind: "user", sub: "user-1" } as never,
+        `  ${"k".repeat(IDEMPOTENCY_KEY_MAX_LENGTH)}  `,
+        body
+      )
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(prisma.deletionRequest.findUnique).toHaveBeenCalledWith({
+      where: { idempotencyKey: "k".repeat(IDEMPOTENCY_KEY_MAX_LENGTH) }
+    });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalled();
   });
 
   it("reissues a query token only when the confirmed user matches", async () => {
