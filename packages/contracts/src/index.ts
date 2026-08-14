@@ -125,6 +125,11 @@ export const API_ROUTES = {
       `/v1/admin/deletion-requests/${deletionRequestId}/query-tokens`,
     releaseGate: "/v1/admin/release-gate"
   },
+  /** Provider-facing; not used by viewer or admin clients. */
+  callbacks: {
+    vod: "/v1/callbacks/vod",
+    reward: "/v1/callbacks/reward"
+  },
   health: {
     root: "/health",
     live: "/health/live",

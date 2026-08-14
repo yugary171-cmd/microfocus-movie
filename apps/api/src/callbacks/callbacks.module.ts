@@ -1,8 +1,9 @@
 import { Body, Controller, Headers, Module, Post, Req } from "@nestjs/common";
-import { CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ENTITY_ID_MAX_LENGTH, ERROR_CODES } from "@microfocus/contracts";
+import { API_ROUTES, CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ENTITY_ID_MAX_LENGTH, ERROR_CODES } from "@microfocus/contracts";
 import { IsIn, IsISO8601, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 import { applyRewardCallback } from "../rewards/late-completion.js";
 import { Errors } from "../common/app-error.js";
+import { controllerPath } from "../common/http.js";
 import { assertCircuitsClosed, openProviderCircuit } from "../domain/circuit.js";
 import { AppConfigService } from "../config/config.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -37,7 +38,7 @@ export class RewardCallbackDto {
   completedAt?: string;
 }
 
-@Controller("v1/callbacks")
+@Controller()
 export class CallbacksController {
   constructor(
     private readonly prisma: PrismaService,
@@ -45,7 +46,7 @@ export class CallbacksController {
     private readonly wechat: WechatProviderService
   ) {}
 
-  @Post("vod")
+  @Post(controllerPath(API_ROUTES.callbacks.vod))
   async vod(
     @Req() request: RawBodyRequest,
     @Headers("x-provider-signature") signature: string | undefined,
@@ -91,7 +92,7 @@ export class CallbacksController {
     }
   }
 
-  @Post("reward")
+  @Post(controllerPath(API_ROUTES.callbacks.reward))
   async reward(
     @Req() request: RawBodyRequest,
     @Headers("x-provider-signature") signature: string | undefined,
