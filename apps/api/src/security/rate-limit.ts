@@ -10,6 +10,8 @@ export const RATE_LIMITS = {
   playbackRenew: { limit: 20, windowMs: 60_000 },
   watchProgress: { limit: 60, windowMs: 60_000 },
   search: { limit: 60, windowMs: 60_000 },
+  catalog: { limit: 60, windowMs: 60_000 },
+  dramaDetail: { limit: 60, windowMs: 60_000 },
   callbackVod: { limit: 120, windowMs: 60_000 },
   callbackReward: { limit: 60, windowMs: 60_000 },
   adminWrite: { limit: 40, windowMs: 60_000 },

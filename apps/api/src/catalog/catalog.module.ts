@@ -16,7 +16,8 @@ export class CatalogController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get(controllerPath(API_ROUTES.catalog))
-  async catalog(): Promise<CatalogResponse> {
+  async catalog(@Req() request: SocketRequest): Promise<CatalogResponse> {
+    await assertNamedRateLimit(this.prisma, "catalog", requestIpKey(request));
     const dramas = await this.prisma.drama.findMany({
       where: {
         status: "PUBLISHED",
@@ -80,7 +81,11 @@ export class CatalogController {
   }
 
   @Get("v1/dramas/:dramaId")
-  async detail(@Param("dramaId") dramaId: string): Promise<DramaDetail> {
+  async detail(
+    @Req() request: SocketRequest,
+    @Param("dramaId") dramaId: string
+  ): Promise<DramaDetail> {
+    await assertNamedRateLimit(this.prisma, "dramaDetail", requestIpKey(request));
     const drama = await this.prisma.drama.findFirst({
       where: {
         id: dramaId,
