@@ -1,0 +1,38 @@
+.legal-page {
+  padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
+}
+
+.updated {
+  margin-top: -12rpx;
+  color: #ffcf5a;
+  font-size: 23rpx;
+}
+
+.legal-section {
+  margin-top: 30rpx;
+  padding: 28rpx;
+  background: #17181e;
+  border-radius: 20rpx;
+}
+
+.heading {
+  margin-bottom: 14rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.body {
+  color: #b5b7be;
+  font-size: 26rpx;
+  line-height: 1.8;
+}
+
+.review-note {
+  margin-top: 30rpx;
+  padding: 22rpx;
+  color: #d8bd78;
+  background: #2c271b;
+  border-radius: 16rpx;
+  font-size: 23rpx;
+  line-height: 1.65;
+}

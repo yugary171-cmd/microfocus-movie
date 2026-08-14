@@ -30,6 +30,31 @@ export function getStoredAccessToken(): string {
   }
 }
 
+export function getStoredSession(): AuthSession | null {
+  try {
+    const accessToken = getStoredAccessToken();
+    const storedUser = wx.getStorageSync<WechatMiniprogram.IAnyObject>(SESSION_USER_KEY);
+    if (
+      !accessToken ||
+      !storedUser ||
+      typeof storedUser.id !== "string" ||
+      typeof storedUser.displayName !== "string"
+    ) {
+      return null;
+    }
+    return {
+      accessToken,
+      user: {
+        id: storedUser.id,
+        displayName: storedUser.displayName,
+        avatarUrl: typeof storedUser.avatarUrl === "string" ? storedUser.avatarUrl : null
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
 function isEnvelope<T>(body: T | ApiSuccess<T>): body is ApiSuccess<T> {
   return (
     typeof body === "object" &&
@@ -149,10 +174,10 @@ function storeSession(session: AuthSession): AuthSession {
 function refreshSession(): Promise<AuthSession> {
   if (sessionRefreshPromise) return sessionRefreshPromise;
   sessionRefreshPromise = (async () => {
-    if (isMockMode()) {
-      return storeSession(await mockApi.authWechat("internal-mock-code"));
-    }
     const code = await wechatAdapter.login();
+    if (isMockMode()) {
+      return storeSession(await mockApi.authWechat(code));
+    }
     const session = await request<AuthSession>(
       API_ROUTES.authWechat,
       "POST",
@@ -169,23 +194,8 @@ function refreshSession(): Promise<AuthSession> {
 }
 
 export async function ensureSession(): Promise<AuthSession> {
-  const existing = getStoredAccessToken();
-  const storedUser = wx.getStorageSync<WechatMiniprogram.IAnyObject>(SESSION_USER_KEY);
-  if (
-    existing &&
-    storedUser &&
-    typeof storedUser.id === "string" &&
-    typeof storedUser.displayName === "string"
-  ) {
-    return {
-      accessToken: existing,
-      user: {
-        id: storedUser.id,
-        displayName: storedUser.displayName,
-        avatarUrl: typeof storedUser.avatarUrl === "string" ? storedUser.avatarUrl : null
-      }
-    };
-  }
+  // This is an explicit user-login action, not a silent session lookup. Always
+  // request a fresh WeChat code before creating the application session.
   clearStoredSession();
   return refreshSession();
 }

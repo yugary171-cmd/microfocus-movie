@@ -5,17 +5,23 @@ const booleanString = z
   .default("false")
   .transform((value) => value === "true");
 
+const optionalSecret = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(32).optional()
+);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   PUBLIC_API_URL: z.string().url().default("http://localhost:3000"),
-  ADMIN_ORIGIN: z.string().url().default("http://localhost:5173"),
+  ADMIN_ORIGIN: z.string().url().default("http://localhost:5174"),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32),
   ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(12).optional(),
+  ADMIN_BOOTSTRAP_TOTP_SECRET: z.string().optional(),
   ADMIN_TEST_OTP: z.string().regex(/^\d{6}$/).optional(),
-  TOTP_ENCRYPTION_KEY: z.string().min(32).optional(),
+  TOTP_ENCRYPTION_KEY: optionalSecret,
   RELEASE_GATE_ENABLED: booleanString,
   COMPLIANCE_ENTITY_APPROVED: booleanString,
   COMPLIANCE_MINIPROGRAM_FILING: booleanString,
@@ -38,6 +44,14 @@ const envSchema = z.object({
   WECHAT_CALLBACK_SECRET: z.string().optional(),
   VOD_PLAYBACK_KEY: z.string().optional(),
   VOD_MEDIA_HOST: z.string().default("media.example.com")
+}).superRefine((data, ctx) => {
+  if (data.WECHAT_MODE !== data.VOD_MODE) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "WECHAT_MODE and VOD_MODE must both be 'mock' or both be 'live'",
+      path: ["WECHAT_MODE", "VOD_MODE"]
+    });
+  }
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -80,6 +94,15 @@ export function assertProductionSafety(env: AppEnv): void {
   }
   if (env.WECHAT_REWARD_VERIFICATION !== "server_verified") {
     throw new Error("Production startup refused: rewarded ads must be server verified");
+  }
+  if (env.INTERNAL_CLIENT_ATTESTATION) {
+    throw new Error("Production startup refused: INTERNAL_CLIENT_ATTESTATION must be false");
+  }
+  if (env.ADMIN_TEST_OTP) {
+    throw new Error("Production startup refused: ADMIN_TEST_OTP must not be set");
+  }
+  if (env.ADMIN_BOOTSTRAP_PASSWORD || env.ADMIN_BOOTSTRAP_TOTP_SECRET) {
+    throw new Error("Production startup refused: bootstrap secrets must be removed after initialization");
   }
   const liveValues = [
     env.WECHAT_APP_ID,

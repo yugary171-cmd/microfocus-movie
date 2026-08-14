@@ -1,0 +1,40 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^drama-card$": "@/components/drama-card/index.vue",
+      "^internal-banner$": "@/components/internal-banner/index.vue",
+      "^player-actions$": "@/components/player-actions/index.vue",
+      "^comment-sheet$": "@/components/comment-sheet/index.vue"
+    }
+  },
+  "pages": [
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "首页", "navigationBarBackgroundColor": "#f7f7f8", "navigationBarTextStyle": "black", "backgroundColor": "#f7f7f8", "onReachBottomDistance": 80 } },
+    { "path": "pages/theater/index", "style": { "navigationBarTitleText": "剧场", "navigationStyle": "custom", "disableScroll": true, "navigationBarTextStyle": "white", "backgroundColor": "#08080a" } },
+    { "path": "pages/welfare/index", "style": { "navigationBarTitleText": "福利", "navigationBarBackgroundColor": "#f7f7f8", "navigationBarTextStyle": "black", "backgroundColor": "#f7f7f8" } },
+    { "path": "pages/my/index", "style": { "navigationBarTitleText": "我的", "navigationBarBackgroundColor": "#f7f7f8", "navigationBarTextStyle": "black", "backgroundColor": "#f7f7f8" } },
+    { "path": "pages/search/index", "style": { "navigationBarTitleText": "搜索", "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#ffffff", "onReachBottomDistance": 80 } },
+    { "path": "pages/category/index", "style": { "navigationBarTitleText": "分类" } },
+    { "path": "pages/drama/index", "style": { "navigationBarTitleText": "短剧详情" } },
+    { "path": "pages/player/index", "style": { "navigationBarTitleText": "播放", "navigationStyle": "custom", "backgroundColor": "#050506" } },
+    { "path": "pages/entitlements/index", "style": { "navigationBarTitleText": "权益明细", "enablePullDownRefresh": true } },
+    { "path": "pages/legal/index", "style": { "navigationBarTitleText": "协议" } }
+  ],
+  "globalStyle": {
+    "navigationBarTitleText": "微焦短剧",
+    "navigationBarBackgroundColor": "#101115",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0b0c0f"
+  },
+  "tabBar": {
+    "color": "#a5a5aa",
+    "selectedColor": "#17171b",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/theater/index", "text": "剧场" },
+      { "pagePath": "pages/my/index", "text": "我的" }
+    ]
+  }
+}

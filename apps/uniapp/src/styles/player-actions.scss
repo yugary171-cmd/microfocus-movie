@@ -1,0 +1,92 @@
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+  align-items: center;
+  width: 96rpx;
+  flex: none;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 96rpx;
+  margin: 0;
+  padding: 0;
+  color: #fff;
+  background: transparent;
+  font-size: 20rpx;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  margin-bottom: 8rpx;
+  color: #fff;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.55);
+}
+
+.glyph-star,
+.glyph-heart {
+  font-size: 62rpx;
+  line-height: 56rpx;
+}
+
+.glyph-star.active {
+  color: #e8b84a;
+}
+
+.glyph-heart.active {
+  color: #ff5e72;
+}
+
+.glyph-comment {
+  position: relative;
+  width: 62rpx;
+  height: 50rpx;
+  margin-top: 3rpx;
+  border-radius: 50%;
+  background: #f4f4f6;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.28);
+}
+
+.glyph-comment::after {
+  position: absolute;
+  right: 10rpx;
+  bottom: -10rpx;
+  width: 18rpx;
+  height: 20rpx;
+  background: #f4f4f6;
+  content: "";
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.comment-dots {
+  position: relative;
+  z-index: 1;
+  color: #85858d;
+  font-size: 22rpx;
+  letter-spacing: 3rpx;
+  line-height: 1;
+}
+
+.glyph-share {
+  font-size: 64rpx;
+  font-weight: 300;
+  line-height: 56rpx;
+  transform: rotate(-45deg);
+}
+
+.label {
+  overflow: hidden;
+  max-width: 96rpx;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.55);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

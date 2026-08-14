@@ -30,9 +30,12 @@
     "check": "npm run typecheck && npm run test && npm run build",
     "dev:api": "npm run build -w @microfocus/contracts && npm run dev -w @microfocus/api",
     "dev:admin": "npm run build -w @microfocus/contracts && npm run dev -w @microfocus/admin",
+    "dev:uniapp": "npm run build -w @microfocus/contracts && npm run dev:mp-weixin -w @microfocus/uniapp",
     "db:generate": "npm run db:generate -w @microfocus/api",
     "db:migrate": "npm run db:migrate -w @microfocus/api",
     "db:migrate:deploy": "npm run db:migrate:deploy -w @microfocus/api",
-    "db:seed": "npm run db:seed -w @microfocus/api"
+    "db:seed": "npm run db:seed -w @microfocus/api",
+    "generate:demo-videos": "node scripts/generate-demo-videos.mjs",
+    "normalize:demo-videos": "node scripts/normalize-demo-videos.mjs"
   }
 }

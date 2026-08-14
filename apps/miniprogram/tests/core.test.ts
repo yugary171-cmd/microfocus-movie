@@ -16,6 +16,169 @@ import type {
   RewardedAdCloseResult,
   RewardedAdHandle
 } from "../miniprogram/services/wechat-adapter";
+import {
+  playerUrlFromHistory,
+  toHistoryCardViews
+} from "../miniprogram/utils/history-view";
+
+describe("explicit WeChat login", () => {
+  it("obtains a fresh WeChat code and persists the resulting Mock session", async () => {
+    vi.resetModules();
+    const storage = new Map<string, unknown>();
+    const login = vi.fn((options: { success: (value: { code: string }) => void }) => {
+      options.success({ code: "fresh-wechat-code" });
+    });
+    vi.stubGlobal("wx", {
+      login,
+      getAccountInfoSync: () => ({ miniProgram: { envVersion: "develop" } }),
+      getStorageSync: (key: string) => storage.get(key),
+      setStorageSync: (key: string, value: unknown) => storage.set(key, value),
+      removeStorageSync: (key: string) => storage.delete(key)
+    });
+
+    const { ensureSession, getStoredSession } = await import("../miniprogram/services/api");
+    const session = await ensureSession();
+
+    expect(login).toHaveBeenCalledOnce();
+    expect(session).toMatchObject({
+      accessToken: "internal-mock-session-fresh-wechat",
+      user: { id: "internal-user-fresh-wechat", displayName: "内部体验用户" }
+    });
+    expect(getStoredSession()).toMatchObject({ accessToken: "internal-mock-session-fresh-wechat" });
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("live watch-history navigation", () => {
+  it("maps real API history and preserves the resume position in the player route", () => {
+    const cards = toHistoryCardViews([{
+      drama: {
+        id: "live-drama",
+        title: "真实播放记录",
+        summary: "",
+        coverUrl: "",
+        category: "都市",
+        tags: [],
+        episodeCount: 12,
+        recommendationRank: 1
+      },
+      episodeNumber: 3,
+      mediaPositionSeconds: 86,
+      updatedAt: "2026-08-13T00:00:00.000Z"
+    }]);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ dramaId: "live-drama", episodeNumber: 3, position: 86 });
+    expect(playerUrlFromHistory(cards[0]!, "episode-3")).toContain(
+      "dramaId=live-drama&episodeId=episode-3&title=%E7%9C%9F%E5%AE%9E%E6%92%AD%E6%94%BE%E8%AE%B0%E5%BD%95&episodeNumber=3&position=86"
+    );
+  });
+
+  it("loads live history in the My page and resumes the selected episode", async () => {
+    vi.resetModules();
+    const storage = new Map<string, unknown>([
+      ["microfocus.access-token", "live-token"],
+      ["microfocus.session-user", { id: "live-user", displayName: "真实用户", avatarUrl: null }]
+    ]);
+    const navigateTo = vi.fn();
+    let pageDefinition: Record<string, unknown> | undefined;
+    const request = vi.fn((options: { success: (response: unknown) => void }) => {
+      const response = request.mock.calls.length === 1
+        ? {
+            statusCode: 200,
+            data: {
+              data: [{
+                drama: {
+                  id: "live-drama",
+                  title: "真实播放记录",
+                  summary: "",
+                  coverUrl: "",
+                  category: "都市",
+                  tags: [],
+                  episodeCount: 12,
+                  recommendationRank: 1
+                },
+                episodeNumber: 3,
+                mediaPositionSeconds: 86,
+                updatedAt: "2026-08-13T00:00:00.000Z"
+              }],
+              requestId: "history-request"
+            },
+            header: {}
+          }
+        : {
+            statusCode: 200,
+            data: {
+              data: {
+                id: "live-drama",
+                title: "真实播放记录",
+                episodes: [{ id: "episode-3", episodeNumber: 3 }]
+              },
+              requestId: "drama-request"
+            },
+            header: {}
+          };
+      options.success(response);
+    });
+    vi.stubEnv("MICROFOCUS_TEST_API_BASE_URL", "https://api.test");
+    vi.stubGlobal("Page", (definition: Record<string, unknown>) => {
+      pageDefinition = definition;
+    });
+    vi.stubGlobal("wx", {
+      getAccountInfoSync: () => ({ miniProgram: { envVersion: "trial" } }),
+      getStorageSync: (key: string) => storage.get(key),
+      setStorageSync: (key: string, value: unknown) => storage.set(key, value),
+      removeStorageSync: (key: string) => storage.delete(key),
+      request,
+      navigateTo,
+      showToast: vi.fn(),
+      switchTab: vi.fn()
+    });
+
+    vi.doMock("../miniprogram/config/runtime", () => ({
+      RUNTIME_CONFIG: {
+        apiBaseUrl: "https://api.test",
+        requestTimeoutMs: 10_000,
+        productName: "微焦短剧",
+        demoVideoUrl: "",
+        demoVideoTwoUrl: "",
+        demoVideoUrls: []
+      }
+    }));
+    await import("../miniprogram/pages/my/index");
+    expect(pageDefinition).toBeDefined();
+    const page = pageDefinition as {
+      data: Record<string, unknown>;
+      loadLiveHistory(): Promise<void>;
+      openHistory(event: WechatMiniprogram.TouchEvent): Promise<void>;
+    };
+    const instance = {
+      data: structuredClone(page.data),
+      setData(update: Record<string, unknown>) {
+        Object.assign(this.data, update);
+      },
+      loadLiveHistory: page.loadLiveHistory,
+      openHistory: page.openHistory
+    };
+
+    await instance.loadLiveHistory();
+    expect(request).toHaveBeenCalledOnce();
+    const historyItems = instance.data.historyItems as Array<{ id: string; position: number }>;
+    expect(historyItems).toMatchObject([{ id: "live-drama-3", position: 86 }]);
+
+    await instance.openHistory({ currentTarget: { dataset: { id: "live-drama-3" } } } as never);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(navigateTo).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining("episodeId=episode-3")
+    }));
+    expect(navigateTo).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining("position=86")
+    }));
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.doUnmock("../miniprogram/config/runtime");
+  });
+});
 
 function createFakeAd() {
   let closeListener: ((result: RewardedAdCloseResult) => void) | undefined;

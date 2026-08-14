@@ -1,28 +1,31 @@
 {
   "pages": [
     "pages/home/index",
+    "pages/theater/index",
+    "pages/welfare/index",
+    "pages/my/index",
+    "pages/search/index",
     "pages/category/index",
     "pages/drama/index",
     "pages/player/index",
-    "pages/my/index",
     "pages/entitlements/index",
     "pages/legal/index"
   ],
   "window": {
-    "navigationBarTitleText": "微光短剧",
+    "navigationBarTitleText": "微焦短剧",
     "navigationBarBackgroundColor": "#101115",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#0b0c0f",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#8d9099",
-    "selectedColor": "#ffcf5a",
-    "backgroundColor": "#121319",
-    "borderStyle": "black",
+    "color": "#a5a5aa",
+    "selectedColor": "#17171b",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
     "list": [
       { "pagePath": "pages/home/index", "text": "首页" },
-      { "pagePath": "pages/category/index", "text": "分类" },
+      { "pagePath": "pages/theater/index", "text": "剧场" },
       { "pagePath": "pages/my/index", "text": "我的" }
     ]
   },

@@ -1,0 +1,40 @@
+<view class="search-page">
+  <view class="topbar">
+    <button class="back-button" bindtap="goBack" aria-label="返回">‹</button>
+    <view class="search-box">
+      <view class="magnifier" />
+      <input class="search-input" value="{{query}}" bindinput="onQueryInput" bindconfirm="submitSearch" confirm-type="search" placeholder="搜索短剧、角色、剧情" placeholder-class="search-placeholder" aria-label="搜索短剧、角色、剧情" />
+    </view>
+    <button class="submit-button" bindtap="submitSearch">搜索</button>
+  </view>
+
+  <view class="section">
+    <view class="section-title">功能</view>
+    <view class="chips">
+      <button wx:for="{{suggestions}}" wx:key="*this" class="chip" data-query="{{item}}" bindtap="chooseSuggestion">{{item}}</button>
+    </view>
+  </view>
+
+  <view class="section suggestions-section">
+    <view class="section-title">猜你想搜</view>
+    <view class="suggestion-row">
+      <view wx:for="{{suggestions}}" wx:key="*this" class="suggestion" data-query="{{item}}" bindtap="chooseSuggestion">{{item}}</view>
+    </view>
+  </view>
+
+  <view class="section hot-section">
+    <view class="hot-heading">
+      <view class="section-title">热榜</view>
+      <view class="hot-subtitle">大家都在搜</view>
+    </view>
+    <view wx:if="{{visibleHotSearches.length}}" class="hot-list">
+      <button wx:for="{{visibleHotSearches}}" wx:key="rank" class="hot-item" data-title="{{item.title}}" bindtap="chooseHotSearch">
+        <view class="rank rank-{{item.rank}}">{{item.rank}}</view>
+        <view class="hot-title">{{item.title}}</view>
+        <view wx:if="{{item.tag}}" class="hot-tag">{{item.tag}}</view>
+        <view class="heat">{{item.heat}}</view>
+      </button>
+    </view>
+    <view wx:else class="empty-state">热榜中没有匹配“{{query}}”的内容</view>
+  </view>
+</view>

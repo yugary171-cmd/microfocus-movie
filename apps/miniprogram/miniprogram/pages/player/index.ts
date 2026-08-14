@@ -1,8 +1,10 @@
 import {
-  HEARTBEAT_INTERVAL_SECONDS,
-  OFFLINE_GRACE_SECONDS,
   type PlaybackLeaseView
 } from "@microfocus/contracts";
+import {
+  HEARTBEAT_INTERVAL_SECONDS,
+  OFFLINE_GRACE_SECONDS
+} from "../../constants/runtime";
 import { getApi, isMockMode } from "../../services/api";
 import { PlaybackHeartbeatController } from "../../services/playback-controller";
 import { getDeviceId } from "../../utils/device";

@@ -7,6 +7,5 @@ declare global {
       user: import("@microfocus/contracts").AuthenticatedUser | null;
       isMock: boolean;
     };
-    ensureSession(): Promise<void>;
   }
 }

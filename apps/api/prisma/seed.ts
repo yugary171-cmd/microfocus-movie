@@ -41,7 +41,7 @@ async function main(): Promise<void> {
       where: { id: "seed-drama-1" },
       create: {
         id: "seed-drama-1",
-        title: "微光之城",
+        title: "微焦之城",
         summary: "用于本地开发的短剧样例。",
         coverUrl: "https://images.example.com/micro-light.jpg",
         category: "都市",

@@ -1,0 +1,36 @@
+{
+  "name": "@microfocus/uniapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin",
+    "dev:h5": "uni",
+    "build:h5": "uni build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "build": "npm run typecheck && npm test && npm run build:mp-weixin"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-4070620250821001",
+    "@dcloudio/uni-app-plus": "3.0.0-4070620250821001",
+    "@dcloudio/uni-components": "3.0.0-4070620250821001",
+    "@dcloudio/uni-h5": "3.0.0-4070620250821001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-4070620250821001",
+    "@microfocus/contracts": "0.1.0",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.19",
+    "@dcloudio/uni-automator": "3.0.0-4070620250821001",
+    "@dcloudio/uni-cli-shared": "3.0.0-4070620250821001",
+    "@dcloudio/uni-stacktracey": "3.0.0-4070620250821001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-4070620250821001",
+    "@types/node": "^22.17.2",
+    "sass": "^1.102.0",
+    "typescript": "^5.9.2",
+    "vite": "5.2.8",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^2.2.0"
+  }
+}

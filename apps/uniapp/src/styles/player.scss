@@ -1,0 +1,165 @@
+page {
+  height: 100%;
+  overflow: hidden;
+  background: #050506;
+}
+
+.player-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: calc(20rpx + env(safe-area-inset-top)) 22rpx calc(24rpx + env(safe-area-inset-bottom));
+}
+
+.topbar {
+  display: flex;
+  gap: 18rpx;
+  align-items: center;
+  min-height: 84rpx;
+  padding-bottom: 18rpx;
+}
+
+.back {
+  width: 68rpx;
+  min-width: 68rpx;
+  height: 68rpx;
+  margin: 0;
+  padding: 0;
+  color: #f7f7f8;
+  background: #1b1c22;
+  border-radius: 999rpx;
+  font-size: 52rpx;
+  line-height: 60rpx;
+}
+
+.heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.drama-title {
+  overflow: hidden;
+  font-size: 28rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.episode-title,
+.remaining {
+  color: #9da0a9;
+  font-size: 21rpx;
+}
+
+.remaining {
+  flex: none;
+  color: #ffcf5a;
+}
+
+.video,
+.player-state {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: #000;
+  border-radius: 20rpx;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.stage-actions {
+  position: absolute;
+  z-index: 3;
+  right: 12rpx;
+  bottom: 88rpx;
+  width: 96rpx;
+}
+
+.player-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 40rpx;
+  color: #a1a4ae;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.state-title {
+  margin-bottom: 12rpx;
+  color: #f7f7f8;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.retry {
+  margin-top: 24rpx;
+}
+
+.notice {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  color: #ffd8d9;
+  background: #3b2024;
+  border-radius: 12rpx;
+  font-size: 23rpx;
+  line-height: 1.45;
+}
+
+.controls {
+  display: flex;
+  gap: 10rpx;
+  align-items: center;
+  padding-top: 18rpx;
+}
+
+.control-label {
+  margin-right: 4rpx;
+  color: #a1a4ae;
+  font-size: 22rpx;
+}
+
+.rate {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 12rpx 2rpx;
+  color: #a1a4ae;
+  background: #17181e;
+  border-radius: 10rpx;
+  font-size: 21rpx;
+  line-height: 36rpx;
+}
+
+.rate.active {
+  color: #17130a;
+  background: #ffcf5a;
+  font-weight: 700;
+}
+
+.tip {
+  padding-top: 14rpx;
+  color: #73767f;
+  font-size: 19rpx;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .topbar {
+    min-height: 72rpx;
+  }
+
+  .tip {
+    display: none;
+  }
+}

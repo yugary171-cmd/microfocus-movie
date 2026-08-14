@@ -1,0 +1,12 @@
+<view class="welfare-page">
+  <view class="balance-card">
+    <view class="balance-label">体验权益余额</view>
+    <view class="balance-value">{{balance}}</view>
+    <view class="balance-note">Mock 数据 · 仅用于本地体验</view>
+  </view>
+  <view class="section-title">每日福利</view>
+  <view wx:for="{{tasks}}" wx:key="id" class="task-card">
+    <view class="task-copy"><view class="task-title">{{item.title}}</view><view class="task-subtitle">{{item.subtitle}}</view></view>
+    <view class="task-side"><view class="task-reward">{{item.reward}}</view><button class="claim {{item.done ? 'claimed' : ''}}" data-id="{{item.id}}" bindtap="claim" disabled="{{item.done}}">{{item.done ? '已领取' : '领取'}}</button></view>
+  </view>
+</view>

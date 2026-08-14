@@ -1,84 +1,113 @@
-import type { WatchHistoryItem } from "@microfocus/contracts";
-import { getApi, isMockMode } from "../../services/api";
+import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { formatPosition } from "../../utils/format";
+import {
+  playerUrlFromHistory,
+  toHistoryCardViews,
+  type HistoryCardView
+} from "../../utils/history-view";
 
-interface HistoryView extends WatchHistoryItem {
-  historyKey: string;
-  positionLabel: string;
-  updatedLabel: string;
-}
+const HISTORY_ITEMS: HistoryCardView[] = [
+  { id: "history-1", title: "引她入室", episode: "1 集 / 58 集", tag: "真人剧", tone: "rose", dramaId: "", episodeNumber: 1, position: 0 },
+  { id: "history-2", title: "凤栖今朝", episode: "1 集 / 71 集", tag: "真人剧", tone: "blue", dramaId: "", episodeNumber: 1, position: 0 },
+  { id: "history-3", title: "春色撩撩", episode: "1 集 / 105 集", tag: "漫画", tone: "ink", dramaId: "", episodeNumber: 1, position: 0 },
+  { id: "history-4", title: "皇后娘娘来打工", episode: "1 集 / 80 集", tag: "真人剧", tone: "gold", dramaId: "", episodeNumber: 1, position: 0 },
+  { id: "history-5", title: "请君入我怀", episode: "1 集 / 60 集", tag: "真人剧", tone: "wine", dramaId: "", episodeNumber: 1, position: 0 },
+  { id: "history-6", title: "苏太太高调离婚了", episode: "1 集 / 52 集", tag: "真人剧", tone: "night", dramaId: "", episodeNumber: 1, position: 0 }
+];
 
-function formatUpdatedAt(value: string): string {
-  const timestamp = new Date(value).getTime();
-  if (!Number.isFinite(timestamp)) return "更新时间未知";
-  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
-  if (minutes < 1) return "刚刚看过";
-  if (minutes < 60) return `${minutes} 分钟前`;
-  if (minutes < 1440) return `${Math.floor(minutes / 60)} 小时前`;
-  return `${Math.floor(minutes / 1440)} 天前`;
+type UserView = { displayName: string; microfocusId: string; initial: string };
+
+function toUserView(session: ReturnType<typeof getStoredSession>): UserView | null {
+  if (!session) return null;
+  const name = session.user.displayName || "微信用户";
+  return {
+    displayName: name,
+    microfocusId: `微焦号 · ${session.user.id.slice(0, 12).toUpperCase()}`,
+    initial: name.slice(0, 1) || "微"
+  };
 }
 
 Page({
   data: {
+    user: null as UserView | null,
     isMock: isMockMode(),
-    loading: true,
-    resumingId: "",
-    error: "",
-    history: [] as HistoryView[]
+    loginLoading: false,
+    loginError: "",
+    historyLoading: false,
+    historyError: "",
+    activeHistoryTab: "历史",
+    historyTabs: ["历史", "收藏", "点赞", "预约", "动态"],
+    historyFilters: ["全部", "已看完", "未看完"],
+    activeFilter: "全部",
+    historyItems: (isMockMode() ? HISTORY_ITEMS : []) as HistoryCardView[],
+    utilities: [
+      { title: "商城", subtitle: "查看订单", icon: "商" },
+      { title: "消息", subtitle: "1 条未读", icon: "信" },
+      { title: "追更", subtitle: "管理追更", icon: "追" }
+    ]
   },
 
   onShow() {
-    void this.loadHistory();
+    const user = toUserView(getStoredSession());
+    this.setData({ user });
+    if (user && !this.data.isMock) void this.loadLiveHistory();
   },
 
-  onPullDownRefresh() {
-    void this.loadHistory().finally(() => wx.stopPullDownRefresh());
+  async login() {
+    if (this.data.loginLoading) return;
+    this.setData({ loginLoading: true, loginError: "" });
+    try {
+      const session = await ensureSession();
+      this.setData({ user: toUserView(session) });
+      if (!this.data.isMock) await this.loadLiveHistory();
+      wx.showToast({ title: "登录成功", icon: "success" });
+    } catch (error) {
+      this.setData({ loginError: toFriendlyErrorMessage(error) });
+    } finally {
+      this.setData({ loginLoading: false });
+    }
   },
 
-  async loadHistory() {
-    this.setData({ loading: true, error: "" });
+  selectHistoryTab(event: WechatMiniprogram.TouchEvent) {
+    this.setData({ activeHistoryTab: String(event.currentTarget.dataset.tab || "历史") });
+  },
+
+  async loadLiveHistory() {
+    this.setData({ historyLoading: true, historyError: "" });
     try {
       const history = await getApi().getHistory();
-      this.setData({
-        history: history.map((item) => ({
-          ...item,
-          historyKey: `${item.drama.id}-${item.episodeNumber}`,
-          positionLabel: formatPosition(item.mediaPositionSeconds),
-          updatedLabel: formatUpdatedAt(item.updatedAt)
-        }))
-      });
+      this.setData({ historyItems: toHistoryCardViews(history) });
     } catch (error) {
-      this.setData({ error: toFriendlyErrorMessage(error), history: [] });
+      this.setData({ historyError: toFriendlyErrorMessage(error) });
     } finally {
-      this.setData({ loading: false });
+      this.setData({ historyLoading: false });
     }
   },
 
-  async resume(event: WechatMiniprogram.TouchEvent) {
-    const dramaId = String(event.currentTarget.dataset.dramaId || "");
-    const episodeNumber = Number(event.currentTarget.dataset.episodeNumber);
-    const historyItem = this.data.history.find(
-      (item) => item.drama.id === dramaId && item.episodeNumber === episodeNumber
-    );
-    if (!historyItem || this.data.resumingId) return;
-    this.setData({ resumingId: dramaId });
+  selectFilter(event: WechatMiniprogram.TouchEvent) {
+    this.setData({ activeFilter: String(event.currentTarget.dataset.filter || "全部") });
+  },
+
+  showFeature(event: WechatMiniprogram.TouchEvent) {
+    const label = String(event.currentTarget.dataset.label || "功能");
+    wx.showToast({ title: `${label}为体验数据`, icon: "none" });
+  },
+
+  async openHistory(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    const item = this.data.historyItems.find((entry) => entry.id === id);
+    if (!item) return;
+    if (this.data.isMock || !item.dramaId) {
+      wx.switchTab({ url: "/pages/theater/index" });
+      return;
+    }
     try {
-      const detail = await getApi().getDrama(dramaId);
-      const episode = detail.episodes.find((item) => item.episodeNumber === episodeNumber);
-      if (!episode) throw new Error("历史记录对应的剧集已不存在");
-      wx.navigateTo({
-        url: `/pages/player/index?dramaId=${encodeURIComponent(dramaId)}&episodeId=${encodeURIComponent(episode.id)}&title=${encodeURIComponent(detail.title)}&episodeNumber=${episodeNumber}&position=${Math.max(0, historyItem.mediaPositionSeconds)}`
-      });
+      const drama = await getApi().getDrama(item.dramaId);
+      const episode = drama.episodes.find((entry) => entry.episodeNumber === item.episodeNumber);
+      if (!episode) throw new Error("该观看记录对应的剧集已不存在");
+      wx.navigateTo({ url: playerUrlFromHistory(item, episode.id) });
     } catch (error) {
       wx.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
-    } finally {
-      this.setData({ resumingId: "" });
     }
-  },
-
-  openDrama(event: WechatMiniprogram.TouchEvent) {
-    const id = String(event.currentTarget.dataset.id || "");
-    if (id) wx.navigateTo({ url: `/pages/drama/index?id=${encodeURIComponent(id)}` });
   }
 });

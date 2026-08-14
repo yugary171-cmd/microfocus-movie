@@ -1,10 +1,13 @@
 import {
-  PlaybackLeaseStatus,
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
+  type PlaybackLeaseView,
   type WatchHistoryItem
 } from "@microfocus/contracts";
+import { PLAYBACK_LEASE_STATUS } from "../constants/runtime";
+import { pickDemoVideoUrl } from "../config/demo-media";
+import { RUNTIME_CONFIG } from "../config/runtime";
 import type { ClientApi, SearchResponse } from "../types/api";
 
 const dramas: DramaDetail[] = [
@@ -15,17 +18,17 @@ const dramas: DramaDetail[] = [
     coverUrl: "",
     category: "都市",
     tags: ["治愈", "成长"],
-    episodeCount: 12,
+    episodeCount: 1,
     recommendationRank: 100,
     licenseNumber: "内部体验备案号：DEMO-001",
     rightsHolder: "内部体验内容（非真实版权信息）",
-    episodes: Array.from({ length: 12 }, (_, index) => ({
-      id: `demo-d1-e${index + 1}`,
-      episodeNumber: index + 1,
-      title: `第 ${index + 1} 集`,
-      durationSeconds: 180,
-      isFree: index < 2
-    }))
+    episodes: [{
+      id: "demo-d1-e1",
+      episodeNumber: 1,
+      title: "试播片",
+      durationSeconds: 163,
+      isFree: true
+    }]
   },
   {
     id: "demo-d2",
@@ -88,11 +91,18 @@ function delay<T>(value: T): Promise<T> {
 }
 
 export const mockApi: ClientApi = {
-  authWechat: () =>
-    delay({
-      accessToken: "internal-mock-session",
-      user: { id: "internal-user", displayName: "内部体验用户", avatarUrl: null }
-    }),
+  authWechat: (code) => {
+    const normalizedCode = code.trim();
+    if (!normalizedCode) return Promise.reject(new Error("微信登录未返回有效 code"));
+    return delay({
+      accessToken: `internal-mock-session-${normalizedCode.slice(0, 12)}`,
+      user: {
+        id: `internal-user-${normalizedCode.slice(0, 12)}`,
+        displayName: "内部体验用户",
+        avatarUrl: null
+      }
+    });
+  },
   getCatalog: () => delay(catalog),
   search: (query, category, page): Promise<SearchResponse> => {
     const normalized = query.trim().toLowerCase();
@@ -130,8 +140,12 @@ export const mockApi: ClientApi = {
     delay({
       id: `demo-lease-${episodeId}`,
       episodeId,
-      status: PlaybackLeaseStatus.ACTIVE,
-      playbackUrl: "",
+      status: PLAYBACK_LEASE_STATUS.ACTIVE as PlaybackLeaseView["status"],
+      playbackUrl: pickDemoVideoUrl(
+        RUNTIME_CONFIG.demoVideoUrls,
+        episodeId,
+        RUNTIME_CONFIG.demoVideoUrl
+      ),
       playbackTokenExpiresAt: new Date(Date.now() + 120_000).toISOString(),
       heartbeatIntervalSeconds: 5,
       remainingSeconds: episodeId.endsWith("e1") || episodeId.endsWith("e2") ? null : 0,

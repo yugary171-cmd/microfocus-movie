@@ -17,7 +17,7 @@
   </view>
   <view wx:elif="{{!hasPlaybackUrl}}" class="player-state configuration" role="status">
     <view class="state-title">尚未配置可播放视频</view>
-    <view>服务端已返回播放授权，但没有视频地址。为避免误导，这里不会使用演示视频代替。</view>
+    <view>服务端已返回播放授权，但没有视频地址。请先配置真实 VOD 播放地址。</view>
   </view>
   <video
     wx:else
@@ -28,6 +28,7 @@
     controls
     show-center-play-btn
     enable-progress-gesture
+    custom-cache="{{false}}"
     object-fit="contain"
     bindplay="onPlay"
     bindpause="onPause"

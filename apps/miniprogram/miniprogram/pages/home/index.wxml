@@ -1,37 +1,38 @@
-<view class="page">
-  <internal-banner visible="{{isMock}}" />
-  <view class="hero">
-    <view class="eyebrow">每天发现一部好短剧</view>
-    <view class="page-title">此刻，入戏</view>
-    <view class="muted">前 2 集免费，观看激励广告可获得当前短剧限时观看时长。</view>
+<view class="home-page">
+  <view class="search-row">
+    <view class="search-field">
+      <text class="search-icon">⌕</text>
+      <input value="{{query}}" bindinput="onQueryInput" bindconfirm="openSearch" confirm-type="search" placeholder="搜剧名、演员、剧情" placeholder-class="search-placeholder" aria-label="搜索短剧" />
+    </view>
+    <button class="recognize" bindtap="showAction" data-label="识别" aria-label="识别图片中的剧">▣ 识别</button>
   </view>
 
-  <view class="tabs" role="tablist" aria-label="首页内容分区">
-    <button class="tab {{activeSection === 'featured' ? 'active' : ''}}" data-section="featured" bindtap="selectSection" role="tab" aria-selected="{{activeSection === 'featured'}}">推荐</button>
-    <button class="tab {{activeSection === 'latest' ? 'active' : ''}}" data-section="latest" bindtap="selectSection" role="tab" aria-selected="{{activeSection === 'latest'}}">最新</button>
-    <button class="tab {{activeSection === 'popular' ? 'active' : ''}}" data-section="popular" bindtap="selectSection" role="tab" aria-selected="{{activeSection === 'popular'}}">热门</button>
-  </view>
-
-  <view wx:if="{{loading}}" class="state-card" role="status">正在加载短剧…</view>
-  <view wx:elif="{{error}}" class="state-card" role="alert">
-    <view class="state-title">加载失败</view>
-    <view>{{error}}</view>
-    <button class="secondary-button retry" bindtap="loadCatalog">重新加载</button>
-  </view>
-  <view wx:elif="{{!visibleItems.length}}" class="state-card">
-    <view class="state-title">这里暂时没有内容</view>
-    <view>稍后再来看看。</view>
-  </view>
-  <scroll-view wx:else scroll-x enable-flex class="rail" aria-label="短剧列表">
-    <view class="rail-inner">
-      <drama-card wx:for="{{visibleItems}}" wx:key="id" drama="{{item}}" />
+  <scroll-view class="channels" scroll-x enable-flex aria-label="内容频道">
+    <view class="channels-inner">
+      <button wx:for="{{channels}}" wx:key="*this" class="channel {{activeChannel === item ? 'active' : ''}}" data-channel="{{item}}" bindtap="selectChannel">{{item}}</button>
     </view>
   </scroll-view>
 
-  <view wx:if="{{catalog && catalog.categories.length}}">
-    <view class="section-title">按分类发现</view>
-    <view class="category-grid">
-      <button wx:for="{{catalog.categories}}" wx:key="*this" class="category-button" data-category="{{item}}" bindtap="openCategory">{{item}}</button>
-    </view>
+  <view class="quick-actions">
+    <button wx:for="{{quickActions}}" wx:key="label" class="quick-action" data-label="{{item.label}}" bindtap="showAction">
+      <text class="quick-icon quick-{{item.tone}}">{{item.icon}}</text>
+      <text>{{item.label}}</text>
+    </button>
+  </view>
+
+  <view wx:if="{{isMock}}" class="mock-note">内部体验 · 以下剧目、榜单和热度均为 Mock 数据</view>
+  <view class="drama-grid" aria-label="热门短剧">
+    <button wx:for="{{dramas}}" wx:key="id" class="drama-card" data-id="{{item.id}}" bindtap="openTheater" aria-label="播放 {{item.title}}">
+      <view class="poster poster-{{item.tone}}">
+        <view class="hot-badge">爆剧</view>
+        <view class="poster-copy">
+          <text class="poster-title">{{item.title}}</text>
+          <text class="poster-subtitle">{{item.subtitle}}</text>
+          <text class="heat">♨ {{item.heat}}</text>
+        </view>
+      </view>
+      <view class="drama-title">{{item.title}}</view>
+      <view class="ranking">{{item.ranking}} ›</view>
+    </button>
   </view>
 </view>

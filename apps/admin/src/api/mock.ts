@@ -27,7 +27,7 @@ const releaseGate: ReleaseGateStatus = {
   wechatCategoryApproved: false,
   adsApproved: false,
   readyForExternalTraffic: false,
-  blockers: ["微信小程序类目审核尚未完成", "流量主广告能力尚未获批"],
+  blockers: ["微信小程序类目审核尚未完成", "流量主广告能力尚未获批", "LIVE_PROVIDER_IMPLEMENTATION_REQUIRED"],
 };
 
 let dramas: DramaRecord[] = [
@@ -41,7 +41,7 @@ let dramas: DramaRecord[] = [
     status: DramaStatus.PENDING_REVIEW,
     ownerId: "editor-1",
     ownerName: "林编辑",
-    rightsHolder: "上海微光影业有限公司",
+    rightsHolder: "上海微焦影业有限公司",
     licenseNumber: "沪网微剧备字〔2026〕0123号",
     rightsValidFrom: "2026-01-01",
     licenseExpiresAt: "2028-12-31",

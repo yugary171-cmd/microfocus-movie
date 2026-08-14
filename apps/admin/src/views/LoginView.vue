@@ -57,7 +57,7 @@ async function submit(): Promise<void> {
       </div>
       <div v-if="adminApi.mode === 'mock'" class="login-mock-notice" role="status">
         <strong>演示 Mock 模式</strong>
-        <span>可切换角色体验权限；不会连接真实账号或云服务。</span>
+        <span>不会连接真实账号或云服务；输入任意符合格式的账号、密码和 6 位验证码即可体验。</span>
       </div>
       <form @submit.prevent="submit">
         <label class="field">
@@ -93,7 +93,7 @@ async function submit(): Promise<void> {
           {{ busy ? "正在验证…" : "安全登录" }}
         </button>
       </form>
-      <p class="login-footnote">访问行为将进入审计日志。请勿共享账号或会话信息。</p>
+      <p class="login-footnote">真实模式仅接受已由部署/运维创建的管理员账号，不提供开放注册。访问行为将进入审计日志。</p>
     </section>
   </main>
 </template>

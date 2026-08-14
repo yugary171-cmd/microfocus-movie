@@ -1,44 +1,33 @@
-<view class="page">
-  <internal-banner visible="{{isMock}}" />
-  <view class="profile">
-    <view class="avatar" aria-hidden="true">我</view>
-    <view>
-      <view class="page-title profile-title">我的短剧</view>
-      <view class="muted">观看记录与服务说明</view>
-    </view>
-  </view>
+<view class="my-page">
+  <view class="ambient" />
+  <view class="top-actions"><button bindtap="showFeature" data-label="夜间模式" aria-label="夜间模式">☾</button><button bindtap="showFeature" data-label="更多设置" aria-label="更多设置">☰<text class="new-dot" /></button></view>
 
-  <view class="section-title">继续观看</view>
-  <view wx:if="{{loading}}" class="state-card" role="status">正在读取观看记录…</view>
-  <view wx:elif="{{error}}" class="state-card" role="alert">
-    <view class="state-title">观看记录加载失败</view>
-    <view>{{error}}</view>
-    <button class="secondary-button retry" bindtap="loadHistory">重试</button>
+  <view wx:if="{{!user}}" class="guest-profile">
+    <view class="guest-copy"><view class="guest-title">免费短剧，尽在微焦</view><view class="guest-subtitle">登录后同步观看记录与福利权益</view></view>
+    <button class="login-button" bindtap="login" loading="{{loginLoading}}" disabled="{{loginLoading}}">{{loginLoading ? '微信登录中…' : '立即登录'}}</button>
   </view>
-  <view wx:elif="{{!history.length}}" class="state-card">
-    <view class="state-title">还没有观看记录</view>
-    <view>看过的短剧会出现在这里。</view>
+  <view wx:else class="member-profile">
+    <view class="avatar">{{user.initial}}</view>
+    <view class="member-copy"><view class="member-name">{{user.displayName}}</view><view class="member-id">{{user.microfocusId}} ⧉</view></view>
+    <button class="edit-button" bindtap="showFeature" data-label="编辑资料">编辑资料</button>
   </view>
-  <view wx:else>
-    <view wx:for="{{history}}" wx:key="historyKey" class="history-card">
-      <view class="history-main" role="button" tabindex="0" data-id="{{item.drama.id}}" bindtap="openDrama" aria-label="查看{{item.drama.title}}详情">
-        <image wx:if="{{item.drama.coverUrl}}" class="history-cover" src="{{item.drama.coverUrl}}" mode="aspectFill" />
-        <view wx:else class="history-cover placeholder">剧</view>
-        <view class="history-copy">
-          <view class="history-title">{{item.drama.title}}</view>
-          <view class="muted">第 {{item.episodeNumber}} 集 · {{item.positionLabel}}</view>
-          <view class="updated">{{item.updatedLabel}}</view>
-        </view>
-      </view>
-      <button class="resume" data-drama-id="{{item.drama.id}}" data-episode-number="{{item.episodeNumber}}" bindtap="resume" loading="{{resumingId === item.drama.id}}" disabled="{{!!resumingId}}">继续观看</button>
-    </view>
-  </view>
+  <view wx:if="{{loginError}}" class="login-error" role="alert">{{loginError}}</view>
 
-  <view class="section-title">服务与规则</view>
-  <view class="menu">
-    <navigator class="menu-item" url="/pages/legal/index?section=privacy">隐私政策 <text>›</text></navigator>
-    <navigator class="menu-item" url="/pages/legal/index?section=terms">用户协议 <text>›</text></navigator>
-    <navigator class="menu-item" url="/pages/legal/index?section=ads">广告与权益规则 <text>›</text></navigator>
-    <navigator class="menu-item" url="/pages/legal/index?section=support">客服与投诉 <text>›</text></navigator>
+  <view wx:if="{{user}}" class="stats"><view><strong>0</strong><text>关注</text></view><view><strong>0</strong><text>粉丝</text></view><view><strong>0</strong><text>获赞</text></view></view>
+
+  <scroll-view scroll-x enable-flex class="utility-scroll" aria-label="个人功能">
+    <view class="utility-row">
+      <button wx:for="{{utilities}}" wx:key="title" class="utility-card" data-label="{{item.title}}" bindtap="showFeature"><view class="utility-icon">{{item.icon}}</view><view class="utility-title">{{item.title}}</view><view class="utility-subtitle">{{item.subtitle}}</view></button>
+    </view>
+  </scroll-view>
+
+  <view class="history-panel">
+    <view class="history-tabs"><button wx:for="{{historyTabs}}" wx:key="*this" class="history-tab {{activeHistoryTab === item ? 'active' : ''}}" data-tab="{{item}}" bindtap="selectHistoryTab">{{item}}</button><button class="history-search" bindtap="showFeature" data-label="历史搜索" aria-label="搜索历史">⌕</button></view>
+    <view class="history-tools"><view class="filters"><button wx:for="{{historyFilters}}" wx:key="*this" class="filter {{activeFilter === item ? 'active' : ''}}" data-filter="{{item}}" bindtap="selectFilter">{{item}}</button></view><view class="tool-actions"><button data-label="筛选" bindtap="showFeature">筛选</button><button data-label="编辑" bindtap="showFeature">编辑</button></view></view>
+    <view wx:if="{{isMock}}" class="mock-label">Mock 观看记录</view>
+    <view wx:if="{{historyLoading}}" class="history-state">正在读取观看记录…</view>
+    <view wx:elif="{{historyError}}" class="history-state" role="alert">{{historyError}}</view>
+    <view wx:elif="{{!historyItems.length}}" class="history-state">还没有观看记录</view>
+    <view wx:else class="history-grid"><button wx:for="{{historyItems}}" wx:key="id" class="history-item" data-id="{{item.id}}" bindtap="openHistory" aria-label="播放{{item.title}}"><view class="history-poster poster-{{item.tone}}"><text class="poster-tag">{{item.tag}}</text><text class="poster-title">{{item.title}}</text></view><view class="drama-name">{{item.title}}</view><view class="episode">{{item.episode}}</view></button></view>
   </view>
 </view>
