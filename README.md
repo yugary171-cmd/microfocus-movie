@@ -96,10 +96,6 @@ npm run check
 
 代码不会绕过微信或广电审核。若微信没有提供可信的激励广告服务端验证，外部灰度必须保持关闭；客户端 `isEnded` 证明仅限非生产内部技术验证，绝不能用于外部灰度或商业化。
 
-## Android 参考项目
-
-产品流程与观看端 UI 节奏参考了 [`IronManyz/qg_android`](https://github.com/IronManyz/qg_android)，但未复制其源码、资源、密钥或闭源 Android SDK。图标从 [iconfont](https://www.iconfont.cn/search/index?q=%E6%99%BA%E8%83%BD%E4%BD%93&searchType=icon) 自选导出。该项目无法转换为微信小程序，且其 README 与许可证、客户端签名及仓库密钥存在商用和安全风险。参考范围见 [docs/product-plan.md](docs/product-plan.md) 中「Android 参考」一节。
-
 ## 安全
 
 不要提交 `.env`、微信 AppSecret、腾讯云 Secret、VOD 防盗链 Key、广告位真实配置、证书或版权原件。发现安全问题时先停用相关凭据和播放签发，再通过内部安全渠道处理；不要在公开 Issue 粘贴秘密或用户数据。

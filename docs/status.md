@@ -74,5 +74,5 @@
 - 2026-08-13：整理观看端/管理端页面与 `/v1` 接口对照，写入 [pages-and-apis.md](./pages-and-apis.md)。
 - 2026-08-13：Mock 试播改为监听局域网并在 uni-app 编译时写入本机 IPv4，供微信真机调试；生产播放仍走点播租约 HTTPS。
 - 2026-08-13：新建 `apps/uniapp`（Vue 3），用 platform 适配层替换 `wx.*`；微信端继续走 `/v1/auth/wechat` 与激励 `isEnded`；H5/App 明确不复用这两项。原生 `apps/miniprogram` 标为过渡。
-- 2026-08-13：将开发计划从「交付可上线首版」收窄为「内部收口 + 内容/权益验证」；对 [qg_android](https://github.com/IronManyz/qg_android) 只参考用户路径与观看端 UI 节奏，图标走 iconfont，不移植实现。见 `docs/product-plan.md`。
-- 2026-08-12：完成原产品计划并开始首版工程实现；决定不转换或复用 Android 参考仓库。
+- 2026-08-13：将开发计划从「交付可上线首版」收窄为「内部收口 + 内容/权益验证」。见 `docs/product-plan.md`。
+- 2026-08-12：完成原产品计划并开始首版工程实现。
