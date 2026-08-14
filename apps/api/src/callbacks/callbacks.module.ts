@@ -1,7 +1,8 @@
 import { Body, Controller, Headers, Module, Post, Req } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ERROR_CODES } from "@microfocus/contracts";
-import { IsIn, IsString } from "class-validator";
+import { IsIn, IsISO8601, IsOptional, IsString } from "class-validator";
+import { applyRewardCallback } from "../rewards/late-completion.js";
 import { Errors } from "../common/app-error.js";
 import { AppConfigService } from "../config/config.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -21,6 +22,9 @@ class VodCallbackDto {
 class RewardCallbackDto {
   @IsString() eventId!: string;
   @IsString() challengeId!: string;
+  @IsOptional()
+  @IsISO8601()
+  completedAt?: string;
 }
 
 @Controller("v1/callbacks")
@@ -151,15 +155,11 @@ export class CallbacksController {
           "Reward callback could not be verified"
         );
       }
-      const updated = await this.prisma.rewardChallenge.updateMany({
-        where: { id: body.challengeId, status: "PENDING" },
-        data: { verificationMode: "server_verified", verifiedAt: new Date() }
+      const outcome = await applyRewardCallback(this.prisma, {
+        challengeId: body.challengeId,
+        ...(body.completedAt ? { completedAt: body.completedAt } : {})
       });
-      await finishCallbackEvent(
-        this.prisma,
-        body.eventId,
-        updated.count ? "VERIFIED" : "CHALLENGE_NOT_PENDING"
-      );
+      await finishCallbackEvent(this.prisma, body.eventId, outcome);
       return { accepted: true, duplicate: false };
     } catch (error) {
       if (isTerminalCallbackError(error)) throw error;

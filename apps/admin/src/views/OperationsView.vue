@@ -212,7 +212,7 @@ onMounted(load);
 
 <template>
   <div>
-    <header class="page-header"><div><p class="eyebrow">SAFETY OPERATIONS</p><h1>运营控制</h1><p>高风险操作只对管理员开放，并要求原因与二次确认。</p></div></header>
+    <header class="page-header"><div><p class="eyebrow">SAFETY OPERATIONS</p><h1>运营控制</h1><p>本页自上而下为：全站熔断、补偿权益、权益纠错、死信重放。高风险操作只对管理员开放，并要求原因与二次确认。</p></div></header>
     <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以访问熔断、补偿和账本纠错。" />
     <PageState v-else-if="loading" type="loading" message="正在获取安全控制状态…" />
     <PageState v-else-if="error && !breaker" type="error" :message="error" @retry="load" />

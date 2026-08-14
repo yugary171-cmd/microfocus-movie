@@ -21,7 +21,7 @@ export const navigationItems: NavigationItem[] = [
   {
     to: "/operations",
     label: "运营控制",
-    description: "熔断与补偿权益",
+    description: "熔断、补偿、纠错与死信重放",
     icon: "⚙",
     roles: [AdminRole.ADMIN],
   },

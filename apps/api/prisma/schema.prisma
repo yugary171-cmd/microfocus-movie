@@ -59,6 +59,7 @@ enum TranscodeStatus {
 enum ChallengeStatus {
   PENDING
   COMPLETED
+  COMPLETED_LATE
   EXPIRED
   REJECTED
 }
