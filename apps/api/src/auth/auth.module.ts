@@ -85,7 +85,10 @@ export class AuthController {
   }
 
   @Post(controllerPath(API_ROUTES.auth.anonymous))
-  async anonymousSession(@Body() body: AnonymousSessionDto): Promise<AnonymousSessionResponse> {
+  async anonymousSession(
+    @Req() request: SocketRequest,
+    @Body() body: AnonymousSessionDto
+  ): Promise<AnonymousSessionResponse> {
     const deviceId = body.deviceId.trim().slice(0, 128);
     const sessionId = body.sessionId.trim().slice(0, 128);
     const now = new Date();
@@ -93,13 +96,7 @@ export class AuthController {
       where: { deviceId_sessionId: { deviceId, sessionId } }
     });
     if (!existing) {
-      const windowStart = new Date(now.getTime() - 10 * 60 * 1000);
-      const recent = await this.prisma.anonymousViewerSession.count({
-        where: { deviceId, createdAt: { gte: windowStart } }
-      });
-      if (recent >= 10) {
-        throw Errors.rateLimited("Too many anonymous sessions for this device");
-      }
+      await assertNamedRateLimit(this.prisma, "anonymousSession", requestIpKey(request));
     }
     const expiresAt = new Date(now.getTime() + ANONYMOUS_VIEWER_TTL_SECONDS * 1000);
     const session = await this.prisma.anonymousViewerSession.upsert({

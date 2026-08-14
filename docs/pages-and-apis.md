@@ -180,7 +180,7 @@ flowchart LR
 
 | 方法与路径 | 认证 | 关键请求 | 关键响应/语义 |
 | --- | --- | --- | --- |
-| `POST /v1/auth/anonymous` | 公开、限频 | `deviceId/sessionId` | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
+| `POST /v1/auth/anonymous` | 公开、按连接 IP 限频（新建会话）；刷新已有 device/session 不占桶 | `deviceId/sessionId` | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
 | `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` | 用户 JWT；H5/App 不得复用 |
 | `GET /v1/catalog` | 公开 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容 |
 | `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page` | 分页剧卡；空结果为 `items: []` |

@@ -4,6 +4,7 @@ import { Errors } from "../common/app-error.js";
 export const RATE_LIMITS = {
   wechatLogin: { limit: 20, windowMs: 5 * 60_000 },
   adminLogin: { limit: 8, windowMs: 5 * 60_000 },
+  anonymousSession: { limit: 10, windowMs: 10 * 60_000 },
   playbackLease: { limit: 20, windowMs: 60_000 },
   playbackHeartbeat: { limit: 60, windowMs: 60_000 },
   playbackRenew: { limit: 20, windowMs: 60_000 },
