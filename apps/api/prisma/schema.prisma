@@ -492,16 +492,18 @@ model CallbackReplay {
 }
 
 model AuditLog {
-  id          String     @id @default(cuid())
-  adminId     String
-  admin       AdminUser  @relation(fields: [adminId], references: [id])
-  action      String
-  targetType  String
-  targetId    String
+  id           String    @id @default(cuid())
+  adminId      String
+  admin        AdminUser @relation(fields: [adminId], references: [id])
+  action       String
+  targetType   String
+  targetId     String
+  requestId    String?   @db.VarChar(128)
   metadataJson Json?
-  createdAt   DateTime   @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([createdAt])
+  @@index([requestId])
 }
 
 model OperationalEvent {

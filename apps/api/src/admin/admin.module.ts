@@ -39,7 +39,7 @@ import {
   ValidateNested
 } from "class-validator";
 import { Type } from "class-transformer";
-import { controllerPath } from "../common/http.js";
+import { controllerPath, currentRequestId } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { AppConfigService } from "../config/config.service.js";
 import { publicationBlockers, releaseGateStatus } from "../domain/policies.js";
@@ -721,7 +721,8 @@ export class AdminController {
             OR: [
               { action: { contains: normalized } },
               { targetType: { contains: normalized } },
-              { targetId: { contains: normalized } }
+              { targetId: { contains: normalized } },
+              { requestId: { contains: normalized } }
             ]
           }
         : {},
@@ -738,7 +739,7 @@ export class AdminController {
         action: log.action,
         target: `${log.targetType}:${log.targetId}`,
         result: "SUCCESS" as const,
-        requestId: "",
+        requestId: log.requestId ?? "",
         detail: auditDetail(log.metadataJson)
       })),
       total: logs.length
@@ -987,12 +988,14 @@ export class AdminController {
     targetId: string,
     metadata?: Record<string, string>
   ): Promise<void> {
+    const requestId = currentRequestId().slice(0, 128);
     await this.prisma.auditLog.create({
       data: {
         adminId,
         action,
         targetType,
         targetId,
+        ...(requestId ? { requestId } : {}),
         ...(metadata ? { metadataJson: metadata } : {})
       }
     });

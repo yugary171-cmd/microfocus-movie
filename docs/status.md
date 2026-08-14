@@ -25,7 +25,7 @@
 | 领域 | 当前已实现 | 部分实现或仅目标设计 |
 | --- | --- | --- |
 | 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致；微信登录按连接 IP 限频，管理员登录按 IP+邮箱限频；管理端写操作按认证管理员身份限频 | 可删除数据清理依赖未批准的保留矩阵 |
-| 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN；权利到期任务将无覆盖权利的已发布剧目自动下架并撤销活动租约 | 真实 VOD 发布链路未实现 |
+| 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN，写入时保存 HTTP `requestId` 并支持按该字段检索；权利到期任务将无覆盖权利的已发布剧目自动下架并撤销活动租约 | 真实 VOD 发布链路未实现 |
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant；后台任务按 grant/debit/冻结事实重建余额，差异打开 `PROVIDER:LEDGER` | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约按认证主体限频；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：管理写操作审计记录关联 HTTP `requestId`（Prisma `AuditLog.requestId`，旧行可空）；列表返回该字段并可检索。不记录请求体或令牌。
 - 2026-08-14：管理端写操作按认证管理员 ID 限频（每分钟 40 次），只读 GET 不占用该桶；键不使用可伪造的客户端字段。登录仍单独按 IP+邮箱限频。
 - 2026-08-14：HTTP 访问写单行 JSON 结构化日志，含 `requestId`、模块、稳定错误码、耗时和脱敏 actor；去掉查询串，不记录 Authorization、请求体或健康检查。
 - 2026-08-14：无真实 VOD 交付日志时，UNCONFIRMED 窗口只能宽限释放，不能自动扣费；心跳遇到未确认窗口返回 `UNCONFIRMED_EXPOSURE` 且 `debitedSeconds=0`。Live VOD 交付证据仍保持 fail-closed。

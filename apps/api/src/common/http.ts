@@ -10,6 +10,7 @@ import {
   type NestInterceptor
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { Observable } from "rxjs";
 import { map } from "rxjs/operators";
 import { AppError } from "./app-error.js";
@@ -26,6 +27,12 @@ type JsonResponse = {
 
 export type RequestWithContext = HeaderRequest & { requestId: string };
 
+const requestStore = new AsyncLocalStorage<{ requestId: string }>();
+
+export function currentRequestId(): string {
+  return requestStore.getStore()?.requestId ?? "";
+}
+
 export function requestContext(
   request: RequestWithContext,
   response: JsonResponse,
@@ -37,7 +44,7 @@ export function requestContext(
       ? candidate
       : randomUUID();
   response.setHeader("x-request-id", request.requestId);
-  next();
+  requestStore.run({ requestId: request.requestId }, next);
 }
 
 @Injectable()

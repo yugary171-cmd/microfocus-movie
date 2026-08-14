@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AppError } from "./app-error.js";
-import { describeHttpException } from "./http.js";
+import { currentRequestId, describeHttpException, requestContext } from "./http.js";
 import { buildRequestLog, sanitizeRequestPath, shouldSkipRequestLog } from "./request-log.js";
 
 describe("structured request logs", () => {
@@ -36,6 +36,28 @@ describe("structured request logs", () => {
       actorKind: "user",
       actorId: "user-1"
     });
+  });
+
+  it("keeps the HTTP requestId available to nested audit writes", () => {
+    const request = {
+      header(name: string) {
+        return name === "x-request-id" ? "admin-req-42" : undefined;
+      },
+      requestId: ""
+    };
+    const headers: Record<string, string> = {};
+    const response = {
+      setHeader(name: string, value: string) {
+        headers[name] = value;
+      }
+    };
+    let nested = "";
+    requestContext(request, response, () => {
+      nested = currentRequestId();
+    });
+    expect(nested).toBe("admin-req-42");
+    expect(headers["x-request-id"]).toBe("admin-req-42");
+    expect(currentRequestId()).toBe("");
   });
 
   it("maps AppError to the same stable code the HTTP envelope uses", () => {
