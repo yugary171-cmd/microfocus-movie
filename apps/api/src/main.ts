@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module.js";
 import { GlobalExceptionFilter, requestContext, SuccessEnvelopeInterceptor } from "./common/http.js";
+import { RequestLogInterceptor } from "./common/request-log.js";
 import { AppConfigService } from "./config/config.service.js";
 
 async function bootstrap(): Promise<void> {
@@ -20,7 +21,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })
   );
-  app.useGlobalInterceptors(new SuccessEnvelopeInterceptor());
+  app.useGlobalInterceptors(new RequestLogInterceptor(), new SuccessEnvelopeInterceptor());
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.enableShutdownHooks();
 

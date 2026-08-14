@@ -50,30 +50,44 @@ export class SuccessEnvelopeInterceptor implements NestInterceptor {
   }
 }
 
+export function describeHttpException(exception: unknown): {
+  status: number;
+  code: string;
+  message: string;
+} {
+  if (exception instanceof AppError) {
+    return {
+      status: exception.getStatus(),
+      code: exception.code,
+      message: exception.message
+    };
+  }
+  if (exception instanceof HttpException) {
+    const status = exception.getStatus();
+    const payload = exception.getResponse();
+    return {
+      status,
+      code: status === 400 ? "VALIDATION_ERROR" : `HTTP_${status}`,
+      message:
+        typeof payload === "string"
+          ? payload
+          : normalizeHttpMessage(payload as Record<string, unknown>, exception.message)
+    };
+  }
+  return {
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    code: "INTERNAL_ERROR",
+    message: "Internal server error"
+  };
+}
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<RequestWithContext>();
     const response = http.getResponse<JsonResponse>();
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let code = "INTERNAL_ERROR";
-    let message = "Internal server error";
-
-    if (exception instanceof AppError) {
-      status = exception.getStatus();
-      code = exception.code;
-      message = exception.message;
-    } else if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const payload = exception.getResponse();
-      code = status === 400 ? "VALIDATION_ERROR" : `HTTP_${status}`;
-      message =
-        typeof payload === "string"
-          ? payload
-          : normalizeHttpMessage(payload as Record<string, unknown>, exception.message);
-    }
-
+    const { status, code, message } = describeHttpException(exception);
     response.status(status).json({ code, message, requestId: request.requestId });
   }
 }
