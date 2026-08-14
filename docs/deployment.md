@@ -119,7 +119,7 @@ CI 与生产应用已有迁移时使用 `npm run db:migrate:deploy`，不创建�
 | --- | --- | --- |
 | CI / 空白库首次部署 | `npm run db:migrate:deploy` | 应用 Prisma 迁移，不交互 |
 | 发布验收 | 空白 MySQL + 脱敏数据烟测 | 见 [release-checklist.md](./release-checklist.md) §5 |
-| 常规发布 | 先 migrate，再滚动更新 API | 迁移需向后兼容；见 architecture §9 |
+| 常规发布 | 先 migrate，再滚动更新 API | 存活探 `/health/live`，就绪探 `/health/ready`（兼容 `/health`）；SIGTERM 后就绪失败，回调处理租约到期后可被其他实例收回；见 architecture §9 |
 | 灾难恢复 | 备份还原 + 对账补录 | 见 [operations.md](./operations.md)；**不能**用库还原做常规回滚 |
 
 生产 MySQL 建议使用云厂商托管实例（如腾讯云 CDB），开启自动备份，网络仅允许 API 所在安全组访问。

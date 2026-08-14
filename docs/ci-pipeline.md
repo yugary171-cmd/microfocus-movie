@@ -160,7 +160,8 @@ node apps/api/dist/main.js
 **冒烟**：
 
 ```bash
-curl -sf "https://api.example.com/health"   # 或项目实际健康检查路径
+curl -sf "https://api.example.com/health/live"    # 存活
+curl -sf "https://api.example.com/health/ready"   # 就绪（兼容路径 GET /health）
 ```
 
 ### 5.3 管理后台部署

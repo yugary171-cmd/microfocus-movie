@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { hostname } from "node:os";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { ProcessDrain } from "../operations/process-drain.js";
 import { runCallbackPayloadPurgeJob } from "./callback-payload-purge.js";
 import { runRightsExpiryJob } from "./rights-expiry.js";
 
@@ -12,7 +13,10 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
   private timer?: ReturnType<typeof setInterval>;
   private running = false;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly drain: ProcessDrain
+  ) {}
 
   onModuleInit(): void {
     if (process.env.NODE_ENV === "test") return;
@@ -27,7 +31,7 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   async tick(): Promise<void> {
-    if (this.running) return;
+    if (this.running || this.drain.isDraining()) return;
     this.running = true;
     try {
       const ownerId = `${hostname()}:${process.pid}`;

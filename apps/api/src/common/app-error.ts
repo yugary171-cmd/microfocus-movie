@@ -46,5 +46,7 @@ export const Errors = {
       "PROVIDER_REJECTED",
       `${provider} was rejected (${providerCode})`,
       HttpStatus.UNAUTHORIZED
-    )
+    ),
+  unavailable: (code: string, message: string) =>
+    new AppError(code, message, HttpStatus.SERVICE_UNAVAILABLE)
 };

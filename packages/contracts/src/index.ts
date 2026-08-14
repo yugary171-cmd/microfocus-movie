@@ -27,6 +27,7 @@ export const ERROR_CODES = {
   CALLBACK_NOT_REPLAYABLE: "CALLBACK_NOT_REPLAYABLE",
   CALLBACK_DEAD_LETTER: "CALLBACK_DEAD_LETTER",
   CALLBACK_PAYLOAD_UNAVAILABLE: "CALLBACK_PAYLOAD_UNAVAILABLE",
+  NOT_READY: "NOT_READY",
   REAUTH_REQUIRED: "REAUTH_REQUIRED",
   REAUTH_MISMATCH: "REAUTH_MISMATCH",
   DELETION_IDENTITY_MISMATCH: "DELETION_IDENTITY_MISMATCH"
@@ -82,6 +83,11 @@ export const API_ROUTES = {
     deletionQueryTokenReissue: (deletionRequestId: string) =>
       `/v1/admin/deletion-requests/${deletionRequestId}/query-tokens`,
     releaseGate: "/v1/admin/release-gate"
+  },
+  health: {
+    root: "/health",
+    live: "/health/live",
+    ready: "/health/ready"
   }
 } as const;
 
