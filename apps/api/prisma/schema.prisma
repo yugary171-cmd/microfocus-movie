@@ -455,6 +455,9 @@ model CallbackEvent {
   outcome         String?
   status          CallbackEventStatus @default(RECEIVED)
   payloadHash     String?
+  payloadCiphertext String? @db.Text
+  payloadSchema     String? @db.VarChar(32)
+  payloadRetainUntil DateTime?
   replays         CallbackReplay[]
 
   @@index([status, receivedAt])

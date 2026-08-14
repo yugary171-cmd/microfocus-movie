@@ -1,5 +1,4 @@
 import { Body, Controller, Headers, Module, Post, Req } from "@nestjs/common";
-import { createHash } from "node:crypto";
 import { CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ERROR_CODES } from "@microfocus/contracts";
 import { IsIn, IsISO8601, IsOptional, IsString } from "class-validator";
 import { applyRewardCallback } from "../rewards/late-completion.js";
@@ -7,6 +6,15 @@ import { Errors } from "../common/app-error.js";
 import { AppConfigService } from "../config/config.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { verifyWebhookSignature, WechatProviderService } from "../providers/providers.js";
+import { applyVodCallback } from "./callback-apply-vod.js";
+import {
+  buildStoredEnvelope,
+  CALLBACK_PAYLOAD_REWARD_V1,
+  CALLBACK_PAYLOAD_VOD_V1,
+  resolvePayloadEncryptionKey,
+  withEncryptionKey,
+  type StoredCallbackEnvelope
+} from "./callback-payload.js";
 
 const CALLBACK_LEASE_MS = 30_000;
 
@@ -52,7 +60,12 @@ export class CallbacksController {
       body.eventId,
       "VOD",
       "MEDIA_UPDATED",
-      payloadHash(request.rawBody)
+      buildStoredEnvelope({
+        ...withEncryptionKey(resolvePayloadEncryptionKey(this.config.env)),
+        ...(request.rawBody ? { rawBody: request.rawBody } : {}),
+        schema: CALLBACK_PAYLOAD_VOD_V1,
+        body
+      })
     );
     if (claim === "processed") return { accepted: true, duplicate: true };
     if (claim === "dead_letter") {
@@ -66,47 +79,7 @@ export class CallbacksController {
     }
 
     try {
-      const outcome = await this.prisma.$transaction(async (tx) => {
-        const asset = await tx.mediaAsset.findUnique({
-          where: { fileId: body.fileId },
-          include: { episode: { include: { drama: true } } }
-        });
-        if (!asset) return "MEDIA_NOT_FOUND";
-        await tx.mediaAsset.update({
-          where: { id: asset.id },
-          data: {
-            mediaStatus: body.mediaStatus,
-            transcodeStatus: body.transcodeStatus,
-            machineReviewStatus: body.machineReviewStatus
-          }
-        });
-        const failed =
-          body.mediaStatus === "FAILED" ||
-          body.transcodeStatus === "FAILED" ||
-          body.machineReviewStatus === "REJECTED" ||
-          asset.manualReviewStatus === "REJECTED" ||
-          asset.wechatReviewStatus === "REJECTED";
-        if (failed && asset.episode.drama.status === "PUBLISHED") {
-          const now = new Date();
-          await tx.drama.update({
-            where: { id: asset.episode.dramaId },
-            data: { status: "OFFLINE" }
-          });
-          const episodes = await tx.episode.findMany({
-            where: { dramaId: asset.episode.dramaId },
-            select: { id: true }
-          });
-          await tx.playbackLease.updateMany({
-            where: {
-              episodeId: { in: episodes.map((episode) => episode.id) },
-              status: "ACTIVE"
-            },
-            data: { status: "REVOKED", activeKey: null, revokedAt: now }
-          });
-          return "PROCESSED_EMERGENCY_OFFLINE";
-        }
-        return "PROCESSED";
-      });
+      const outcome = await applyVodCallback(this.prisma, body);
       await finishCallbackEvent(this.prisma, body.eventId, outcome);
       return { accepted: true, duplicate: false };
     } catch (error) {
@@ -131,7 +104,12 @@ export class CallbacksController {
       body.eventId,
       "WECHAT",
       "REWARD_COMPLETED",
-      payloadHash(request.rawBody)
+      buildStoredEnvelope({
+        ...withEncryptionKey(resolvePayloadEncryptionKey(this.config.env)),
+        ...(request.rawBody ? { rawBody: request.rawBody } : {}),
+        schema: CALLBACK_PAYLOAD_REWARD_V1,
+        body
+      })
     );
     if (claim === "processed") return { accepted: true, duplicate: true };
     if (claim === "dead_letter") {
@@ -194,7 +172,7 @@ export async function claimCallbackEvent(
   id: string,
   provider: string,
   eventType: string,
-  payloadDigest?: string,
+  envelope: StoredCallbackEnvelope = {},
   now = new Date()
 ): Promise<CallbackClaim> {
   const processingUntil = new Date(now.getTime() + CALLBACK_LEASE_MS);
@@ -207,7 +185,10 @@ export async function claimCallbackEvent(
         processingUntil,
         attempts: 1,
         status: CallbackEventStatus.PROCESSING,
-        ...(payloadDigest ? { payloadHash: payloadDigest } : {})
+        ...(envelope.payloadHash ? { payloadHash: envelope.payloadHash } : {}),
+        ...(envelope.payloadCiphertext ? { payloadCiphertext: envelope.payloadCiphertext } : {}),
+        ...(envelope.payloadSchema ? { payloadSchema: envelope.payloadSchema } : {}),
+        ...(envelope.payloadRetainUntil ? { payloadRetainUntil: envelope.payloadRetainUntil } : {})
       }
     });
     return "claimed";
@@ -312,11 +293,6 @@ type CallbackStore = {
     create(args: unknown): Promise<unknown>;
   };
 };
-
-function payloadHash(rawBody: Buffer | undefined): string | undefined {
-  if (!rawBody?.length) return undefined;
-  return createHash("sha256").update(rawBody).digest("hex");
-}
 
 type RawBodyRequest = { rawBody?: Buffer };
 

@@ -44,7 +44,8 @@ import { publicationBlockers, releaseGateStatus } from "../domain/policies.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import {
   LIVE_PROVIDER_IMPLEMENTATIONS_READY,
-  VodProviderService
+  VodProviderService,
+  WechatProviderService
 } from "../providers/providers.js";
 import {
   AdminRolesGuard,
@@ -66,6 +67,7 @@ import {
 } from "./admin.compensate.js";
 import { createIdempotentAdjustment } from "./admin.adjust.js";
 import { replayCallbackEvent } from "../callbacks/callback-replay.js";
+import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/callback-payload.js";
 
 class EpisodeInput {
   @IsInt()
@@ -231,7 +233,8 @@ export class AdminController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
-    private readonly vod: VodProviderService
+    private readonly vod: VodProviderService,
+    private readonly wechat: WechatProviderService
   ) {}
 
   @Get("dashboard")
@@ -799,17 +802,25 @@ export class AdminController {
     @Body() body: ReplayCallbackDto
   ) {
     const admin = requireAdmin(principal);
-    const view = await replayCallbackEvent(this.prisma, {
-      eventId,
-      reason: body.reason,
-      operatorAdminId: admin.sub,
-      ...(idempotencyKey ? { idempotencyKey } : {}),
-      ...(body.approvalNote ? { approvalNote: body.approvalNote } : {})
-    });
+    const view = await replayCallbackEvent(
+      this.prisma,
+      {
+        eventId,
+        reason: body.reason,
+        operatorAdminId: admin.sub,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+        ...(body.approvalNote ? { approvalNote: body.approvalNote } : {})
+      },
+      {
+        ...withEncryptionKey(resolvePayloadEncryptionKey(this.config.env)),
+        verifyReward: (input) => this.wechat.verifyReward(input)
+      }
+    );
     if (!view.replayed) {
       await this.audit(admin.sub, "CALLBACK_REPLAYED", "CallbackEvent", view.eventId, {
         status: view.status,
-        attempts: String(view.attempts)
+        attempts: String(view.attempts),
+        executed: view.executed ? "true" : "false"
       });
     }
     return view;

@@ -196,8 +196,8 @@ async function submitReplay(): Promise<void> {
       ...(replay.approvalNote?.trim() ? { approvalNote: replay.approvalNote.trim() } : {}),
     });
     notice.value = adminApi.mode === "mock"
-      ? "演示重放已记入审计视图；未解锁真实回调。"
-      : "回调已解锁为 PROCESSING，等待 provider 再次投递。不会复制新的业务事实。";
+      ? "演示重放已记入审计视图；未解锁或执行真实回调。"
+      : "回调已解锁。若存有未过期的加密载荷，服务端已尝试执行；否则需等待 provider 再次投递。不会复制新的业务事实。";
     Object.assign(replay, { eventId: "", reason: "", approvalNote: "" });
     replayDialogOpen.value = false;
   } catch (caught) {
@@ -275,7 +275,7 @@ onMounted(load);
               <label class="field field--wide"><span>原因 *</span><textarea v-model="replay.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明修复依据、工单与为何可以重放" /></label>
               <label class="field field--wide"><span>审批记录</span><textarea v-model="replay.approvalNote" rows="2" maxlength="300" placeholder="可选：审批人/工单号" /></label>
             </div>
-            <p class="form-help">仅可将 RETRYABLE_FAILURE 或 DEAD_LETTER 迁回 PROCESSING，沿用原事件 ID。本操作不重放存储载荷；需等待 provider 再次投递。已处理或已拒绝事件不可重放。</p>
+            <p class="form-help">仅可将 RETRYABLE_FAILURE 或 DEAD_LETTER 迁回 PROCESSING，沿用原事件 ID。若事件仍在保留期内且存有加密规范化载荷，服务端会立即用该载荷执行，不复制新的 grant/媒体事实。无载荷或已过保留期时只解锁，等待 provider 再次投递。已处理或已拒绝事件不可重放。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并解锁重放</button>
           </form>
         </section>
@@ -284,7 +284,7 @@ onMounted(load);
     <ConfirmDialog :open="breakerDialogOpen" :title="breaker?.enabled ? '恢复全站播放' : '开启全站播放熔断'" :message="breaker?.enabled ? '恢复后将重新允许创建播放租约，请确认故障已处置。' : '开启后将阻止新的播放租约。这是高影响操作，请说明事故原因。'" :confirm-label="breaker?.enabled ? '确认恢复' : '确认熔断'" :tone="breaker?.enabled ? 'primary' : 'danger'" require-reason :reason-label="breaker?.enabled ? '恢复依据' : '事故原因'" :busy="busy" @close="breakerDialogOpen = false" @confirm="toggleBreaker" />
     <ConfirmDialog :open="compensationDialogOpen" title="确认授予补偿权益" :message="`将向用户 ${compensation.userId} 授予剧目 ${compensation.dramaId} 的 ${compensation.seconds} 秒权益。请确认工单信息准确。`" confirm-label="确认授予" :busy="busy" @close="compensationDialogOpen = false" @confirm="grantCompensation" />
     <ConfirmDialog :open="adjustmentDialogOpen" title="确认写入权益纠错" :message="adjustmentSummary" confirm-label="确认写入" :busy="busy" @close="adjustmentDialogOpen = false" @confirm="submitAdjustment" />
-    <ConfirmDialog :open="replayDialogOpen" title="确认解锁回调重放" :message="`将事件 ${replay.eventId} 迁回 PROCESSING。不会复制 grant、媒体或奖励事实。`" confirm-label="确认解锁" :busy="busy" @close="replayDialogOpen = false" @confirm="submitReplay" />
+    <ConfirmDialog :open="replayDialogOpen" title="确认解锁回调重放" :message="`将事件 ${replay.eventId} 迁回 PROCESSING，并在有加密载荷时立即执行。不会复制 grant、媒体或奖励事实。`" confirm-label="确认解锁" :busy="busy" @close="replayDialogOpen = false" @confirm="submitReplay" />
   </div>
 </template>
 

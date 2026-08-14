@@ -8,16 +8,33 @@ import { Prisma } from "@prisma/client";
 import { Errors } from "../common/app-error.js";
 import { normalizeIdempotencyKey } from "../admin/admin.compensate.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
+import { applyRewardCallback } from "../rewards/late-completion.js";
+import { applyVodCallback } from "./callback-apply-vod.js";
+import {
+  CALLBACK_PAYLOAD_REWARD_V1,
+  CALLBACK_PAYLOAD_VOD_V1,
+  readStoredPayload,
+  type RewardCallbackBody,
+  type VodCallbackBody
+} from "./callback-payload.js";
+import { finishCallbackEvent, releaseCallbackEvent } from "./callbacks.module.js";
 
 const REPLAYABLE = new Set<string>([
   CallbackEventStatus.RETRYABLE_FAILURE,
   CallbackEventStatus.DEAD_LETTER
 ]);
 
+const CALLBACK_LEASE_MS = 30_000;
+
 export type ReplayCallbackPayload = ReplayCallbackEventRequest & {
   eventId: string;
   idempotencyKey: string;
   operatorAdminId: string;
+};
+
+export type ReplayExecutionDeps = {
+  encryptionKey?: string;
+  verifyReward(input: { challengeId: string; eventId: string }): Promise<boolean>;
 };
 
 type ReplayRow = {
@@ -30,7 +47,8 @@ type ReplayRow = {
 
 export async function replayCallbackEvent(
   prisma: PrismaService,
-  raw: Omit<ReplayCallbackPayload, "idempotencyKey"> & { idempotencyKey?: string }
+  raw: Omit<ReplayCallbackPayload, "idempotencyKey"> & { idempotencyKey?: string },
+  deps: ReplayExecutionDeps
 ): Promise<CallbackReplayView> {
   const payload: ReplayCallbackPayload = {
     eventId: raw.eventId.trim(),
@@ -50,11 +68,20 @@ export async function replayCallbackEvent(
   if (existing) {
     assertSameReplay(existing, payload);
     const event = await prisma.callbackEvent.findUnique({ where: { id: existing.eventId } });
-    return toReplayView(existing.eventId, event?.status, event?.attempts ?? 0, true);
+    return toReplayView(existing.eventId, event?.status, event?.attempts ?? 0, true, false);
   }
 
   try {
-    return await applyReplay(prisma, payload);
+    const unlocked = await applyReplay(prisma, payload);
+    const executed = await executeStoredCallback(prisma, payload.eventId, deps);
+    const event = await prisma.callbackEvent.findUnique({ where: { id: payload.eventId } });
+    return toReplayView(
+      unlocked.eventId,
+      event?.status ?? unlocked.status,
+      event?.attempts ?? unlocked.attempts,
+      false,
+      executed
+    );
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const raced = await prisma.callbackReplay.findUnique({
@@ -63,7 +90,7 @@ export async function replayCallbackEvent(
       if (raced) {
         assertSameReplay(raced, payload);
         const event = await prisma.callbackEvent.findUnique({ where: { id: raced.eventId } });
-        return toReplayView(raced.eventId, event?.status, event?.attempts ?? 0, true);
+        return toReplayView(raced.eventId, event?.status, event?.attempts ?? 0, true, false);
       }
     }
     throw error;
@@ -98,6 +125,7 @@ async function applyReplay(
         "Only retryable or dead-letter callbacks can be replayed"
       );
     }
+    const processingUntil = new Date(Date.now() + CALLBACK_LEASE_MS);
     const updated = await tx.callbackEvent.updateMany({
       where: {
         id: event.id,
@@ -107,7 +135,7 @@ async function applyReplay(
       data: {
         status: CallbackEventStatus.PROCESSING,
         processedAt: null,
-        processingUntil: null,
+        processingUntil,
         outcome: "REPLAY_UNLOCKED"
       }
     });
@@ -126,20 +154,75 @@ async function applyReplay(
         idempotencyKey: payload.idempotencyKey
       }
     });
-    return toReplayView(event.id, CallbackEventStatus.PROCESSING, event.attempts, false);
+    return toReplayView(event.id, CallbackEventStatus.PROCESSING, event.attempts, false, false);
   });
+}
+
+async function executeStoredCallback(
+  prisma: PrismaService,
+  eventId: string,
+  deps: ReplayExecutionDeps
+): Promise<boolean> {
+  const event = await prisma.callbackEvent.findUnique({ where: { id: eventId } });
+  if (!event) return false;
+  const stored = readStoredPayload(event, deps.encryptionKey);
+  if (!stored) return false;
+  try {
+    const outcome = await dispatchStoredCallback(prisma, eventId, stored, deps);
+    await finishCallbackEvent(prisma, eventId, outcome);
+    return true;
+  } catch (error) {
+    await releaseCallbackEvent(prisma, eventId, "RETRYABLE_FAILURE");
+    throw error;
+  }
+}
+
+async function dispatchStoredCallback(
+  prisma: PrismaService,
+  eventId: string,
+  stored: { schema: string; body: VodCallbackBody | RewardCallbackBody },
+  deps: ReplayExecutionDeps
+): Promise<string> {
+  if (stored.schema === CALLBACK_PAYLOAD_VOD_V1) {
+    const body = stored.body as VodCallbackBody;
+    if (!body.fileId || !body.mediaStatus) {
+      throw Errors.conflict(ERROR_CODES.CALLBACK_PAYLOAD_UNAVAILABLE, "Stored VOD payload is incomplete");
+    }
+    return applyVodCallback(prisma, body);
+  }
+  if (stored.schema === CALLBACK_PAYLOAD_REWARD_V1) {
+    const body = stored.body as RewardCallbackBody;
+    if (!body.challengeId) {
+      throw Errors.conflict(
+        ERROR_CODES.CALLBACK_PAYLOAD_UNAVAILABLE,
+        "Stored reward payload is incomplete"
+      );
+    }
+    const verified = await deps.verifyReward({ challengeId: body.challengeId, eventId });
+    if (!verified) return "REJECTED";
+    return applyRewardCallback(prisma, {
+      challengeId: body.challengeId,
+      ...(body.completedAt ? { completedAt: body.completedAt } : {})
+    });
+  }
+  throw Errors.conflict(
+    ERROR_CODES.CALLBACK_PAYLOAD_UNAVAILABLE,
+    "Stored callback payload schema is not supported"
+  );
 }
 
 function toReplayView(
   eventId: string,
   status: string | undefined,
   attempts: number,
-  replayed: boolean
+  replayed: boolean,
+  executed: boolean
 ): CallbackReplayView {
   return {
     eventId,
     status: (status ?? CallbackEventStatus.PROCESSING) as CallbackReplayView["status"],
     attempts,
-    replayed
+    replayed,
+    executed
   };
 }

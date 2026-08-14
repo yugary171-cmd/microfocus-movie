@@ -22,6 +22,7 @@ const envSchema = z.object({
   ADMIN_BOOTSTRAP_TOTP_SECRET: z.string().optional(),
   ADMIN_TEST_OTP: z.string().regex(/^\d{6}$/).optional(),
   TOTP_ENCRYPTION_KEY: optionalSecret,
+  CALLBACK_PAYLOAD_ENCRYPTION_KEY: optionalSecret,
   RELEASE_GATE_ENABLED: booleanString,
   COMPLIANCE_ENTITY_APPROVED: booleanString,
   COMPLIANCE_MINIPROGRAM_FILING: booleanString,

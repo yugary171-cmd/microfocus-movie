@@ -12,6 +12,11 @@ const replayRow = {
   operatorAdminId: "admin-1"
 };
 
+const deps = {
+  encryptionKey: "callback-payload-key-that-is-32-chars",
+  verifyReward: vi.fn().mockResolvedValue(true)
+};
+
 describe("callback replay", () => {
   it("returns the original replay on the same idempotency key", async () => {
     const prisma = {
@@ -26,18 +31,23 @@ describe("callback replay", () => {
       },
       $transaction: vi.fn()
     };
-    const result = await replayCallbackEvent(prisma as unknown as PrismaService, {
-      eventId: "event-1",
-      reason: "修复验签时钟后重放",
-      approvalNote: "INC-9",
-      idempotencyKey: "r:1",
-      operatorAdminId: "admin-1"
-    });
+    const result = await replayCallbackEvent(
+      prisma as unknown as PrismaService,
+      {
+        eventId: "event-1",
+        reason: "修复验签时钟后重放",
+        approvalNote: "INC-9",
+        idempotencyKey: "r:1",
+        operatorAdminId: "admin-1"
+      },
+      deps
+    );
     expect(result).toEqual({
       eventId: "event-1",
       status: CallbackEventStatus.PROCESSING,
       attempts: 5,
-      replayed: true
+      replayed: true,
+      executed: false
     });
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
@@ -60,23 +70,37 @@ describe("callback replay", () => {
     };
     const prisma = {
       callbackReplay: { findUnique: vi.fn().mockResolvedValue(null) },
+      callbackEvent: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "event-1",
+          status: CallbackEventStatus.PROCESSING,
+          attempts: 5,
+          payloadCiphertext: null,
+          payloadSchema: null,
+          payloadRetainUntil: null
+        })
+      },
       $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx))
     };
-    const result = await replayCallbackEvent(prisma as unknown as PrismaService, {
-      eventId: "event-1",
-      reason: "修复验签时钟后重放",
-      approvalNote: "INC-9",
-      idempotencyKey: "r:1",
-      operatorAdminId: "admin-1"
-    });
+    const result = await replayCallbackEvent(
+      prisma as unknown as PrismaService,
+      {
+        eventId: "event-1",
+        reason: "修复验签时钟后重放",
+        approvalNote: "INC-9",
+        idempotencyKey: "r:1",
+        operatorAdminId: "admin-1"
+      },
+      deps
+    );
     expect(result.replayed).toBe(false);
+    expect(result.executed).toBe(false);
     expect(result.attempts).toBe(5);
     expect(result.status).toBe(CallbackEventStatus.PROCESSING);
     expect(tx.callbackEvent.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           status: CallbackEventStatus.PROCESSING,
-          processingUntil: null,
           processedAt: null
         })
       })
@@ -102,12 +126,16 @@ describe("callback replay", () => {
       $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx))
     };
     await expect(
-      replayCallbackEvent(prisma as unknown as PrismaService, {
-        eventId: "event-1",
-        reason: "误操作重放已完成事件",
-        idempotencyKey: "r:2",
-        operatorAdminId: "admin-1"
-      })
+      replayCallbackEvent(
+        prisma as unknown as PrismaService,
+        {
+          eventId: "event-1",
+          reason: "误操作重放已完成事件",
+          idempotencyKey: "r:2",
+          operatorAdminId: "admin-1"
+        },
+        deps
+      )
     ).rejects.toMatchObject({ code: ERROR_CODES.CALLBACK_NOT_REPLAYABLE });
     expect(tx.callbackEvent.updateMany).not.toHaveBeenCalled();
   });
@@ -119,13 +147,17 @@ describe("callback replay", () => {
       $transaction: vi.fn()
     };
     await expect(
-      replayCallbackEvent(prisma as unknown as PrismaService, {
-        eventId: "event-2",
-        reason: "修复验签时钟后重放",
-        approvalNote: "INC-9",
-        idempotencyKey: "r:1",
-        operatorAdminId: "admin-1"
-      })
+      replayCallbackEvent(
+        prisma as unknown as PrismaService,
+        {
+          eventId: "event-2",
+          reason: "修复验签时钟后重放",
+          approvalNote: "INC-9",
+          idempotencyKey: "r:1",
+          operatorAdminId: "admin-1"
+        },
+        deps
+      )
     ).rejects.toBeInstanceOf(AppError);
   });
 });
