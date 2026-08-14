@@ -23,7 +23,8 @@ export const RATE_LIMITS = {
   adminRead: { limit: 60, windowMs: 60_000 },
   rewardChallenge: { limit: 3, windowMs: 5 * 60_000 },
   rewardComplete: { limit: 20, windowMs: 60_000 },
-  deletionCreate: { limit: 5, windowMs: 10 * 60_000 }
+  deletionCreate: { limit: 5, windowMs: 10 * 60_000 },
+  deletionLookup: { limit: 30, windowMs: 60_000 }
 } as const;
 
 export type RateLimitStore = {

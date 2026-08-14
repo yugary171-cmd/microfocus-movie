@@ -123,6 +123,7 @@ describe("account deletion", () => {
       statusReason: null
     };
     const prisma = {
+      rateLimitBucket: allowRateLimit(),
       deletionRequest: {
         findUnique: vi.fn().mockResolvedValue(row),
         update: vi.fn()
@@ -131,12 +132,14 @@ describe("account deletion", () => {
     const view = await lookupDeletionRequest(prisma as never, {
       deletionRequestId: "del-1",
       queryToken: token,
+      ipKey: "10.0.0.8",
       now: new Date("2026-08-14T01:00:00.000Z")
     });
     expect(view.status).toBe("PENDING");
     await expect(
       lookupDeletionRequest(
         {
+          rateLimitBucket: allowRateLimit(),
           deletionRequest: {
             findUnique: vi.fn().mockResolvedValue({
               ...row,
@@ -148,28 +151,67 @@ describe("account deletion", () => {
         {
           deletionRequestId: "del-1",
           queryToken: token,
+          ipKey: "10.0.0.8",
           now: new Date("2026-08-14T01:00:00.400Z")
         }
       )
     ).rejects.toMatchObject({ code: "RATE_LIMITED" });
   });
 
-  it("rejects an invalid query token", async () => {
+  it("rejects an invalid query token after the IP bucket is consumed", async () => {
+    const prisma = {
+      rateLimitBucket: allowRateLimit(),
+      deletionRequest: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "del-1",
+          queryTokenHash: hashDeletionQueryToken("other"),
+          tokenExpiresAt: new Date("2099-01-01"),
+          lastQueriedAt: null
+        })
+      }
+    };
     await expect(
-      lookupDeletionRequest(
-        {
-          deletionRequest: {
-            findUnique: vi.fn().mockResolvedValue({
-              id: "del-1",
-              queryTokenHash: hashDeletionQueryToken("other"),
-              tokenExpiresAt: new Date("2099-01-01"),
-              lastQueriedAt: null
-            })
-          }
-        } as never,
-        { deletionRequestId: "del-1", queryToken: "nope" }
-      )
+      lookupDeletionRequest(prisma as never, {
+        deletionRequestId: "del-1",
+        queryToken: "nope",
+        ipKey: "10.0.0.8"
+      })
     ).rejects.toMatchObject({ code: ERROR_CODES.DELETION_TOKEN_INVALID });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("deletionLookup", "10.0.0.8")
+        })
+      })
+    );
+  });
+
+  it("rate-limits deletion status lookups by connection IP before reading the request", async () => {
+    expect(RATE_LIMITS.deletionLookup).toEqual({ limit: 30, windowMs: 60_000 });
+    const prisma = {
+      rateLimitBucket: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ windowStart: new Date(), count: 99 }),
+        create: vi.fn(),
+        deleteMany: vi.fn()
+      },
+      deletionRequest: { findUnique: vi.fn() }
+    };
+    await expect(
+      lookupDeletionRequest(prisma as never, {
+        deletionRequestId: "del-1",
+        queryToken: "query-token",
+        ipKey: "10.0.0.8"
+      })
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(prisma.deletionRequest.findUnique).not.toHaveBeenCalled();
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("deletionLookup", "10.0.0.8")
+        })
+      })
+    );
   });
 
   it("recovers a unique-key race as a replay", async () => {

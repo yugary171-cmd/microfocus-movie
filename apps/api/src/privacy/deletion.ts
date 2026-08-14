@@ -143,8 +143,9 @@ export async function createDeletionRequest(
 
 export async function lookupDeletionRequest(
   prisma: PrismaService,
-  input: { deletionRequestId: string; queryToken: string; now?: Date }
+  input: { deletionRequestId: string; queryToken: string; ipKey: string; now?: Date }
 ): Promise<DeletionRequestView> {
+  await assertNamedRateLimit(prisma, "deletionLookup", input.ipKey);
   const token = input.queryToken.trim();
   if (!token) {
     throw Errors.unauthorized("Deletion query token is required", ERROR_CODES.DELETION_TOKEN_INVALID);

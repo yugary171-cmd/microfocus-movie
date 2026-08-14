@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Module, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Module, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
   DELETION_CONFIRMATION,
   type CreateDeletionRequest,
@@ -15,6 +15,7 @@ import {
   JwtAuthGuard,
   type Principal
 } from "../security/security.js";
+import { requestIpKey, type SocketRequest } from "../security/rate-limit.js";
 import { createDeletionRequest, lookupDeletionRequest } from "./deletion.js";
 
 class CreateDeletionDto implements CreateDeletionRequest {
@@ -55,12 +56,14 @@ export class DeletionController {
 
   @Get(":deletionRequestId")
   lookup(
+    @Req() request: SocketRequest,
     @Param("deletionRequestId") deletionRequestId: string,
     @Headers("x-deletion-query-token") queryToken: string | undefined
   ): Promise<DeletionRequestView> {
     return lookupDeletionRequest(this.prisma, {
       deletionRequestId,
-      queryToken: queryToken ?? ""
+      queryToken: queryToken ?? "",
+      ipKey: requestIpKey(request)
     });
   }
 }
