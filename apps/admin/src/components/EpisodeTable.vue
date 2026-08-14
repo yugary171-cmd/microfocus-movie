@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { MediaStatus } from "@microfocus/contracts";
+import {
+  DRAMA_EPISODE_MAX_COUNT,
+  EPISODE_DURATION_SECONDS_MAX,
+  EPISODE_TITLE_MAX_LENGTH,
+  MediaStatus,
+} from "@microfocus/contracts";
 import { computed, reactive } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -23,6 +28,7 @@ function update(id: string, patch: Partial<EpisodeRecord>): void {
 }
 
 function addEpisode(): void {
+  if (props.modelValue.length >= DRAMA_EPISODE_MAX_COUNT) return;
   const nextNumber = props.modelValue.reduce((max, episode) => Math.max(max, episode.episodeNumber), 0) + 1;
   emit("update:modelValue", [
     ...props.modelValue,
@@ -104,7 +110,7 @@ function completeMockProcessing(episode: EpisodeRecord): void {
   <section class="panel episode-panel" aria-labelledby="episodes-title">
     <div class="panel__header">
       <div><p class="eyebrow">EPISODES & VOD</p><h2 id="episodes-title">剧集与媒体</h2><p>先获取上传签名，再由浏览器直传 VOD；应用服务不转发视频文件。</p></div>
-      <button v-if="!readonly" class="button button--secondary" type="button" @click="addEpisode">＋ 添加剧集</button>
+      <button v-if="!readonly" class="button button--secondary" type="button" :disabled="modelValue.length >= DRAMA_EPISODE_MAX_COUNT" @click="addEpisode">＋ 添加剧集</button>
     </div>
     <div v-if="adminApi.mode === 'mock'" class="upload-mode" role="status">
       <strong>模拟直传</strong> 进度和处理状态仅用于演示，不代表云端已收到或完成转码。
@@ -119,8 +125,8 @@ function completeMockProcessing(episode: EpisodeRecord): void {
       <article v-for="episode in sortedEpisodes" :key="episode.id" class="episode-row">
         <div class="episode-number">{{ String(episode.episodeNumber).padStart(2, "0") }}</div>
         <div class="episode-fields">
-          <label class="field"><span>集标题</span><input :value="episode.title" :disabled="readonly" required @input="update(episode.id, { title: ($event.target as HTMLInputElement).value })" /></label>
-          <label class="field field--duration"><span>时长（秒）</span><input :value="episode.durationSeconds" :disabled="readonly" type="number" min="1" step="1" @input="update(episode.id, { durationSeconds: Number(($event.target as HTMLInputElement).value) || 0 })" /><small>{{ formatDuration(episode.durationSeconds) }}</small></label>
+          <label class="field"><span>集标题</span><input :value="episode.title" :disabled="readonly" :maxlength="EPISODE_TITLE_MAX_LENGTH" required @input="update(episode.id, { title: ($event.target as HTMLInputElement).value })" /></label>
+          <label class="field field--duration"><span>时长（秒）</span><input :value="episode.durationSeconds" :disabled="readonly" type="number" min="1" :max="EPISODE_DURATION_SECONDS_MAX" step="1" @input="update(episode.id, { durationSeconds: Number(($event.target as HTMLInputElement).value) || 0 })" /><small>{{ formatDuration(episode.durationSeconds) }}</small></label>
         </div>
         <div class="episode-media">
           <StatusBadge :label="mediaStatusLabels[episode.mediaStatus]" :tone="statusTone(episode.mediaStatus)" />

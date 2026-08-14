@@ -1,5 +1,19 @@
 <script setup lang="ts">
-import { AdminRole, DramaStatus, MediaStatus, type ReleaseGateStatus } from "@microfocus/contracts";
+import {
+  AdminRole,
+  COVER_URL_MAX_LENGTH,
+  DRAMA_CATEGORY_MAX_LENGTH,
+  DRAMA_SUMMARY_MAX_LENGTH,
+  DRAMA_TAG_MAX_COUNT,
+  DRAMA_TAG_MAX_LENGTH,
+  DRAMA_TITLE_MAX_LENGTH,
+  DramaStatus,
+  MediaStatus,
+  RIGHTS_DOCUMENT_MAX_LENGTH,
+  RIGHTS_HOLDER_MAX_LENGTH,
+  RIGHTS_MATERIAL_KEY_MAX_LENGTH,
+  type ReleaseGateStatus,
+} from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
@@ -10,6 +24,7 @@ import EpisodeTable from "@/components/EpisodeTable.vue";
 import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { dramaStatusLabels } from "@/i18n";
+import { dramaDraftError } from "@/policies/drama-input";
 import { useAuthStore } from "@/stores/auth";
 import type { DramaInput, DramaRecord, EpisodeRecord } from "@/types/admin";
 
@@ -145,9 +160,15 @@ function normalizedInput(): DramaInput {
 async function save(): Promise<DramaRecord | null> {
   error.value = "";
   notice.value = "";
+  const payload = normalizedInput();
+  const validation = dramaDraftError(payload);
+  if (validation) {
+    error.value = validation;
+    return null;
+  }
   saving.value = true;
   try {
-    const saved = await adminApi.saveDrama(normalizedInput(), id.value || undefined);
+    const saved = await adminApi.saveDrama(payload, id.value || undefined);
     applyDrama(saved);
     notice.value = adminApi.mode === "mock" ? "已保存到当前演示会话；刷新页面后可能重置。" : "剧目已保存。";
     if (isNew.value) await router.replace(`/dramas/${saved.id}`);
@@ -235,22 +256,22 @@ onMounted(load);
         <section class="panel" aria-labelledby="metadata-title">
           <div class="panel__header"><div><p class="eyebrow">METADATA</p><h2 id="metadata-title">基础信息</h2></div></div>
           <div class="form-grid">
-            <label class="field"><span>剧名 *</span><input v-model="form.title" :disabled="!canEdit" maxlength="80" required /></label>
-            <label class="field"><span>分类 *</span><input v-model="form.category" :disabled="!canEdit" maxlength="40" placeholder="如：都市情感" required /></label>
-            <label class="field field--wide"><span>简介 *</span><textarea v-model="form.summary" :disabled="!canEdit" rows="4" maxlength="500" required /></label>
-            <label class="field"><span>标签</span><input v-model="tagsText" :disabled="!canEdit" placeholder="使用逗号分隔" /><small>最多建议 5 个</small></label>
-            <label class="field"><span>封面 URL</span><input v-model="form.coverUrl" :disabled="!canEdit" type="url" placeholder="https://…" /></label>
+            <label class="field"><span>剧名 *</span><input v-model="form.title" :disabled="!canEdit" :maxlength="DRAMA_TITLE_MAX_LENGTH" required /></label>
+            <label class="field"><span>分类 *</span><input v-model="form.category" :disabled="!canEdit" :maxlength="DRAMA_CATEGORY_MAX_LENGTH" placeholder="如：都市情感" required /></label>
+            <label class="field field--wide"><span>简介 *</span><textarea v-model="form.summary" :disabled="!canEdit" rows="4" :maxlength="DRAMA_SUMMARY_MAX_LENGTH" required /></label>
+            <label class="field"><span>标签</span><input v-model="tagsText" :disabled="!canEdit" placeholder="使用逗号分隔" /><small>最多 {{ DRAMA_TAG_MAX_COUNT }} 个，每个不超过 {{ DRAMA_TAG_MAX_LENGTH }} 字</small></label>
+            <label class="field"><span>封面 URL</span><input v-model="form.coverUrl" :disabled="!canEdit" type="url" :maxlength="COVER_URL_MAX_LENGTH" placeholder="https://…" /></label>
           </div>
         </section>
         <section class="panel" aria-labelledby="rights-title">
           <div class="panel__header"><div><p class="eyebrow">RIGHTS & LICENSE</p><h2 id="rights-title">版权与许可</h2></div><StatusBadge :label="form.licenseNumber && form.rightsHolder ? '资料已填写' : '待补齐'" :tone="form.licenseNumber && form.rightsHolder ? 'success' : 'warning'" /></div>
           <div class="form-grid">
-            <label class="field"><span>权利方 *</span><input v-model="form.rightsHolder" :disabled="!canEdit" required /></label>
-            <label class="field"><span>许可 / 备案编号 *</span><input v-model="form.licenseNumber" :disabled="!canEdit" required /></label>
+            <label class="field"><span>权利方 *</span><input v-model="form.rightsHolder" :disabled="!canEdit" :maxlength="RIGHTS_HOLDER_MAX_LENGTH" required /></label>
+            <label class="field"><span>许可 / 备案编号 *</span><input v-model="form.licenseNumber" :disabled="!canEdit" :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH" required /></label>
             <label class="field"><span>许可起始日 *</span><input v-model="form.rightsValidFrom" :disabled="!canEdit" type="date" required /></label>
             <label class="field"><span>许可到期日 *</span><input v-model="form.licenseExpiresAt" :disabled="!canEdit" type="date" required /></label>
-            <label class="field"><span>报备号 *</span><input v-model="form.rightsReportNumber" :disabled="!canEdit" required /></label>
-            <label class="field"><span>私有材料对象键 *</span><input v-model="form.rightsMaterialObjectKey" :disabled="!canEdit" required placeholder="rights/…/document.pdf" /><small>仅填写私有对象存储键，不使用公开 URL</small></label>
+            <label class="field"><span>报备号 *</span><input v-model="form.rightsReportNumber" :disabled="!canEdit" :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH" required /></label>
+            <label class="field"><span>私有材料对象键 *</span><input v-model="form.rightsMaterialObjectKey" :disabled="!canEdit" :maxlength="RIGHTS_MATERIAL_KEY_MAX_LENGTH" required placeholder="rights/…/document.pdf" /><small>仅填写私有对象存储键，不使用公开 URL</small></label>
             <label class="field field--wide"><span>材料 SHA-256 摘要 *</span><input v-model="form.rightsMaterialDigestSha256" :disabled="!canEdit" required minlength="64" maxlength="64" pattern="[A-Fa-f0-9]{64}" spellcheck="false" autocomplete="off" placeholder="64 位十六进制摘要" /></label>
             <fieldset class="rights-scope field--wide" :disabled="!canEdit">
               <legend>授权范围（须逐项确认）</legend>

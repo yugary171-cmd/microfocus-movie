@@ -25,6 +25,7 @@ import type {
   UploadSignature,
 } from "@/types/admin";
 import { isRightsActive } from "@/policies/admin";
+import { dramaDraftError } from "@/policies/drama-input";
 
 const now = new Date();
 const isoHoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();
@@ -334,6 +335,8 @@ export const mockApi = {
     return mockDelay(drama);
   },
   async saveDrama(input: DramaInput, id?: string): Promise<DramaRecord> {
+    const validation = dramaDraftError(input);
+    if (validation) throw new Error(validation);
     const existing = id ? dramas.find((item) => item.id === id) : undefined;
     const saved: DramaRecord = {
       id: existing?.id ?? `drama-${crypto.randomUUID()}`,

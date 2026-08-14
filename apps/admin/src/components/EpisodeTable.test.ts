@@ -1,4 +1,4 @@
-import { MediaStatus } from "@microfocus/contracts";
+import { DRAMA_EPISODE_MAX_COUNT, EPISODE_DURATION_SECONDS_MAX, EPISODE_TITLE_MAX_LENGTH, MediaStatus } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { adminApi } from "@/api/admin";
@@ -49,5 +49,32 @@ describe("EpisodeTable Mock upload path", () => {
       wechatReviewStatus: "APPROVED",
     });
     upload.mockRestore();
+  });
+
+  it("caps episode title, duration, and count to the contract limits", () => {
+    const wrapper = mount(EpisodeTable, {
+      props: { modelValue: [episode], dramaId: "drama-upload-test" },
+    });
+
+    expect(wrapper.get(".episode-fields input").attributes("maxlength")).toBe(
+      String(EPISODE_TITLE_MAX_LENGTH),
+    );
+    expect(wrapper.get('input[type="number"]').attributes("max")).toBe(
+      String(EPISODE_DURATION_SECONDS_MAX),
+    );
+
+    const full = Array.from({ length: DRAMA_EPISODE_MAX_COUNT }, (_, index) => ({
+      ...episode,
+      id: `episode-${index}`,
+      episodeNumber: index + 1,
+    }));
+    const capped = mount(EpisodeTable, {
+      props: { modelValue: full, dramaId: "drama-upload-test" },
+    });
+    expect(
+      capped.findAll("button").find((button) => button.text().includes("添加剧集"))?.attributes("disabled"),
+    ).toBeDefined();
+    capped.unmount();
+    wrapper.unmount();
   });
 });

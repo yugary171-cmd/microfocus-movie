@@ -1,4 +1,4 @@
-import { ADMIN_LIST_MAX_PAGE, DramaStatus, MediaStatus } from "@microfocus/contracts";
+import { ADMIN_LIST_MAX_PAGE, DRAMA_TITLE_MAX_LENGTH, DramaStatus, MediaStatus } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
 import { mockApi } from "./mock";
 import type { DramaInput } from "@/types/admin";
@@ -72,5 +72,29 @@ describe("mock admin publish path", () => {
       items: [],
       total: 0,
     });
+  });
+
+  it("rejects an oversized drama draft before storing mock state", async () => {
+    await expect(
+      mockApi.saveDrama({
+        title: "x".repeat(DRAMA_TITLE_MAX_LENGTH + 1),
+        summary: "简介",
+        category: "都市",
+        tags: [],
+        coverUrl: "",
+        rightsHolder: "",
+        licenseNumber: "",
+        rightsValidFrom: "",
+        licenseExpiresAt: "",
+        rightsReportNumber: "",
+        rightsMaterialObjectKey: "",
+        rightsMaterialDigestSha256: "",
+        allowsWechatDistribution: false,
+        allowsAdMonetization: false,
+        allowsTranscoding: false,
+        allowsPromotionalMaterial: false,
+        episodes: [],
+      }),
+    ).rejects.toThrow("剧名不能超过");
   });
 });
