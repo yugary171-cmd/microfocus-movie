@@ -8,7 +8,7 @@ import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
-import type { CircuitBreakerState, CompensationInput, AdjustmentInput } from "@/types/admin";
+import type { CircuitBreakerState, CompensationInput, AdjustmentInput, CallbackReplayInput } from "@/types/admin";
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -29,6 +29,8 @@ const adjustment = reactive<AdjustmentInput>({
   freezeAdjustmentId: "",
   approvalNote: "",
 });
+const replayDialogOpen = ref(false);
+const replay = reactive<CallbackReplayInput>({ eventId: "", reason: "", approvalNote: "" });
 
 async function load(): Promise<void> {
   if (!allowed.value) {
@@ -167,6 +169,44 @@ async function submitAdjustment(): Promise<void> {
   }
 }
 
+function validateReplay(): string {
+  if (!replay.eventId.trim()) return "请输入回调事件 ID";
+  if (replay.reason.trim().length < 6) return "请填写至少 6 个字的重放原因";
+  return "";
+}
+
+function requestReplay(): void {
+  error.value = validateReplay();
+  if (!error.value) replayDialogOpen.value = true;
+}
+
+async function submitReplay(): Promise<void> {
+  const validation = validateReplay();
+  if (validation) {
+    error.value = validation;
+    replayDialogOpen.value = false;
+    return;
+  }
+  busy.value = true;
+  error.value = "";
+  try {
+    await adminApi.replayCallback({
+      eventId: replay.eventId.trim(),
+      reason: replay.reason.trim(),
+      ...(replay.approvalNote?.trim() ? { approvalNote: replay.approvalNote.trim() } : {}),
+    });
+    notice.value = adminApi.mode === "mock"
+      ? "演示重放已记入审计视图；未解锁真实回调。"
+      : "回调已解锁为 PROCESSING，等待 provider 再次投递。不会复制新的业务事实。";
+    Object.assign(replay, { eventId: "", reason: "", approvalNote: "" });
+    replayDialogOpen.value = false;
+  } catch (caught) {
+    error.value = toErrorMessage(caught);
+  } finally {
+    busy.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -227,11 +267,24 @@ onMounted(load);
             <button class="button button--primary" type="submit" :disabled="busy">核对并写入纠错</button>
           </form>
         </section>
+        <section class="panel panel--wide" aria-labelledby="replay-title">
+          <div class="panel__header"><div><p class="eyebrow">CALLBACKS</p><h2 id="replay-title">死信重放</h2></div><StatusBadge label="受审计解锁" tone="warning" /></div>
+          <form class="compensation-form" @submit.prevent="requestReplay">
+            <div class="form-grid">
+              <label class="field"><span>回调事件 ID *</span><input v-model="replay.eventId" required autocomplete="off" placeholder="provider 事件 ID" /></label>
+              <label class="field field--wide"><span>原因 *</span><textarea v-model="replay.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明修复依据、工单与为何可以重放" /></label>
+              <label class="field field--wide"><span>审批记录</span><textarea v-model="replay.approvalNote" rows="2" maxlength="300" placeholder="可选：审批人/工单号" /></label>
+            </div>
+            <p class="form-help">仅可将 RETRYABLE_FAILURE 或 DEAD_LETTER 迁回 PROCESSING，沿用原事件 ID。本操作不重放存储载荷；需等待 provider 再次投递。已处理或已拒绝事件不可重放。</p>
+            <button class="button button--primary" type="submit" :disabled="busy">核对并解锁重放</button>
+          </form>
+        </section>
       </div>
     </template>
     <ConfirmDialog :open="breakerDialogOpen" :title="breaker?.enabled ? '恢复全站播放' : '开启全站播放熔断'" :message="breaker?.enabled ? '恢复后将重新允许创建播放租约，请确认故障已处置。' : '开启后将阻止新的播放租约。这是高影响操作，请说明事故原因。'" :confirm-label="breaker?.enabled ? '确认恢复' : '确认熔断'" :tone="breaker?.enabled ? 'primary' : 'danger'" require-reason :reason-label="breaker?.enabled ? '恢复依据' : '事故原因'" :busy="busy" @close="breakerDialogOpen = false" @confirm="toggleBreaker" />
     <ConfirmDialog :open="compensationDialogOpen" title="确认授予补偿权益" :message="`将向用户 ${compensation.userId} 授予剧目 ${compensation.dramaId} 的 ${compensation.seconds} 秒权益。请确认工单信息准确。`" confirm-label="确认授予" :busy="busy" @close="compensationDialogOpen = false" @confirm="grantCompensation" />
     <ConfirmDialog :open="adjustmentDialogOpen" title="确认写入权益纠错" :message="adjustmentSummary" confirm-label="确认写入" :busy="busy" @close="adjustmentDialogOpen = false" @confirm="submitAdjustment" />
+    <ConfirmDialog :open="replayDialogOpen" title="确认解锁回调重放" :message="`将事件 ${replay.eventId} 迁回 PROCESSING。不会复制 grant、媒体或奖励事实。`" confirm-label="确认解锁" :busy="busy" @close="replayDialogOpen = false" @confirm="submitReplay" />
   </div>
 </template>
 

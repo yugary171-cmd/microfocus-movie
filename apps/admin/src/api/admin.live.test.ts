@@ -116,6 +116,21 @@ describe("live admin API adapter", () => {
       reason: "错误发放冻结",
     });
     expect(new Headers(adjustInit?.headers).get("Idempotency-Key")).toMatch(/^a:[a-f0-9]{64}$/);
+
+    await adminApi.replayCallback({
+      eventId: "event-1",
+      reason: "修复验签时钟后重放",
+      approvalNote: "INC-9",
+    });
+    const replayInit = vi.mocked(fetch).mock.calls[3]?.[1];
+    expect(String(vi.mocked(fetch).mock.calls[3]?.[0])).toBe(
+      "http://api.test/v1/admin/callback-events/event-1/replay",
+    );
+    expect(JSON.parse(String(replayInit?.body))).toEqual({
+      reason: "修复验签时钟后重放",
+      approvalNote: "INC-9",
+    });
+    expect(new Headers(replayInit?.headers).get("Idempotency-Key")).toMatch(/^r:[a-f0-9]{64}$/);
   });
 
   it("sends the upload signing metadata contract", async () => {

@@ -16,6 +16,7 @@ import {
   EntitlementAdjustmentType,
   EntitlementFactType,
   type CreateEntitlementAdjustmentRequest,
+  type ReplayCallbackEventRequest,
   type ReleaseGateStatus
 } from "@microfocus/contracts";
 import {
@@ -64,6 +65,7 @@ import {
   normalizeIdempotencyKey
 } from "./admin.compensate.js";
 import { createIdempotentAdjustment } from "./admin.adjust.js";
+import { replayCallbackEvent } from "../callbacks/callback-replay.js";
 
 class EpisodeInput {
   @IsInt()
@@ -188,6 +190,17 @@ class AdjustEntitlementDto implements CreateEntitlementAdjustmentRequest {
   @IsOptional()
   @IsString()
   freezeAdjustmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  approvalNote?: string;
+}
+
+class ReplayCallbackDto implements ReplayCallbackEventRequest {
+  @IsString()
+  @Length(6, 300)
+  reason!: string;
 
   @IsOptional()
   @IsString()
@@ -772,6 +785,31 @@ export class AdminController {
       await this.audit(admin.sub, "ENTITLEMENT_ADJUSTED", "EntitlementAdjustment", view.id, {
         type: view.type,
         grantId: view.grantId
+      });
+    }
+    return view;
+  }
+
+  @Post("callback-events/:eventId/replay")
+  @Roles(AdminRole.ADMIN)
+  async replayCallback(
+    @CurrentPrincipal() principal: Principal,
+    @Param("eventId") eventId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: ReplayCallbackDto
+  ) {
+    const admin = requireAdmin(principal);
+    const view = await replayCallbackEvent(this.prisma, {
+      eventId,
+      reason: body.reason,
+      operatorAdminId: admin.sub,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+      ...(body.approvalNote ? { approvalNote: body.approvalNote } : {})
+    });
+    if (!view.replayed) {
+      await this.audit(admin.sub, "CALLBACK_REPLAYED", "CallbackEvent", view.eventId, {
+        status: view.status,
+        attempts: String(view.attempts)
       });
     }
     return view;

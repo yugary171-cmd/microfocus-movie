@@ -5,6 +5,7 @@ import type {
   CircuitBreakerState,
   CompensationInput,
   AdjustmentInput,
+  CallbackReplayInput,
   DashboardData,
   DramaInput,
   DramaRecord,
@@ -36,6 +37,7 @@ const endpoints = {
   circuitBreakers: "/v1/admin/circuit-breakers",
   compensate: "/v1/admin/entitlements/compensate",
   adjustments: "/v1/admin/entitlements/adjustments",
+  callbackReplay: (eventId: string) => `/v1/admin/callback-events/${eventId}/replay`,
   releaseGate: "/v1/admin/release-gate",
 } as const;
 
@@ -312,6 +314,22 @@ export const adminApi = {
         seconds: input.seconds,
         reason: input.reason,
         ...(input.freezeAdjustmentId ? { freezeAdjustmentId: input.freezeAdjustmentId } : {}),
+        ...(input.approvalNote ? { approvalNote: input.approvalNote } : {}),
+      }),
+    });
+  },
+  async replayCallback(input: CallbackReplayInput): Promise<void> {
+    if (isMockMode) return mockApi.replayCallback(input);
+    const payload = `${input.eventId}\n${input.reason}\n${input.approvalNote ?? ""}`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    const idempotencyKey = `r:${Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("")}`;
+    return request(endpoints.callbackReplay(input.eventId), {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: json({
+        reason: input.reason,
         ...(input.approvalNote ? { approvalNote: input.approvalNote } : {}),
       }),
     });

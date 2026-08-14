@@ -135,6 +135,12 @@ export interface AdjustmentInput {
   approvalNote?: string;
 }
 
+export interface CallbackReplayInput {
+  eventId: string;
+  reason: string;
+  approvalNote?: string;
+}
+
 export interface AuditLog {
   id: string;
   createdAt: string;

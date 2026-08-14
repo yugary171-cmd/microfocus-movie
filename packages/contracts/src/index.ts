@@ -10,6 +10,7 @@ export const UNCONFIRMED_EXPOSURE_LIMIT = 3;
 export const PLAYBACK_RECOVERY_GRACE_LIMIT = 3;
 export const DELETION_QUERY_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const DELETION_CONFIRMATION = "DELETE_MY_ACCOUNT";
+export const CALLBACK_MAX_ATTEMPTS = 5;
 
 export const ERROR_CODES = {
   ANONYMOUS_SESSION_EXPIRED: "ANONYMOUS_SESSION_EXPIRED",
@@ -20,7 +21,9 @@ export const ERROR_CODES = {
   ADJUSTMENT_RELEASE_EXCEEDS_FREEZE: "ADJUSTMENT_RELEASE_EXCEEDS_FREEZE",
   ADJUSTMENT_INVALID_SOURCE: "ADJUSTMENT_INVALID_SOURCE",
   ACCOUNT_UNAVAILABLE: "ACCOUNT_UNAVAILABLE",
-  DELETION_TOKEN_INVALID: "DELETION_TOKEN_INVALID"
+  DELETION_TOKEN_INVALID: "DELETION_TOKEN_INVALID",
+  CALLBACK_NOT_REPLAYABLE: "CALLBACK_NOT_REPLAYABLE",
+  CALLBACK_DEAD_LETTER: "CALLBACK_DEAD_LETTER"
 } as const;
 
 export const API_ROUTES = {
@@ -65,6 +68,8 @@ export const API_ROUTES = {
     circuitBreakers: "/v1/admin/circuit-breakers",
     compensate: "/v1/admin/entitlements/compensate",
     adjustments: "/v1/admin/entitlements/adjustments",
+    callbackReplay: (eventId: string) =>
+      `/v1/admin/callback-events/${eventId}/replay`,
     releaseGate: "/v1/admin/release-gate"
   }
 } as const;
@@ -113,6 +118,15 @@ export enum ChallengeStatus {
   PENDING = "PENDING",
   COMPLETED = "COMPLETED",
   EXPIRED = "EXPIRED",
+  REJECTED = "REJECTED"
+}
+
+export enum CallbackEventStatus {
+  RECEIVED = "RECEIVED",
+  PROCESSING = "PROCESSING",
+  RETRYABLE_FAILURE = "RETRYABLE_FAILURE",
+  DEAD_LETTER = "DEAD_LETTER",
+  PROCESSED = "PROCESSED",
   REJECTED = "REJECTED"
 }
 
@@ -347,6 +361,18 @@ export interface PlaybackHeartbeatResponse {
   remainingSeconds: number | null;
   mayContinue: boolean;
   reason?: "ENTITLEMENT_EXHAUSTED" | "LEASE_REVOKED" | "DRAMA_OFFLINE";
+}
+
+export interface ReplayCallbackEventRequest {
+  reason: string;
+  approvalNote?: string;
+}
+
+export interface CallbackReplayView {
+  eventId: string;
+  status: CallbackEventStatus;
+  attempts: number;
+  replayed: boolean;
 }
 
 export interface WatchHistoryItem {

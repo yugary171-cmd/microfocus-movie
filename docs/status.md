@@ -26,9 +26,9 @@
 | --- | --- | --- |
 | 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权 | 尚无「近期重新认证证明」；可删除数据清理依赖未批准的保留矩阵 |
 | 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN | 真实 VOD 发布链路未实现 |
-| 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实 | 可信广告验证未接真实平台；晚到奖励和死信重放尚未实现 |
+| 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实 | 可信广告验证未接真实平台；晚到奖励尚未实现 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复 | 无真实 VOD 交付日志时 UNCONFIRMED 不自动扣费；恢复尚无「近期重新认证证明」 |
-| 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重和处理租约 | 加密规范化载荷、明确死信状态、管理员审计重放尚未实现 |
+| 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `POST /v1/admin/callback-events/:eventId/replay` 受审计解锁 | 未持久化加密规范化载荷，重放只解锁事件，需等待 provider 再次投递；死信不自动打开 GLOBAL 熔断 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度 | 完整法定清理与客服令牌恢复尚未实现 |
 | 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门 | Live provider、TOTP 安全轮换和真实发布证据尚未完成 |
 
@@ -36,7 +36,7 @@
 
 工程（不加功能）：
 
-1. 按实现矩阵补齐死信重放；先更新 `packages/contracts`，再实现服务端和客户端。
+1. 按实现矩阵补齐晚到奖励（`EXPIRED → COMPLETED_LATE`）与回调加密规范化载荷；先更新 `packages/contracts`，再实现服务端和客户端。
 2. 不自动推送；后续提交需人工确认。
 
 产品（与工程并行）：
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：实现回调死信与审计重放：重试耗尽进入 `DEAD_LETTER` 且不可被普通 reclaim；`POST /v1/admin/callback-events/:eventId/replay` 将可重放事件迁回 `PROCESSING`。尚未存储加密载荷，也不自动打开 GLOBAL 熔断。
 - 2026-08-14：实现账号注销申请：`POST /v1/me/deletion-requests` 在事务内标记 `DELETION_PENDING`、撤销租约并阻止新奖励；旧 JWT 立即失效；`GET` 仅用查询令牌摘要核验。尚未做保留矩阵清理与重新认证证明。
 - 2026-08-14：实现权益 adjustment：`POST /v1/admin/entitlements/adjustments` 以幂等键追加冻结、释放冻结或核销；禁止改原 grant/debit，核销不改用户余额。
 - 2026-08-14：实现锁定集播放 reservation：签发前预留 5 秒窗口，心跳确认后转 debit，超时标 UNCONFIRMED；`GET /v1/playback/leases/active` 与 `POST .../recover` 支持活动租约恢复（24 小时内最多 3 次自动宽限）。

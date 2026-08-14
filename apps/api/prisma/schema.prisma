@@ -87,6 +87,15 @@ enum CircuitState {
   OPEN
 }
 
+enum CallbackEventStatus {
+  RECEIVED
+  PROCESSING
+  RETRYABLE_FAILURE
+  DEAD_LETTER
+  PROCESSED
+  REJECTED
+}
+
 enum EntitlementAdjustmentType {
   FREEZE_REMAINDER
   RELEASE_FREEZE
@@ -435,14 +444,32 @@ model WatchProgress {
 }
 
 model CallbackEvent {
-  id          String   @id
-  provider    String
-  eventType   String
-  receivedAt  DateTime @default(now())
+  id              String              @id
+  provider        String
+  eventType       String
+  receivedAt      DateTime            @default(now())
   processingUntil DateTime?
-  attempts    Int      @default(0)
-  processedAt DateTime?
-  outcome     String?
+  attempts        Int                 @default(0)
+  processedAt     DateTime?
+  outcome         String?
+  status          CallbackEventStatus @default(RECEIVED)
+  payloadHash     String?
+  replays         CallbackReplay[]
+
+  @@index([status, receivedAt])
+}
+
+model CallbackReplay {
+  id              String        @id @default(cuid())
+  eventId         String
+  event           CallbackEvent @relation(fields: [eventId], references: [id])
+  operatorAdminId String
+  reason          String        @db.VarChar(300)
+  approvalNote    String?       @db.VarChar(300)
+  idempotencyKey  String        @unique @db.VarChar(128)
+  createdAt       DateTime      @default(now())
+
+  @@index([eventId, createdAt])
 }
 
 model AuditLog {

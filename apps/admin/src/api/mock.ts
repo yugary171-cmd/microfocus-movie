@@ -10,6 +10,7 @@ import type {
   CircuitBreakerState,
   CompensationInput,
   AdjustmentInput,
+  CallbackReplayInput,
   DashboardData,
   DramaInput,
   DramaRecord,
@@ -431,6 +432,14 @@ export const mockApi = {
       "权益纠错",
       `grant ${input.grantId}`,
       `${input.type} ${input.seconds} 秒；${input.reason}`,
+    );
+    return mockDelay(undefined);
+  },
+  async replayCallback(input: CallbackReplayInput): Promise<void> {
+    writeAudit(
+      "回调重放",
+      `事件 ${input.eventId}`,
+      `${input.reason}${input.approvalNote ? `；${input.approvalNote}` : ""}`,
     );
     return mockDelay(undefined);
   },
