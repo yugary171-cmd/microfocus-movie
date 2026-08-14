@@ -68,5 +68,9 @@ describe("mock admin publish path", () => {
       items: [],
       total: 0,
     });
+    await expect(mockApi.listAuditLogs("", ADMIN_LIST_MAX_PAGE + 1)).resolves.toEqual({
+      items: [],
+      total: 0,
+    });
   });
 });

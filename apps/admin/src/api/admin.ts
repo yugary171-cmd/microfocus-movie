@@ -248,19 +248,15 @@ export const adminApi = {
     }
     await uploadDirect(signature, file, onProgress);
   },
-  async listAuditLogs(query = ""): Promise<PageResult<AuditLog>> {
-    if (isMockMode) return mockApi.listAuditLogs(query);
-    const normalized = normalizeAuditList(await request<unknown>(endpoints.auditLogs));
-    const needle = query.trim().toLowerCase();
-    const items = needle
-      ? normalized.filter((item) =>
-          [item.actorName, item.action, item.target, item.requestId]
-            .join(" ")
-            .toLowerCase()
-            .includes(needle),
-        )
-      : normalized;
-    return { items, total: items.length };
+  async listAuditLogs(query = "", page = 1): Promise<PageResult<AuditLog>> {
+    if (isMockMode) return mockApi.listAuditLogs(query, page);
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    if (page > 1) params.set("page", String(page));
+    const suffix = params.size ? `?${params}` : "";
+    const payload = await request<unknown>(`${endpoints.auditLogs}${suffix}`);
+    const items = normalizeAuditList(payload);
+    return { items, total: pageTotal(payload, items.length) };
   },
   async listCallbackEvents(status = "BACKLOG"): Promise<PageResult<AdminCallbackEvent>> {
     if (isMockMode) return mockApi.listCallbackEvents(status);

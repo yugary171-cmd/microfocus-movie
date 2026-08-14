@@ -75,19 +75,24 @@ describe("live admin API adapter", () => {
     expect(dashboard.releaseGate.readyForExternalTraffic).toBe(false);
   });
 
-  it("sends drama and review list page query params", async () => {
+  it("sends drama, review, and audit list page query params", async () => {
     vi.mocked(fetch)
+      .mockResolvedValueOnce(success({ items: [], total: 0 }))
       .mockResolvedValueOnce(success({ items: [], total: 0 }))
       .mockResolvedValueOnce(success({ items: [], total: 0 }));
     const { adminApi } = await import("./admin");
 
     await adminApi.listDramas("微焦", "DRAFT", 2);
     await adminApi.listReviews(2);
+    await adminApi.listAuditLogs("request-9", 2);
 
     expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe(
       "http://api.test/v1/admin/dramas?status=DRAFT&q=%E5%BE%AE%E7%84%A6&page=2",
     );
     expect(String(vi.mocked(fetch).mock.calls[1]?.[0])).toBe("http://api.test/v1/admin/reviews?page=2");
+    expect(String(vi.mocked(fetch).mock.calls[2]?.[0])).toBe(
+      "http://api.test/v1/admin/audit-logs?query=request-9&page=2",
+    );
   });
 
   it("uses backend review and compensation request contracts", async () => {

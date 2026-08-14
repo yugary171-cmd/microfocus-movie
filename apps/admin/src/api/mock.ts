@@ -430,7 +430,7 @@ export const mockApi = {
       episodeId,
     } as UploadSignature);
   },
-  async listAuditLogs(query = ""): Promise<PageResult<AuditLog>> {
+  async listAuditLogs(query = "", page = 1): Promise<PageResult<AuditLog>> {
     const normalized = query.trim().toLowerCase();
     const items = auditLogs.filter((item) =>
       [item.actorName, item.action, item.target, item.requestId]
@@ -438,7 +438,7 @@ export const mockApi = {
         .toLowerCase()
         .includes(normalized),
     );
-    return mockDelay({ items, total: items.length });
+    return mockDelay(paginate(items, page));
   },
   async getCircuitBreaker(): Promise<CircuitBreakerState> {
     return mockDelay(circuitBreaker);

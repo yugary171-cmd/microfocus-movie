@@ -810,23 +810,38 @@ export class AdminController {
 
   @Get("audit-logs")
   @Roles(AdminRole.ADMIN)
-  async auditLogs(@Query("query") query = "") {
-    const normalized = query.trim().slice(0, 100);
-    const logs = await this.prisma.auditLog.findMany({
-      where: normalized
-        ? {
-            OR: [
-              { action: { contains: normalized } },
-              { targetType: { contains: normalized } },
-              { targetId: { contains: normalized } },
-              { requestId: { contains: normalized } }
-            ]
-          }
-        : {},
-      include: { admin: { select: { email: true, role: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 200
+  async auditLogs(@Query("query") query = "", @Query("page") pageValue = "1") {
+    const pageSize = ADMIN_LIST_PAGE_SIZE;
+    const window = boundedListWindow({
+      page: parsePage(pageValue),
+      pageSize,
+      maxPage: ADMIN_LIST_MAX_PAGE
     });
+    if (window.exceeded) {
+      return emptyBoundedPage(window.page, pageSize);
+    }
+    const normalized = query.trim().slice(0, 100);
+    const where = normalized
+      ? {
+          OR: [
+            { action: { contains: normalized } },
+            { targetType: { contains: normalized } },
+            { targetId: { contains: normalized } },
+            { requestId: { contains: normalized } },
+            { admin: { email: { contains: normalized } } }
+          ]
+        }
+      : {};
+    const [logs, total] = await this.prisma.$transaction([
+      this.prisma.auditLog.findMany({
+        where,
+        include: { admin: { select: { email: true, role: true } } },
+        orderBy: { createdAt: "desc" },
+        skip: window.skip,
+        take: window.take
+      }),
+      this.prisma.auditLog.count({ where })
+    ]);
     return {
       items: logs.map((log) => ({
         id: log.id,
@@ -839,7 +854,10 @@ export class AdminController {
         requestId: log.requestId ?? "",
         detail: auditDetail(log.metadataJson)
       })),
-      total: logs.length
+      page: window.page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize)
     };
   }
 

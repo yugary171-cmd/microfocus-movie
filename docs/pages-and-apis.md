@@ -217,7 +217,7 @@ flowchart LR
 | `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页 | 审核队列 |
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
-| `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；列表含写入时的 `requestId`，可按该字段检索 | 审计查询，可与 HTTP 访问日志关联 |
+| `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100，按动作、目标、`requestId` 和操作人邮箱过滤；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联 |
 | `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；`updatedBy` 为管理员 ID 或 `system:*` 作业标识 | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key` | 用户/剧目 ID 限长；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key` | grant/事实 ID 限长；秒数 1–86400；原因 6–300 字 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |
