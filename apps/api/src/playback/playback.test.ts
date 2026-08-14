@@ -272,4 +272,57 @@ describe("playback renewal", () => {
       })
     );
   });
+
+  it("rate-limits recover before WeChat reauth and close before the lease transaction", async () => {
+    expect(RATE_LIMITS.playbackRecover).toEqual({ limit: 10, windowMs: 60_000 });
+    expect(RATE_LIMITS.playbackClose).toEqual({ limit: 20, windowMs: 60_000 });
+    const exhausted = {
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findUnique: vi.fn().mockResolvedValue({ windowStart: new Date(), count: 99 }),
+      create: vi.fn(),
+      deleteMany: vi.fn()
+    };
+    const exchangeCode = vi.fn();
+    const prisma = {
+      rateLimitBucket: exhausted,
+      $transaction: vi.fn(),
+      playbackLease: { findFirst: vi.fn() }
+    };
+    const controller = new PlaybackController(
+      prisma as never,
+      {} as never,
+      { exchangeCode } as never,
+      { env: { WECHAT_MODE: "mock" } } as never
+    );
+    const principal = { kind: "user" as const, sub: "user-1" };
+
+    await expect(
+      controller.recover(principal, "lease", {
+        reason: "offline",
+        deviceId: "device-1",
+        wechatCode: "code-1"
+      })
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(prisma.playbackLease.findFirst).not.toHaveBeenCalled();
+    expect(exchangeCode).not.toHaveBeenCalled();
+    expect(exhausted.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("playbackRecover", "user:user-1")
+        })
+      })
+    );
+
+    await expect(controller.close(principal, "lease")).rejects.toMatchObject({
+      code: "RATE_LIMITED"
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(exhausted.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("playbackClose", "user:user-1")
+        })
+      })
+    );
+  });
 });

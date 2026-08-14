@@ -194,8 +194,8 @@ flowchart LR
 | `GET /v1/playback/leases/active` | 用户 JWT | 无 | 查询本人活动租约、预留、未确认窗口和恢复动作；不依赖客户端保存旧 lease ID |
 | `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token；按认证主体限频 | `seq`、前后媒体位置、倍速、播放状态、已使用窗口标识 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算。存在 UNCONFIRMED 窗口时 `debitedSeconds=0` 且 `reason=UNCONFIRMED_EXPOSURE`，不自动扣费 |
 | `POST /v1/playback/leases/:leaseId/renew` | 租约所属 viewer token；按认证主体限频 | 当前租约 | 最近心跳合规时续签短凭证 |
-| `POST /v1/playback/leases/:leaseId/recover` | 用户 JWT + 近期重新认证证明 | `reason/deviceId/wechatCode` | 核验媒体交付证据后幂等结算、释放或转客服；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费；自动宽限受滚动风险上限约束 |
-| `DELETE /v1/playback/leases/:leaseId` | 租约所属 viewer token | 当前租约 | 主动关闭；重复关闭不得产生额外扣费 |
+| `POST /v1/playback/leases/:leaseId/recover` | 用户 JWT + 近期重新认证证明；按认证用户限频 | `reason/deviceId/wechatCode` | 核验媒体交付证据后幂等结算、释放或转客服；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费；自动宽限受滚动风险上限约束 |
+| `DELETE /v1/playback/leases/:leaseId` | 租约所属 viewer token；按认证主体限频 | 当前租约 | 主动关闭；重复关闭不得产生额外扣费 |
 
 ### 5.2 管理端
 

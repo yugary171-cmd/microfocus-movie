@@ -8,6 +8,8 @@ export const RATE_LIMITS = {
   playbackLease: { limit: 20, windowMs: 60_000 },
   playbackHeartbeat: { limit: 60, windowMs: 60_000 },
   playbackRenew: { limit: 20, windowMs: 60_000 },
+  playbackRecover: { limit: 10, windowMs: 60_000 },
+  playbackClose: { limit: 20, windowMs: 60_000 },
   watchProgress: { limit: 60, windowMs: 60_000 },
   search: { limit: 60, windowMs: 60_000 },
   catalog: { limit: 60, windowMs: 60_000 },

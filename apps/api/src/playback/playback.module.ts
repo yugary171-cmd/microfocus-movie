@@ -638,6 +638,7 @@ export class PlaybackController {
     @Body() body: RecoverLeaseDto
   ): Promise<ActivePlaybackLeaseResponse> {
     const userId = requireUser(principal);
+    await assertNamedRateLimit(this.prisma, "playbackRecover", `user:${userId}`);
     const lease = await this.prisma.playbackLease.findFirst({
       where: { id: leaseId, userId }
     });
@@ -664,6 +665,7 @@ export class PlaybackController {
   @Delete(":leaseId")
   async close(@CurrentPrincipal() principal: Principal, @Param("leaseId") leaseId: string) {
     const actor = playbackActor(principal);
+    await assertNamedRateLimit(this.prisma, "playbackClose", playbackRateLimitKey(actor));
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.playbackLease.updateMany({
         where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },
