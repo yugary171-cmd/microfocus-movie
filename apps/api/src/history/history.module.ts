@@ -14,6 +14,7 @@ import {
   JwtAuthGuard,
   type Principal
 } from "../security/security.js";
+import { assertNamedRateLimit } from "../security/rate-limit.js";
 
 class ProgressDto implements UpdateWatchProgressRequest {
   @IsString()
@@ -72,6 +73,7 @@ export class HistoryController {
   @Put(controllerPath(API_ROUTES.progress))
   async progress(@CurrentPrincipal() principal: Principal, @Body() body: ProgressDto) {
     const userId = requireUser(principal);
+    await assertNamedRateLimit(this.prisma, "watchProgress", `user:${userId}`);
     const episode = await this.prisma.episode.findFirst({
       where: { id: body.episodeId, dramaId: body.dramaId },
       include: { drama: true }

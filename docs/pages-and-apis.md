@@ -186,7 +186,7 @@ flowchart LR
 | `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page` | 分页剧卡；空结果为 `items: []` |
 | `GET /v1/dramas/:dramaId` | 公开 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算 |
 | `GET /v1/me/history` | 用户 JWT | 无 | 观看历史，按最近更新时间排序 |
-| `PUT /v1/me/progress` | 用户 JWT | `dramaId/episodeId/mediaPositionSeconds` | 幂等保存有效进度；不得写未发布内容 |
+| `PUT /v1/me/progress` | 用户 JWT；按认证用户限频 | `dramaId/episodeId/mediaPositionSeconds` | 幂等保存有效进度；不得写未发布内容 |
 | `GET /v1/entitlements/:dramaId` | 用户 JWT | 路径 ID | 账本结余、扣除活动 reservation 后的可分配余额、最近过期时间和不可变批次 |
 | `POST /v1/rewards/challenges` | 用户 JWT；按认证用户限频（5 分钟 3 次） | `dramaId/sessionId` | challenge、nonce、过期时间、广告位和验证模式 |
 | `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key`；按认证用户限频 | `nonce/isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
