@@ -472,6 +472,15 @@ describe("home feed pagination", () => {
     expect(second.items[0]?.id).not.toBe(first.items[0]?.id);
   });
 
+  it("treats search pages beyond 100 as empty results", async () => {
+    const { mockApi } = await import("../src/mocks/data");
+    const { SEARCH_MAX_PAGE } = await import("@microfocus/contracts");
+    const result = await mockApi.search("", "", SEARCH_MAX_PAGE + 1);
+    expect(result.items).toEqual([]);
+    expect(result.page).toBe(SEARCH_MAX_PAGE + 1);
+    expect(result.hasMore).toBe(false);
+  });
+
   it("exposes the published seed sample in search and detail with four priced episodes", async () => {
     const { mockApi } = await import("../src/mocks/data");
     const result = await mockApi.search("微焦之城", "", 1);

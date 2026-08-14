@@ -1,5 +1,6 @@
 import {
   DeletionRequestStatus,
+  SEARCH_MAX_PAGE,
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
@@ -176,7 +177,12 @@ export const mockApi: ClientApi = {
         item.summary.toLowerCase().includes(normalized);
       return categoryMatch && queryMatch;
     });
-    return delay(paginateItems(filtered, page, FEED_PAGE_SIZE));
+    const safePage = Number.isInteger(page) && page > 0 ? page : 1;
+    return delay(
+      safePage > SEARCH_MAX_PAGE
+        ? { items: [], page: safePage, hasMore: false }
+        : paginateItems(filtered, safePage, FEED_PAGE_SIZE)
+    );
   },
   getDrama: async (id) => {
     const drama = dramas.find((item) => item.id === id);

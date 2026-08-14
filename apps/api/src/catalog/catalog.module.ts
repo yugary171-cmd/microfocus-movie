@@ -2,6 +2,8 @@ import { Controller, Get, Module, Param, Query, Req } from "@nestjs/common";
 import {
   API_ROUTES,
   FREE_EPISODE_COUNT,
+  SEARCH_MAX_PAGE,
+  SEARCH_PAGE_SIZE,
   type CatalogResponse,
   type DramaCard,
   type DramaDetail
@@ -56,7 +58,10 @@ export class CatalogController {
     const q = query.trim().slice(0, 100);
     const normalizedCategory = category.trim().slice(0, 100);
     const page = parsePage(pageValue);
-    const pageSize = 20;
+    const pageSize = SEARCH_PAGE_SIZE;
+    if (page > SEARCH_MAX_PAGE) {
+      return { items: [], page, pageSize, total: 0, totalPages: 0 };
+    }
     const where = publicSearchWhere(q, normalizedCategory);
     const [dramas, total] = await this.prisma.$transaction([
       this.prisma.drama.findMany({
@@ -65,7 +70,7 @@ export class CatalogController {
           _count: { select: { episodes: true } },
           rightsRecords: { where: { status: "ACTIVE" }, orderBy: { version: "desc" }, take: 1 }
         },
-        orderBy: [{ recommendationRank: "desc" }, { publishedAt: "desc" }],
+        orderBy: [{ recommendationRank: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize
       }),
