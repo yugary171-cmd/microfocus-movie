@@ -108,3 +108,14 @@ function normalizeHttpMessage(payload: Record<string, unknown>, fallback: string
 export function controllerPath(path: string): string {
   return path.replace(/^\//, "");
 }
+
+export function nestedControllerPath(fullPath: string, prefix: string): string {
+  const path = controllerPath(fullPath);
+  const base = controllerPath(prefix);
+  if (path === base) return "";
+  const nested = `${base}/`;
+  if (!path.startsWith(nested)) {
+    throw new Error(`Route ${fullPath} is not under controller prefix ${prefix}`);
+  }
+  return path.slice(nested.length);
+}

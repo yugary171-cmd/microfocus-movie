@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, encodedRoute, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -98,7 +98,7 @@ export const adminApi = {
   },
   async getDrama(id: string): Promise<DramaRecord> {
     if (isMockMode) return mockApi.getDrama(id);
-    return normalizeDrama(await request<unknown>(endpoints.drama(encodeURIComponent(id))));
+    return normalizeDrama(await request<unknown>(encodedRoute(endpoints.drama, id)));
   },
   async saveDrama(input: DramaInput, id?: string): Promise<DramaRecord> {
     if (isMockMode) return mockApi.saveDrama(input, id);
@@ -164,14 +164,14 @@ export const adminApi = {
             durationSeconds: episode.durationSeconds,
           })),
         };
-    const response = await request<unknown>(id ? endpoints.drama(encodeURIComponent(id)) : endpoints.dramas, {
+    const response = await request<unknown>(id ? encodedRoute(endpoints.drama, id) : endpoints.dramas, {
       method: id ? "PATCH" : "POST",
       body: json(body),
     });
     const saved = normalizeDrama(response);
     const dramaId = id || saved.id;
     if (!dramaId) throw new Error("剧目已保存但响应缺少 ID，版权资料未写入");
-    await request(endpoints.rights(encodeURIComponent(dramaId)), {
+    await request(encodedRoute(endpoints.rights, dramaId), {
       method: "POST",
       body: json({
         rightsHolder: input.rightsHolder,
@@ -189,12 +189,12 @@ export const adminApi = {
       }),
     });
     return normalizeDrama(
-      await request<unknown>(endpoints.drama(encodeURIComponent(dramaId))),
+      await request<unknown>(encodedRoute(endpoints.drama, dramaId)),
     );
   },
   submitReview(id: string): Promise<void> {
     if (isMockMode) return mockApi.submitReview(id);
-    return request(endpoints.submitReview(encodeURIComponent(id)), { method: "POST" });
+    return request(encodedRoute(endpoints.submitReview, id), { method: "POST" });
   },
   async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
     if (isMockMode) return mockApi.listReviews(page);
@@ -205,18 +205,18 @@ export const adminApi = {
   },
   review(dramaId: string, reviewId: string, approved: boolean, reason: string): Promise<void> {
     if (isMockMode) return mockApi.review(reviewId, approved, reason);
-    return request(endpoints.review(encodeURIComponent(dramaId)), {
+    return request(encodedRoute(endpoints.review, dramaId), {
       method: "POST",
       body: json({ status: approved ? "APPROVED" : "REJECTED", notes: reason }),
     });
   },
   publish(id: string): Promise<void> {
     if (isMockMode) return mockApi.publish(id);
-    return request(endpoints.publish(encodeURIComponent(id)), { method: "POST" });
+    return request(encodedRoute(endpoints.publish, id), { method: "POST" });
   },
   offline(id: string, reason: string): Promise<void> {
     if (isMockMode) return mockApi.offline(id, reason);
-    return request(endpoints.offline(encodeURIComponent(id)), {
+    return request(encodedRoute(endpoints.offline, id), {
       method: "POST",
       body: json({ reason }),
     });
@@ -320,7 +320,7 @@ export const adminApi = {
     const idempotencyKey = `r:${Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, "0"),
     ).join("")}`;
-    return request(endpoints.callbackReplay(encodeURIComponent(input.eventId)), {
+    return request(encodedRoute(endpoints.callbackReplay, input.eventId), {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: json({
@@ -338,7 +338,7 @@ export const adminApi = {
     const idempotencyKey = `q:${Array.from(new Uint8Array(digest), (byte) =>
       byte.toString(16).padStart(2, "0"),
     ).join("")}`;
-    return request(endpoints.deletionQueryTokenReissue(encodeURIComponent(input.deletionRequestId)), {
+    return request(encodedRoute(endpoints.deletionQueryTokenReissue, input.deletionRequestId), {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: json({

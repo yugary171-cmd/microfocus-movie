@@ -95,6 +95,7 @@ export const API_ROUTES = {
     `/v1/playback/leases/${leaseId}/recover`,
   playbackLease: (leaseId: string) => `/v1/playback/leases/${leaseId}`,
   admin: {
+    root: "/v1/admin",
     login: "/v1/admin/auth/login",
     dashboard: "/v1/admin/dashboard",
     dramas: "/v1/admin/dramas",

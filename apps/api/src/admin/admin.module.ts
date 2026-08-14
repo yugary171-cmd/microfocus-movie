@@ -60,7 +60,7 @@ import {
   ValidateNested
 } from "class-validator";
 import { Type } from "class-transformer";
-import { controllerPath, currentRequestId } from "../common/http.js";
+import { controllerPath, currentRequestId, nestedControllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { AppConfigService } from "../config/config.service.js";
 import { publicationBlockers, releaseGateStatus } from "../domain/policies.js";
@@ -288,7 +288,11 @@ export class CircuitCollectionDto {
   @IsString() @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH) reason!: string;
 }
 
-@Controller("v1/admin")
+function adminPath(route: string): string {
+  return nestedControllerPath(route, API_ROUTES.admin.root);
+}
+
+@Controller(controllerPath(API_ROUTES.admin.root))
 @UseGuards(JwtAuthGuard, AdminRolesGuard, AdminWriteRateLimitGuard)
 export class AdminController {
   constructor(
@@ -298,7 +302,7 @@ export class AdminController {
     private readonly wechat: WechatProviderService
   ) {}
 
-  @Get("dashboard")
+  @Get(adminPath(API_ROUTES.admin.dashboard))
   async dashboard(@CurrentPrincipal() principal: Principal) {
     const admin = requireAdmin(principal);
     const scope = editorScope(admin);
@@ -388,7 +392,7 @@ export class AdminController {
     };
   }
 
-  @Get("dramas")
+  @Get(adminPath(API_ROUTES.admin.dramas))
   async dramas(
     @CurrentPrincipal() principal: Principal,
     @Query("status") status?: string,
@@ -440,7 +444,7 @@ export class AdminController {
     };
   }
 
-  @Post("dramas")
+  @Post(adminPath(API_ROUTES.admin.dramas))
   @Roles(AdminRole.EDITOR)
   async createDrama(@CurrentPrincipal() principal: Principal, @Body() body: CreateDramaDto) {
     const admin = requireAdmin(principal);
@@ -461,7 +465,7 @@ export class AdminController {
     return this.loadDramaView(drama.id, admin);
   }
 
-  @Get("dramas/:dramaId")
+  @Get(adminPath(API_ROUTES.admin.drama(":dramaId")))
   async drama(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string
@@ -469,7 +473,7 @@ export class AdminController {
     return this.loadDramaView(requireEntityId(dramaId, "dramaId"), requireAdmin(principal));
   }
 
-  @Patch("dramas/:dramaId")
+  @Patch(adminPath(API_ROUTES.admin.drama(":dramaId")))
   @Roles(AdminRole.EDITOR)
   async updateDrama(
     @CurrentPrincipal() principal: Principal,
@@ -502,7 +506,7 @@ export class AdminController {
     return this.loadDramaView(dramaId, admin);
   }
 
-  @Post("dramas/:dramaId/rights")
+  @Post(adminPath(API_ROUTES.admin.rights(":dramaId")))
   @Roles(AdminRole.EDITOR)
   async addRights(
     @CurrentPrincipal() principal: Principal,
@@ -541,7 +545,7 @@ export class AdminController {
     return record;
   }
 
-  @Post("dramas/:dramaId/media-assets")
+  @Post(adminPath(API_ROUTES.admin.mediaAssets(":dramaId")))
   @Roles(AdminRole.EDITOR)
   async addMedia(
     @CurrentPrincipal() principal: Principal,
@@ -585,7 +589,7 @@ export class AdminController {
     return asset;
   }
 
-  @Post("dramas/:dramaId/submit-review")
+  @Post(adminPath(API_ROUTES.admin.submitReview(":dramaId")))
   @Roles(AdminRole.EDITOR)
   async submitReview(
     @CurrentPrincipal() principal: Principal,
@@ -602,7 +606,7 @@ export class AdminController {
     return { status: "PENDING_REVIEW" };
   }
 
-  @Post("dramas/:dramaId/review")
+  @Post(adminPath(API_ROUTES.admin.review(":dramaId")))
   @Roles(AdminRole.REVIEWER)
   async review(
     @CurrentPrincipal() principal: Principal,
@@ -634,7 +638,7 @@ export class AdminController {
     return review;
   }
 
-  @Post("dramas/:dramaId/publish")
+  @Post(adminPath(API_ROUTES.admin.publish(":dramaId")))
   @Roles(AdminRole.ADMIN)
   async publish(
     @CurrentPrincipal() principal: Principal,
@@ -685,7 +689,7 @@ export class AdminController {
     return { status: "PUBLISHED" };
   }
 
-  @Post("dramas/:dramaId/offline")
+  @Post(adminPath(API_ROUTES.admin.offline(":dramaId")))
   @Roles(AdminRole.ADMIN)
   async offline(
     @CurrentPrincipal() principal: Principal,
@@ -704,7 +708,7 @@ export class AdminController {
     return { status: "OFFLINE" };
   }
 
-  @Post("uploads/sign")
+  @Post(adminPath(API_ROUTES.admin.uploadSign))
   @Roles(AdminRole.EDITOR)
   async uploadSign(
     @CurrentPrincipal() principal: Principal,
@@ -725,7 +729,7 @@ export class AdminController {
     return signed;
   }
 
-  @Patch("media-assets/:assetId/review")
+  @Patch(adminPath(API_ROUTES.admin.mediaReview(":assetId")))
   @Roles(AdminRole.REVIEWER)
   async reviewMedia(
     @CurrentPrincipal() principal: Principal,
@@ -767,7 +771,7 @@ export class AdminController {
     return updated;
   }
 
-  @Get("reviews")
+  @Get(adminPath(API_ROUTES.admin.reviews))
   @Roles(AdminRole.REVIEWER)
   async reviews(@Query("page") pageValue = "1") {
     const pageSize = ADMIN_LIST_PAGE_SIZE;
@@ -808,7 +812,7 @@ export class AdminController {
     };
   }
 
-  @Get("audit-logs")
+  @Get(adminPath(API_ROUTES.admin.auditLogs))
   @Roles(AdminRole.ADMIN)
   async auditLogs(@Query("query") query = "", @Query("page") pageValue = "1") {
     const pageSize = ADMIN_LIST_PAGE_SIZE;

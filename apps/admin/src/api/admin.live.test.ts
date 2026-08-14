@@ -177,6 +177,19 @@ describe("live admin API adapter", () => {
     expect(new Headers(reissueInit?.headers).get("Idempotency-Key")).toMatch(/^q:[a-f0-9]{64}$/);
   });
 
+  it("encodes path entity ids on live admin requests", async () => {
+    vi.mocked(fetch).mockResolvedValue(success({ id: "a/b c", title: "剧" }));
+    const { adminApi } = await import("./admin");
+    await adminApi.getDrama("a/b c");
+    await adminApi.submitReview("a/b c");
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe(
+      "http://api.test/v1/admin/dramas/a%2Fb%20c",
+    );
+    expect(String(vi.mocked(fetch).mock.calls[1]?.[0])).toBe(
+      "http://api.test/v1/admin/dramas/a%2Fb%20c/submit-review",
+    );
+  });
+
   it("sends the upload signing metadata contract", async () => {
     vi.useFakeTimers();
     vi.mocked(fetch).mockResolvedValueOnce(

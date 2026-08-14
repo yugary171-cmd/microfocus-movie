@@ -18,6 +18,7 @@ function controller(prisma: object, vod: object) {
 
 describe("admin upload sign audit", () => {
   it("exposes implemented admin write paths in contracts", () => {
+    expect(API_ROUTES.admin.root).toBe("/v1/admin");
     expect(API_ROUTES.admin.rights("d1")).toBe("/v1/admin/dramas/d1/rights");
     expect(API_ROUTES.admin.mediaAssets("d1")).toBe("/v1/admin/dramas/d1/media-assets");
     expect(API_ROUTES.admin.mediaReview("a1")).toBe("/v1/admin/media-assets/a1/review");

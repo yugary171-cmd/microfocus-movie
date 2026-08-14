@@ -176,7 +176,7 @@ flowchart LR
 
 ## 五、后端接口
 
-实现位置：`apps/api/src/*/`.module.ts。观看端路径与 `packages/contracts` 的 `API_ROUTES` 对齐；客户端请求路径中的实体 ID 会 URL-encode。管理端仍使用 `/v1/admin` 前缀，provider 回调仍为纯服务端路径。
+实现位置：`apps/api/src/*/`.module.ts。观看端路径与 `packages/contracts` 的 `API_ROUTES` 对齐；客户端请求路径中的实体 ID 会 URL-encode。管理端控制器前缀为 `API_ROUTES.admin.root`（`/v1/admin`）；剧目与审核路径与契约对齐。provider 回调仍为纯服务端路径。
 
 ### 5.1 观看端
 
