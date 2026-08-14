@@ -1,6 +1,6 @@
 # 项目状态
 
-- 更新日期：2026-08-14
+- 更新日期：2026-08-15
 - 本文是实现进度的唯一说明；PRD、架构和 API 文档描述目标规则，不代表代码已经具备全部能力
 
 ## 当前目标
@@ -17,7 +17,7 @@
 - 当前仅允许 Mock 内部体验；真实外部发布仍受资质、备案、微信类目、广告能力和逐剧内容权利闸门约束。
 - 微信 `code2session` 登录适配已实现；腾讯云 VOD 上传/播放签名和微信激励广告可信服务端验证仍为 fail-closed。发布闸门会返回 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`，生产进程也会拒绝启动，直到企业账号完成真实实现与端到端验收。
 - 外部构建还受配置链路约束：内部 Mock 构建允许空 API 地址并注入 Demo 媒体；外部包必须 `MICROFOCUS_CLIENT_MODE=live` 且公开 HTTPS API 地址合法，产物不得含 Demo 媒体。真实 Live provider 和发布证据仍未完成。边界见 [configuration.md](./configuration.md)。
-- 2026-08-14 当前工作区执行 `npm run check` 通过；该结果覆盖 typecheck、单元/组件测试和构建，不等于 HTTP E2E、真实 MySQL 并发、真机或真实 provider 验收。
+- 2026-08-15 当前工作区执行 `npm run check` 通过；该结果覆盖 typecheck、单元/组件测试和构建，不等于 HTTP E2E、真实 MySQL 并发、真机或真实 provider 验收。
 - 产品证据仍停留在内部方案：无用户行为、无内容供给承诺、无类目/广告批复。
 
 ### 实现矩阵
@@ -29,7 +29,7 @@
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；创建 challenge 按认证用户限频（5 分钟 3 次），完成按认证用户限频；`dramaId`/`sessionId`/`nonce` 限长；完成 challenge 的 `Idempotency-Key` 与补偿共用规范化（trim、最长 128），空白或超长在限频前拒绝；权益摘要路径走 `API_ROUTES`，按认证用户限频；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一，秒数 60–86400、原因 6–300 字；ADMIN 纠错与补偿一样在 handler 入口规范化 `Idempotency-Key`，可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实（秒数上限同为 86400）；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant；后台任务按 grant/debit/冻结事实重建余额，差异打开 `PROVIDER:LEDGER` | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约、心跳、续签、恢复、关闭、活动租约查询和进度写入按认证主体限频；租约/心跳/进度的 ID、设备、seq 和媒体位置有长度或数值上限；播放租约路径走 `API_ROUTES`；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；入口路径走 `API_ROUTES.callbacks`（provider 专用，观看端/管理端客户端不调用）；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；列表/重放路径走 `API_ROUTES.admin`；重放 handler 入口规范化 `Idempotency-Key`；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频；回调 `eventId`/`fileId`/`challengeId` 限长；`x-provider-signature` 最长 256；列表 `take` 默认 50、上限 100，过大 `skip` 返回空结果 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
-| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌，补发 handler 入口规范化 `Idempotency-Key`；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页；管理端剧目/审核队列/审计日志由服务端分页；首页 latest 按发布时间独立查询；观看历史按认证用户限频；注销进度查询按连接 IP 限频；剧目详情、权益、播放租约和注销由服务端走 `API_ROUTES`；两套观看端 HTTP 路径同样走契约，路径 ID 会 URL-encode；管理端路径 ID 同样经 `encodedRoute` | 完整法定清理尚未实现 |
+| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌，补发 handler 入口规范化 `Idempotency-Key`；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页；管理端剧目/审核队列/审计日志由服务端分页；首页 latest 按发布时间独立查询；观看历史按认证用户限频；注销进度查询按连接 IP 限频；剧目详情、权益、播放租约和注销由服务端走 `API_ROUTES`；两套观看端 HTTP 路径同样走契约，路径 ID 会 URL-encode；管理端路径 ID 同样经 `encodedRoute`；观看端奖励完成/注销申请的 `Idempotency-Key` 经 `boundedIdempotencyKey` 限制在 128 以内 | 完整法定清理尚未实现 |
 | 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId`/模块/错误码/耗时/脱敏 actor）；熔断行保存 `updatedBy`（管理员或 `system:*`）；管理端只读 GET 按认证管理员限频；生产不挂载 OpenAPI/Swagger；JSON/urlencoded 请求体 64kb | Live provider 和真实发布证据尚未完成 |
 
 ## 下一步（Now）
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-15：两套观看端奖励完成/注销申请的 `Idempotency-Key` 改走契约 `boundedIdempotencyKey`。短实体 ID 仍用原来的 `reward-${id}` / `d:${userId}`，避免进行中的重试换键；超长 ID 折叠成前缀加 16 位稳定十六进制，保证不超过 128。不把灰度指标写成已接入。
 - 2026-08-14：管理端纠错、回调重放和补发注销令牌在 handler 入口把 `Idempotency-Key` 交给与补偿共用的规范化；空白或 trim 后超过 128 的键返回 `IDEMPOTENCY_KEY_REQUIRED`，不再进入账本/重放/补发查询。写操作 Guard 仍先占 `adminWrite` 桶，不能跳过。不把灰度指标写成已接入。
 - 2026-08-14：注销申请控制器始终把 `Idempotency-Key` 交给与奖励完成/补偿共用的规范化；空白或 trim 后超过 128 的键返回 `IDEMPOTENCY_KEY_REQUIRED`，不占 `deletionCreate` 桶、不查库、不兑换微信 `code`。管理端纠错/重放/补发令牌仍在写 Guard 之后规范化。不把灰度指标写成已接入。
 - 2026-08-14：provider 回调入口改走 `API_ROUTES.callbacks`（`/v1/callbacks/vod` 与 `/v1/callbacks/reward`）。该路径是 provider 专用，不给观看端或管理端客户端调用。Nest HTTP 装饰器不再硬编码路径字符串。不把灰度指标写成已接入。

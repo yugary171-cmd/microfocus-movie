@@ -142,6 +142,33 @@ export function encodedRoute(build: (id: string) => string, id: string): string 
   return build(encodeURIComponent(id));
 }
 
+/**
+ * Keep viewer Idempotency-Key headers within IDEMPOTENCY_KEY_MAX_LENGTH.
+ * Short ids stay `prefix + value` so in-flight retries do not change key.
+ * Oversized ids fold to a stable 16-char FNV-1a hex suffix.
+ */
+export function boundedIdempotencyKey(prefix: string, value: string): string {
+  const part = value.trim();
+  const raw = `${prefix}${part}`;
+  if (raw.length <= IDEMPOTENCY_KEY_MAX_LENGTH) return raw;
+  return `${prefix}${fnv1a64Hex(part)}`;
+}
+
+function fnv1a32(input: string, offset: number): number {
+  let hash = offset >>> 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+function fnv1a64Hex(input: string): string {
+  const low = fnv1a32(input, 0x811c9dc5);
+  const high = fnv1a32(input, 0x811c9dc5 ^ 0x9e3779b9);
+  return high.toString(16).padStart(8, "0") + low.toString(16).padStart(8, "0");
+}
+
 export type ApiSuccess<T> = {
   data: T;
   requestId: string;

@@ -1,4 +1,4 @@
-import { ERROR_CODES, type AnonymousSessionResponse, type ApiError, type ApiSuccess } from "@microfocus/contracts";
+import { boundedIdempotencyKey, ERROR_CODES, type AnonymousSessionResponse, type ApiError, type ApiSuccess } from "@microfocus/contracts";
 import { RUNTIME_CONFIG } from "../config/runtime";
 import { API_ROUTES, encodedRoute } from "../constants/routes";
 import { mockApi } from "../mocks/data";
@@ -237,7 +237,7 @@ const realApi: ClientApi = {
       "POST",
       input,
       undefined,
-      { "Idempotency-Key": `reward-${challengeId}` }
+      { "Idempotency-Key": boundedIdempotencyKey("reward-", challengeId) }
     ),
   createPlaybackLease: (input) => request(API_ROUTES.playbackLeases, "POST", input),
   getActivePlaybackLease: () => request(API_ROUTES.playbackActive),
@@ -253,7 +253,7 @@ const realApi: ClientApi = {
       "POST",
       input,
       undefined,
-      { "Idempotency-Key": `d:${session?.user.id ?? "session"}` }
+      { "Idempotency-Key": boundedIdempotencyKey("d:", session?.user.id ?? "session") }
     );
   },
   getDeletionRequest: (deletionRequestId, queryToken) =>

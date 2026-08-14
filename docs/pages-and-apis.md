@@ -142,7 +142,7 @@ flowchart LR
 
 ### 4.2 幂等、分页与排序
 
-- 完成奖励、人工补偿和注销申请必须携带 `Idempotency-Key`；同一业务请求的重试返回同一结果，不得重复发放或重复创建申请。`Idempotency-Key` 会 trim，最长 128。
+- 完成奖励、人工补偿和注销申请必须携带 `Idempotency-Key`；同一业务请求的重试返回同一结果，不得重复发放或重复创建申请。`Idempotency-Key` 会 trim，最长 128。观看端对奖励完成和注销申请使用 `boundedIdempotencyKey`：短 ID 保持原前缀拼接，超长 ID 折叠到 128 以内。
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
