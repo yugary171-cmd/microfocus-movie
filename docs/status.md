@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：新增 [ci-pipeline.md](./ci-pipeline.md)，说明 GitHub/Coding + NestJS API + 管理端 + uni-app 体验版的最小 CI/CD 路径（不含微信云开发 Git）。
 - 2026-08-14：实现晚到奖励：奖励回调在 challenge 已 EXPIRED 时，若 `completedAt` 落在原有效期内且回调仍在 2 小时延迟窗内，则迁为 `COMPLETED_LATE` 并只创建唯一 grant；缺少完成时间不猜测成功。
 - 2026-08-14：实现回调死信与审计重放：重试耗尽进入 `DEAD_LETTER` 且不可被普通 reclaim；`POST /v1/admin/callback-events/:eventId/replay` 将可重放事件迁回 `PROCESSING`。尚未存储加密载荷，也不自动打开 GLOBAL 熔断。
 - 2026-08-14：实现账号注销申请：`POST /v1/me/deletion-requests` 在事务内标记 `DELETION_PENDING`、撤销租约并阻止新奖励；旧 JWT 立即失效；`GET` 仅用查询令牌摘要核验。尚未做保留矩阵清理与重新认证证明。

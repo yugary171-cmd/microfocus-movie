@@ -165,4 +165,5 @@ Live 构建命令见 [configuration.md](./configuration.md) §4.1。外部灰度
 | [release-checklist.md](./release-checklist.md) | 外部灰度与正式发布硬闸门 |
 | [operations.md](./operations.md) | 备份恢复、事故与数据库恢复审批 |
 | [status.md](./status.md) | 当前实现矩阵与工程阻塞 |
+| [ci-pipeline.md](./ci-pipeline.md) | Git/CI、API/管理端/小程序最小发布流水线 |
 | [README.md](../README.md) | 本地启动与验证命令 |
