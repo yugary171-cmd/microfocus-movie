@@ -1,4 +1,4 @@
-import { Controller, Get, Module, Param, Query } from "@nestjs/common";
+import { Controller, Get, Module, Param, Query, Req } from "@nestjs/common";
 import {
   API_ROUTES,
   FREE_EPISODE_COUNT,
@@ -9,6 +9,7 @@ import {
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
 
 @Controller()
 export class CatalogController {
@@ -39,6 +40,7 @@ export class CatalogController {
 
   @Get(controllerPath(API_ROUTES.search))
   async search(
+    @Req() request: SocketRequest,
     @Query("q") query = "",
     @Query("category") category = "",
     @Query("page") pageValue = "1"
@@ -49,6 +51,7 @@ export class CatalogController {
     total: number;
     totalPages: number;
   }> {
+    await assertNamedRateLimit(this.prisma, "search", requestIpKey(request));
     const q = query.trim().slice(0, 100);
     const normalizedCategory = category.trim().slice(0, 100);
     const page = parsePage(pageValue);

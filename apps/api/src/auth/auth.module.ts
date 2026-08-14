@@ -1,4 +1,4 @@
-import { Body, Controller, Module, Post } from "@nestjs/common";
+import { Body, Controller, Module, Post, Req } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
@@ -17,6 +17,7 @@ import { WechatProviderService } from "../providers/providers.js";
 import { AppConfigService } from "../config/config.service.js";
 import { tryDecryptTotpSecret } from "../security/totp-crypto.js";
 import { decodeTotpSecretBase32 } from "../security/totp-secret.js";
+import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
 
 class WechatLoginDto {
   @IsString()
@@ -59,7 +60,11 @@ export class AuthController {
   ) {}
 
   @Post(controllerPath(API_ROUTES.auth.wechat))
-  async wechatLogin(@Body() body: WechatLoginDto): Promise<WechatLoginResponse> {
+  async wechatLogin(
+    @Req() request: SocketRequest,
+    @Body() body: WechatLoginDto
+  ): Promise<WechatLoginResponse> {
+    await assertNamedRateLimit(this.prisma, "wechatLogin", requestIpKey(request));
     const identity = await this.wechat.exchangeCode(body.code);
     const existing = await this.prisma.user.findUnique({ where: { openId: identity.openId } });
     if (existing && existing.status !== "ACTIVE") {
@@ -113,7 +118,12 @@ export class AuthController {
   }
 
   @Post(controllerPath(API_ROUTES.admin.login))
-  async adminLogin(@Body() body: AdminLoginDto) {
+  async adminLogin(@Req() request: SocketRequest, @Body() body: AdminLoginDto) {
+    await assertNamedRateLimit(
+      this.prisma,
+      "adminLogin",
+      `${requestIpKey(request)}:${body.email.trim().toLowerCase()}`
+    );
     const admin = await this.prisma.adminUser.findUnique({ where: { email: body.email } });
     if (!admin?.active || !(await compare(body.password, admin.passwordHash))) {
       throw Errors.unauthorized("Invalid administrator credentials");

@@ -44,6 +44,7 @@ import {
   JwtAuthGuard,
   type Principal
 } from "../security/security.js";
+import { assertNamedRateLimit } from "../security/rate-limit.js";
 import {
   assertCanOpenPaidLease,
   confirmReservationWindow,
@@ -122,6 +123,11 @@ export class PlaybackController {
     @Body() body: CreateLeaseDto
   ): Promise<PlaybackLeaseView> {
     const actor = playbackActor(principal);
+    await assertNamedRateLimit(
+      this.prisma,
+      "playbackLease",
+      actor.kind === "user" ? `user:${actor.userId}` : `viewer:${actor.viewerSessionId}`
+    );
     const episode = await this.prisma.episode.findUnique({
       where: { id: body.episodeId },
       include: {

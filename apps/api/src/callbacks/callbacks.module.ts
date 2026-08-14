@@ -7,6 +7,7 @@ import { assertCircuitsClosed, openProviderCircuit } from "../domain/circuit.js"
 import { AppConfigService } from "../config/config.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { verifyWebhookSignature, WechatProviderService } from "../providers/providers.js";
+import { assertNamedRateLimit, requestIpKey } from "../security/rate-limit.js";
 import { applyVodCallback } from "./callback-apply-vod.js";
 import {
   buildStoredEnvelope,
@@ -50,6 +51,7 @@ export class CallbacksController {
     @Headers("x-provider-signature") signature: string | undefined,
     @Body() body: VodCallbackDto
   ) {
+    await assertNamedRateLimit(this.prisma, "callbackVod", requestIpKey(request));
     this.assertSignature(
       request.rawBody,
       signature,
@@ -95,6 +97,7 @@ export class CallbacksController {
     @Headers("x-provider-signature") signature: string | undefined,
     @Body() body: RewardCallbackDto
   ) {
+    await assertNamedRateLimit(this.prisma, "callbackReward", requestIpKey(request));
     this.assertSignature(
       request.rawBody,
       signature,
@@ -308,7 +311,7 @@ type CallbackStore = {
   };
 };
 
-type RawBodyRequest = { rawBody?: Buffer };
+type RawBodyRequest = { rawBody?: Buffer; ip?: string; socket?: { remoteAddress?: string | null } };
 
 function isUniqueViolation(error: unknown): boolean {
   return (

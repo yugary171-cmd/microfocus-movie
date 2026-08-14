@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { PlaybackController } from "./playback.module.js";
 
+function allowRateLimit() {
+  return {
+    updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn()
+  };
+}
+
 function createController(prisma: unknown) {
   return new PlaybackController(
     prisma as never,
@@ -88,7 +97,8 @@ describe("playback renewal", () => {
           mediaAssets: [readyAsset()]
         })
       },
-      circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) }
+      circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) },
+      rateLimitBucket: allowRateLimit()
     };
     const controller = createController(prisma);
 
@@ -123,7 +133,8 @@ describe("playback renewal", () => {
       playbackReservation: {
         findMany: vi.fn().mockResolvedValue([]),
         count: vi.fn().mockResolvedValue(3)
-      }
+      },
+      rateLimitBucket: allowRateLimit()
     };
     const controller = createController(prisma);
 

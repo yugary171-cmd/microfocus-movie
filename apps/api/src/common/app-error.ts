@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
+import { ERROR_CODES } from "@microfocus/contracts";
 
 export class AppError extends HttpException {
   constructor(
@@ -22,7 +23,7 @@ export const Errors = {
   conflict: (code: string, message: string) =>
     new AppError(code, message, HttpStatus.CONFLICT),
   rateLimited: (message: string) =>
-    new AppError("RATE_LIMITED", message, HttpStatus.TOO_MANY_REQUESTS),
+    new AppError(ERROR_CODES.RATE_LIMITED, message, HttpStatus.TOO_MANY_REQUESTS),
   providerNotConfigured: (provider: string) =>
     new AppError(
       "PROVIDER_NOT_CONFIGURED",

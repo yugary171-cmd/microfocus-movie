@@ -535,3 +535,12 @@ model BackgroundJobLease {
   lastRunAt   DateTime?
   updatedAt   DateTime @updatedAt
 }
+
+model RateLimitBucket {
+  id          String   @id @db.VarChar(128)
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@index([windowStart])
+}

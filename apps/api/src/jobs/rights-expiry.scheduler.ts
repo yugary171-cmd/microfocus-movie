@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/commo
 import { hostname } from "node:os";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ProcessDrain } from "../operations/process-drain.js";
+import { pruneRateLimitBuckets } from "../security/rate-limit.js";
 import { runCallbackPayloadPurgeJob } from "./callback-payload-purge.js";
 import { runRightsExpiryJob } from "./rights-expiry.js";
 
@@ -44,6 +45,10 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
       const purge = await runCallbackPayloadPurgeJob(this.prisma as never, { ownerId });
       if (purge.acquired && purge.purged > 0) {
         this.logger.log(`callback payload purge job purged=${purge.purged}`);
+      }
+      const pruned = await pruneRateLimitBuckets(this.prisma);
+      if (pruned > 0) {
+        this.logger.log(`rate limit buckets pruned=${pruned}`);
       }
     } catch (error) {
       this.logger.error("background jobs failed", error instanceof Error ? error.stack : error);
