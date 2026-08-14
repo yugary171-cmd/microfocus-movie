@@ -188,8 +188,8 @@ flowchart LR
 | `GET /v1/me/history` | 用户 JWT | 无 | 观看历史，按最近更新时间排序 |
 | `PUT /v1/me/progress` | 用户 JWT | `dramaId/episodeId/mediaPositionSeconds` | 幂等保存有效进度；不得写未发布内容 |
 | `GET /v1/entitlements/:dramaId` | 用户 JWT | 路径 ID | 账本结余、扣除活动 reservation 后的可分配余额、最近过期时间和不可变批次 |
-| `POST /v1/rewards/challenges` | 用户 JWT | `dramaId/sessionId` | challenge、nonce、过期时间、广告位和验证模式 |
-| `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key` | `nonce/isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
+| `POST /v1/rewards/challenges` | 用户 JWT；按认证用户限频（5 分钟 3 次） | `dramaId/sessionId` | challenge、nonce、过期时间、广告位和验证模式 |
+| `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key`；按认证用户限频 | `nonce/isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
 | `POST /v1/playback/leases` | viewer token；锁定集必须为用户 JWT；按认证主体限频 | `episodeId/deviceId` | 服务端重新判断免费状态；锁定内容预留首个短窗口预算，返回租约、外层 120 秒凭证、窗口授权、心跳周期和可分配余额 |
 | `GET /v1/playback/leases/active` | 用户 JWT | 无 | 查询本人活动租约、预留、未确认窗口和恢复动作；不依赖客户端保存旧 lease ID |
 | `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token | `seq`、前后媒体位置、倍速、播放状态、已使用窗口标识 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算。存在 UNCONFIRMED 窗口时 `debitedSeconds=0` 且 `reason=UNCONFIRMED_EXPOSURE`，不自动扣费 |

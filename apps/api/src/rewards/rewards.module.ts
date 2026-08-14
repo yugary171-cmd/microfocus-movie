@@ -20,9 +20,9 @@ import {
   JwtAuthGuard,
   type Principal
 } from "../security/security.js";
+import { assertNamedRateLimit } from "../security/rate-limit.js";
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
-const RATE_WINDOW_MS = 5 * 60 * 1000;
 
 class CreateChallengeDto implements CreateRewardChallengeRequest {
   @IsString()
@@ -58,6 +58,7 @@ export class RewardsController {
     @Body() body: CreateChallengeDto
   ): Promise<RewardChallengeView> {
     const userId = requireUser(principal);
+    await assertNamedRateLimit(this.prisma, "rewardChallenge", `user:${userId}`);
     await assertCircuitsClosed(this.prisma, {
       userId,
       dramaId: body.dramaId,
@@ -91,10 +92,6 @@ export class RewardsController {
       where: { userId, status: "PENDING", expiresAt: { gt: now } }
     });
     if (pending) throw Errors.conflict("CHALLENGE_PENDING", "A challenge is already pending");
-    const recent = await this.prisma.rewardChallenge.count({
-      where: { userId, createdAt: { gte: new Date(now.getTime() - RATE_WINDOW_MS) } }
-    });
-    if (recent >= 3) throw Errors.rateLimited("At most three challenges may be created per five minutes");
 
     const nonce = randomBytes(32).toString("base64url");
     try {
@@ -136,6 +133,7 @@ export class RewardsController {
       throw Errors.badRequest("IDEMPOTENCY_KEY_REQUIRED", "A valid Idempotency-Key header is required");
     }
     if (!body.isEnded) throw Errors.badRequest("AD_NOT_COMPLETED", "The rewarded ad was not completed");
+    await assertNamedRateLimit(this.prisma, "rewardComplete", `user:${userId}`);
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM RewardChallenge WHERE id = ${challengeId} FOR UPDATE`;
       const challenge = await tx.rewardChallenge.findFirst({
