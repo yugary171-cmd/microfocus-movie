@@ -1,5 +1,6 @@
 import { DELETION_CONFIRMATION } from "@microfocus/contracts";
 import { clearStoredSession, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import { wechatAdapter } from "../../services/wechat-adapter";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import {
   playerUrlFromHistory,
@@ -106,7 +107,7 @@ Page({
     const confirmed = await new Promise<boolean>((resolve) => {
       wx.showModal({
         title: "申请注销账号",
-        content: "提交后立即退出登录，活动播放授权会被撤销，未完成广告奖励不再发放。查询进度的令牌只会显示一次。确定继续？",
+        content: "提交前会再次通过微信确认是你本人。提交后立即退出登录，活动播放授权会被撤销，未完成广告奖励不再发放。查询进度的令牌只会显示一次。确定继续？",
         confirmText: "确认注销",
         success: (result) => resolve(Boolean(result.confirm))
       });
@@ -114,7 +115,11 @@ Page({
     if (!confirmed) return;
     this.setData({ deletionBusy: true, deletionNotice: "" });
     try {
-      const result = await getApi().createDeletionRequest({ confirmation: DELETION_CONFIRMATION });
+      const wechatCode = this.data.isMock ? "mock-reauth" : await wechatAdapter.login();
+      const result = await getApi().createDeletionRequest({
+        confirmation: DELETION_CONFIRMATION,
+        wechatCode
+      });
       if (result.deletionQueryToken) {
         wx.setStorageSync("microfocus.deletion-request", {
           deletionRequestId: result.deletionRequestId,

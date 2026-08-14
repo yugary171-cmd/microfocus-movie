@@ -5,9 +5,11 @@ import {
   type CreateDeletionRequestResponse,
   type DeletionRequestView
 } from "@microfocus/contracts";
-import { Equals, IsString } from "class-validator";
+import { Equals, IsString, MaxLength, MinLength } from "class-validator";
+import { AppConfigService } from "../config/config.service.js";
 import { requireUser } from "../history/history.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { WechatProviderService } from "../providers/providers.js";
 import {
   CurrentPrincipal,
   JwtAuthGuard,
@@ -19,11 +21,20 @@ class CreateDeletionDto implements CreateDeletionRequest {
   @IsString()
   @Equals(DELETION_CONFIRMATION)
   confirmation!: typeof DELETION_CONFIRMATION;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(256)
+  wechatCode!: string;
 }
 
 @Controller("v1/me/deletion-requests")
 export class DeletionController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wechat: WechatProviderService,
+    private readonly config: AppConfigService
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -35,6 +46,9 @@ export class DeletionController {
     return createDeletionRequest(this.prisma, {
       userId: requireUser(principal),
       confirmation: body.confirmation,
+      wechatCode: body.wechatCode,
+      wechatMode: this.config.env.WECHAT_MODE,
+      wechat: this.wechat,
       ...(idempotencyKey ? { idempotencyKey } : {})
     });
   }

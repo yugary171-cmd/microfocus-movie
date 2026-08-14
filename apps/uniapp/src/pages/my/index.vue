@@ -2,6 +2,7 @@
 import { DELETION_CONFIRMATION } from "@microfocus/contracts";
 import { onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
+import { obtainWechatLoginCode } from "../../platform";
 import { clearStoredSession, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { resolveHistoryPlayerUrl } from "../../utils/history-navigation";
@@ -96,7 +97,7 @@ async function requestDeletion() {
   const confirmed = await new Promise<boolean>((resolve) => {
     uni.showModal({
       title: "申请注销账号",
-      content: "提交后立即退出登录，活动播放授权会被撤销，未完成广告奖励不再发放。查询进度的令牌只会显示一次。确定继续？",
+      content: "提交前会再次通过微信确认是你本人。提交后立即退出登录，活动播放授权会被撤销，未完成广告奖励不再发放。查询进度的令牌只会显示一次。确定继续？",
       confirmText: "确认注销",
       success: (result) => resolve(Boolean(result.confirm))
     });
@@ -105,7 +106,11 @@ async function requestDeletion() {
   deletionBusy.value = true;
   deletionNotice.value = "";
   try {
-    const result = await getApi().createDeletionRequest({ confirmation: DELETION_CONFIRMATION });
+    const wechatCode = isMock ? "mock-reauth" : await obtainWechatLoginCode();
+    const result = await getApi().createDeletionRequest({
+      confirmation: DELETION_CONFIRMATION,
+      wechatCode
+    });
     if (result.deletionQueryToken) {
       uni.setStorageSync("microfocus.deletion-request", {
         deletionRequestId: result.deletionRequestId,

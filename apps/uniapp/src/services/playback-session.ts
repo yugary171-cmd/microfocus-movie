@@ -1,5 +1,6 @@
 import { PlaybackLeaseStatus, type PlaybackLeaseView } from "@microfocus/contracts";
-import { getApi, getStoredSession } from "./api";
+import { obtainWechatLoginCode } from "../platform";
+import { getApi, getStoredSession, isMockMode } from "./api";
 
 export async function restoreOrCreatePlaybackLease(
   episodeId: string,
@@ -13,7 +14,8 @@ export async function restoreOrCreatePlaybackLease(
     if (active.recoverAction === "recover" && active.lease) {
       active = await getApi().recoverPlaybackLease(active.lease.id, {
         deviceId,
-        reason: "client_resume"
+        reason: "client_resume",
+        wechatCode: isMockMode() ? "mock-reauth" : await obtainWechatLoginCode()
       });
     }
     if (

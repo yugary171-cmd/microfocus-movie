@@ -6,7 +6,19 @@ import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { createDeletionRequest, hashDeletionQueryToken, lookupDeletionRequest } from "./deletion.js";
 
-const user = { id: "user-1", status: "ACTIVE" };
+const user = { id: "user-1", status: "ACTIVE", openId: "wx-open-id" };
+
+function deletionInput(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: user.id,
+    confirmation: DELETION_CONFIRMATION,
+    wechatCode: "fresh-login-code",
+    wechatMode: "live" as const,
+    wechat: { exchangeCode: vi.fn().mockResolvedValue({ openId: user.openId }) },
+    idempotencyKey: "del-key",
+    ...overrides
+  };
+}
 
 describe("account deletion", () => {
   it("marks the account pending, revokes leases, and expires pending challenges", async () => {
@@ -31,15 +43,13 @@ describe("account deletion", () => {
       deletionRequest: { create: vi.fn().mockResolvedValue(created) }
     };
     const prisma = {
+      user: { findUnique: vi.fn().mockResolvedValue(user) },
       deletionRequest: { findUnique: vi.fn().mockResolvedValue(null) },
       $transaction: async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)
     };
-    const result = await createDeletionRequest(prisma as never, {
-      userId: user.id,
-      confirmation: DELETION_CONFIRMATION,
-      idempotencyKey: "del-key",
+    const result = await createDeletionRequest(prisma as never, deletionInput({
       now: new Date("2026-08-14T00:00:00.000Z")
-    });
+    }));
     expect(result.replayed).toBe(false);
     expect(result.deletionQueryToken).toBeTruthy();
     expect(tx.user.update).toHaveBeenCalledWith(
@@ -60,14 +70,15 @@ describe("account deletion", () => {
       deletionRequest: { findUnique: vi.fn().mockResolvedValue(existing) },
       $transaction: vi.fn()
     };
-    const result = await createDeletionRequest(prisma as never, {
-      userId: user.id,
-      confirmation: DELETION_CONFIRMATION,
-      idempotencyKey: "del-key"
-    });
+    const wechat = { exchangeCode: vi.fn() };
+    const result = await createDeletionRequest(
+      prisma as never,
+      deletionInput({ wechat })
+    );
     expect(result).toMatchObject({ deletionRequestId: "del-1", replayed: true });
     expect(result.deletionQueryToken).toBeUndefined();
     expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(wechat.exchangeCode).not.toHaveBeenCalled();
   });
 
   it("rejects a reused key from another user", async () => {
@@ -82,11 +93,7 @@ describe("account deletion", () => {
       }
     };
     await expect(
-      createDeletionRequest(prisma as never, {
-        userId: user.id,
-        confirmation: DELETION_CONFIRMATION,
-        idempotencyKey: "del-key"
-      })
+      createDeletionRequest(prisma as never, deletionInput())
     ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REUSE" });
   });
 
@@ -160,6 +167,7 @@ describe("account deletion", () => {
       tokenExpiresAt: new Date("2026-09-13T00:00:00.000Z")
     };
     const prisma = {
+      user: { findUnique: vi.fn().mockResolvedValue(user) },
       deletionRequest: {
         findUnique: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(raced)
       },
@@ -170,11 +178,7 @@ describe("account deletion", () => {
         })
       )
     };
-    const result = await createDeletionRequest(prisma as never, {
-      userId: user.id,
-      confirmation: DELETION_CONFIRMATION,
-      idempotencyKey: "del-key"
-    });
+    const result = await createDeletionRequest(prisma as never, deletionInput());
     expect(result.replayed).toBe(true);
     expect(result.deletionQueryToken).toBeUndefined();
   });

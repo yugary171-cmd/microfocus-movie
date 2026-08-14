@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { PlaybackController } from "./playback.module.js";
 
+function createController(prisma: unknown) {
+  return new PlaybackController(
+    prisma as never,
+    {} as never,
+    { exchangeCode: vi.fn() } as never,
+    { env: { WECHAT_MODE: "mock" } } as never
+  );
+}
+
 function readyAsset() {
   return {
     fileId: "file",
@@ -51,7 +60,7 @@ describe("playback renewal", () => {
         findMany: vi.fn().mockResolvedValue([])
       }
     };
-    const controller = new PlaybackController(prisma as never, {} as never);
+    const controller = createController(prisma);
 
     await expect(
       controller.renew({ kind: "user", sub: "user" }, "lease")
@@ -81,7 +90,7 @@ describe("playback renewal", () => {
       },
       circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) }
     };
-    const controller = new PlaybackController(prisma as never, {} as never);
+    const controller = createController(prisma);
 
     await expect(
       controller.create(
@@ -116,7 +125,7 @@ describe("playback renewal", () => {
         count: vi.fn().mockResolvedValue(3)
       }
     };
-    const controller = new PlaybackController(prisma as never, {} as never);
+    const controller = createController(prisma);
 
     await expect(
       controller.create(

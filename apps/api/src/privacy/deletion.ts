@@ -8,9 +8,11 @@ import {
   type DeletionRequestView
 } from "@microfocus/contracts";
 import { Prisma } from "@prisma/client";
+import { assertRecentWechatReauth } from "../auth/reauth.js";
 import { Errors } from "../common/app-error.js";
 import { releaseOpenReservations } from "../playback/playback-reservations.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
+import type { WechatProvider } from "../providers/providers.js";
 
 export function hashDeletionQueryToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -35,7 +37,15 @@ function normalizeIdempotencyKey(value: string | undefined): string {
 
 export async function createDeletionRequest(
   prisma: PrismaService,
-  input: { userId: string; confirmation: string; idempotencyKey?: string; now?: Date }
+  input: {
+    userId: string;
+    confirmation: string;
+    wechatCode: string;
+    wechatMode: "mock" | "live";
+    wechat: WechatProvider;
+    idempotencyKey?: string;
+    now?: Date;
+  }
 ): Promise<CreateDeletionRequestResponse> {
   if (input.confirmation !== DELETION_CONFIRMATION) {
     throw Errors.badRequest("DELETION_CONFIRMATION_REQUIRED", "Account deletion must be explicitly confirmed");
@@ -53,6 +63,13 @@ export async function createDeletionRequest(
       replayed: true
     };
   }
+  await assertRecentWechatReauth({
+    prisma,
+    wechat: input.wechat,
+    wechatMode: input.wechatMode,
+    userId: input.userId,
+    wechatCode: input.wechatCode
+  });
   const now = input.now ?? new Date();
   const queryToken = randomBytes(32).toString("base64url");
   try {

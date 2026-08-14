@@ -194,7 +194,7 @@ flowchart LR
 | `GET /v1/playback/leases/active` | 用户 JWT | 无 | 查询本人活动租约、预留、未确认窗口和恢复动作；不依赖客户端保存旧 lease ID |
 | `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token | `seq`、前后媒体位置、倍速、播放状态、已使用窗口标识 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算 |
 | `POST /v1/playback/leases/:leaseId/renew` | 租约所属 viewer token | 当前租约 | 最近心跳合规时续签短凭证 |
-| `POST /v1/playback/leases/:leaseId/recover` | 用户 JWT + 近期重新认证证明 | `reason/deviceId` | 核验媒体交付证据后幂等结算、释放或转客服；自动宽限受滚动风险上限约束 |
+| `POST /v1/playback/leases/:leaseId/recover` | 用户 JWT + 近期重新认证证明 | `reason/deviceId/wechatCode` | 核验媒体交付证据后幂等结算、释放或转客服；自动宽限受滚动风险上限约束 |
 | `DELETE /v1/playback/leases/:leaseId` | 租约所属 viewer token | 当前租约 | 主动关闭；重复关闭不得产生额外扣费 |
 
 ### 5.2 管理端
@@ -225,7 +225,7 @@ flowchart LR
 
 | 方法与路径 | 认证 | 语义 |
 | --- | --- | --- |
-| `POST /v1/me/deletion-requests` | 用户 JWT + 近期重新认证证明 | 在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
+| `POST /v1/me/deletion-requests` | 用户 JWT + 近期重新认证证明 | 请求体含确认文案与一次性 `wechatCode`；在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
 | `GET /v1/me/deletion-requests/:deletionRequestId` | `X-Deletion-Query-Token` | 查询 `PENDING/PROCESSING/COMPLETED/REJECTED`、处理时间和可理解原因 |
 
 `deletionQueryToken` 只能查询对应申请，服务端仅保存摘要并执行限频；有效期应覆盖承诺的最长处理窗口。令牌遗失或过期后只能通过受控客服身份核验恢复查询能力，不能恢复已撤销的用户会话。

@@ -26,7 +26,9 @@ export const ERROR_CODES = {
   DELETION_TOKEN_INVALID: "DELETION_TOKEN_INVALID",
   CALLBACK_NOT_REPLAYABLE: "CALLBACK_NOT_REPLAYABLE",
   CALLBACK_DEAD_LETTER: "CALLBACK_DEAD_LETTER",
-  CALLBACK_PAYLOAD_UNAVAILABLE: "CALLBACK_PAYLOAD_UNAVAILABLE"
+  CALLBACK_PAYLOAD_UNAVAILABLE: "CALLBACK_PAYLOAD_UNAVAILABLE",
+  REAUTH_REQUIRED: "REAUTH_REQUIRED",
+  REAUTH_MISMATCH: "REAUTH_MISMATCH"
 } as const;
 
 export const API_ROUTES = {
@@ -276,6 +278,7 @@ export interface AnonymousSessionResponse {
 
 export interface CreateDeletionRequest {
   confirmation: typeof DELETION_CONFIRMATION;
+  wechatCode: string;
 }
 
 export interface CreateDeletionRequestResponse {
@@ -348,6 +351,7 @@ export interface ActivePlaybackLeaseResponse {
 export interface RecoverPlaybackLeaseRequest {
   deviceId: string;
   reason: string;
+  wechatCode: string;
 }
 
 export interface PlaybackHeartbeatRequest {

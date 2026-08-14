@@ -24,7 +24,7 @@ import {
   type PlaybackLeaseView,
   type RecoverPlaybackLeaseRequest
 } from "@microfocus/contracts";
-import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
 import { Errors } from "../common/app-error.js";
 import {
   allocateFefo,
@@ -35,8 +35,10 @@ import {
 } from "../domain/policies.js";
 import { assertCircuitsClosed } from "../domain/circuit.js";
 import { requireUser } from "../history/history.module.js";
+import { assertRecentWechatReauth } from "../auth/reauth.js";
+import { AppConfigService } from "../config/config.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { VodProviderService } from "../providers/providers.js";
+import { VodProviderService, WechatProviderService } from "../providers/providers.js";
 import {
   CurrentPrincipal,
   JwtAuthGuard,
@@ -97,6 +99,11 @@ class RecoverLeaseDto implements RecoverPlaybackLeaseRequest {
   @IsString()
   @MaxLength(191)
   reason!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(256)
+  wechatCode!: string;
 }
 
 @Controller("v1/playback/leases")
@@ -104,7 +111,9 @@ class RecoverLeaseDto implements RecoverPlaybackLeaseRequest {
 export class PlaybackController {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly vod: VodProviderService
+    private readonly vod: VodProviderService,
+    private readonly wechat: WechatProviderService,
+    private readonly config: AppConfigService
   ) {}
 
   @Post()
@@ -609,6 +618,13 @@ export class PlaybackController {
       where: { id: leaseId, userId }
     });
     if (!lease) throw Errors.notFound("Playback lease");
+    await assertRecentWechatReauth({
+      prisma: this.prisma,
+      wechat: this.wechat,
+      wechatMode: this.config.env.WECHAT_MODE,
+      userId,
+      wechatCode: body.wechatCode
+    });
     await this.prisma.$transaction(async (tx) => {
       await recoverReservations(tx, {
         userId,

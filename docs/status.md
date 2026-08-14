@@ -24,10 +24,10 @@
 
 | 领域 | 当前已实现 | 部分实现或仅目标设计 |
 | --- | --- | --- |
-| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权 | 尚无「近期重新认证证明」；可删除数据清理依赖未批准的保留矩阵 |
+| 身份 | 微信 `code2session` 适配边界、用户 JWT、管理员密码/JWT/TOTP、匿名 viewer token（仅免费集租约）；注销申请将账户标为 `DELETION_PENDING` 并立即撤权；注销需新的微信 `code` 且 live 下 openId 必须与账号一致 | 可删除数据清理依赖未批准的保留矩阵 |
 | 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN | 真实 VOD 发布链路未实现 |
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant | 可信广告验证未接真实平台 |
-| 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复 | 无真实 VOD 交付日志时 UNCONFIRMED 不自动扣费；恢复尚无「近期重新认证证明」 |
+| 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code` | 无真实 VOD 交付日志时 UNCONFIRMED 不自动扣费 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `POST /v1/admin/callback-events/:eventId/replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度 | 完整法定清理与客服令牌恢复尚未实现 |
 | 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门 | Live provider、TOTP 安全轮换和真实发布证据尚未完成 |
@@ -36,7 +36,7 @@
 
 工程（不加功能）：
 
-1. 工程回调列的加密载荷已落地；下一项按矩阵为 Live provider 实现与「近期重新认证证明」，先更新 `packages/contracts`，再实现服务端。
+1. 身份/播放列的「近期重新认证证明」已落地（新的微信 `code`，live 核验 openId）；下一项仍是真实 Live provider（VOD 签名与激励广告 SSV），保持 fail-closed，不能只改环境变量。
 2. 不自动推送；后续提交需人工确认。
 
 产品（与工程并行）：
@@ -59,6 +59,7 @@
 - 2026-08-14：回调 ACK 前持久化 AES-256-GCM 规范化载荷（可选独立密钥，缺省回退 TOTP 密钥，保留 30 天）。管理员重放在保留期内会执行该载荷；无密钥、过期或历史无密文的事件仍只解锁。
 - 2026-08-14：实现晚到奖励：奖励回调在 challenge 已 EXPIRED 时，若 `completedAt` 落在原有效期内且回调仍在 2 小时延迟窗内，则迁为 `COMPLETED_LATE` 并只创建唯一 grant；缺少完成时间不猜测成功。
 - 2026-08-14：实现回调死信与审计重放：重试耗尽进入 `DEAD_LETTER` 且不可被普通 reclaim；`POST /v1/admin/callback-events/:eventId/replay` 将可重放事件迁回 `PROCESSING`。尚未存储加密载荷，也不自动打开 GLOBAL 熔断。
+- 2026-08-14：注销申请与播放租约恢复要求一次性微信 `wechatCode`：live 下 `code2session` 的 openId 必须与账号一致；Mock 无法跨 code 稳定绑定同一 openId，因此只要求 mock 兑换成功。JWT 不能代替这次证明。幂等重放注销申请不再消耗新的 code。
 - 2026-08-14：实现账号注销申请：`POST /v1/me/deletion-requests` 在事务内标记 `DELETION_PENDING`、撤销租约并阻止新奖励；旧 JWT 立即失效；`GET` 仅用查询令牌摘要核验。尚未做保留矩阵清理与重新认证证明。
 - 2026-08-14：实现权益 adjustment：`POST /v1/admin/entitlements/adjustments` 以幂等键追加冻结、释放冻结或核销；禁止改原 grant/debit，核销不改用户余额。
 - 2026-08-14：实现锁定集播放 reservation：签发前预留 5 秒窗口，心跳确认后转 debit，超时标 UNCONFIRMED；`GET /v1/playback/leases/active` 与 `POST .../recover` 支持活动租约恢复（24 小时内最多 3 次自动宽限）。
