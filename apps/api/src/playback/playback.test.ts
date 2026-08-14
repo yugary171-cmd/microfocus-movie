@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { PlaybackController } from "./playback.module.js";
+import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
 function allowRateLimit() {
   return {
@@ -36,6 +37,7 @@ describe("playback renewal", () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const prisma = {
       circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) },
+      rateLimitBucket: allowRateLimit(),
       playbackLease: {
         findFirst: vi.fn().mockResolvedValue({
           id: "lease",
@@ -197,6 +199,7 @@ describe("playback renewal", () => {
       entitlementDebit
     };
     const prisma = {
+      rateLimitBucket: allowRateLimit(),
       $transaction: async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)
     };
     const controller = createController(prisma);
@@ -220,5 +223,53 @@ describe("playback renewal", () => {
     });
     expect(entitlementDebit.create).not.toHaveBeenCalled();
     expect(tx.entitlementGrant.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits heartbeats and renewals by authenticated actor", async () => {
+    expect(RATE_LIMITS.playbackHeartbeat).toEqual({ limit: 60, windowMs: 60_000 });
+    expect(RATE_LIMITS.playbackRenew).toEqual({ limit: 20, windowMs: 60_000 });
+    const exhausted = {
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findUnique: vi.fn().mockResolvedValue({ windowStart: new Date(), count: 99 }),
+      create: vi.fn(),
+      deleteMany: vi.fn()
+    };
+    const prisma = {
+      rateLimitBucket: exhausted,
+      $transaction: vi.fn(),
+      playbackLease: { findFirst: vi.fn() }
+    };
+    const controller = createController(prisma);
+    const principal = { kind: "user" as const, sub: "user-1" };
+
+    await expect(
+      controller.heartbeat(principal, "lease", {
+        seq: 2,
+        mediaPositionSeconds: 15,
+        previousMediaPositionSeconds: 10,
+        playbackRate: 1,
+        state: "playing"
+      })
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(exhausted.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("playbackHeartbeat", "user:user-1")
+        })
+      })
+    );
+
+    await expect(controller.renew(principal, "lease")).rejects.toMatchObject({
+      code: "RATE_LIMITED"
+    });
+    expect(prisma.playbackLease.findFirst).not.toHaveBeenCalled();
+    expect(exhausted.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: rateLimitBucketId("playbackRenew", "user:user-1")
+        })
+      })
+    );
   });
 });

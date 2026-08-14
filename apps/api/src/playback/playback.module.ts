@@ -124,11 +124,7 @@ export class PlaybackController {
     @Body() body: CreateLeaseDto
   ): Promise<PlaybackLeaseView> {
     const actor = playbackActor(principal);
-    await assertNamedRateLimit(
-      this.prisma,
-      "playbackLease",
-      actor.kind === "user" ? `user:${actor.userId}` : `viewer:${actor.viewerSessionId}`
-    );
+    await assertNamedRateLimit(this.prisma, "playbackLease", playbackRateLimitKey(actor));
     const episode = await this.prisma.episode.findUnique({
       where: { id: body.episodeId },
       include: {
@@ -304,6 +300,7 @@ export class PlaybackController {
     @Body() body: HeartbeatDto
   ): Promise<PlaybackHeartbeatResponse> {
     const actor = playbackActor(principal);
+    await assertNamedRateLimit(this.prisma, "playbackHeartbeat", playbackRateLimitKey(actor));
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM PlaybackLease WHERE id = ${leaseId} FOR UPDATE`;
       const lease = await tx.playbackLease.findFirst({
@@ -552,6 +549,7 @@ export class PlaybackController {
     @Param("leaseId") leaseId: string
   ): Promise<PlaybackLeaseView> {
     const actor = playbackActor(principal);
+    await assertNamedRateLimit(this.prisma, "playbackRenew", playbackRateLimitKey(actor));
     const lease = await this.prisma.playbackLease.findFirst({
       where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },
       include: {
@@ -756,6 +754,10 @@ function isPlayableAsset(asset: {
 type PlaybackActor =
   | { kind: "user"; userId: string }
   | { kind: "viewer"; viewerSessionId: string; deviceId: string };
+
+function playbackRateLimitKey(actor: PlaybackActor): string {
+  return actor.kind === "user" ? `user:${actor.userId}` : `viewer:${actor.viewerSessionId}`;
+}
 
 function playbackActor(principal: Principal): PlaybackActor {
   if (principal.kind === "user") return { kind: "user", userId: principal.sub };
