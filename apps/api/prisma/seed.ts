@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { encryptTotpSecret } from "../src/security/totp-crypto.js";
+import { assertTotpSecretBase32, isExampleTotpSecret } from "../src/security/totp-secret.js";
 
 const prisma = new PrismaClient();
 
@@ -21,6 +22,10 @@ async function main(): Promise<void> {
       "ADMIN_BOOTSTRAP_TOTP_SECRET and TOTP_ENCRYPTION_KEY are required for a production seed"
     );
   }
+  const normalizedTotpSecret = totpSecret ? assertTotpSecretBase32(totpSecret) : undefined;
+  if (production && normalizedTotpSecret && isExampleTotpSecret(normalizedTotpSecret)) {
+    throw new Error("Refusing to seed an example administrator TOTP secret in production");
+  }
   const admin = await prisma.adminUser.upsert({
     where: { email },
     create: {
@@ -29,8 +34,8 @@ async function main(): Promise<void> {
       role: "ADMIN",
       active: true,
       totpEnabled: production,
-      ...(production && totpSecret && encryptionKey
-        ? { totpSecretEncrypted: encryptTotpSecret(totpSecret, encryptionKey) }
+      ...(production && normalizedTotpSecret && encryptionKey
+        ? { totpSecretEncrypted: encryptTotpSecret(normalizedTotpSecret, encryptionKey) }
         : {})
     },
     update: {}

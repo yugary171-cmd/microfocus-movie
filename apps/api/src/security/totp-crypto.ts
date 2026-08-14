@@ -42,6 +42,26 @@ export function decryptTotpSecret(payload: string, encryptionKey: string): strin
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
 
+export function tryDecryptTotpSecret(
+  payload: string,
+  keys: { current: string; previous?: string }
+): { secret: string; keyUsed: "current" | "previous" } | undefined {
+  try {
+    return { secret: decryptTotpSecret(payload, keys.current), keyUsed: "current" };
+  } catch {
+    if (!keys.previous) return undefined;
+    try {
+      return { secret: decryptTotpSecret(payload, keys.previous), keyUsed: "previous" };
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+export function totpKeyFingerprint(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex").slice(0, 12);
+}
+
 function deriveKey(value: string): Buffer {
   if (value.length < 32) throw new Error("TOTP encryption key is too short");
   return createHash("sha256").update(value, "utf8").digest();

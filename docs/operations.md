@@ -159,7 +159,7 @@
 
 1. 立即禁用受影响账号/密钥，撤销会话并限制管理端和高风险 API；秘密不得写入事故工单。
 2. 确定秘密类型、暴露时间、可访问范围、日志/构建物/仓库传播路径和已执行操作。
-3. 按 [configuration.md](./configuration.md) 轮换 JWT、TOTP、微信、VOD、回调或播放密钥；TOTP 无安全轮换工具时保持外部访问关闭。
+3. 按 [configuration.md](./configuration.md) 轮换 JWT、TOTP、微信、VOD、回调或播放密钥；TOTP 加密密钥使用双密钥窗口与 `totp:reencrypt`，验证完成前保持 `TOTP_ENCRYPTION_KEY_PREVIOUS`。
 4. 审查管理员操作、导出、补偿、发布、下架和配置变更，保全不可变审计。
 5. 完成权限修复、凭据撤销、构建物清理、会话重登和受影响方通知后，才允许恢复。
 

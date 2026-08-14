@@ -22,6 +22,7 @@ const envSchema = z.object({
   ADMIN_BOOTSTRAP_TOTP_SECRET: z.string().optional(),
   ADMIN_TEST_OTP: z.string().regex(/^\d{6}$/).optional(),
   TOTP_ENCRYPTION_KEY: optionalSecret,
+  TOTP_ENCRYPTION_KEY_PREVIOUS: optionalSecret,
   CALLBACK_PAYLOAD_ENCRYPTION_KEY: optionalSecret,
   RELEASE_GATE_ENABLED: booleanString,
   COMPLIANCE_ENTITY_APPROVED: booleanString,
@@ -51,6 +52,17 @@ const envSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: "WECHAT_MODE and VOD_MODE must both be 'mock' or both be 'live'",
       path: ["WECHAT_MODE", "VOD_MODE"]
+    });
+  }
+  if (
+    data.TOTP_ENCRYPTION_KEY &&
+    data.TOTP_ENCRYPTION_KEY_PREVIOUS &&
+    data.TOTP_ENCRYPTION_KEY === data.TOTP_ENCRYPTION_KEY_PREVIOUS
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "TOTP_ENCRYPTION_KEY_PREVIOUS must differ from TOTP_ENCRYPTION_KEY",
+      path: ["TOTP_ENCRYPTION_KEY_PREVIOUS"]
     });
   }
 });

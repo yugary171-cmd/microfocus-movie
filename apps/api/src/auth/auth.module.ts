@@ -15,7 +15,8 @@ import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { WechatProviderService } from "../providers/providers.js";
 import { AppConfigService } from "../config/config.service.js";
-import { decryptTotpSecret } from "../security/totp-crypto.js";
+import { tryDecryptTotpSecret } from "../security/totp-crypto.js";
+import { decodeTotpSecretBase32 } from "../security/totp-secret.js";
 
 class WechatLoginDto {
   @IsString()
@@ -140,8 +141,15 @@ export class AuthController {
     }
     const key = this.config.env.TOTP_ENCRYPTION_KEY;
     if (!key) throw Errors.providerNotConfigured("administrator TOTP decryption");
+    const decrypted = tryDecryptTotpSecret(encryptedSecret, {
+      current: key,
+      ...(this.config.env.TOTP_ENCRYPTION_KEY_PREVIOUS
+        ? { previous: this.config.env.TOTP_ENCRYPTION_KEY_PREVIOUS }
+        : {})
+    });
+    if (!decrypted) return false;
     try {
-      return verifyTotp(decryptTotpSecret(encryptedSecret, key), otp);
+      return verifyTotp(decrypted.secret, otp);
     } catch {
       return false;
     }
@@ -149,7 +157,7 @@ export class AuthController {
 }
 
 function verifyTotp(base32Secret: string, token: string, now = Date.now()): boolean {
-  const secret = decodeBase32(base32Secret);
+  const secret = decodeTotpSecretBase32(base32Secret);
   for (const offset of [-1, 0, 1]) {
     const counter = Math.floor(now / 30_000) + offset;
     const buffer = Buffer.alloc(8);
@@ -167,21 +175,6 @@ function verifyTotp(base32Secret: string, token: string, now = Date.now()): bool
     }
   }
   return false;
-}
-
-function decodeBase32(value: string): Buffer {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const character of value.toUpperCase().replace(/=+$/g, "")) {
-    const index = alphabet.indexOf(character);
-    if (index < 0) throw Errors.badRequest("INVALID_TOTP_SECRET", "TOTP secret is invalid");
-    bits += index.toString(2).padStart(5, "0");
-  }
-  const bytes: number[] = [];
-  for (let index = 0; index + 8 <= bits.length; index += 8) {
-    bytes.push(Number.parseInt(bits.slice(index, index + 8), 2));
-  }
-  return Buffer.from(bytes);
 }
 
 @Module({ controllers: [AuthController] })

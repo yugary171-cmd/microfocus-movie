@@ -16,7 +16,7 @@
 - API、管理后台、uni-app 和原生过渡小程序已形成首轮内部 Mock 实现。2026-08-14 已将当时工作区收成 Git 快照 `17babc1`（不含 `.env`、本机 Demo origin、微信私有配置和 `旧内容/`）。
 - 当前仅允许 Mock 内部体验；真实外部发布仍受资质、备案、微信类目、广告能力和逐剧内容权利闸门约束。
 - 微信 `code2session` 登录适配已实现；腾讯云 VOD 上传/播放签名和微信激励广告可信服务端验证仍为 fail-closed。发布闸门会返回 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`，生产进程也会拒绝启动，直到企业账号完成真实实现与端到端验收。
-- 外部构建还受配置链路约束：内部 Mock 构建允许空 API 地址并注入 Demo 媒体；外部包必须 `MICROFOCUS_CLIENT_MODE=live` 且公开 HTTPS API 地址合法，产物不得含 Demo 媒体。真实 Live provider、TOTP 轮换和发布证据仍未完成。边界见 [configuration.md](./configuration.md)。
+- 外部构建还受配置链路约束：内部 Mock 构建允许空 API 地址并注入 Demo 媒体；外部包必须 `MICROFOCUS_CLIENT_MODE=live` 且公开 HTTPS API 地址合法，产物不得含 Demo 媒体。真实 Live provider 和发布证据仍未完成。边界见 [configuration.md](./configuration.md)。
 - 2026-08-14 当前工作区执行 `npm run check` 通过；该结果覆盖 typecheck、单元/组件测试和构建，不等于 HTTP E2E、真实 MySQL 并发、真机或真实 provider 验收。
 - 产品证据仍停留在内部方案：无用户行为、无内容供给承诺、无类目/广告批复。
 
@@ -30,13 +30,13 @@
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code` | 无真实 VOD 交付日志时 UNCONFIRMED 不自动扣费 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `POST /v1/admin/callback-events/:eventId/replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度 | 完整法定清理与客服令牌恢复尚未实现 |
-| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门 | Live provider、TOTP 安全轮换和真实发布证据尚未完成 |
+| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚 | Live provider 和真实发布证据尚未完成 |
 
 ## 下一步（Now）
 
 工程（不加功能）：
 
-1. 身份/播放列的「近期重新认证证明」已落地（新的微信 `code`，live 核验 openId）；下一项仍是真实 Live provider（VOD 签名与激励广告 SSV），保持 fail-closed，不能只改环境变量。
+1. TOTP 加密密钥轮换工具已落地；下一项仍是真实 Live provider（VOD 签名与激励广告 SSV），保持 fail-closed，不能只改环境变量。
 2. 不自动推送；后续提交需人工确认。
 
 产品（与工程并行）：
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：TOTP 加密密钥轮换：登录可在维护窗口回退 `TOTP_ENCRYPTION_KEY_PREVIOUS`；`npm run totp:reencrypt` 默认 dry-run，`--commit` 重加密，`--rollback --commit` 写回上一密钥。生产种子校验 Base32 并拒绝示例 TOTP secret。回调若仍回退 TOTP 密钥则拒绝轮换。
 - 2026-08-14：新增 [ci-pipeline.md](./ci-pipeline.md)，说明 GitHub/Coding + NestJS API + 管理端 + uni-app 体验版的最小 CI/CD 路径（不含微信云开发 Git）。
 - 2026-08-14：回调 ACK 前持久化 AES-256-GCM 规范化载荷（可选独立密钥，缺省回退 TOTP 密钥，保留 30 天）。管理员重放在保留期内会执行该载荷；无密钥、过期或历史无密文的事件仍只解锁。
 - 2026-08-14：实现晚到奖励：奖励回调在 challenge 已 EXPIRED 时，若 `completedAt` 落在原有效期内且回调仍在 2 小时延迟窗内，则迁为 `COMPLETED_LATE` 并只创建唯一 grant；缺少完成时间不猜测成功。

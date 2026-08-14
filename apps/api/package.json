@@ -14,7 +14,8 @@
     "db:generate": "node ../../scripts/run-with-root-env.mjs ../../node_modules/prisma/build/index.js generate",
     "db:migrate": "node ../../scripts/run-with-root-env.mjs ../../node_modules/prisma/build/index.js migrate dev",
     "db:migrate:deploy": "node ../../scripts/run-with-root-env.mjs ../../node_modules/prisma/build/index.js migrate deploy",
-    "db:seed": "node ../../scripts/run-with-root-env.mjs ../../node_modules/tsx/dist/cli.mjs prisma/seed.ts"
+    "db:seed": "node ../../scripts/run-with-root-env.mjs ../../node_modules/tsx/dist/cli.mjs prisma/seed.ts",
+    "totp:reencrypt": "node ../../scripts/run-with-root-env.mjs ../../node_modules/tsx/dist/cli.mjs prisma/rotate-totp-encryption.ts"
   },
   "dependencies": {
     "@microfocus/contracts": "*",

@@ -40,6 +40,16 @@ describe("production environment gate", () => {
     expect(() => loadEnv(base)).not.toThrow();
   });
 
+  it("rejects a previous TOTP key that matches the current key", () => {
+    expect(() =>
+      loadEnv({
+        ...base,
+        TOTP_ENCRYPTION_KEY: "live-totp-key-that-is-at-least-32-characters",
+        TOTP_ENCRYPTION_KEY_PREVIOUS: "live-totp-key-that-is-at-least-32-characters"
+      })
+    ).toThrow("TOTP_ENCRYPTION_KEY_PREVIOUS");
+  });
+
   it("requires HTTPS for the administrator origin in production", () => {
     expect(() =>
       loadEnv({

@@ -18,7 +18,7 @@
 | 分类 | 变量 | 规则 |
 | --- | --- | --- |
 | API 普通配置 | `NODE_ENV`、`PORT`、`PUBLIC_API_URL`、`ADMIN_ORIGIN` | 可以进入部署清单，但不能由客户端任意覆盖 |
-| 数据库与签名秘密 | `DATABASE_URL`、`JWT_SECRET`、`TOTP_ENCRYPTION_KEY`、`CALLBACK_PAYLOAD_ENCRYPTION_KEY`、`VOD_PLAYBACK_KEY` | 只注入 API/受控任务；不得进入浏览器、小程序、日志或错误响应 |
+| 数据库与签名秘密 | `DATABASE_URL`、`JWT_SECRET`、`TOTP_ENCRYPTION_KEY`、`TOTP_ENCRYPTION_KEY_PREVIOUS`、`CALLBACK_PAYLOAD_ENCRYPTION_KEY`、`VOD_PLAYBACK_KEY` | 只注入 API/受控任务；不得进入浏览器、小程序、日志或错误响应 |
 | 初始化配置与秘密 | `ADMIN_BOOTSTRAP_EMAIL`、`ADMIN_BOOTSTRAP_PASSWORD`、`ADMIN_BOOTSTRAP_TOTP_SECRET` | 只供一次性种子流程使用，初始化后从常驻环境移除密码和 TOTP 明文 |
 | 本地测试配置 | `ADMIN_TEST_OTP`、`DEMO_MEDIA_ORIGIN`、`INTERNAL_CLIENT_ATTESTATION` | 仅限开发或经批准的非生产内部验证 |
 | 合规闸门 | `COMPLIANCE_ENTITY_APPROVED`、`COMPLIANCE_MINIPROGRAM_FILING`、`COMPLIANCE_WECHAT_CATEGORY`、`COMPLIANCE_ADS_APPROVED` | 只由获授权负责人依据有效证据变更；不是普通功能开关 |
@@ -83,7 +83,7 @@ Live 闸门由 [`scripts/client-build-config.ts`](../scripts/client-build-config
 - 不注入 `VITE_DEMO_MEDIA_ORIGIN`，并把原生小程序 Demo origin 写成空；
 - 对管理端 `dist` 与 uni-app `dist/build/mp-weixin` 扫描 Demo 媒体痕迹，命中即失败。
 
-`PUBLIC_API_URL` 仍只属于 API 进程。客户端 Live 地址必须单独注入。解除这些闸门之外的阻塞（真实 Live provider、TOTP 轮换、发布证据）见 [status.md](./status.md)。
+`PUBLIC_API_URL` 仍只属于 API 进程。客户端 Live 地址必须单独注入。解除这些闸门之外的阻塞（真实 Live provider、发布证据）见 [status.md](./status.md)。
 
 ## 5. 微信 Live 接入
 
@@ -143,24 +143,25 @@ VOD_MEDIA_HOST=media.example.com
 
 当前 `envSchema` 已包含 `ADMIN_BOOTSTRAP_TOTP_SECRET`，并拒绝微信/VOD 的 Mock/Live 混用；`assertProductionSafety()` 已检查合规项、HTTPS、Live provider、`server_verified`、主要秘密，并拒绝生产环境中的 `INTERNAL_CLIENT_ATTESTATION=true`、`ADMIN_TEST_OTP` 和残留 bootstrap 密码/TOTP。管理端 Mock release gate 也会展示 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`。
 
-仍未完成的生产门禁包括：TOTP Secret 的 Base32 语义校验、客户端 Live API 构建注入、生产禁用 Demo、构建物秘密/Mock 扫描和真实 provider 实现。API 无法自行检查客户端构建物，必须由构建流水线执行；现有最终拒启在这些能力完成前继续保留。
+仍未完成的生产门禁包括：客户端 Live API 构建注入与 Demo 扫描已由构建闸门执行，但真实 provider 实现仍未完成。API 无法自行检查客户端构建物，必须由构建流水线执行；现有最终拒启在真实 VOD/广告验证完成前继续保留。
 
 ## 8. 秘密轮换与变更控制
 
 - 每个环境使用独立秘密，不在开发、预发布和生产之间复用。
 - JWT secret 轮换会使现有会话失效；当前为单密钥校验时，应安排维护窗口并提前准备重新登录提示。
-- TOTP 加密密钥不能直接替换。目标流程是先用旧密钥解密并以新密钥重新加密，完成全量验证和可回滚检查后再移除旧密钥。
+- TOTP 加密密钥不能直接替换。维护窗口内同时配置 `TOTP_ENCRYPTION_KEY`（新）与 `TOTP_ENCRYPTION_KEY_PREVIOUS`（旧），管理员登录会先尝试新密钥再回退旧密钥。用 `npm run totp:reencrypt -w @microfocus/api` 先 dry-run，确认失败数为 0 后再加 `--commit` 把密文重加密到新密钥；验证登录成功后移除 `TOTP_ENCRYPTION_KEY_PREVIOUS`。回滚使用 `--rollback --commit`（用当前密钥解密、写回上一密钥）。默认 dry-run 不写库。工具只输出计数和密钥指纹，不输出明文或密文。若回调载荷仍回退使用 TOTP 密钥，必须先配置独立的 `CALLBACK_PAYLOAD_ENCRYPTION_KEY` 再轮换。种子流程只创建新管理员，不更新既有 TOTP 密文；生产种子会校验 Base32 并拒绝示例 secret。
 - 计划内播放签名 Key 轮换前先停止新凭证，可保留旧 Key 至最长凭证窗口结束或使用明确的双 Key 验证期；确认或合理怀疑 Key 泄露时必须立即撤销旧 Key，不保留兼容窗口。
 - 微信、VOD 和回调秘密轮换必须同步 provider 配置、部署平台与回调验证，先验证新凭据再撤销旧凭据。
 - 合规闸门变更必须记录证据、操作者、审批人、时间和适用环境；证据到期时应自动或人工恢复为关闭状态。
 - 配置或秘密不能通过日志、工单正文、截图、聊天记录和发布证据目录传播；发布记录只保存变量名、版本或密钥指纹。
 
-当前种子流程只创建新管理员，不更新既有管理员的 TOTP 密文，也未校验 TOTP Secret 的 Base32 格式；仓库内尚无 TOTP 批量重加密与回滚工具。因此：
+当前种子流程只创建新管理员，不更新既有管理员的 TOTP 密文。生产初始化会校验 Base32 并拒绝示例 TOTP secret。加密密钥轮换使用 `totp:reencrypt` 与双密钥窗口，不得靠重复 seed 或直接改库密文完成。
 
-- 生产初始化前必须增加 Base32 解析校验和登录冒烟验证；
+因此：
+
+- 生产初始化失败时保持外部访问关闭并修复初始化流程，不直接修改数据库密文；
 - 既有管理员不得通过重复运行 seed 轮换 TOTP 或加密密钥；
-- 在专用轮换工具、双密钥/维护窗口策略、备份、验证和回滚演练完成前，不执行 TOTP 加密密钥轮换；
-- 若初始化失败，保持外部访问关闭并修复初始化流程，不直接修改数据库密文。
+- 轮换后必须先用新密钥完成管理员登录冒烟，再从常驻环境移除 `TOTP_ENCRYPTION_KEY_PREVIOUS`。
 
 ## 9. 配置变更验证
 
