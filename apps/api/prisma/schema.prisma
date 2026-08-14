@@ -527,6 +527,7 @@ model CircuitBreaker {
   state     CircuitState @default(CLOSED)
   reason    String?
   openedAt  DateTime?
+  updatedBy String?      @db.VarChar(128)
   updatedAt DateTime     @updatedAt
 }
 

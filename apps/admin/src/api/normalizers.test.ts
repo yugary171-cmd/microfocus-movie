@@ -204,9 +204,10 @@ describe("admin API normalizers", () => {
           state: "CLOSED",
           reason: "incident resolved",
           updatedAt: "2026-08-12T00:00:00.000Z",
+          updatedBy: "admin-9",
         },
       ]),
-    ).toMatchObject({ enabled: false, reason: "incident resolved" });
+    ).toMatchObject({ enabled: false, reason: "incident resolved", updatedBy: "admin-9" });
 
     expect(
       normalizeAuditList([

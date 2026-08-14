@@ -38,23 +38,27 @@ export async function assertCircuitsClosed(
 export async function openProviderCircuit(
   prisma: CircuitReader,
   provider: string,
-  reason: string
+  reason: string,
+  updatedBy = "system"
 ): Promise<string> {
   const key = providerCircuitKey(provider);
   const existing = await prisma.circuitBreaker.findUnique({ where: { provider: key } });
   if (existing?.state === "OPEN") return key;
+  const actor = updatedBy.trim().slice(0, 128) || "system";
   await prisma.circuitBreaker.upsert({
     where: { provider: key },
     create: {
       provider: key,
       state: "OPEN",
       reason,
-      openedAt: new Date()
+      openedAt: new Date(),
+      updatedBy: actor
     },
     update: {
       state: "OPEN",
       reason,
-      openedAt: new Date()
+      openedAt: new Date(),
+      updatedBy: actor
     }
   });
   return key;

@@ -756,7 +756,7 @@ export class AdminController {
       enabled: row?.state === "OPEN",
       reason: row?.reason ?? "",
       updatedAt: row?.updatedAt.toISOString() ?? null,
-      updatedBy: null
+      updatedBy: row?.updatedBy ?? null
     };
   }
 
@@ -778,12 +778,14 @@ export class AdminController {
         provider: key,
         state: body.enabled ? "OPEN" : "CLOSED",
         reason: body.reason,
-        openedAt: body.enabled ? new Date() : null
+        openedAt: body.enabled ? new Date() : null,
+        updatedBy: admin.sub
       },
       update: {
         state: body.enabled ? "OPEN" : "CLOSED",
         reason: body.reason,
-        openedAt: body.enabled ? new Date() : null
+        openedAt: body.enabled ? new Date() : null,
+        updatedBy: admin.sub
       }
     });
     await this.audit(admin.sub, "CIRCUIT_CHANGED", "CircuitBreaker", key);
@@ -809,12 +811,14 @@ export class AdminController {
         provider,
         state: body.state,
         ...(body.reason !== undefined ? { reason: body.reason } : {}),
-        openedAt: body.state === "OPEN" ? new Date() : null
+        openedAt: body.state === "OPEN" ? new Date() : null,
+        updatedBy: admin.sub
       },
       update: {
         state: body.state,
         ...(body.reason !== undefined ? { reason: body.reason } : {}),
-        openedAt: body.state === "OPEN" ? new Date() : null
+        openedAt: body.state === "OPEN" ? new Date() : null,
+        updatedBy: admin.sub
       }
     });
     await this.audit(admin.sub, "CIRCUIT_CHANGED", "CircuitBreaker", provider);

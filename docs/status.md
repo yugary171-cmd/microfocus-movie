@@ -30,7 +30,7 @@
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约按认证主体限频；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌；搜索按连接 IP 限频 | 完整法定清理尚未实现 |
-| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId`/模块/错误码/耗时/脱敏 actor） | Live provider 和真实发布证据尚未完成 |
+| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId`/模块/错误码/耗时/脱敏 actor）；熔断行保存 `updatedBy`（管理员或 `system:*`） | Live provider 和真实发布证据尚未完成 |
 
 ## 下一步（Now）
 
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：熔断记录保存 `updatedBy`：管理员写操作为管理员 ID，死信/账本对账作业为 `system:dead-letter` / `system:ledger-reconcile`。已打开的熔断不覆盖操作者。GET 不再把该字段写死为空。
 - 2026-08-14：管理写操作审计记录关联 HTTP `requestId`（Prisma `AuditLog.requestId`，旧行可空）；列表返回该字段并可检索。不记录请求体或令牌。
 - 2026-08-14：管理端写操作按认证管理员 ID 限频（每分钟 40 次），只读 GET 不占用该桶；键不使用可伪造的客户端字段。登录仍单独按 IP+邮箱限频。
 - 2026-08-14：HTTP 访问写单行 JSON 结构化日志，含 `requestId`、模块、稳定错误码、耗时和脱敏 actor；去掉查询串，不记录 Authorization、请求体或健康检查。

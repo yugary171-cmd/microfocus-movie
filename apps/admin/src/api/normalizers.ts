@@ -359,7 +359,7 @@ export function normalizeCircuitBreaker(value: unknown): CircuitBreakerState {
     enabled: global.state === "OPEN",
     reason: text(global.reason),
     updatedAt: dateText(global.updatedAt) || null,
-    updatedBy: null,
+    updatedBy: text(global.updatedBy) || null,
   };
 }
 

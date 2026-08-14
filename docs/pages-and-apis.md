@@ -216,7 +216,7 @@ flowchart LR
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；列表含写入时的 `requestId`，可按该字段检索 | 审计查询，可与 HTTP 访问日志关联 |
-| `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者 | 全局/用户/剧目/广告位/provider 熔断 |
+| `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；`updatedBy` 为管理员 ID 或 `system:*` 作业标识 | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key` | 关联用户、剧目、秒数、过期时间、原因及原 challenge（如适用） | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key` | adjustment 类型、原事实/冻结记录 ID、秒数、原因和审批记录 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |
 | `GET /v1/admin/callback-events` | ADMIN | 默认积压状态；不含加密载荷 | 列出回调事件元数据（状态、尝试次数、是否仍有可执行载荷） |

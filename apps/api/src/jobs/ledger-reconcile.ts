@@ -181,7 +181,8 @@ export async function runLedgerReconcileJob(
       await openProviderCircuit(
         prisma as never,
         "LEDGER",
-        "Entitlement remainingSeconds or completed challenges diverged from immutable facts"
+        "Entitlement remainingSeconds or completed challenges diverged from immutable facts",
+        "system:ledger-reconcile"
       );
       circuitOpened = true;
     }

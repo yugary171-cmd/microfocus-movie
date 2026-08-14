@@ -257,7 +257,8 @@ export async function releaseCallbackEvent(
     const circuitKey = await openProviderCircuit(
       prisma as never,
       existing.provider,
-      `Callback ${id} entered dead letter`
+      `Callback ${id} entered dead letter`,
+      "system:dead-letter"
     );
     await prisma.operationalEvent.create({
       data: {

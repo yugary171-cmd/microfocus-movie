@@ -113,7 +113,7 @@ describe("callback release", () => {
     expect(store.circuitBreaker.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { provider: "PROVIDER:VOD" },
-        create: expect.objectContaining({ state: "OPEN" })
+        create: expect.objectContaining({ state: "OPEN", updatedBy: "system:dead-letter" })
       })
     );
   });

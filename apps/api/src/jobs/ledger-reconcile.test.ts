@@ -120,7 +120,11 @@ describe("ledger reconcile job", () => {
     expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { provider: "PROVIDER:LEDGER" },
-        create: expect.objectContaining({ provider: "PROVIDER:LEDGER", state: "OPEN" })
+        create: expect.objectContaining({
+          provider: "PROVIDER:LEDGER",
+          state: "OPEN",
+          updatedBy: "system:ledger-reconcile"
+        })
       })
     );
     expect(prisma.backgroundJobLease.updateMany).toHaveBeenCalledWith(
