@@ -979,13 +979,14 @@ export class AdminController {
     @Body() body: AdjustEntitlementDto
   ) {
     const admin = requireAdmin(principal);
+    const key = normalizeIdempotencyKey(idempotencyKey);
     const view = await createIdempotentAdjustment(this.prisma, {
       type: body.type,
       grantId: body.grantId,
       seconds: body.seconds,
       reason: body.reason,
       operatorAdminId: admin.sub,
-      ...(idempotencyKey ? { idempotencyKey } : {}),
+      idempotencyKey: key,
       ...(body.sourceFactType ? { sourceFactType: body.sourceFactType } : {}),
       ...(body.sourceFactId ? { sourceFactId: body.sourceFactId } : {}),
       ...(body.freezeAdjustmentId ? { freezeAdjustmentId: body.freezeAdjustmentId } : {}),
@@ -1026,13 +1027,14 @@ export class AdminController {
     @Body() body: ReplayCallbackDto
   ) {
     const admin = requireAdmin(principal);
+    const key = normalizeIdempotencyKey(idempotencyKey);
     const view = await replayCallbackEvent(
       this.prisma,
       {
         eventId: requireEntityId(eventId, "eventId"),
         reason: body.reason,
         operatorAdminId: admin.sub,
-        ...(idempotencyKey ? { idempotencyKey } : {}),
+        idempotencyKey: key,
         ...(body.approvalNote ? { approvalNote: body.approvalNote } : {})
       },
       {
@@ -1078,13 +1080,14 @@ export class AdminController {
     @Body() body: ReissueDeletionQueryTokenDto
   ) {
     const admin = requireAdmin(principal);
+    const key = normalizeIdempotencyKey(idempotencyKey);
     const view = await issueDeletionQueryToken(this.prisma, {
       deletionRequestId: requireEntityId(deletionRequestId, "deletionRequestId"),
       userId: body.userId,
       reason: body.reason,
       approvalNote: body.approvalNote,
       operatorAdminId: admin.sub,
-      ...(idempotencyKey ? { idempotencyKey } : {})
+      idempotencyKey: key
     });
     if (!view.replayed) {
       await this.audit(admin.sub, "DELETION_QUERY_TOKEN_REISSUED", "DeletionRequest", view.deletionRequestId, {
