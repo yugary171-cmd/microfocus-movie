@@ -1,6 +1,6 @@
 import { Body, Controller, Headers, Module, Post, Req } from "@nestjs/common";
-import { CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ERROR_CODES } from "@microfocus/contracts";
-import { IsIn, IsISO8601, IsOptional, IsString } from "class-validator";
+import { CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ENTITY_ID_MAX_LENGTH, ERROR_CODES } from "@microfocus/contracts";
+import { IsIn, IsISO8601, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 import { applyRewardCallback } from "../rewards/late-completion.js";
 import { Errors } from "../common/app-error.js";
 import { assertCircuitsClosed, openProviderCircuit } from "../domain/circuit.js";
@@ -20,18 +20,18 @@ import {
 
 const CALLBACK_LEASE_MS = 30_000;
 
-class VodCallbackDto {
-  @IsString() eventId!: string;
-  @IsString() fileId!: string;
+export class VodCallbackDto {
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) eventId!: string;
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) fileId!: string;
   @IsIn(["READY", "FAILED"]) mediaStatus!: "READY" | "FAILED";
   @IsIn(["READY", "FAILED"]) transcodeStatus!: "READY" | "FAILED";
   @IsIn(["APPROVED", "REJECTED"])
   machineReviewStatus!: "APPROVED" | "REJECTED";
 }
 
-class RewardCallbackDto {
-  @IsString() eventId!: string;
-  @IsString() challengeId!: string;
+export class RewardCallbackDto {
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) eventId!: string;
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) challengeId!: string;
   @IsOptional()
   @IsISO8601()
   completedAt?: string;

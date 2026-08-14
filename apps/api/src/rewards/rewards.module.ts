@@ -2,13 +2,16 @@ import { createHash, randomBytes } from "node:crypto";
 import { Body, Controller, Headers, Module, Param, Post, UseGuards } from "@nestjs/common";
 import {
   API_ROUTES,
+  ENTITY_ID_MAX_LENGTH,
+  REWARD_NONCE_MAX_LENGTH,
   REWARD_SECONDS,
   REWARD_TTL_SECONDS,
+  SESSION_ID_MAX_LENGTH,
   type CreateRewardChallengeRequest,
   type RewardChallengeView
 } from "@microfocus/contracts";
 import { Prisma } from "@prisma/client";
-import { IsBoolean, IsISO8601, IsString, MinLength } from "class-validator";
+import { IsBoolean, IsISO8601, IsString, MaxLength, MinLength } from "class-validator";
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { AppConfigService } from "../config/config.service.js";
@@ -24,17 +27,22 @@ import { assertNamedRateLimit } from "../security/rate-limit.js";
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
-class CreateChallengeDto implements CreateRewardChallengeRequest {
+export class CreateChallengeDto implements CreateRewardChallengeRequest {
   @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   dramaId!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SESSION_ID_MAX_LENGTH)
   sessionId!: string;
 }
 
-class CompleteChallengeDto {
+export class CompleteChallengeDto {
   @IsString()
+  @MinLength(1)
+  @MaxLength(REWARD_NONCE_MAX_LENGTH)
   nonce!: string;
 
   @IsBoolean()
@@ -99,7 +107,7 @@ export class RewardsController {
         data: {
           userId,
           dramaId: body.dramaId,
-          sessionId: body.sessionId.slice(0, 128),
+          sessionId: body.sessionId.slice(0, SESSION_ID_MAX_LENGTH),
           nonceHash: hash(nonce),
           pendingKey: userId,
           verificationMode: this.config.env.WECHAT_REWARD_VERIFICATION,

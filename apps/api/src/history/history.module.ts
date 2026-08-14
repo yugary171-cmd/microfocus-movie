@@ -1,11 +1,13 @@
 import { Body, Controller, Get, Module, Put, UseGuards } from "@nestjs/common";
 import {
   API_ROUTES,
+  ENTITY_ID_MAX_LENGTH,
+  EPISODE_DURATION_SECONDS_MAX,
   ERROR_CODES,
   type UpdateWatchProgressRequest,
   type WatchHistoryItem
 } from "@microfocus/contracts";
-import { IsNumber, IsString, Min } from "class-validator";
+import { IsNumber, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -16,15 +18,20 @@ import {
 } from "../security/security.js";
 import { assertNamedRateLimit } from "../security/rate-limit.js";
 
-class ProgressDto implements UpdateWatchProgressRequest {
+export class ProgressDto implements UpdateWatchProgressRequest {
   @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   dramaId!: string;
 
   @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   episodeId!: string;
 
   @IsNumber()
   @Min(0)
+  @Max(EPISODE_DURATION_SECONDS_MAX)
   mediaPositionSeconds!: number;
 }
 

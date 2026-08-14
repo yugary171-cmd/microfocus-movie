@@ -1,16 +1,23 @@
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import helmet from "helmet";
 import { AppModule } from "./app.module.js";
 import { GlobalExceptionFilter, requestContext, SuccessEnvelopeInterceptor } from "./common/http.js";
+import { applyJsonBodyLimit } from "./common/http-limits.js";
 import { mountOpenApiDocs, shouldMountOpenApiDocs } from "./common/open-api.js";
 import { RequestLogInterceptor } from "./common/request-log.js";
 import { AppConfigService } from "./config/config.service.js";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+    bodyParser: false
+  });
   const config = app.get(AppConfigService);
+  applyJsonBodyLimit(app);
   app.use(helmet());
   app.use(requestContext);
   app.enableCors({

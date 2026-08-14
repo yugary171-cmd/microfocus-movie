@@ -10,13 +10,18 @@ import {
 } from "@nestjs/common";
 import {
   API_ROUTES,
+  DEVICE_ID_MAX_LENGTH,
+  ENTITY_ID_MAX_LENGTH,
+  EPISODE_DURATION_SECONDS_MAX,
   ERROR_CODES,
   FREE_EPISODE_COUNT,
   HEARTBEAT_INTERVAL_SECONDS,
+  HEARTBEAT_SEQ_MAX,
   OFFLINE_GRACE_SECONDS,
   PLAYBACK_TOKEN_TTL_SECONDS,
   PLAYBACK_WINDOW_SECONDS,
   PlaybackLeaseStatus,
+  WECHAT_CODE_MAX_LENGTH,
   type ActivePlaybackLeaseResponse,
   type CreatePlaybackLeaseRequest,
   type PlaybackHeartbeatRequest,
@@ -59,25 +64,32 @@ import {
   toReservationView
 } from "./playback-reservations.js";
 
-class CreateLeaseDto implements CreatePlaybackLeaseRequest {
+export class CreateLeaseDto implements CreatePlaybackLeaseRequest {
   @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   episodeId!: string;
 
   @IsString()
+  @MinLength(1)
+  @MaxLength(DEVICE_ID_MAX_LENGTH)
   deviceId!: string;
 }
 
-class HeartbeatDto implements PlaybackHeartbeatRequest {
+export class HeartbeatDto implements PlaybackHeartbeatRequest {
   @IsInt()
   @Min(1)
+  @Max(HEARTBEAT_SEQ_MAX)
   seq!: number;
 
   @IsNumber()
   @Min(0)
+  @Max(EPISODE_DURATION_SECONDS_MAX)
   mediaPositionSeconds!: number;
 
   @IsNumber()
   @Min(0)
+  @Max(EPISODE_DURATION_SECONDS_MAX)
   previousMediaPositionSeconds!: number;
 
   @IsNumber()
@@ -90,21 +102,22 @@ class HeartbeatDto implements PlaybackHeartbeatRequest {
 
   @IsOptional()
   @IsString()
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   windowId?: string;
 }
 
-class RecoverLeaseDto implements RecoverPlaybackLeaseRequest {
+export class RecoverLeaseDto implements RecoverPlaybackLeaseRequest {
   @IsString()
-  @MaxLength(128)
+  @MaxLength(DEVICE_ID_MAX_LENGTH)
   deviceId!: string;
 
   @IsString()
-  @MaxLength(191)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   reason!: string;
 
   @IsString()
   @MinLength(1)
-  @MaxLength(256)
+  @MaxLength(WECHAT_CODE_MAX_LENGTH)
   wechatCode!: string;
 }
 
@@ -169,7 +182,7 @@ export class PlaybackController {
     if (!isFree && actor.kind === "user") {
       await assertCanOpenPaidLease(this.prisma, {
         userId: actor.userId,
-        deviceId: body.deviceId.slice(0, 128),
+        deviceId: body.deviceId.slice(0, DEVICE_ID_MAX_LENGTH),
         dramaId: episode.dramaId,
         allocatableSeconds: remaining ?? 0
       });
@@ -200,7 +213,7 @@ export class PlaybackController {
             ? { userId: actor.userId }
             : { viewerSessionId: actor.viewerSessionId }),
           episodeId: episode.id,
-          deviceId: body.deviceId.slice(0, 128),
+          deviceId: body.deviceId.slice(0, DEVICE_ID_MAX_LENGTH),
           activeKey: leaseActiveKey(actor),
           lastHeartbeatAt: now,
           tokenExpiresAt: new Date(now.getTime() + PLAYBACK_TOKEN_TTL_SECONDS * 1000)

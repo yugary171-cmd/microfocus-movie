@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Module, Param, Post, Req, UseGuards } from "@nestjs/common";
 import {
   DELETION_CONFIRMATION,
+  WECHAT_CODE_MAX_LENGTH,
   type CreateDeletionRequest,
   type CreateDeletionRequestResponse,
   type DeletionRequestView
@@ -25,7 +26,7 @@ class CreateDeletionDto implements CreateDeletionRequest {
 
   @IsString()
   @MinLength(1)
-  @MaxLength(256)
+  @MaxLength(WECHAT_CODE_MAX_LENGTH)
   wechatCode!: string;
 }
 

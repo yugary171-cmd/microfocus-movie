@@ -180,19 +180,19 @@ flowchart LR
 
 | 方法与路径 | 认证 | 关键请求 | 关键响应/语义 |
 | --- | --- | --- | --- |
-| `POST /v1/auth/anonymous` | 公开、按连接 IP 限频（新建会话）；刷新已有 device/session 不占桶 | `deviceId/sessionId` | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
-| `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` | 用户 JWT；H5/App 不得复用 |
+| `POST /v1/auth/anonymous` | 公开、按连接 IP 限频（新建会话）；刷新已有 device/session 不占桶 | `deviceId/sessionId`，各最长 128 | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
+| `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` 最长 256 | 用户 JWT；H5/App 不得复用 |
 | `GET /v1/catalog` | 公开、按连接 IP 限频 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容；`latest` 按发布时间倒序，不从推荐榜重排 |
 | `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page` | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
 | `GET /v1/dramas/:dramaId` | 公开、按连接 IP 限频 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算 |
 | `GET /v1/me/history` | 用户 JWT；按认证用户限频 | 无 | 观看历史，按最近更新时间排序 |
-| `PUT /v1/me/progress` | 用户 JWT；按认证用户限频 | `dramaId/episodeId/mediaPositionSeconds` | 幂等保存有效进度；不得写未发布内容 |
+| `PUT /v1/me/progress` | 用户 JWT；按认证用户限频 | `dramaId/episodeId` 限长；`mediaPositionSeconds` 不超过 3600 | 幂等保存有效进度；不得写未发布内容 |
 | `GET /v1/entitlements/:dramaId` | 用户 JWT；按认证用户限频 | 路径 ID | 账本结余、扣除活动 reservation 后的可分配余额、最近过期时间和不可变批次 |
-| `POST /v1/rewards/challenges` | 用户 JWT；按认证用户限频（5 分钟 3 次） | `dramaId/sessionId` | challenge、nonce、过期时间、广告位和验证模式 |
-| `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key`；按认证用户限频 | `nonce/isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
-| `POST /v1/playback/leases` | viewer token；锁定集必须为用户 JWT；按认证主体限频 | `episodeId/deviceId` | 服务端重新判断免费状态；锁定内容预留首个短窗口预算，返回租约、外层 120 秒凭证、窗口授权、心跳周期和可分配余额 |
+| `POST /v1/rewards/challenges` | 用户 JWT；按认证用户限频（5 分钟 3 次） | `dramaId` 限长；`sessionId` 最长 128 | challenge、nonce、过期时间、广告位和验证模式 |
+| `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key`；按认证用户限频 | `nonce` 最长 128；`isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
+| `POST /v1/playback/leases` | viewer token；锁定集必须为用户 JWT；按认证主体限频 | `episodeId` 限长；`deviceId` 最长 128 | 服务端重新判断免费状态；锁定内容预留首个短窗口预算，返回租约、外层 120 秒凭证、窗口授权、心跳周期和可分配余额 |
 | `GET /v1/playback/leases/active` | 用户 JWT；按认证用户限频 | 无 | 查询本人活动租约、预留、未确认窗口和恢复动作；不依赖客户端保存旧 lease ID |
-| `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token；按认证主体限频 | `seq`、前后媒体位置、倍速、播放状态、已使用窗口标识 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算。存在 UNCONFIRMED 窗口时 `debitedSeconds=0` 且 `reason=UNCONFIRMED_EXPOSURE`，不自动扣费 |
+| `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token；按认证主体限频 | `seq` 上限 1000000；媒体位置不超过 3600；窗口 ID 限长 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算。存在 UNCONFIRMED 窗口时 `debitedSeconds=0` 且 `reason=UNCONFIRMED_EXPOSURE`，不自动扣费 |
 | `POST /v1/playback/leases/:leaseId/renew` | 租约所属 viewer token；按认证主体限频 | 当前租约 | 最近心跳合规时续签短凭证 |
 | `POST /v1/playback/leases/:leaseId/recover` | 用户 JWT + 近期重新认证证明；按认证用户限频 | `reason/deviceId/wechatCode` | 核验媒体交付证据后幂等结算、释放或转客服；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费；自动宽限受滚动风险上限约束 |
 | `DELETE /v1/playback/leases/:leaseId` | 租约所属 viewer token；按认证主体限频 | 当前租约 | 主动关闭；重复关闭不得产生额外扣费 |
@@ -203,7 +203,7 @@ flowchart LR
 
 | 方法与路径 | 角色 | 所有权/状态约束 | 用途 |
 | --- | --- | --- | --- |
-| `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱、密码、OTP | 换管理员 JWT |
+| `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱最长 254；密码 8–128；OTP 6–8 | 换管理员 JWT |
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
 | `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围 | 列表和详情 |
@@ -243,8 +243,8 @@ flowchart LR
 | `GET /health/live` | 受基础设施访问策略保护 | 进程存活，不查库、不返回秘密 |
 | `GET /health/ready`、`GET /health` | 受基础设施访问策略保护 | 就绪：数据库可连且进程未进入关闭排水；失败返回 `NOT_READY`，不泄露连接串 |
 | `GET /docs` | 仅非生产 | OpenAPI/Swagger；`NODE_ENV=production` 不挂载 |
-| `POST /v1/callbacks/vod` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | 转码和审核结果；事件幂等，失败可重试 |
-| `POST /v1/callbacks/reward` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | 可信广告完成验证；通常更新 PENDING challenge。若事件在允许延迟窗口内且证明广告在原有效期内完成，可将 EXPIRED 迁为 COMPLETED_LATE，仍只创建唯一 grant |
+| `POST /v1/callbacks/vod` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | `eventId/fileId` 限长；转码和审核结果；事件幂等，失败可重试 |
+| `POST /v1/callbacks/reward` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | `eventId/challengeId` 限长；可信广告完成验证；通常更新 PENDING challenge。若事件在允许延迟窗口内且证明广告在原有效期内完成，可将 EXPIRED 迁为 COMPLETED_LATE，仍只创建唯一 grant |
 
 ---
 

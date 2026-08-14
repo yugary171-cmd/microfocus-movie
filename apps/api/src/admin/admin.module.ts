@@ -159,8 +159,8 @@ export class RightsDto {
 }
 
 class MediaAssetDto {
-  @IsString() @MinLength(1) @MaxLength(191) episodeId!: string;
-  @IsString() @MinLength(1) @MaxLength(191) fileId!: string;
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) episodeId!: string;
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) fileId!: string;
 }
 
 class ReviewDto {
@@ -183,8 +183,8 @@ class MediaReviewDto {
 }
 
 class UploadSignDto {
-  @IsString() @MinLength(1) dramaId!: string;
-  @IsString() @MinLength(1) episodeId!: string;
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) dramaId!: string;
+  @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) episodeId!: string;
   @IsString() @Length(1, 255) @Matches(/^[^/\\\0]+$/) fileName!: string;
   @IsInt() @Min(1) @Max(5 * 1024 * 1024 * 1024) size!: number;
   @IsIn(["video/mp4", "video/quicktime", "video/webm", "application/octet-stream"])

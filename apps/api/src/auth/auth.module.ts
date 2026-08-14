@@ -3,7 +3,13 @@ import { JwtService } from "@nestjs/jwt";
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   API_ROUTES,
+  DEVICE_ID_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
   ERROR_CODES,
+  OTP_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  SESSION_ID_MAX_LENGTH,
+  WECHAT_CODE_MAX_LENGTH,
   type AnonymousSessionResponse,
   type WechatLoginResponse
 } from "@microfocus/contracts";
@@ -19,34 +25,38 @@ import { tryDecryptTotpSecret } from "../security/totp-crypto.js";
 import { decodeTotpSecretBase32 } from "../security/totp-secret.js";
 import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
 
-class WechatLoginDto {
+export class WechatLoginDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(WECHAT_CODE_MAX_LENGTH)
   code!: string;
 }
 
-class AnonymousSessionDto {
+export class AnonymousSessionDto {
   @IsString()
   @MinLength(8)
-  @MaxLength(128)
+  @MaxLength(DEVICE_ID_MAX_LENGTH)
   deviceId!: string;
 
   @IsString()
   @MinLength(8)
-  @MaxLength(128)
+  @MaxLength(SESSION_ID_MAX_LENGTH)
   sessionId!: string;
 }
 
-class AdminLoginDto {
+export class AdminLoginDto {
   @IsEmail()
+  @MaxLength(EMAIL_MAX_LENGTH)
   email!: string;
 
   @IsString()
   @MinLength(8)
+  @MaxLength(PASSWORD_MAX_LENGTH)
   password!: string;
 
   @IsString()
   @MinLength(6)
+  @MaxLength(OTP_MAX_LENGTH)
   otp!: string;
 }
 
@@ -89,8 +99,8 @@ export class AuthController {
     @Req() request: SocketRequest,
     @Body() body: AnonymousSessionDto
   ): Promise<AnonymousSessionResponse> {
-    const deviceId = body.deviceId.trim().slice(0, 128);
-    const sessionId = body.sessionId.trim().slice(0, 128);
+    const deviceId = body.deviceId.trim().slice(0, DEVICE_ID_MAX_LENGTH);
+    const sessionId = body.sessionId.trim().slice(0, SESSION_ID_MAX_LENGTH);
     const now = new Date();
     const existing = await this.prisma.anonymousViewerSession.findUnique({
       where: { deviceId_sessionId: { deviceId, sessionId } }
