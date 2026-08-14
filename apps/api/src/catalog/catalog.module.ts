@@ -13,6 +13,14 @@ import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
 
+const CATALOG_FEATURED_LIMIT = 8;
+const CATALOG_SHELF_LIMIT = 20;
+
+const catalogCardInclude = {
+  _count: { select: { episodes: true } },
+  rightsRecords: { where: { status: "ACTIVE" as const }, orderBy: { version: "desc" as const }, take: 1 }
+};
+
 @Controller()
 export class CatalogController {
   constructor(private readonly prisma: PrismaService) {}
@@ -20,24 +28,28 @@ export class CatalogController {
   @Get(controllerPath(API_ROUTES.catalog))
   async catalog(@Req() request: SocketRequest): Promise<CatalogResponse> {
     await assertNamedRateLimit(this.prisma, "catalog", requestIpKey(request));
-    const dramas = await this.prisma.drama.findMany({
-      where: {
-        status: "PUBLISHED",
-        rightsRecords: { some: { status: "ACTIVE", validUntil: { gt: new Date() } } }
-      },
-      include: {
-        _count: { select: { episodes: true } },
-        rightsRecords: { where: { status: "ACTIVE" }, orderBy: { version: "desc" }, take: 1 }
-      },
-      orderBy: [{ recommendationRank: "desc" }, { publishedAt: "desc" }],
-      take: 60
-    });
-    const cards = dramas.map(toCard);
+    const where = publicSearchWhere("", "");
+    const [ranked, latestRows] = await Promise.all([
+      this.prisma.drama.findMany({
+        where,
+        include: catalogCardInclude,
+        orderBy: [{ recommendationRank: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
+        take: CATALOG_SHELF_LIMIT
+      }),
+      this.prisma.drama.findMany({
+        where,
+        include: catalogCardInclude,
+        orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+        take: CATALOG_SHELF_LIMIT
+      })
+    ]);
+    const rankedCards = ranked.map(toCard);
+    const latestCards = latestRows.map(toCard);
     return {
-      featured: cards.slice(0, 8),
-      latest: [...cards].sort((a, b) => b.id.localeCompare(a.id)).slice(0, 20),
-      popular: cards.slice(0, 20),
-      categories: [...new Set(cards.map((card) => card.category))]
+      featured: rankedCards.slice(0, CATALOG_FEATURED_LIMIT),
+      latest: latestCards,
+      popular: rankedCards,
+      categories: [...new Set([...rankedCards, ...latestCards].map((card) => card.category))]
     };
   }
 

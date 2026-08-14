@@ -111,3 +111,28 @@ describe("public catalog rate limits", () => {
     expect(prisma.drama.findFirst).not.toHaveBeenCalled();
   });
 });
+
+describe("public catalog shelves", () => {
+  it("loads latest by publish time instead of reshuffling the ranked shelf", async () => {
+    const prisma = {
+      rateLimitBucket: allowRateLimit(),
+      drama: { findMany: vi.fn().mockResolvedValue([]) }
+    };
+    const controller = new CatalogController(prisma as never);
+    await controller.catalog({ socket: { remoteAddress: "10.0.0.8" } });
+    expect(prisma.drama.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        take: 20,
+        orderBy: [{ recommendationRank: "desc" }, { publishedAt: "desc" }, { id: "desc" }]
+      })
+    );
+    expect(prisma.drama.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        take: 20,
+        orderBy: [{ publishedAt: "desc" }, { id: "desc" }]
+      })
+    );
+  });
+});
