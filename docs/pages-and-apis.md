@@ -220,7 +220,7 @@ flowchart LR
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key` | 关联用户、剧目、秒数、过期时间、原因及原 challenge（如适用） | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key` | adjustment 类型、原事实/冻结记录 ID、秒数、原因和审批记录 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |
 | `GET /v1/admin/callback-events` | ADMIN | 默认积压状态；不含加密载荷 | 列出回调事件元数据（状态、尝试次数、是否仍有可执行载荷） |
-| `POST /v1/admin/callback-events/:eventId/replay` | ADMIN + `Idempotency-Key` | 死信事件 ID、原因和审批记录 | 将 RETRYABLE_FAILURE/DEAD_LETTER 事件受审计地迁回 PROCESSING，沿用原 provider 事件幂等键；保留期内若有加密规范化载荷则立即执行 |
+| `POST /v1/admin/callback-events/:eventId/replay` | ADMIN + `Idempotency-Key` | 死信事件 ID、原因和审批记录 | 将 RETRYABLE_FAILURE/DEAD_LETTER 事件受审计地迁回 PROCESSING，沿用原 provider 事件幂等键；保留期内若有加密规范化载荷则立即执行；超过 30 天密文会被清除，重放只解锁 |
 | `GET /v1/admin/deletion-requests` | ADMIN | `userId` | 返回该用户最近一条注销申请状态，不含查询令牌明文 |
 | `GET /v1/admin/deletion-requests/:deletionRequestId` | ADMIN | 路径 ID | 返回申请状态，不含查询令牌明文 |
 | `POST /v1/admin/deletion-requests/:deletionRequestId/query-tokens` | ADMIN + `Idempotency-Key` | 已核验 `userId`、原因和审批记录 | 客服身份核验后轮换查询令牌摘要并延长有效期；新令牌只在首次成功响应出现一次；不恢复用户 JWT |

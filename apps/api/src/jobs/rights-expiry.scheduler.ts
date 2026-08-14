@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { hostname } from "node:os";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { runCallbackPayloadPurgeJob } from "./callback-payload-purge.js";
 import { runRightsExpiryJob } from "./rights-expiry.js";
 
 const TICK_MS = 60_000;
@@ -29,16 +30,19 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
     if (this.running) return;
     this.running = true;
     try {
-      const result = await runRightsExpiryJob(this.prisma as never, {
-        ownerId: `${hostname()}:${process.pid}`
-      });
-      if (result.acquired && (result.offlined > 0 || result.expiredRights > 0)) {
+      const ownerId = `${hostname()}:${process.pid}`;
+      const rights = await runRightsExpiryJob(this.prisma as never, { ownerId });
+      if (rights.acquired && (rights.offlined > 0 || rights.expiredRights > 0)) {
         this.logger.log(
-          `rights expiry job offlined=${result.offlined} expiredRights=${result.expiredRights}`
+          `rights expiry job offlined=${rights.offlined} expiredRights=${rights.expiredRights}`
         );
       }
+      const purge = await runCallbackPayloadPurgeJob(this.prisma as never, { ownerId });
+      if (purge.acquired && purge.purged > 0) {
+        this.logger.log(`callback payload purge job purged=${purge.purged}`);
+      }
     } catch (error) {
-      this.logger.error("rights expiry job failed", error instanceof Error ? error.stack : error);
+      this.logger.error("background jobs failed", error instanceof Error ? error.stack : error);
     } finally {
       this.running = false;
     }
