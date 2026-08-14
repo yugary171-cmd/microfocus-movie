@@ -278,10 +278,16 @@ export const adminApi = {
       body: json({ enabled, reason }),
     });
   },
-  compensate(input: CompensationInput): Promise<void> {
+  async compensate(input: CompensationInput): Promise<void> {
     if (isMockMode) return mockApi.compensate(input);
+    const payload = `${input.userId}\n${input.dramaId}\n${input.seconds}\n${input.reason}`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    const idempotencyKey = `c:${Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("")}`;
     return request(endpoints.compensate, {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: json({
         ...input,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString(),

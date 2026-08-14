@@ -241,6 +241,7 @@ model EntitlementGrant {
   grantedAt        DateTime        @default(now())
   expiresAt        DateTime
   note             String?
+  compensationKey  String?         @unique @db.VarChar(128)
   debits           EntitlementDebit[]
 
   @@index([userId, dramaId, expiresAt])

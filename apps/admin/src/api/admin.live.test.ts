@@ -92,13 +92,15 @@ describe("live admin API adapter", () => {
       status: "REJECTED",
       notes: "需要补齐版权资料",
     });
-    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body))).toEqual({
+    const compensateInit = vi.mocked(fetch).mock.calls[1]?.[1];
+    expect(JSON.parse(String(compensateInit?.body))).toEqual({
       userId: "user-1",
       dramaId: "drama-1",
       seconds: 600,
       reason: "事故补偿",
       expiresAt: "2026-08-13T00:00:00.000Z",
     });
+    expect(new Headers(compensateInit?.headers).get("Idempotency-Key")).toMatch(/^c:[a-f0-9]{64}$/);
   });
 
   it("sends the upload signing metadata contract", async () => {

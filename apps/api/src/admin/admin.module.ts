@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Module,
   Param,
   Patch,
@@ -44,6 +45,17 @@ import {
   Roles,
   type Principal
 } from "../security/security.js";
+import {
+  assertEditorOwns,
+  assertNotPublished,
+  assertNotSelfReview,
+  editorScope,
+  type AdminPrincipal
+} from "./admin.access.js";
+import {
+  createIdempotentCompensation,
+  normalizeIdempotencyKey
+} from "./admin.compensate.js";
 
 class EpisodeInput {
   @IsInt()
@@ -168,10 +180,16 @@ export class AdminController {
   ) {}
 
   @Get("dashboard")
-  async dashboard() {
+  async dashboard(@CurrentPrincipal() principal: Principal) {
+    const admin = requireAdmin(principal);
+    const scope = editorScope(admin);
     const [statusGroups, pendingReviews] = await Promise.all([
-      this.prisma.drama.groupBy({ by: ["status"], _count: { _all: true } }),
-      this.prisma.drama.count({ where: { status: "PENDING_REVIEW" } })
+      this.prisma.drama.groupBy({
+        by: ["status"],
+        where: scope,
+        _count: { _all: true }
+      }),
+      this.prisma.drama.count({ where: { ...scope, status: "PENDING_REVIEW" } })
     ]);
     const statusCounts = Object.fromEntries(
       statusGroups.map((group) => [group.status, group._count._all])
@@ -185,10 +203,17 @@ export class AdminController {
   }
 
   @Get("dramas")
-  async dramas(@Query("status") status?: string) {
+  async dramas(
+    @CurrentPrincipal() principal: Principal,
+    @Query("status") status?: string
+  ) {
+    const admin = requireAdmin(principal);
     const allowed = ["DRAFT", "PENDING_REVIEW", "READY", "PUBLISHED", "OFFLINE"];
     const items = await this.prisma.drama.findMany({
-      where: status && allowed.includes(status) ? { status: status as never } : {},
+      where: {
+        ...editorScope(admin),
+        ...(status && allowed.includes(status) ? { status: status as never } : {})
+      },
       include: {
         editor: { select: { email: true } },
         rightsRecords: { orderBy: { version: "desc" }, take: 1 },
@@ -201,7 +226,7 @@ export class AdminController {
   }
 
   @Post("dramas")
-  @Roles(AdminRole.EDITOR, AdminRole.ADMIN)
+  @Roles(AdminRole.EDITOR)
   async createDrama(@CurrentPrincipal() principal: Principal, @Body() body: CreateDramaDto) {
     const admin = requireAdmin(principal);
     assertUniqueEpisodeNumbers(body.episodes);
@@ -218,35 +243,32 @@ export class AdminController {
       }
     });
     await this.audit(admin.sub, "DRAMA_CREATED", "Drama", drama.id);
-    return this.drama(drama.id);
+    return this.loadDramaView(drama.id, admin);
   }
 
   @Get("dramas/:dramaId")
-  async drama(@Param("dramaId") dramaId: string) {
-    const drama = await this.prisma.drama.findUnique({
-      where: { id: dramaId },
-      include: {
-        editor: { select: { email: true } },
-        rightsRecords: { orderBy: { version: "desc" }, take: 1 },
-        episodes: { include: { mediaAssets: { where: { isCurrent: true }, take: 1 } } },
-        reviews: { where: { status: "APPROVED" }, orderBy: { createdAt: "desc" } }
-      }
-    });
-    if (!drama) throw Errors.notFound("Drama");
-    return toAdminDrama(drama);
+  async drama(
+    @CurrentPrincipal() principal: Principal,
+    @Param("dramaId") dramaId: string
+  ) {
+    return this.loadDramaView(dramaId, requireAdmin(principal));
   }
 
   @Patch("dramas/:dramaId")
-  @Roles(AdminRole.EDITOR, AdminRole.ADMIN)
+  @Roles(AdminRole.EDITOR)
   async updateDrama(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
     @Body() body: UpdateDramaDto
   ) {
     const admin = requireAdmin(principal);
-    await this.assertDramaNotPublished(dramaId);
+    await this.requireOwnedUnpublishedDrama(dramaId, admin);
     const updated = await this.prisma.drama.updateMany({
-      where: { id: dramaId, status: { in: ["DRAFT", "READY", "OFFLINE"] } },
+      where: {
+        id: dramaId,
+        editorId: admin.sub,
+        status: { in: ["DRAFT", "READY", "OFFLINE"] }
+      },
       data: {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.summary !== undefined ? { summary: body.summary } : {}),
@@ -262,18 +284,18 @@ export class AdminController {
     });
     if (!updated.count) throw Errors.conflict("DRAMA_NOT_EDITABLE", "Drama is not editable");
     await this.audit(admin.sub, "DRAMA_UPDATED", "Drama", dramaId);
-    return this.drama(dramaId);
+    return this.loadDramaView(dramaId, admin);
   }
 
   @Post("dramas/:dramaId/rights")
-  @Roles(AdminRole.EDITOR, AdminRole.ADMIN)
+  @Roles(AdminRole.EDITOR)
   async addRights(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
     @Body() body: RightsDto
   ) {
     const admin = requireAdmin(principal);
-    await this.assertDramaNotPublished(dramaId);
+    await this.requireOwnedUnpublishedDrama(dramaId, admin);
     const latest = await this.prisma.rightsRecord.aggregate({
       where: { dramaId },
       _max: { version: true }
@@ -304,14 +326,14 @@ export class AdminController {
   }
 
   @Post("dramas/:dramaId/media-assets")
-  @Roles(AdminRole.EDITOR, AdminRole.ADMIN)
+  @Roles(AdminRole.EDITOR)
   async addMedia(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
     @Body() body: MediaAssetDto
   ) {
     const admin = requireAdmin(principal);
-    await this.assertDramaNotPublished(dramaId);
+    await this.requireOwnedUnpublishedDrama(dramaId, admin);
     const episode = await this.prisma.episode.findFirst({
       where: { id: body.episodeId, dramaId }
     });
@@ -347,14 +369,15 @@ export class AdminController {
   }
 
   @Post("dramas/:dramaId/submit-review")
-  @Roles(AdminRole.EDITOR, AdminRole.ADMIN)
+  @Roles(AdminRole.EDITOR)
   async submitReview(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string
   ) {
     const admin = requireAdmin(principal);
+    await this.requireOwnedDrama(dramaId, admin);
     const updated = await this.prisma.drama.updateMany({
-      where: { id: dramaId, status: { in: ["DRAFT", "READY"] } },
+      where: { id: dramaId, editorId: admin.sub, status: { in: ["DRAFT", "READY"] } },
       data: { status: "PENDING_REVIEW" }
     });
     if (!updated.count) throw Errors.conflict("INVALID_DRAMA_STATE", "Drama cannot be submitted");
@@ -375,9 +398,7 @@ export class AdminController {
     if (drama.status !== "PENDING_REVIEW") {
       throw Errors.conflict("INVALID_DRAMA_STATE", "Only pending dramas can be reviewed");
     }
-    if (drama.editorId === admin.sub) {
-      throw Errors.forbidden("SELF_REVIEW_FORBIDDEN", "An editor cannot review their own drama");
-    }
+    assertNotSelfReview(drama.editorId, admin.sub);
     const review = await this.prisma.dramaReview.create({
       data: {
         dramaId,
@@ -470,24 +491,24 @@ export class AdminController {
   }
 
   @Post("uploads/sign")
-  @Roles(AdminRole.EDITOR, AdminRole.ADMIN)
-  async uploadSign(@Body() body: UploadSignDto) {
+  @Roles(AdminRole.EDITOR)
+  async uploadSign(
+    @CurrentPrincipal() principal: Principal,
+    @Body() body: UploadSignDto
+  ) {
+    const admin = requireAdmin(principal);
     const episode = await this.prisma.episode.findFirst({
       where: { id: body.episodeId, dramaId: body.dramaId },
-      include: { drama: { select: { status: true } } }
+      include: { drama: { select: { status: true, editorId: true } } }
     });
     if (!episode) throw Errors.notFound("Episode");
-    if (episode.drama.status === "PUBLISHED") {
-      throw Errors.conflict(
-        "PUBLISHED_DRAMA_IMMUTABLE",
-        "Published drama media cannot be replaced; offline it first"
-      );
-    }
+    assertEditorOwns(episode.drama, admin);
+    assertNotPublished(episode.drama.status);
     return this.vod.createUploadAuthorization(body.fileName);
   }
 
   @Patch("media-assets/:assetId/review")
-  @Roles(AdminRole.REVIEWER, AdminRole.ADMIN)
+  @Roles(AdminRole.REVIEWER)
   async reviewMedia(
     @CurrentPrincipal() principal: Principal,
     @Param("assetId") assetId: string,
@@ -502,6 +523,7 @@ export class AdminController {
       include: { episode: { include: { drama: true } } }
     });
     if (!asset) throw Errors.notFound("Current media asset");
+    assertNotSelfReview(asset.episode.drama.editorId, admin.sub);
     if (asset.episode.drama.status === "PUBLISHED") {
       throw Errors.conflict("PUBLISHED_DRAMA_IMMUTABLE", "Offline the drama before reviewing media");
     }
@@ -550,7 +572,7 @@ export class AdminController {
   }
 
   @Get("audit-logs")
-  @Roles(AdminRole.REVIEWER, AdminRole.ADMIN)
+  @Roles(AdminRole.ADMIN)
   async auditLogs(@Query("query") query = "") {
     const normalized = query.trim().slice(0, 100);
     const logs = await this.prisma.auditLog.findMany({
@@ -662,23 +684,25 @@ export class AdminController {
   @Roles(AdminRole.ADMIN)
   async compensate(
     @CurrentPrincipal() principal: Principal,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: CompensateDto
   ) {
     const admin = requireAdmin(principal);
     const expiresAt = new Date(body.expiresAt);
-    if (expiresAt <= new Date()) throw Errors.badRequest("INVALID_EXPIRY", "Expiry must be in the future");
-    const grant = await this.prisma.entitlementGrant.create({
-      data: {
-        userId: body.userId,
-        dramaId: body.dramaId,
-        source: "COMPENSATION",
-        grantedSeconds: body.seconds,
-        remainingSeconds: body.seconds,
-        expiresAt,
-        note: body.reason
-      }
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
+      throw Errors.badRequest("INVALID_EXPIRY", "Expiry must be in the future");
+    }
+    const { grant, replayed } = await createIdempotentCompensation(this.prisma, {
+      compensationKey: normalizeIdempotencyKey(idempotencyKey),
+      userId: body.userId,
+      dramaId: body.dramaId,
+      seconds: body.seconds,
+      expiresAt,
+      reason: body.reason
     });
-    await this.audit(admin.sub, "ENTITLEMENT_COMPENSATED", "EntitlementGrant", grant.id);
+    if (!replayed) {
+      await this.audit(admin.sub, "ENTITLEMENT_COMPENSATED", "EntitlementGrant", grant.id);
+    }
     return grant;
   }
 
@@ -714,18 +738,31 @@ export class AdminController {
     });
   }
 
-  private async assertDramaNotPublished(dramaId: string): Promise<void> {
+  private async loadDramaView(dramaId: string, admin: AdminPrincipal) {
     const drama = await this.prisma.drama.findUnique({
       where: { id: dramaId },
-      select: { status: true }
+      include: {
+        editor: { select: { email: true } },
+        rightsRecords: { orderBy: { version: "desc" }, take: 1 },
+        episodes: { include: { mediaAssets: { where: { isCurrent: true }, take: 1 } } },
+        reviews: { where: { status: "APPROVED" }, orderBy: { createdAt: "desc" } }
+      }
     });
-    if (!drama) throw Errors.notFound("Drama");
-    if (drama.status === "PUBLISHED") {
-      throw Errors.conflict(
-        "PUBLISHED_DRAMA_IMMUTABLE",
-        "Published drama rights or media cannot be replaced; offline it first"
-      );
-    }
+    return toAdminDrama(assertEditorOwns(drama, admin));
+  }
+
+  private async requireOwnedDrama(dramaId: string, admin: AdminPrincipal) {
+    const drama = await this.prisma.drama.findUnique({
+      where: { id: dramaId },
+      select: { id: true, editorId: true, status: true }
+    });
+    return assertEditorOwns(drama, admin);
+  }
+
+  private async requireOwnedUnpublishedDrama(dramaId: string, admin: AdminPrincipal) {
+    const drama = await this.requireOwnedDrama(dramaId, admin);
+    assertNotPublished(drama.status);
+    return drama;
   }
 }
 
