@@ -28,7 +28,7 @@
 | 内容管理 | 剧目/剧集、权利版本、媒体版本、审核、发布/下架和基础审计；EDITOR 仅访问/修改本人剧目；ADMIN 不兼任编辑或媒体审核；审计日志仅 ADMIN | 真实 VOD 发布链路未实现 |
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一；ADMIN 可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code` | 无真实 VOD 交付日志时 UNCONFIRMED 不自动扣费 |
-| 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `POST /v1/admin/callback-events/:eventId/replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
+| 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；ADMIN 可通过 `POST /v1/admin/callback-events/:eventId/replay` 受审计解锁；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌 | 完整法定清理尚未实现 |
 | 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚 | Live provider 和真实发布证据尚未完成 |
 
@@ -36,7 +36,7 @@
 
 工程（不加功能）：
 
-1. 客服核验后的注销查询令牌补发已落地；下一项仍是真实 Live provider（VOD 签名与激励广告 SSV），保持 fail-closed，不能只改环境变量。
+1. 真实 Live provider（VOD 签名与激励广告 SSV）仍未实现，保持 fail-closed；不能只改环境变量冒充外部可用。
 2. 不自动推送；后续提交需人工确认。
 
 产品（与工程并行）：
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-14：回调死信打开对应 `PROVIDER:VOD` / `PROVIDER:WECHAT` 熔断，并在管理端工作台展示死信数、可重试失败、最老未处理年龄；不自动打开 GLOBAL。重放后需管理员另行关闭 provider 熔断。
 - 2026-08-14：ADMIN 可在客服核验后补发注销查询令牌：`userId` 必须与申请一致，旧令牌立即失效，新令牌只返回一次；不恢复用户 JWT。法定清理仍依赖未批准的保留矩阵。
 - 2026-08-14：TOTP 加密密钥轮换：登录可在维护窗口回退 `TOTP_ENCRYPTION_KEY_PREVIOUS`；`npm run totp:reencrypt` 默认 dry-run，`--commit` 重加密，`--rollback --commit` 写回上一密钥。生产种子校验 Base32 并拒绝示例 TOTP secret。回调若仍回退 TOTP 密钥则拒绝轮换。
 - 2026-08-14：新增 [ci-pipeline.md](./ci-pipeline.md)，说明 GitHub/Coding + NestJS API + 管理端 + uni-app 体验版的最小 CI/CD 路径（不含微信云开发 Git）。

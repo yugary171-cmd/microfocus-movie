@@ -3,6 +3,7 @@ import { CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ERROR_CODES } from "@microf
 import { IsIn, IsISO8601, IsOptional, IsString } from "class-validator";
 import { applyRewardCallback } from "../rewards/late-completion.js";
 import { Errors } from "../common/app-error.js";
+import { assertCircuitsClosed, openProviderCircuit } from "../domain/circuit.js";
 import { AppConfigService } from "../config/config.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { verifyWebhookSignature, WechatProviderService } from "../providers/providers.js";
@@ -250,6 +251,11 @@ export async function releaseCallbackEvent(
     data: { outcome, processingUntil: null, status }
   });
   if (deadLetter && existing) {
+    const circuitKey = await openProviderCircuit(
+      prisma as never,
+      existing.provider,
+      `Callback ${id} entered dead letter`
+    );
     await prisma.operationalEvent.create({
       data: {
         eventType: "CALLBACK_DEAD_LETTER",
@@ -257,7 +263,11 @@ export async function releaseCallbackEvent(
         entityType: "CallbackEvent",
         entityId: id,
         value: existing.attempts,
-        metadataJson: { provider: existing.provider, eventType: existing.eventType }
+        metadataJson: {
+          provider: existing.provider,
+          eventType: existing.eventType,
+          circuitKey
+        }
       }
     });
   }
@@ -291,6 +301,10 @@ type CallbackStore = {
   };
   operationalEvent: {
     create(args: unknown): Promise<unknown>;
+  };
+  circuitBreaker: {
+    findUnique(args: unknown): Promise<{ state: string } | null>;
+    upsert(args: unknown): Promise<unknown>;
   };
 };
 

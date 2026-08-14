@@ -79,11 +79,19 @@ export interface DramaInput {
   episodes: Array<Pick<EpisodeRecord, "id" | "episodeNumber" | "title" | "durationSeconds" | "mediaStatus">>;
 }
 
+export interface DashboardCallbackOps {
+  deadLetterCount: number;
+  retryableCount: number;
+  oldestUnprocessedAgeSeconds: number | null;
+  openProviderCircuits: string[];
+}
+
 export interface DashboardData {
   releaseGate: ReleaseGateStatus;
   statusCounts: Partial<Record<DramaStatus, number>>;
   reviewBacklog: number;
   metricSourceConfigured: boolean;
+  callbackOps: DashboardCallbackOps;
 }
 
 export interface ReviewItem {

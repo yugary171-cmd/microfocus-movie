@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { assertCircuitsClosed } from "./circuit.js";
+import { assertCircuitsClosed, openProviderCircuit, providerCircuitKey } from "./circuit.js";
 
 describe("operational circuit enforcement", () => {
   it("rejects playback when the global breaker is open", async () => {
@@ -11,5 +11,43 @@ describe("operational circuit enforcement", () => {
     await expect(assertCircuitsClosed(prisma as never, { userId: "user" })).rejects.toMatchObject({
       code: "CIRCUIT_OPEN"
     });
+  });
+
+  it("rejects playback when the VOD provider breaker is open", async () => {
+    const prisma = {
+      circuitBreaker: {
+        findFirst: vi.fn().mockResolvedValue({ provider: "PROVIDER:VOD", state: "OPEN" })
+      }
+    };
+    await expect(
+      assertCircuitsClosed(prisma as never, { userId: "user", providers: ["VOD"] })
+    ).rejects.toMatchObject({ code: "CIRCUIT_OPEN" });
+    expect(prisma.circuitBreaker.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          provider: expect.objectContaining({ in: expect.arrayContaining(["PROVIDER:VOD"]) })
+        })
+      })
+    );
+  });
+
+  it("opens a provider circuit once and does not use GLOBAL", async () => {
+    const upsert = vi.fn().mockResolvedValue({});
+    const prisma = {
+      circuitBreaker: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        upsert
+      }
+    };
+    await expect(openProviderCircuit(prisma as never, "VOD", "dead letter")).resolves.toBe(
+      "PROVIDER:VOD"
+    );
+    expect(providerCircuitKey("wechat")).toBe("PROVIDER:WECHAT");
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { provider: "PROVIDER:VOD" },
+        create: expect.objectContaining({ state: "OPEN", provider: "PROVIDER:VOD" })
+      })
+    );
   });
 });

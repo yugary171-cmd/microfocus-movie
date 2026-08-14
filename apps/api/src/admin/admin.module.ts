@@ -13,6 +13,7 @@ import {
 import {
   API_ROUTES,
   AdminRole,
+  CallbackEventStatus,
   EntitlementAdjustmentType,
   EntitlementFactType,
   type CreateEntitlementAdjustmentRequest,
@@ -236,8 +237,8 @@ class CircuitDto {
 
 class CircuitCollectionDto {
   @IsOptional()
-  @IsIn(["GLOBAL", "USER", "DRAMA", "AD_UNIT"])
-  scope?: "GLOBAL" | "USER" | "DRAMA" | "AD_UNIT";
+  @IsIn(["GLOBAL", "USER", "DRAMA", "AD_UNIT", "PROVIDER"])
+  scope?: "GLOBAL" | "USER" | "DRAMA" | "AD_UNIT" | "PROVIDER";
 
   @IsOptional() @IsString() @MaxLength(200) targetId?: string;
   @IsBoolean() enabled!: boolean;
@@ -258,22 +259,53 @@ export class AdminController {
   async dashboard(@CurrentPrincipal() principal: Principal) {
     const admin = requireAdmin(principal);
     const scope = editorScope(admin);
-    const [statusGroups, pendingReviews] = await Promise.all([
+    const [statusGroups, pendingReviews, deadLetterCount, retryableCount, oldestUnprocessed, openProviderCircuits] =
+      await Promise.all([
       this.prisma.drama.groupBy({
         by: ["status"],
         where: scope,
         _count: { _all: true }
       }),
-      this.prisma.drama.count({ where: { ...scope, status: "PENDING_REVIEW" } })
+      this.prisma.drama.count({ where: { ...scope, status: "PENDING_REVIEW" } }),
+      this.prisma.callbackEvent.count({ where: { status: CallbackEventStatus.DEAD_LETTER } }),
+      this.prisma.callbackEvent.count({
+        where: { status: CallbackEventStatus.RETRYABLE_FAILURE }
+      }),
+      this.prisma.callbackEvent.findFirst({
+        where: {
+          status: {
+            in: [
+              CallbackEventStatus.RECEIVED,
+              CallbackEventStatus.PROCESSING,
+              CallbackEventStatus.RETRYABLE_FAILURE
+            ]
+          }
+        },
+        orderBy: { receivedAt: "asc" },
+        select: { receivedAt: true }
+      }),
+      this.prisma.circuitBreaker.findMany({
+        where: { provider: { startsWith: "PROVIDER:" }, state: "OPEN" },
+        select: { provider: true }
+      })
     ]);
     const statusCounts = Object.fromEntries(
       statusGroups.map((group) => [group.status, group._count._all])
     );
+    const oldestUnprocessedAgeSeconds = oldestUnprocessed
+      ? Math.max(0, Math.floor((Date.now() - oldestUnprocessed.receivedAt.getTime()) / 1000))
+      : null;
     return {
       releaseGate: this.releaseGate(),
       statusCounts,
       reviewBacklog: pendingReviews,
-      metricSourceConfigured: false
+      metricSourceConfigured: false,
+      callbackOps: {
+        deadLetterCount,
+        retryableCount,
+        oldestUnprocessedAgeSeconds,
+        openProviderCircuits: openProviderCircuits.map((row) => row.provider)
+      }
     };
   }
 

@@ -31,6 +31,10 @@ function callbackStore(input: {
     },
     operationalEvent: {
       create: vi.fn().mockResolvedValue({})
+    },
+    circuitBreaker: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn().mockResolvedValue({})
     }
   };
 }
@@ -98,8 +102,18 @@ describe("callback release", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           eventType: "CALLBACK_DEAD_LETTER",
-          entityId: "event"
+          entityId: "event",
+          metadataJson: expect.objectContaining({
+            provider: "VOD",
+            circuitKey: "PROVIDER:VOD"
+          })
         })
+      })
+    );
+    expect(store.circuitBreaker.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { provider: "PROVIDER:VOD" },
+        create: expect.objectContaining({ state: "OPEN" })
       })
     );
   });
@@ -115,5 +129,6 @@ describe("callback release", () => {
       })
     );
     expect(store.operationalEvent.create).not.toHaveBeenCalled();
+    expect(store.circuitBreaker.upsert).not.toHaveBeenCalled();
   });
 });

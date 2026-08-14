@@ -286,6 +286,12 @@ export const mockApi = {
       statusCounts,
       reviewBacklog: reviews.filter((item) => item.status === "PENDING").length,
       metricSourceConfigured: false,
+      callbackOps: {
+        deadLetterCount: 0,
+        retryableCount: 0,
+        oldestUnprocessedAgeSeconds: null,
+        openProviderCircuits: [],
+      },
     });
   },
   async releaseGate(): Promise<ReleaseGateStatus> {

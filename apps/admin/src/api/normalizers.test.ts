@@ -133,6 +133,12 @@ describe("admin API normalizers", () => {
     expect(result.reviewBacklog).toBe(2);
     expect(result.statusCounts[DramaStatus.PUBLISHED]).toBe(4);
     expect(result.releaseGate.readyForExternalTraffic).toBe(false);
+    expect(result.callbackOps).toEqual({
+      deadLetterCount: 0,
+      retryableCount: 0,
+      oldestUnprocessedAgeSeconds: null,
+      openProviderCircuits: [],
+    });
   });
 
   it("adapts pending drama rows into review items with an explicit unknown-risk warning", () => {

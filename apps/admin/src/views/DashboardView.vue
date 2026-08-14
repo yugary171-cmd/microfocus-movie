@@ -34,6 +34,12 @@ async function load(): Promise<void> {
 }
 
 onMounted(load);
+
+function formatAge(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  return `${Math.floor(seconds / 3600)}h`;
+}
 </script>
 
 <template>
@@ -58,6 +64,31 @@ onMounted(load);
           </div>
         </div>
         <RouterLink class="text-link" to="/dramas">查看全部剧目 <span aria-hidden="true">→</span></RouterLink>
+      </section>
+      <section class="panel callback-panel" aria-labelledby="callback-ops-title">
+        <div class="panel__header">
+          <div><p class="eyebrow">CALLBACKS</p><h2 id="callback-ops-title">回调积压</h2></div>
+          <StatusBadge
+            :label="data.callbackOps.deadLetterCount ? `${data.callbackOps.deadLetterCount} 条死信` : '无死信'"
+            :tone="data.callbackOps.deadLetterCount ? 'danger' : 'success'"
+          />
+        </div>
+        <div class="status-grid callback-grid">
+          <div><strong>{{ data.callbackOps.deadLetterCount }}</strong><span>死信</span></div>
+          <div><strong>{{ data.callbackOps.retryableCount }}</strong><span>可重试失败</span></div>
+          <div>
+            <strong>{{ data.callbackOps.oldestUnprocessedAgeSeconds == null ? "—" : formatAge(data.callbackOps.oldestUnprocessedAgeSeconds) }}</strong>
+            <span>最老未处理</span>
+          </div>
+          <div><strong>{{ data.callbackOps.openProviderCircuits.length }}</strong><span>已开 provider 熔断</span></div>
+        </div>
+        <p class="callback-help">
+          死信会打开对应 provider 熔断（VOD 或微信奖励），不会自动打开全站 GLOBAL。解除前请先重放死信并核对账本。
+          <template v-if="data.callbackOps.openProviderCircuits.length">
+            当前打开：{{ data.callbackOps.openProviderCircuits.join("、") }}。
+          </template>
+        </p>
+        <RouterLink class="text-link" to="/operations">去运营控制处理 <span aria-hidden="true">→</span></RouterLink>
       </section>
       <section class="panel metrics-panel" aria-labelledby="metrics-title">
         <div class="panel__header">
@@ -89,6 +120,9 @@ onMounted(load);
 <style scoped>
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr); gap: 18px; }
 .metrics-panel { grid-column: 1 / 2; }
+.callback-panel { grid-column: 1 / -1; }
+.callback-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.callback-help { margin: 14px 0 0; color: var(--color-muted); font-size: 12px; line-height: 1.5; }
 .status-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .status-grid div { display: flex; align-items: center; flex-direction: column; padding: 13px 4px; border-radius: 8px; background: var(--color-surface-soft); }
 .status-grid strong { font-size: 23px; }
@@ -104,6 +138,6 @@ onMounted(load);
 .principles-panel li { display: flex; align-items: center; gap: 11px; }
 .principles-panel li > span { color: #9ba8b9; font-size: 11px; font-weight: 800; }
 .principles-panel li > div { display: flex; flex-direction: column; }
-@media (max-width: 1150px) { .dashboard-grid { grid-template-columns: 1fr; } .metrics-panel { grid-column: auto; } }
-@media (max-width: 580px) { .status-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1150px) { .dashboard-grid { grid-template-columns: 1fr; } .metrics-panel, .callback-panel { grid-column: auto; } }
+@media (max-width: 580px) { .status-grid, .callback-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>

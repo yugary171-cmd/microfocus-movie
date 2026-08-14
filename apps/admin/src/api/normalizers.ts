@@ -159,6 +159,21 @@ export function normalizeDashboard(value: unknown, gateValue: unknown): Dashboar
       Math.round(finiteNumber(source.reviewBacklog ?? source.pendingReviews)),
     ),
     metricSourceConfigured: source.metricSourceConfigured === true,
+    callbackOps: normalizeCallbackOps(source.callbackOps),
+  };
+}
+
+function normalizeCallbackOps(value: unknown): DashboardData["callbackOps"] {
+  const source = record(value);
+  const oldest = source.oldestUnprocessedAgeSeconds;
+  return {
+    deadLetterCount: Math.max(0, Math.round(finiteNumber(source.deadLetterCount))),
+    retryableCount: Math.max(0, Math.round(finiteNumber(source.retryableCount))),
+    oldestUnprocessedAgeSeconds:
+      typeof oldest === "number" && Number.isFinite(oldest) ? Math.max(0, Math.round(oldest)) : null,
+    openProviderCircuits: array(source.openProviderCircuits).filter(
+      (item): item is string => typeof item === "string" && item.startsWith("PROVIDER:"),
+    ),
   };
 }
 

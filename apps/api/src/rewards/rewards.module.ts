@@ -61,7 +61,8 @@ export class RewardsController {
     await assertCircuitsClosed(this.prisma, {
       userId,
       dramaId: body.dramaId,
-      adUnitId: this.config.env.WECHAT_REWARDED_AD_UNIT_ID
+      adUnitId: this.config.env.WECHAT_REWARDED_AD_UNIT_ID,
+      providers: ["WECHAT"]
     });
     if (
       this.config.env.WECHAT_REWARD_VERIFICATION === "client_attestation" &&
@@ -145,7 +146,8 @@ export class RewardsController {
       await assertCircuitsClosed(tx, {
         userId,
         dramaId: challenge.dramaId,
-        adUnitId: this.config.env.WECHAT_REWARDED_AD_UNIT_ID
+        adUnitId: this.config.env.WECHAT_REWARDED_AD_UNIT_ID,
+        providers: ["WECHAT"]
       });
       if (challenge.grant) return grantResult(challenge.grant);
       if (challenge.status !== "PENDING") {
