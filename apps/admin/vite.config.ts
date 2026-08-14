@@ -1,11 +1,14 @@
 import { fileURLToPath, URL } from "node:url";
 import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
-import { resolveDemoMediaOrigin, writeMiniprogramDemoMediaOrigin } from "../../scripts/demo-media-origin";
+import { applyClientBuildArtifacts } from "../../scripts/client-build-config";
 
-const demoMediaOrigin = resolveDemoMediaOrigin();
-writeMiniprogramDemoMediaOrigin(demoMediaOrigin);
-console.info(`[microfocus] mock videos on LAN: ${demoMediaOrigin}/demo/`);
+const clientBuild = applyClientBuildArtifacts();
+if (clientBuild.mode === "mock") {
+  console.info(`[microfocus] mock videos on LAN: ${clientBuild.demoMediaOrigin}/demo/`);
+} else {
+  console.info("[microfocus] live admin build: Demo media disabled");
+}
 
 export default defineConfig({
   plugins: [vue()],

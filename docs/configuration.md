@@ -58,21 +58,32 @@ Mock 模式只提供确定性开发数据，不模拟真实广告收入、微信
 
 ## 4. 客户端构建配置
 
-- 管理后台通过公开的 `VITE_API_BASE_URL` 选择 API Base URL；它会进入浏览器构建物，因此只能包含公开 HTTPS 地址。
-- 原生小程序和 uni-app 的 `RUNTIME_CONFIG.apiBaseUrl` 是客户端公开配置，不会自动继承 API 进程的 `PUBLIC_API_URL`。外部构建必须通过受控构建配置设置，并校验为微信合法 HTTPS 域名。
+- 管理后台通过公开的 `VITE_API_BASE_URL` 或统一的 `MICROFOCUS_PUBLIC_API_URL` 选择 API Base URL；它会进入浏览器构建物，因此只能包含公开 HTTPS 地址。
+- 原生小程序和 uni-app 的 `RUNTIME_CONFIG.apiBaseUrl` 由同一套构建配置注入，不会自动继承 API 进程的 `PUBLIC_API_URL`。外部构建必须通过 `MICROFOCUS_CLIENT_MODE=live` 设置，并校验为微信合法 HTTPS 域名。
 - `PUBLIC_API_URL` 是 API 自身用于生成绝对地址和校验部署环境的服务端配置，不等于客户端构建变量。
 - 任何 `VITE_*`、生成的 TypeScript 配置、`app.json`、`manifest.json` 或小程序项目配置都不得包含 AppSecret、云 SecretKey、数据库 URL、JWT/TOTP/回调/播放签名密钥。
 - 同一发布记录必须保存 API 地址、管理端 Origin、微信 AppID、VOD 子应用 ID、媒体域名和构建版本的非秘密快照，便于排查环境串用。
 
-### 4.1 当前外部构建阻塞
+### 4.1 外部构建闸门
 
-以下是配置链路的当前能力边界，不得通过人工改包或口头确认绕过：
+内部 `npm run build` / `npm run check` 默认 `MICROFOCUS_CLIENT_MODE=mock`：允许空 API 地址、注入 Demo 媒体，供本机联调。不得把这次构建物当作外部包。
 
-- 管理后台在 `VITE_API_BASE_URL` 为空时进入 Mock 适配路径，当前构建没有“外部环境缺少 API 地址即失败”的校验。
-- 原生小程序和 uni-app 的 `RUNTIME_CONFIG.apiBaseUrl` 当前固定为空，也没有对应的构建时 API URL 注入路径，因而不能生成可访问 Live API 的外部包。
-- uni-app Vite 配置当前每次构建都会注入 `VITE_DEMO_MEDIA_ORIGIN`，并同时改写原生小程序的 Demo 媒体生成文件，没有生产构建禁用机制。
+外部包必须显式使用 Live 构建，缺少配置或含 Demo 媒体时失败：
 
-在解除这些阻塞前，外部灰度和生产构建必须保持关闭。解除条件至少包括：建立统一的公开 API URL 注入与 URL 校验、生产构建缺失配置时失败、生产模式不生成或注入 Demo 媒体，并用构建产物扫描证明 Mock/Demo 未进入外部包。工程状态统一记录在 [status.md](./status.md)。
+```bash
+MICROFOCUS_CLIENT_MODE=live
+MICROFOCUS_PUBLIC_API_URL=https://api.example.com
+npm run build:admin:live
+npm run build:uniapp:live
+```
+
+Live 闸门由 [`scripts/client-build-config.ts`](../scripts/client-build-config.ts) 执行：
+
+- 公开 API 地址必须是 https 域名（不能是 IP、localhost、非 443 端口、路径或查询串）；
+- 不注入 `VITE_DEMO_MEDIA_ORIGIN`，并把原生小程序 Demo origin 写成空；
+- 对管理端 `dist` 与 uni-app `dist/build/mp-weixin` 扫描 Demo 媒体痕迹，命中即失败。
+
+`PUBLIC_API_URL` 仍只属于 API 进程。客户端 Live 地址必须单独注入。解除这些闸门之外的阻塞（真实 Live provider、TOTP 轮换、发布证据）见 [status.md](./status.md)。
 
 ## 5. 微信 Live 接入
 

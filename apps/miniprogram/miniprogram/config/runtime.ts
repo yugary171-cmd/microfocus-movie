@@ -1,10 +1,13 @@
+import { API_BASE_URL } from "./api-base-url.generated";
 import { demoVideoUrls } from "./demo-media";
 import { DEMO_MEDIA_ORIGIN } from "./demo-media-origin.generated";
 
-const demoVideos = demoVideoUrls(DEMO_MEDIA_ORIGIN);
+const demoVideos = DEMO_MEDIA_ORIGIN
+  ? demoVideoUrls(DEMO_MEDIA_ORIGIN)
+  : { demoVideoUrl: "", demoVideoTwoUrl: "", urls: [] as string[] };
 
 export const RUNTIME_CONFIG = {
-  apiBaseUrl: "",
+  apiBaseUrl: (API_BASE_URL ?? "").replace(/\/$/, ""),
   requestTimeoutMs: 10_000,
   productName: "微焦短剧",
   // Overwritten locally by `npm run dev:admin` / `npm run dev:uniapp` with this

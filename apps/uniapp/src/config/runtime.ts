@@ -1,9 +1,13 @@
 import { demoVideoUrls } from "./demo-media";
 
-const demoVideos = demoVideoUrls(import.meta.env.VITE_DEMO_MEDIA_ORIGIN);
+const demoOrigin = import.meta.env.VITE_DEMO_MEDIA_ORIGIN;
+const demoVideos =
+  demoOrigin === ""
+    ? { demoVideoUrl: "", demoVideoTwoUrl: "", urls: [] as string[] }
+    : demoVideoUrls(demoOrigin);
 
 export const RUNTIME_CONFIG = {
-  apiBaseUrl: "",
+  apiBaseUrl: (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, ""),
   requestTimeoutMs: 10_000,
   productName: "微焦短剧",
   // Mock-only videos served by `npm run dev:admin`. Production playback comes

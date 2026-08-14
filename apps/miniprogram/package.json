@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "pretypecheck": "node ../../scripts/ensure-miniprogram-generated.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "build": "npm run typecheck && node -e \"console.log('TypeScript checked. Open this directory in WeChat DevTools to compile the native mini program.')\""

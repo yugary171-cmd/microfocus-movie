@@ -18,4 +18,9 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     restoreMocks: true,
   },
+  server: {
+    fs: {
+      allow: [fileURLToPath(new URL("../..", import.meta.url))],
+    },
+  },
 });

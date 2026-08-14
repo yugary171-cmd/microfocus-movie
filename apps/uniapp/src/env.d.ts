@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly PROD: boolean;
   readonly MODE: string;
   readonly VITE_DEMO_MEDIA_ORIGIN?: string;
+  readonly VITE_API_BASE_URL?: string;
 }
 
 interface ImportMeta {

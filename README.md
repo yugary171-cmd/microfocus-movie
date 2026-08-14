@@ -84,7 +84,7 @@ npm run check
 
 当前版本是可供内部技术闭环和接口联调的 MVP，不是可直接上线包。微信登录的 `code2session` 已有真实适配，但腾讯 VOD Web 上传/播放签名和激励广告可信服务端验证仍安全失败；API 会用 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED` 阻止发布并拒绝生产启动。
 
-客户端构建也未达到外部发布条件：观看端缺少 Live API URL 注入、uni-app 仍注入 Demo 媒体地址、管理端缺少 API 地址时进入 Mock。全部代码和构建阻塞见 [项目状态](docs/status.md) 与 [配置说明](docs/configuration.md)；不能只移除最终拒启或把 provider 模式改成 `live`。
+客户端内部构建默认 Mock。外部包必须 `npm run build:admin:live` 与 `npm run build:uniapp:live`，并提供公开 HTTPS API 地址；缺地址或含 Demo 媒体会失败。全部代码和构建阻塞见 [项目状态](docs/status.md) 与 [配置说明](docs/configuration.md)；不能只移除最终拒启或把 provider 模式改成 `live`。
 
 上线前必须完成 [发布清单](docs/release-checklist.md)。至少需要：
 

@@ -130,18 +130,12 @@ CI 与生产应用已有迁移时使用 `npm run db:migrate:deploy`，不创建�
 
 | 端 | 配置入口 | 为空时的当前行为 |
 | --- | --- | --- |
-| 管理后台 | `VITE_API_BASE_URL` | 进入 Mock 演示模式 |
-| uni-app / 过渡小程序 | `RUNTIME_CONFIG.apiBaseUrl` | 当前无 Live 注入路径，外部包不可用 |
+| 管理后台 | `MICROFOCUS_PUBLIC_API_URL` 或 `VITE_API_BASE_URL` | Mock 构建进入演示模式；`build:admin:live` 缺少合法 HTTPS 地址则失败 |
+| uni-app / 过渡小程序 | 同一公开 API URL，写入 `RUNTIME_CONFIG.apiBaseUrl` | Mock 构建可走体验数据；Live 构建注入 HTTPS 地址，并禁用 Demo 媒体 |
 
 `PUBLIC_API_URL` 是 **API 服务端**用于生成绝对 URL 和校验部署环境的变量，与客户端构建变量分离。规则见 [configuration.md](./configuration.md) §4。
 
-**当前工程阻塞**（解除前不得外部灰度）：
-
-- 观看端与管理端缺少统一的 Live API URL 构建注入；
-- 生产构建缺少 API 地址时必须失败的门禁尚未完全落地；
-- uni-app 构建仍会注入 Demo 媒体地址。
-
-细节与解除条件见 [status.md](./status.md) 与 [configuration.md](./configuration.md) §4.1。
+Live 构建命令见 [configuration.md](./configuration.md) §4.1。外部灰度仍受真实 Live provider、合规闸门和发布清单约束，见 [status.md](./status.md)。
 
 ## 6. 发布与托管分工
 

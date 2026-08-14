@@ -36,6 +36,8 @@
     "db:migrate": "npm run db:migrate -w @microfocus/api",
     "db:migrate:deploy": "npm run db:migrate:deploy -w @microfocus/api",
     "db:seed": "npm run db:seed -w @microfocus/api",
+    "build:admin:live": "tsx scripts/run-client-live-build.ts admin",
+    "build:uniapp:live": "tsx scripts/run-client-live-build.ts uniapp",
     "generate:demo-videos": "node scripts/generate-demo-videos.mjs",
     "normalize:demo-videos": "node scripts/normalize-demo-videos.mjs"
   }

@@ -14,6 +14,7 @@ apps/miniprogram/miniprogram_npm/
 apps/miniprogram/.miniprogram/
 apps/admin/public/demo/*.mp4
 **/demo-media-origin.generated.ts
+**/api-base-url.generated.ts
 **/project.private.config.json
 旧内容/
 .codex/wiki/

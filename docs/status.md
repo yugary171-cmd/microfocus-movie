@@ -16,7 +16,7 @@
 - API、管理后台、uni-app 和原生过渡小程序已形成首轮内部 Mock 实现。2026-08-14 已将当时工作区收成 Git 快照 `17babc1`（不含 `.env`、本机 Demo origin、微信私有配置和 `旧内容/`）。
 - 当前仅允许 Mock 内部体验；真实外部发布仍受资质、备案、微信类目、广告能力和逐剧内容权利闸门约束。
 - 微信 `code2session` 登录适配已实现；腾讯云 VOD 上传/播放签名和微信激励广告可信服务端验证仍为 fail-closed。发布闸门会返回 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`，生产进程也会拒绝启动，直到企业账号完成真实实现与端到端验收。
-- 外部构建还受配置链路阻塞：观看端尚无 Live API URL 注入入口，uni-app 构建仍固定注入 Demo 媒体，管理端缺少 API URL 时会进入 Mock；生产配置防御校验和 TOTP 初始化/轮换工具也需在解除最终拒启前补齐。边界见 [configuration.md](./configuration.md)。
+- 外部构建还受配置链路约束：内部 Mock 构建允许空 API 地址并注入 Demo 媒体；外部包必须 `MICROFOCUS_CLIENT_MODE=live` 且公开 HTTPS API 地址合法，产物不得含 Demo 媒体。真实 Live provider、TOTP 轮换和发布证据仍未完成。边界见 [configuration.md](./configuration.md)。
 - 2026-08-14 当前工作区执行 `npm run check` 通过；该结果覆盖 typecheck、单元/组件测试和构建，不等于 HTTP E2E、真实 MySQL 并发、真机或真实 provider 验收。
 - 产品证据仍停留在内部方案：无用户行为、无内容供给承诺、无类目/广告批复。
 
@@ -29,16 +29,15 @@
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一 | 可信广告验证未接真实平台；adjustment、晚到奖励和死信重放尚未实现 |
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费 | 当前仍主要依赖客户端心跳；短媒体窗口、reservation、未确认暴露、活动租约查询/恢复尚未实现 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重和处理租约 | 加密规范化载荷、明确死信状态、管理员审计重放尚未实现 |
-| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层 | Live API 构建注入、生产禁用 Demo、目标匿名/恢复/注销交互尚未实现 |
-| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门 | Live provider、TOTP 安全轮换、构建产物门禁和真实发布证据尚未完成 |
+| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描 | 目标匿名/恢复/注销交互尚未实现 |
+| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门 | Live provider、TOTP 安全轮换和真实发布证据尚未完成 |
 
 ## 下一步（Now）
 
 工程（不加功能）：
 
-1. 建立管理端和观看端统一的 Live API 构建注入；外部构建缺少 API 地址或包含 Demo 媒体时必须失败。
-2. 按实现矩阵逐项补齐匿名会话、播放 reservation/恢复、权益 adjustment、注销和死信重放；每项先更新 `packages/contracts`，再实现服务端和客户端。
-3. 不自动推送；后续提交需人工确认。
+1. 按实现矩阵逐项补齐匿名会话、播放 reservation/恢复、权益 adjustment、注销和死信重放；每项先更新 `packages/contracts`，再实现服务端和客户端。
+2. 不自动推送；后续提交需人工确认。
 
 产品（与工程并行）：
 
@@ -56,7 +55,7 @@
 
 ## 历史
 
-- 2026-08-14：增加 `npm run db:up`（`docker compose up -d --wait mysql`），避免容器刚启动就 migrate 触发 P1017。
+- 2026-08-14：管理端/观看端统一 Live API 构建注入；`build:admin:live` / `build:uniapp:live` 缺少 HTTPS API 或含 Demo 媒体时失败。
 - 2026-08-14：本地 Docker MySQL 为 Prisma `migrate dev` 影子库补齐 `CREATE DATABASE` 权限（init 脚本；已有数据卷需一次性 GRANT）。
 - 2026-08-14：新增 [deployment.md](./deployment.md)，集中说明数据库、API 托管与各端共用关系。
 - 2026-08-14：收紧管理端角色/所有权，并为人工补偿增加 `Idempotency-Key` 与 `EntitlementGrant.compensationKey` 唯一约束。
