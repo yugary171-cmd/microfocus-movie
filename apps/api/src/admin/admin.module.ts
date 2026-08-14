@@ -56,6 +56,7 @@ import {
   Roles,
   type Principal
 } from "../security/security.js";
+import { AdminWriteRateLimitGuard } from "../security/admin-write-rate-limit.js";
 import {
   assertEditorOwns,
   assertNotPublished,
@@ -248,7 +249,7 @@ class CircuitCollectionDto {
 }
 
 @Controller("v1/admin")
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@UseGuards(JwtAuthGuard, AdminRolesGuard, AdminWriteRateLimitGuard)
 export class AdminController {
   constructor(
     private readonly prisma: PrismaService,

@@ -7,7 +7,8 @@ export const RATE_LIMITS = {
   playbackLease: { limit: 20, windowMs: 60_000 },
   search: { limit: 60, windowMs: 60_000 },
   callbackVod: { limit: 120, windowMs: 60_000 },
-  callbackReward: { limit: 60, windowMs: 60_000 }
+  callbackReward: { limit: 60, windowMs: 60_000 },
+  adminWrite: { limit: 40, windowMs: 60_000 }
 } as const;
 
 export type RateLimitStore = {
