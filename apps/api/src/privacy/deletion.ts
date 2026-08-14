@@ -1,6 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import {
+  ADMIN_REASON_MAX_LENGTH,
+  ADMIN_REASON_MIN_LENGTH,
   DELETION_CONFIRMATION,
+  DELETION_QUERY_TOKEN_MAX_LENGTH,
   DELETION_QUERY_TOKEN_TTL_SECONDS,
   DeletionRequestStatus,
   ERROR_CODES,
@@ -13,6 +16,7 @@ import { Prisma } from "@prisma/client";
 import { assertRecentWechatReauth } from "../auth/reauth.js";
 import { Errors } from "../common/app-error.js";
 import { requireEntityId } from "../common/entity-id.js";
+import { normalizeIdempotencyKey } from "../common/idempotency.js";
 import { releaseOpenReservations } from "../playback/playback-reservations.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
 import type { WechatProvider } from "../providers/providers.js";
@@ -26,17 +30,6 @@ export function tokensMatch(storedHash: string, presentedToken: string): boolean
   const presented = Buffer.from(hashDeletionQueryToken(presentedToken), "hex");
   const stored = Buffer.from(storedHash, "hex");
   return presented.length === stored.length && timingSafeEqual(presented, stored);
-}
-
-function normalizeIdempotencyKey(value: string | undefined): string {
-  const key = value?.trim() ?? "";
-  if (!key || key.length > 128) {
-    throw Errors.badRequest(
-      "IDEMPOTENCY_KEY_REQUIRED",
-      "A valid Idempotency-Key header is required"
-    );
-  }
-  return key;
 }
 
 export async function createDeletionRequest(
@@ -149,8 +142,8 @@ export async function lookupDeletionRequest(
   await assertNamedRateLimit(prisma, "deletionLookup", input.ipKey);
   const deletionRequestId = requireEntityId(input.deletionRequestId, "deletionRequestId");
   const token = input.queryToken.trim();
-  if (!token) {
-    throw Errors.unauthorized("Deletion query token is required", ERROR_CODES.DELETION_TOKEN_INVALID);
+  if (!token || token.length > DELETION_QUERY_TOKEN_MAX_LENGTH) {
+    throw Errors.unauthorized("Deletion query token is invalid", ERROR_CODES.DELETION_TOKEN_INVALID);
   }
   const row = await prisma.deletionRequest.findUnique({ where: { id: deletionRequestId } });
   if (!row || !tokensMatch(row.queryTokenHash, token)) {
@@ -243,8 +236,13 @@ export async function reissueDeletionQueryToken(
   if (!userId) {
     throw Errors.badRequest(ERROR_CODES.DELETION_IDENTITY_MISMATCH, "Confirmed user ID is required");
   }
-  if (reason.length < 6 || approvalNote.length < 6) {
-    throw Errors.badRequest("INVALID_REASON", "Reason and approval note must be at least 6 characters");
+  if (
+    reason.length < ADMIN_REASON_MIN_LENGTH ||
+    reason.length > ADMIN_REASON_MAX_LENGTH ||
+    approvalNote.length < ADMIN_REASON_MIN_LENGTH ||
+    approvalNote.length > ADMIN_REASON_MAX_LENGTH
+  ) {
+    throw Errors.badRequest("INVALID_REASON", "Reason and approval note must be 6–300 characters");
   }
   const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
   const existing = await prisma.deletionQueryTokenReissue.findUnique({

@@ -1,4 +1,4 @@
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, IDEMPOTENCY_KEY_MAX_LENGTH } from "@microfocus/contracts";
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../common/app-error.js";
@@ -66,7 +66,7 @@ describe("compensation idempotency", () => {
 
   it("requires a bounded Idempotency-Key", () => {
     expect(() => normalizeIdempotencyKey(undefined)).toThrow(AppError);
-    expect(() => normalizeIdempotencyKey("x".repeat(129))).toThrow(AppError);
+    expect(() => normalizeIdempotencyKey("x".repeat(IDEMPOTENCY_KEY_MAX_LENGTH + 1))).toThrow(AppError);
     expect(normalizeIdempotencyKey("  comp-1  ")).toBe("comp-1");
   });
 

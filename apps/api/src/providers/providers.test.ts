@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WechatProviderService } from "./providers.js";
+import { PROVIDER_SIGNATURE_MAX_LENGTH } from "@microfocus/contracts";
+import { createHmac } from "node:crypto";
+import { verifyWebhookSignature, WechatProviderService } from "./providers.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -57,5 +59,17 @@ describe("WeChat code2Session provider", () => {
     await expect(
       new WechatProviderService(liveConfig()).exchangeCode("missing-openid")
     ).rejects.toMatchObject({ code: "PROVIDER_REQUEST_FAILED" });
+  });
+});
+
+describe("webhook signature bounds", () => {
+  it("rejects an oversized signature without hashing it as valid", () => {
+    const secret = "callback-secret";
+    const body = "{\"eventId\":\"event-1\"}";
+    const valid = createHmac("sha256", secret).update(body).digest("hex");
+    expect(verifyWebhookSignature(body, valid, secret)).toBe(true);
+    expect(verifyWebhookSignature(body, "s".repeat(PROVIDER_SIGNATURE_MAX_LENGTH + 1), secret)).toBe(
+      false
+    );
   });
 });

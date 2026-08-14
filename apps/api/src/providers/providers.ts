@@ -1,6 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { PROVIDER_SIGNATURE_MAX_LENGTH } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 import { AppConfigService } from "../config/config.service.js";
 
@@ -148,7 +149,9 @@ export function verifyWebhookSignature(
   suppliedSignature: string | undefined,
   secret: string | undefined
 ): boolean {
-  if (!secret || !suppliedSignature) return false;
+  if (!secret || !suppliedSignature || suppliedSignature.length > PROVIDER_SIGNATURE_MAX_LENGTH) {
+    return false;
+  }
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
   const supplied = suppliedSignature.replace(/^sha256=/, "");
   if (expected.length !== supplied.length) return false;

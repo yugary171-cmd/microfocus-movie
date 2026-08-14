@@ -133,7 +133,7 @@ flowchart LR
 ### 4.1 响应与认证
 
 - 成功响应统一为 `{ data, requestId }`，错误响应统一为 `{ code, message, requestId }`。
-- 观看端使用 `Authorization: Bearer <viewer token>`：匿名 viewer token 只能申请和维护免费集租约，用户 JWT 才能访问锁定集、权益、奖励、历史和进度。管理员使用独立管理员 JWT，三种令牌不可互换。
+- 观看端使用 `Authorization: Bearer <viewer token>`：匿名 viewer token 只能申请和维护免费集租约，用户 JWT 才能访问锁定集、权益、奖励、历史和进度。管理员使用独立管理员 JWT，三种令牌不可互换。Bearer 令牌最长 4096，超长直接拒绝，不验签。
 - 公开接口仅限匿名 viewer 会话创建、微信登录、公开目录、搜索和已发布剧目详情。
 - `Content-Type` 为 `application/json`；时间使用 ISO 8601 UTC 字符串；秒数使用非负整数。
 - 未发布、下架、权利过期或不存在的公开内容统一返回 404，避免泄露内容状态。
@@ -142,7 +142,7 @@ flowchart LR
 
 ### 4.2 幂等、分页与排序
 
-- 完成奖励和人工补偿必须携带 `Idempotency-Key`；同一业务请求的重试返回同一 grant，不得重复发放。
+- 完成奖励和人工补偿必须携带 `Idempotency-Key`；同一业务请求的重试返回同一 grant，不得重复发放。`Idempotency-Key` 最长 128。
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
@@ -216,9 +216,9 @@ flowchart LR
 | `POST .../:id/submit-review` | EDITOR | 仅本人负责，材料完整 | 提交审核 |
 | `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页 | 审核队列 |
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计 | 内容和媒体审核 |
-| `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
+| `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100，按动作、目标、`requestId` 和操作人邮箱过滤；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联 |
-| `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；`updatedBy` 为管理员 ID 或 `system:*` 作业标识 | 全局/用户/剧目/广告位/provider 熔断 |
+| `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；原因 6–300 字；`targetId` 限长 191；`updatedBy` 为管理员 ID 或 `system:*` 作业标识 | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key` | 用户/剧目 ID 限长；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key` | grant/事实 ID 限长；秒数 1–86400；原因 6–300 字 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |
 | `GET /v1/admin/callback-events` | ADMIN | 默认积压状态；不含加密载荷；`take` 默认 50、上限 100；过大 `skip` 返回空结果 | 列出回调事件元数据（状态、尝试次数、是否仍有可执行载荷） |
@@ -232,7 +232,7 @@ flowchart LR
 | 方法与路径 | 认证 | 语义 |
 | --- | --- | --- |
 | `POST /v1/me/deletion-requests` | 用户 JWT + 近期重新认证证明；按认证用户限频；幂等重放不占桶 | 请求体含确认文案与一次性 `wechatCode`；在同一事务内创建幂等申请、保存查询令牌摘要、标记账户不可用并撤销会话/活动租约/新奖励能力；事务提交后返回 `deletionRequestId/status/deletionQueryToken/tokenExpiresAt`，与响应追踪字段 `requestId` 区分 |
-| `GET /v1/me/deletion-requests/:deletionRequestId` | `X-Deletion-Query-Token`；验令牌前按连接 IP 限频；同一令牌成功查询另有 1 秒冷却 | 查询 `PENDING/PROCESSING/COMPLETED/REJECTED`、处理时间和可理解原因 |
+| `GET /v1/me/deletion-requests/:deletionRequestId` | `X-Deletion-Query-Token` 最长 128；验令牌前按连接 IP 限频；同一令牌成功查询另有 1 秒冷却 | 查询 `PENDING/PROCESSING/COMPLETED/REJECTED`、处理时间和可理解原因 |
 
 `deletionQueryToken` 只能查询对应申请，服务端仅保存摘要并执行限频；有效期应覆盖承诺的最长处理窗口。令牌遗失或过期后只能通过受控客服身份核验恢复查询能力，不能恢复已撤销的用户会话。管理员补发会作废旧令牌。
 
@@ -245,8 +245,8 @@ flowchart LR
 | `GET /health/live` | 受基础设施访问策略保护 | 进程存活，不查库、不返回秘密 |
 | `GET /health/ready`、`GET /health` | 受基础设施访问策略保护 | 就绪：数据库可连且进程未进入关闭排水；失败返回 `NOT_READY`，不泄露连接串 |
 | `GET /docs` | 仅非生产 | OpenAPI/Swagger；`NODE_ENV=production` 不挂载 |
-| `POST /v1/callbacks/vod` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | `eventId/fileId` 限长；转码和审核结果；事件幂等，失败可重试 |
-| `POST /v1/callbacks/reward` | Provider 签名 + 事件 ID；验签前按连接 IP 限频 | `eventId/challengeId` 限长；可信广告完成验证；通常更新 PENDING challenge。若事件在允许延迟窗口内且证明广告在原有效期内完成，可将 EXPIRED 迁为 COMPLETED_LATE，仍只创建唯一 grant |
+| `POST /v1/callbacks/vod` | Provider 签名 + 事件 ID；验签前按连接 IP 限频；签名最长 256 | `eventId/fileId` 限长；转码和审核结果；事件幂等，失败可重试 |
+| `POST /v1/callbacks/reward` | Provider 签名 + 事件 ID；验签前按连接 IP 限频；签名最长 256 | `eventId/challengeId` 限长；可信广告完成验证；通常更新 PENDING challenge。若事件在允许延迟窗口内且证明广告在原有效期内完成，可将 EXPIRED 迁为 COMPLETED_LATE，仍只创建唯一 grant |
 
 ---
 

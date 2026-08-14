@@ -10,6 +10,7 @@ import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import { AdminRole, ERROR_CODES } from "@microfocus/contracts";
 import { AppError, Errors } from "../common/app-error.js";
+import { requireBearerToken } from "../common/header-limits.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 export type Principal =
@@ -31,9 +32,7 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const authorization = request.header("authorization");
-    if (!authorization?.startsWith("Bearer ")) throw Errors.unauthorized();
-    const token = authorization.slice(7);
+    const token = requireBearerToken(request.header("authorization"));
     try {
       const principal = parsePrincipal(await this.jwt.verifyAsync(token));
       if (principal.kind === "user" && this.prisma) {

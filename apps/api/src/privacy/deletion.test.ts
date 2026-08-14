@@ -1,5 +1,6 @@
 import {
   DELETION_CONFIRMATION,
+  DELETION_QUERY_TOKEN_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   ERROR_CODES
 } from "@microfocus/contracts";
@@ -171,6 +172,22 @@ describe("account deletion", () => {
         ipKey: "10.0.0.8"
       })
     ).rejects.toMatchObject({ code: "INVALID_ENTITY_ID" });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalled();
+    expect(prisma.deletionRequest.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized query token after the IP bucket is consumed", async () => {
+    const prisma = {
+      rateLimitBucket: allowRateLimit(),
+      deletionRequest: { findUnique: vi.fn() }
+    };
+    await expect(
+      lookupDeletionRequest(prisma as never, {
+        deletionRequestId: "del-1",
+        queryToken: "t".repeat(DELETION_QUERY_TOKEN_MAX_LENGTH + 1),
+        ipKey: "10.0.0.8"
+      })
+    ).rejects.toMatchObject({ code: ERROR_CODES.DELETION_TOKEN_INVALID });
     expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalled();
     expect(prisma.deletionRequest.findUnique).not.toHaveBeenCalled();
   });

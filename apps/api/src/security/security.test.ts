@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { AdminRole, ERROR_CODES } from "@microfocus/contracts";
+import { describe, expect, it, vi } from "vitest";
+import { AdminRole, BEARER_TOKEN_MAX_LENGTH, ERROR_CODES } from "@microfocus/contracts";
 import { parsePrincipal } from "./security.js";
 import { JwtAuthGuard } from "./security.js";
 
@@ -64,5 +64,18 @@ describe("jwt auth guard", () => {
         switchToHttp: () => ({ getRequest: () => request })
       } as never)
     ).rejects.toMatchObject({ code: ERROR_CODES.ACCOUNT_UNAVAILABLE });
+  });
+
+  it("rejects an oversized bearer token without verifying it", async () => {
+    const jwt = { verifyAsync: vi.fn(), decode: vi.fn() };
+    const guard = new JwtAuthGuard(jwt as never);
+    const request = { header: () => `Bearer ${"a".repeat(BEARER_TOKEN_MAX_LENGTH + 1)}` };
+
+    await expect(
+      guard.canActivate({
+        switchToHttp: () => ({ getRequest: () => request })
+      } as never)
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(jwt.verifyAsync).not.toHaveBeenCalled();
   });
 });

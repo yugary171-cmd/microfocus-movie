@@ -195,8 +195,8 @@ class UploadSignDto {
   contentType!: string;
 }
 
-class OfflineDto {
-  @IsString() @Length(6, 500) reason!: string;
+export class OfflineDto {
+  @IsString() @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH) reason!: string;
 }
 
 export class CompensateDto {
@@ -247,27 +247,27 @@ export class AdjustEntitlementDto implements CreateEntitlementAdjustmentRequest 
 
 class ReplayCallbackDto implements ReplayCallbackEventRequest {
   @IsString()
-  @Length(6, 300)
+  @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH)
   reason!: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(300)
+  @MaxLength(ADMIN_REASON_MAX_LENGTH)
   approvalNote?: string;
 }
 
 class ReissueDeletionQueryTokenDto implements ReissueDeletionQueryTokenRequest {
   @IsString()
   @MinLength(1)
-  @MaxLength(191)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
   userId!: string;
 
   @IsString()
-  @Length(6, 300)
+  @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH)
   reason!: string;
 
   @IsString()
-  @Length(6, 300)
+  @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH)
   approvalNote!: string;
 }
 
@@ -275,17 +275,17 @@ class CircuitDto {
   @IsIn(["CLOSED", "OPEN"])
   state!: "CLOSED" | "OPEN";
 
-  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+  @IsOptional() @IsString() @MaxLength(ADMIN_REASON_MAX_LENGTH) reason?: string;
 }
 
-class CircuitCollectionDto {
+export class CircuitCollectionDto {
   @IsOptional()
   @IsIn(["GLOBAL", "USER", "DRAMA", "AD_UNIT", "PROVIDER"])
   scope?: "GLOBAL" | "USER" | "DRAMA" | "AD_UNIT" | "PROVIDER";
 
-  @IsOptional() @IsString() @MaxLength(200) targetId?: string;
+  @IsOptional() @IsString() @MaxLength(ENTITY_ID_MAX_LENGTH) targetId?: string;
   @IsBoolean() enabled!: boolean;
-  @IsString() @Length(1, 500) reason!: string;
+  @IsString() @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH) reason!: string;
 }
 
 @Controller("v1/admin")

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from "vue";
+import { ADMIN_REASON_MAX_LENGTH, ADMIN_REASON_MIN_LENGTH } from "@microfocus/contracts";
+import { computed, nextTick, ref, watch } from "vue";
 
 const props = withDefaults(
   defineProps<{
@@ -11,6 +12,8 @@ const props = withDefaults(
     busy?: boolean;
     requireReason?: boolean;
     reasonLabel?: string;
+    reasonMinLength?: number;
+    reasonMaxLength?: number;
   }>(),
   {
     confirmLabel: "确认",
@@ -18,6 +21,8 @@ const props = withDefaults(
     busy: false,
     requireReason: false,
     reasonLabel: "操作原因",
+    reasonMinLength: ADMIN_REASON_MIN_LENGTH,
+    reasonMaxLength: ADMIN_REASON_MAX_LENGTH,
   },
 );
 
@@ -28,6 +33,11 @@ const emit = defineEmits<{
 
 const reason = ref("");
 const cancelButton = ref<HTMLButtonElement | null>(null);
+const reasonReady = computed(() => {
+  if (!props.requireReason) return true;
+  const length = reason.value.trim().length;
+  return length >= props.reasonMinLength && length <= props.reasonMaxLength;
+});
 
 watch(
   () => props.open,
@@ -41,7 +51,7 @@ watch(
 );
 
 function confirm(): void {
-  if (props.requireReason && !reason.value.trim()) return;
+  if (!reasonReady.value) return;
   emit("confirm", reason.value.trim());
 }
 </script>
@@ -61,7 +71,15 @@ function confirm(): void {
         <p :id="`${title}-dialog-description`">{{ message }}</p>
         <label v-if="requireReason" class="field">
           <span>{{ reasonLabel }} <span aria-hidden="true">*</span></span>
-          <textarea v-model="reason" rows="3" :disabled="busy" required @keydown.ctrl.enter="confirm" />
+          <textarea
+            v-model="reason"
+            rows="3"
+            :minlength="reasonMinLength"
+            :maxlength="reasonMaxLength"
+            :disabled="busy"
+            required
+            @keydown.ctrl.enter="confirm"
+          />
         </label>
         <div class="dialog__actions">
           <button ref="cancelButton" class="button button--ghost" type="button" :disabled="busy" @click="$emit('close')">取消</button>
@@ -69,7 +87,7 @@ function confirm(): void {
             class="button"
             :class="tone === 'danger' ? 'button--danger' : 'button--primary'"
             type="button"
-            :disabled="busy || (requireReason && !reason.trim())"
+            :disabled="busy || !reasonReady"
             @click="confirm"
           >
             {{ busy ? "处理中…" : confirmLabel }}

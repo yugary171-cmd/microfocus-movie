@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { Errors } from "../common/app-error.js";
+import { normalizeIdempotencyKey } from "../common/idempotency.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
+
+export { normalizeIdempotencyKey };
 
 export type CompensationPayload = {
   compensationKey: string;
@@ -10,17 +13,6 @@ export type CompensationPayload = {
   expiresAt: Date;
   reason: string;
 };
-
-export function normalizeIdempotencyKey(value: string | undefined): string {
-  const key = value?.trim() ?? "";
-  if (!key || key.length > 128) {
-    throw Errors.badRequest(
-      "IDEMPOTENCY_KEY_REQUIRED",
-      "A valid Idempotency-Key header is required"
-    );
-  }
-  return key;
-}
 
 export function compensationMatches(
   grant: {

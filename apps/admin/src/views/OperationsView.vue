@@ -211,7 +211,9 @@ async function submitAdjustment(): Promise<void> {
 
 function validateReplay(): string {
   if (!replay.eventId.trim()) return "请输入回调事件 ID";
-  if (replay.reason.trim().length < 6) return "请填写至少 6 个字的重放原因";
+  if (replay.reason.trim().length < ADMIN_REASON_MIN_LENGTH) {
+    return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的重放原因`;
+  }
   return "";
 }
 
@@ -251,8 +253,12 @@ async function submitReplay(): Promise<void> {
 function validateReissue(): string {
   if (!reissue.deletionRequestId.trim()) return "请输入注销申请 ID";
   if (!reissue.userId.trim()) return "请输入已核验的用户 ID";
-  if (reissue.reason.trim().length < 6) return "请填写至少 6 个字的补发原因";
-  if (reissue.approvalNote.trim().length < 6) return "请填写至少 6 个字的审批/核验记录";
+  if (reissue.reason.trim().length < ADMIN_REASON_MIN_LENGTH) {
+    return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的补发原因`;
+  }
+  if (reissue.approvalNote.trim().length < ADMIN_REASON_MIN_LENGTH) {
+    return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的审批/核验记录`;
+  }
   return "";
 }
 
@@ -396,8 +402,8 @@ onMounted(load);
           <form class="compensation-form" @submit.prevent="requestReplay">
             <div class="form-grid">
               <label class="field"><span>回调事件 ID *</span><input v-model="replay.eventId" required autocomplete="off" placeholder="provider 事件 ID" /></label>
-              <label class="field field--wide"><span>原因 *</span><textarea v-model="replay.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明修复依据、工单与为何可以重放" /></label>
-              <label class="field field--wide"><span>审批记录</span><textarea v-model="replay.approvalNote" rows="2" maxlength="300" placeholder="可选：审批人/工单号" /></label>
+              <label class="field field--wide"><span>原因 *</span><textarea v-model="replay.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明修复依据、工单与为何可以重放" /></label>
+              <label class="field field--wide"><span>审批记录</span><textarea v-model="replay.approvalNote" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
             <p class="form-help">仅可将 RETRYABLE_FAILURE 或 DEAD_LETTER 迁回 PROCESSING，沿用原事件 ID。若事件仍在保留期内且存有加密规范化载荷，服务端会立即用该载荷执行，不复制新的 grant/媒体事实。无载荷或已过保留期时只解锁，等待 provider 再次投递。已处理或已拒绝事件不可重放。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并解锁重放</button>
@@ -409,8 +415,8 @@ onMounted(load);
             <div class="form-grid">
               <label class="field"><span>注销申请 ID *</span><input v-model="reissue.deletionRequestId" required autocomplete="off" placeholder="deletion-request-…" /></label>
               <label class="field"><span>已核验用户 ID *</span><input v-model="reissue.userId" required autocomplete="off" placeholder="必须与申请所属用户一致" /></label>
-              <label class="field field--wide"><span>原因 *</span><textarea v-model="reissue.reason" rows="3" minlength="6" maxlength="300" required placeholder="说明令牌遗失/过期、工单与核验方式" /></label>
-              <label class="field field--wide"><span>审批/核验记录 *</span><textarea v-model="reissue.approvalNote" rows="2" minlength="6" maxlength="300" required placeholder="审批人、工单号与身份核验结论" /></label>
+              <label class="field field--wide"><span>原因 *</span><textarea v-model="reissue.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明令牌遗失/过期、工单与核验方式" /></label>
+              <label class="field field--wide"><span>审批/核验记录 *</span><textarea v-model="reissue.approvalNote" rows="2" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="审批人、工单号与身份核验结论" /></label>
             </div>
             <p class="form-help">旧 JWT 不会恢复。新令牌只在成功响应中出现一次，旧令牌立即失效。必须先核验用户身份，填写的用户 ID 必须与申请一致。Mock 模式只写演示审计。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并补发令牌</button>

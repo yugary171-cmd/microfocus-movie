@@ -163,6 +163,7 @@ onMounted(load);
       tone="danger"
       require-reason
       reason-label="退回原因"
+      :reason-max-length="2000"
       :busy="busy"
       @close="closeDialog"
       @confirm="confirmDecision"

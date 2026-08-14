@@ -12,7 +12,7 @@ import {
   ENTITLEMENT_SECONDS_MAX,
   EPISODE_DURATION_SECONDS_MAX
 } from "@microfocus/contracts";
-import { AdjustEntitlementDto, CompensateDto, CreateDramaDto, RightsDto } from "./admin.module.js";
+import { AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, OfflineDto, RightsDto } from "./admin.module.js";
 
 function validDrama(overrides: Record<string, unknown> = {}) {
   return {
@@ -145,5 +145,28 @@ describe("admin entitlement write input limits", () => {
     });
     const errors = await validate(dto);
     expect(errors.some((error) => error.property === "seconds")).toBe(true);
+  });
+
+  it("bounds remaining admin reason and circuit target fields", async () => {
+    const longOffline = await validate(
+      plainToInstance(OfflineDto, { reason: "x".repeat(ADMIN_REASON_MAX_LENGTH + 1) })
+    );
+    expect(longOffline.some((error) => error.property === "reason")).toBe(true);
+    expect(await validate(plainToInstance(OfflineDto, { reason: "事故下架说明" }))).toEqual([]);
+
+    const circuit = await validate(
+      plainToInstance(CircuitCollectionDto, {
+        enabled: true,
+        reason: "x".repeat(ADMIN_REASON_MAX_LENGTH + 1),
+        targetId: "t".repeat(ENTITY_ID_MAX_LENGTH + 1)
+      })
+    );
+    expect(circuit.some((error) => error.property === "reason")).toBe(true);
+    expect(circuit.some((error) => error.property === "targetId")).toBe(true);
+    expect(
+      await validate(
+        plainToInstance(CircuitCollectionDto, { enabled: true, reason: "全站故障熔断" })
+      )
+    ).toEqual([]);
   });
 });
