@@ -220,6 +220,20 @@ export const mockApi: ClientApi = {
       isFree
     });
   },
+  getActivePlaybackLease: () =>
+    delay({
+      lease: null,
+      reservations: [],
+      unconfirmedCount: 0,
+      recoverAction: "none" as const
+    }),
+  recoverPlaybackLease: () =>
+    delay({
+      lease: null,
+      reservations: [],
+      unconfirmedCount: 0,
+      recoverAction: "none" as const
+    }),
   heartbeat: (_leaseId, request) =>
     delay({
       acknowledgedSeq: request.seq,

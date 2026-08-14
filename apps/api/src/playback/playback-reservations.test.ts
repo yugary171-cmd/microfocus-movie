@@ -1,0 +1,78 @@
+import { describe, expect, it, vi } from "vitest";
+import { ERROR_CODES, PLAYBACK_RECOVERY_GRACE_LIMIT } from "@microfocus/contracts";
+import {
+  assertCanOpenPaidLease,
+  recoverActionFor,
+  recoverReservations
+} from "./playback-reservations.js";
+
+describe("playback reservations", () => {
+  it("blocks a locked lease once unconfirmed exposure reaches the limit", async () => {
+    const db = {
+      playbackReservation: { count: vi.fn().mockResolvedValue(3) }
+    };
+
+    await expect(
+      assertCanOpenPaidLease(db as never, {
+        userId: "user",
+        deviceId: "device",
+        dramaId: "drama",
+        allocatableSeconds: 600
+      })
+    ).rejects.toMatchObject({ code: ERROR_CODES.UNCONFIRMED_EXPOSURE_LIMIT });
+  });
+
+  it("routes recovery to customer service after the rolling grace is exhausted", () => {
+    expect(recoverActionFor(2, PLAYBACK_RECOVERY_GRACE_LIMIT)).toBe("customer_service");
+    expect(recoverActionFor(1, 0)).toBe("recover");
+    expect(recoverActionFor(0, 0)).toBe("none");
+  });
+
+  it("releases unconfirmed windows and records a recovery event within grace", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const create = vi.fn().mockResolvedValue({ id: "event" });
+    const db = {
+      playbackReservation: {
+        count: vi.fn().mockResolvedValue(1),
+        updateMany
+      },
+      playbackRecoveryEvent: {
+        count: vi.fn().mockResolvedValue(0),
+        create
+      }
+    };
+
+    await expect(
+      recoverReservations(db as never, {
+        userId: "user",
+        deviceId: "device",
+        leaseId: "lease",
+        reason: "client_resume",
+        now: new Date()
+      })
+    ).resolves.toBe("recover");
+    expect(create).toHaveBeenCalled();
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "RELEASED" })
+      })
+    );
+  });
+
+  it("refuses automatic recovery after the grace limit", async () => {
+    const db = {
+      playbackReservation: { count: vi.fn().mockResolvedValue(1), updateMany: vi.fn() },
+      playbackRecoveryEvent: { count: vi.fn().mockResolvedValue(PLAYBACK_RECOVERY_GRACE_LIMIT), create: vi.fn() }
+    };
+
+    await expect(
+      recoverReservations(db as never, {
+        userId: "user",
+        deviceId: "device",
+        leaseId: "lease",
+        reason: "client_resume",
+        now: new Date()
+      })
+    ).rejects.toMatchObject({ code: ERROR_CODES.CUSTOMER_SERVICE_REQUIRED });
+  });
+});

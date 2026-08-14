@@ -5,10 +5,15 @@ export const HEARTBEAT_INTERVAL_SECONDS = 5;
 export const OFFLINE_GRACE_SECONDS = 15;
 export const PLAYBACK_TOKEN_TTL_SECONDS = 120;
 export const ANONYMOUS_VIEWER_TTL_SECONDS = 30 * 60;
+export const PLAYBACK_WINDOW_SECONDS = HEARTBEAT_INTERVAL_SECONDS;
+export const UNCONFIRMED_EXPOSURE_LIMIT = 3;
+export const PLAYBACK_RECOVERY_GRACE_LIMIT = 3;
 
 export const ERROR_CODES = {
   ANONYMOUS_SESSION_EXPIRED: "ANONYMOUS_SESSION_EXPIRED",
-  USER_TOKEN_REQUIRED: "USER_TOKEN_REQUIRED"
+  USER_TOKEN_REQUIRED: "USER_TOKEN_REQUIRED",
+  UNCONFIRMED_EXPOSURE_LIMIT: "UNCONFIRMED_EXPOSURE_LIMIT",
+  CUSTOMER_SERVICE_REQUIRED: "CUSTOMER_SERVICE_REQUIRED"
 } as const;
 
 export const API_ROUTES = {
@@ -26,10 +31,13 @@ export const API_ROUTES = {
   rewardComplete: (challengeId: string) =>
     `/v1/rewards/challenges/${challengeId}/complete`,
   playbackLeases: "/v1/playback/leases",
+  playbackActive: "/v1/playback/leases/active",
   playbackHeartbeat: (leaseId: string) =>
     `/v1/playback/leases/${leaseId}/heartbeats`,
   playbackRenew: (leaseId: string) =>
     `/v1/playback/leases/${leaseId}/renew`,
+  playbackRecover: (leaseId: string) =>
+    `/v1/playback/leases/${leaseId}/recover`,
   playbackLease: (leaseId: string) => `/v1/playback/leases/${leaseId}`,
   admin: {
     login: "/v1/admin/auth/login",
@@ -102,6 +110,13 @@ export enum PlaybackLeaseStatus {
   REVOKED = "REVOKED",
   CLOSED = "CLOSED",
   EXPIRED = "EXPIRED"
+}
+
+export enum PlaybackReservationStatus {
+  RESERVED = "RESERVED",
+  CONFIRMED = "CONFIRMED",
+  RELEASED = "RELEASED",
+  UNCONFIRMED = "UNCONFIRMED"
 }
 
 export interface DramaCard {
@@ -217,6 +232,28 @@ export interface PlaybackLeaseView {
   heartbeatIntervalSeconds: number;
   remainingSeconds: number | null;
   isFree: boolean;
+  currentWindow?: PlaybackReservationView | null;
+}
+
+export interface PlaybackReservationView {
+  id: string;
+  leaseId: string;
+  windowIndex: number;
+  reservedSeconds: number;
+  status: PlaybackReservationStatus;
+  expiresAt: string;
+}
+
+export interface ActivePlaybackLeaseResponse {
+  lease: PlaybackLeaseView | null;
+  reservations: PlaybackReservationView[];
+  unconfirmedCount: number;
+  recoverAction: "none" | "recover" | "customer_service";
+}
+
+export interface RecoverPlaybackLeaseRequest {
+  deviceId: string;
+  reason: string;
 }
 
 export interface PlaybackHeartbeatRequest {
@@ -225,6 +262,7 @@ export interface PlaybackHeartbeatRequest {
   previousMediaPositionSeconds: number;
   playbackRate: number;
   state: "playing" | "paused" | "buffering" | "background";
+  windowId?: string;
 }
 
 export interface PlaybackHeartbeatResponse {

@@ -7,6 +7,7 @@ import {
 } from "../../constants/runtime";
 import { getApi, isMockMode } from "../../services/api";
 import { PlaybackHeartbeatController } from "../../services/playback-controller";
+import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { formatRemainingTime } from "../../utils/format";
@@ -85,10 +86,7 @@ Page({
     if (this.data.lease || this.data.loading && this.data.started) return;
     this.setData({ loading: true, error: "", notice: "" });
     try {
-      const lease = await getApi().createPlaybackLease({
-        episodeId: this.data.episodeId,
-        deviceId: getDeviceId()
-      });
+      const lease = await restoreOrCreatePlaybackLease(this.data.episodeId, getDeviceId());
       if (!this.pageVisible) {
         void getApi().closePlaybackLease(lease.id).catch(() => undefined);
         return;
@@ -164,7 +162,10 @@ Page({
     const controller = this.controller;
     if (!lease || !controller) return;
     const result = await controller.tick((heartbeat) =>
-      getApi().heartbeat(lease.id, heartbeat)
+      getApi().heartbeat(lease.id, {
+        ...heartbeat,
+        ...(lease.currentWindow?.id ? { windowId: lease.currentWindow.id } : {})
+      })
     );
     if (
       result.status === "idle" ||

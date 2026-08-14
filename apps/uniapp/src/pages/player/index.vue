@@ -12,6 +12,7 @@ import {
   onNetworkStatusChange
 } from "../../platform/media";
 import { getApi, isMockMode } from "../../services/api";
+import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
 import { PlaybackHeartbeatController } from "../../services/playback-controller";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
@@ -94,7 +95,10 @@ async function sendHeartbeat() {
   const currentController = controller;
   if (!currentLease || !currentController) return;
   const result = await currentController.tick((heartbeat) =>
-    getApi().heartbeat(currentLease.id, heartbeat)
+    getApi().heartbeat(currentLease.id, {
+      ...heartbeat,
+      ...(currentLease.currentWindow?.id ? { windowId: currentLease.currentWindow.id } : {})
+    })
   );
   if (
     result.status === "idle" ||
@@ -206,10 +210,7 @@ async function openLease() {
   error.value = "";
   notice.value = "";
   try {
-    const created = await getApi().createPlaybackLease({
-      episodeId: episodeId.value,
-      deviceId: getDeviceId()
-    });
+    const created = await restoreOrCreatePlaybackLease(episodeId.value, getDeviceId());
     if (!pageVisible) {
       void getApi().closePlaybackLease(created.id).catch(() => undefined);
       return;

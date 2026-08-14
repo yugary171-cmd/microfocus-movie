@@ -157,6 +157,20 @@ export const mockApi: ClientApi = {
       remainingSeconds: episodeId.endsWith("e1") || episodeId.endsWith("e2") ? null : 0,
       isFree: episodeId.endsWith("e1") || episodeId.endsWith("e2")
     }),
+  getActivePlaybackLease: () =>
+    delay({
+      lease: null,
+      reservations: [],
+      unconfirmedCount: 0,
+      recoverAction: "none" as const
+    }),
+  recoverPlaybackLease: () =>
+    delay({
+      lease: null,
+      reservations: [],
+      unconfirmedCount: 0,
+      recoverAction: "none" as const
+    }),
   heartbeat: (_leaseId, request) =>
     delay({
       acknowledgedSeq: request.seq,

@@ -46,6 +46,9 @@ describe("playback renewal", () => {
       },
       entitlementGrant: {
         aggregate: vi.fn().mockResolvedValue({ _sum: { remainingSeconds: null } })
+      },
+      playbackReservation: {
+        findMany: vi.fn().mockResolvedValue([])
       }
     };
     const controller = new PlaybackController(prisma as never, {} as never);
@@ -86,5 +89,40 @@ describe("playback renewal", () => {
         { episodeId: "episode-3", deviceId: "device-1" }
       )
     ).rejects.toMatchObject({ code: "USER_TOKEN_REQUIRED" });
+  });
+
+  it("refuses a new locked lease when unconfirmed exposure is at the limit", async () => {
+    const prisma = {
+      episode: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "episode-3",
+          episodeNumber: 3,
+          dramaId: "drama",
+          drama: {
+            status: "PUBLISHED",
+            rightsRecords: [
+              { validFrom: new Date(Date.now() - 1000), validUntil: new Date(Date.now() + 60_000) }
+            ]
+          },
+          mediaAssets: [readyAsset()]
+        })
+      },
+      circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) },
+      entitlementGrant: {
+        aggregate: vi.fn().mockResolvedValue({ _sum: { remainingSeconds: 600 } })
+      },
+      playbackReservation: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(3)
+      }
+    };
+    const controller = new PlaybackController(prisma as never, {} as never);
+
+    await expect(
+      controller.create(
+        { kind: "user", sub: "user" },
+        { episodeId: "episode-3", deviceId: "device-1" }
+      )
+    ).rejects.toMatchObject({ code: "UNCONFIRMED_EXPOSURE_LIMIT" });
   });
 });

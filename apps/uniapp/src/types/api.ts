@@ -7,9 +7,11 @@ import type {
   CreateRewardChallengeRequest,
   DramaCard,
   EntitlementSummary,
+  ActivePlaybackLeaseResponse,
   PlaybackHeartbeatRequest,
   PlaybackHeartbeatResponse,
   PlaybackLeaseView,
+  RecoverPlaybackLeaseRequest,
   RewardChallengeView,
   UpdateWatchProgressRequest,
   WechatLoginResponse,
@@ -39,6 +41,11 @@ export interface ClientApi {
     input: CompleteRewardChallengeRequest
   ): Promise<void>;
   createPlaybackLease(input: CreatePlaybackLeaseRequest): Promise<PlaybackLeaseView>;
+  getActivePlaybackLease(): Promise<ActivePlaybackLeaseResponse>;
+  recoverPlaybackLease(
+    leaseId: string,
+    input: RecoverPlaybackLeaseRequest
+  ): Promise<ActivePlaybackLeaseResponse>;
   heartbeat(
     leaseId: string,
     input: PlaybackHeartbeatRequest

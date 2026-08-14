@@ -75,6 +75,13 @@ enum PlaybackLeaseStatus {
   EXPIRED
 }
 
+enum PlaybackReservationStatus {
+  RESERVED
+  CONFIRMED
+  RELEASED
+  UNCONFIRMED
+}
+
 enum CircuitState {
   CLOSED
   OPEN
@@ -281,9 +288,37 @@ model PlaybackLease {
   closedAt         DateTime?
   heartbeats       PlaybackHeartbeat[]
   debits           EntitlementDebit[]
+  reservations     PlaybackReservation[]
 
   @@index([userId, status])
   @@index([viewerSessionId, status])
+}
+
+model PlaybackReservation {
+  id                    String                     @id @default(cuid())
+  leaseId               String
+  lease                 PlaybackLease              @relation(fields: [leaseId], references: [id])
+  windowIndex           Int
+  reservedSeconds       Int
+  status                PlaybackReservationStatus  @default(RESERVED)
+  expiresAt             DateTime
+  confirmedHeartbeatId  String?                    @unique
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  @@unique([leaseId, windowIndex])
+  @@index([leaseId, status])
+}
+
+model PlaybackRecoveryEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  deviceId  String   @db.VarChar(128)
+  leaseId   String
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([userId, deviceId, createdAt])
 }
 
 model PlaybackHeartbeat {

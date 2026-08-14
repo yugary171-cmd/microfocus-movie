@@ -13,8 +13,11 @@ export const API_ROUTES = {
   completeReward: (challengeId: string) =>
     `/v1/rewards/challenges/${encodeURIComponent(challengeId)}/complete`,
   playbackLeases: "/v1/playback/leases",
+  playbackActive: "/v1/playback/leases/active",
   heartbeat: (leaseId: string) =>
     `/v1/playback/leases/${encodeURIComponent(leaseId)}/heartbeats`,
   renewLease: (leaseId: string) => `/v1/playback/leases/${encodeURIComponent(leaseId)}/renew`,
+  recoverLease: (leaseId: string) =>
+    `/v1/playback/leases/${encodeURIComponent(leaseId)}/recover`,
   closeLease: (leaseId: string) => `/v1/playback/leases/${encodeURIComponent(leaseId)}`
 } as const;

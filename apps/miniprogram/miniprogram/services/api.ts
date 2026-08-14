@@ -230,6 +230,9 @@ const realApi: ClientApi = {
       { "Idempotency-Key": `reward-${challengeId}` }
     ),
   createPlaybackLease: (input) => request(API_ROUTES.playbackLeases, "POST", input),
+  getActivePlaybackLease: () => request(API_ROUTES.playbackActive),
+  recoverPlaybackLease: (leaseId, input) =>
+    request(API_ROUTES.recoverLease(leaseId), "POST", input),
   heartbeat: (leaseId, input) => request(API_ROUTES.heartbeat(leaseId), "POST", input),
   renewPlaybackLease: (leaseId) => request(API_ROUTES.renewLease(leaseId), "POST"),
   closePlaybackLease: (leaseId) => request(API_ROUTES.closeLease(leaseId), "DELETE")

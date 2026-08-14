@@ -2,24 +2,29 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Module,
   Param,
   Post,
   UseGuards
 } from "@nestjs/common";
 import {
+  API_ROUTES,
   ERROR_CODES,
   FREE_EPISODE_COUNT,
   HEARTBEAT_INTERVAL_SECONDS,
   OFFLINE_GRACE_SECONDS,
   PLAYBACK_TOKEN_TTL_SECONDS,
+  PLAYBACK_WINDOW_SECONDS,
   PlaybackLeaseStatus,
+  type ActivePlaybackLeaseResponse,
   type CreatePlaybackLeaseRequest,
   type PlaybackHeartbeatRequest,
   type PlaybackHeartbeatResponse,
-  type PlaybackLeaseView
+  type PlaybackLeaseView,
+  type RecoverPlaybackLeaseRequest
 } from "@microfocus/contracts";
-import { IsIn, IsInt, IsNumber, IsString, Max, Min } from "class-validator";
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import { Errors } from "../common/app-error.js";
 import {
   allocateFefo,
@@ -29,6 +34,7 @@ import {
   nextMediaAnchor
 } from "../domain/policies.js";
 import { assertCircuitsClosed } from "../domain/circuit.js";
+import { requireUser } from "../history/history.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { VodProviderService } from "../providers/providers.js";
 import {
@@ -36,6 +42,18 @@ import {
   JwtAuthGuard,
   type Principal
 } from "../security/security.js";
+import {
+  assertCanOpenPaidLease,
+  confirmReservationWindow,
+  createReservationWindow,
+  markReservationsUnconfirmed,
+  nextWindowIndex,
+  recoverActionFor,
+  recoverReservations,
+  releaseOpenReservations,
+  reservedSecondsForUser,
+  toReservationView
+} from "./playback-reservations.js";
 
 class CreateLeaseDto implements CreatePlaybackLeaseRequest {
   @IsString()
@@ -65,6 +83,20 @@ class HeartbeatDto implements PlaybackHeartbeatRequest {
 
   @IsIn(["playing", "paused", "buffering", "background"])
   state!: "playing" | "paused" | "buffering" | "background";
+
+  @IsOptional()
+  @IsString()
+  windowId?: string;
+}
+
+class RecoverLeaseDto implements RecoverPlaybackLeaseRequest {
+  @IsString()
+  @MaxLength(128)
+  deviceId!: string;
+
+  @IsString()
+  @MaxLength(191)
+  reason!: string;
 }
 
 @Controller("v1/playback/leases")
@@ -116,7 +148,19 @@ export class PlaybackController {
     const remaining =
       isFree || actor.kind !== "user"
         ? null
-        : await activeBalance(this.prisma, actor.userId, episode.dramaId, now);
+        : Math.max(
+            0,
+            (await activeBalance(this.prisma, actor.userId, episode.dramaId, now)) -
+              (await reservedSecondsForUser(this.prisma, actor.userId, episode.dramaId))
+          );
+    if (!isFree && actor.kind === "user") {
+      await assertCanOpenPaidLease(this.prisma, {
+        userId: actor.userId,
+        deviceId: body.deviceId.slice(0, 128),
+        dramaId: episode.dramaId,
+        allocatableSeconds: remaining ?? 0
+      });
+    }
     if (!isFree && remaining === 0) {
       throw Errors.forbidden("ENTITLEMENT_REQUIRED", "No playback entitlement remains");
     }
@@ -126,11 +170,18 @@ export class PlaybackController {
       } else {
         await tx.$queryRaw`SELECT id FROM AnonymousViewerSession WHERE id = ${actor.viewerSessionId} FOR UPDATE`;
       }
+      await tx.playbackReservation.updateMany({
+        where: {
+          status: "RESERVED",
+          lease: { ...leaseOwnerWhere(actor), status: "ACTIVE" }
+        },
+        data: { status: "RELEASED" }
+      });
       await tx.playbackLease.updateMany({
         where: { ...leaseOwnerWhere(actor), status: "ACTIVE" },
         data: { status: "REVOKED", activeKey: null, revokedAt: now }
       });
-      return tx.playbackLease.create({
+      const created = await tx.playbackLease.create({
         data: {
           ...(actor.kind === "user"
             ? { userId: actor.userId }
@@ -142,8 +193,91 @@ export class PlaybackController {
           tokenExpiresAt: new Date(now.getTime() + PLAYBACK_TOKEN_TTL_SECONDS * 1000)
         }
       });
+      if (!isFree && actor.kind === "user") {
+        await createReservationWindow(tx, created.id, 0, now);
+      }
+      return created;
     });
-    return this.view(lease.id, episode.id, asset.fileId, isFree, remaining);
+    const allocatable =
+      remaining === null || isFree
+        ? remaining
+        : Math.max(0, remaining - PLAYBACK_WINDOW_SECONDS);
+    return this.view(lease.id, episode.id, asset.fileId, isFree, allocatable);
+  }
+
+  @Get("active")
+  async active(@CurrentPrincipal() principal: Principal): Promise<ActivePlaybackLeaseResponse> {
+    const userId = requireUser(principal);
+    const now = new Date();
+    const activeLease = await this.prisma.playbackLease.findFirst({
+      where: { userId, status: "ACTIVE" },
+      include: {
+        episode: { include: { mediaAssets: { where: { isCurrent: true }, take: 1 } } },
+        reservations: { orderBy: { windowIndex: "asc" } }
+      },
+      orderBy: { updatedAt: "desc" }
+    });
+    const recoverable = activeLease
+      ? null
+      : await this.prisma.playbackLease.findFirst({
+          where: {
+            userId,
+            reservations: { some: { status: "UNCONFIRMED" } }
+          },
+          include: {
+            episode: { include: { mediaAssets: { where: { isCurrent: true }, take: 1 } } },
+            reservations: { orderBy: { windowIndex: "asc" } }
+          },
+          orderBy: { updatedAt: "desc" }
+        });
+    const lease = activeLease ?? recoverable;
+    if (!lease) {
+      return { lease: null, reservations: [], unconfirmedCount: 0, recoverAction: "none" };
+    }
+    const unconfirmedCount = lease.reservations.filter((row) => row.status === "UNCONFIRMED").length;
+    const graceUsed = await this.prisma.playbackRecoveryEvent.count({
+      where: {
+        userId,
+        deviceId: lease.deviceId,
+        createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+      }
+    });
+    const asset = lease.episode.mediaAssets[0];
+    const isFree = lease.episode.episodeNumber <= FREE_EPISODE_COUNT;
+    const remaining = isFree
+      ? null
+      : Math.max(
+          0,
+          (await activeBalance(this.prisma, userId, lease.episode.dramaId, now)) -
+            (await reservedSecondsForUser(this.prisma, userId, lease.episode.dramaId))
+        );
+    const view = asset && isPlayableAsset(asset)
+      ? await this.view(
+          lease.id,
+          lease.episodeId,
+          asset.fileId,
+          isFree,
+          remaining,
+          lease.status as PlaybackLeaseView["status"]
+        )
+      : {
+          id: lease.id,
+          episodeId: lease.episodeId,
+          status: lease.status as PlaybackLeaseView["status"],
+          playbackUrl: "",
+          playbackTokenExpiresAt: lease.tokenExpiresAt.toISOString(),
+          heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
+          remainingSeconds: remaining,
+          isFree,
+          currentWindow: null
+        };
+    const current = lease.reservations.find((row) => row.status === "RESERVED") ?? null;
+    return {
+      lease: { ...view, currentWindow: current ? toReservationView(current) : null },
+      reservations: lease.reservations.map(toReservationView),
+      unconfirmedCount,
+      recoverAction: recoverActionFor(unconfirmedCount, graceUsed)
+    };
   }
 
   @Post(":leaseId/heartbeats")
@@ -183,6 +317,7 @@ export class PlaybackController {
           where: { id: lease.id },
           data: { status: "EXPIRED", activeKey: null, closedAt: now }
         });
+        await markReservationsUnconfirmed(tx, leaseId);
         const response = {
           acknowledgedSeq: body.seq,
           debitedSeconds: 0,
@@ -301,6 +436,28 @@ export class PlaybackController {
             }
           });
         }
+        if (body.state === "playing" && debitedSeconds > 0) {
+          await confirmReservationWindow(tx, {
+            leaseId,
+            ...(body.windowId ? { windowId: body.windowId } : {}),
+            heartbeatId: heartbeat.id
+          });
+          if (requested === debitedSeconds) {
+            const reserved = await reservedSecondsForUser(tx, actor.userId, lease.episode.dramaId);
+            const balance = await activeBalance(tx, actor.userId, lease.episode.dramaId, now);
+            if (balance - reserved >= PLAYBACK_WINDOW_SECONDS) {
+              await createReservationWindow(tx, leaseId, await nextWindowIndex(tx, leaseId), now);
+            }
+          }
+        } else if (body.state !== "playing") {
+          await releaseOpenReservations(tx, leaseId);
+        }
+        const reserved = await reservedSecondsForUser(tx, actor.userId, lease.episode.dramaId);
+        remainingSeconds = Math.max(0, (remainingSeconds ?? 0) - reserved);
+        await tx.playbackHeartbeat.update({
+          where: { id: heartbeat.id },
+          data: { remainingSeconds }
+        });
         if (requested > debitedSeconds) {
           mayContinue = false;
           reason = "ENTITLEMENT_EXHAUSTED";
@@ -394,9 +551,12 @@ export class PlaybackController {
         graceSeconds: OFFLINE_GRACE_SECONDS
       })
     ) {
-      await this.prisma.playbackLease.updateMany({
-        where: { id: lease.id, status: "ACTIVE" },
-        data: { status: "EXPIRED", activeKey: null, closedAt: now }
+      await this.prisma.$transaction(async (tx) => {
+        await tx.playbackLease.updateMany({
+          where: { id: lease.id, status: "ACTIVE" },
+          data: { status: "EXPIRED", activeKey: null, closedAt: now }
+        });
+        await markReservationsUnconfirmed(tx, lease.id);
       });
       throw Errors.conflict(
         "LEASE_STALE",
@@ -408,12 +568,19 @@ export class PlaybackController {
       throw Errors.conflict("MEDIA_NOT_READY", "Episode media is not approved and ready");
     }
     const isFree = lease.episode.episodeNumber <= FREE_EPISODE_COUNT;
+    const grantBalance =
+      isFree || actor.kind !== "user"
+        ? 0
+        : await activeBalance(this.prisma, actor.userId, lease.episode.dramaId, now);
     const remaining = isFree
       ? null
       : actor.kind === "user"
-        ? await activeBalance(this.prisma, actor.userId, lease.episode.dramaId, now)
+        ? Math.max(
+            0,
+            grantBalance - (await reservedSecondsForUser(this.prisma, actor.userId, lease.episode.dramaId))
+          )
         : 0;
-    if (!isFree && remaining === 0) {
+    if (!isFree && grantBalance === 0) {
       await this.prisma.playbackLease.updateMany({
         where: { id: lease.id, status: "ACTIVE" },
         data: { status: "CLOSED", activeKey: null, closedAt: now }
@@ -431,12 +598,39 @@ export class PlaybackController {
     return renewed;
   }
 
+  @Post(":leaseId/recover")
+  async recover(
+    @CurrentPrincipal() principal: Principal,
+    @Param("leaseId") leaseId: string,
+    @Body() body: RecoverLeaseDto
+  ): Promise<ActivePlaybackLeaseResponse> {
+    const userId = requireUser(principal);
+    const lease = await this.prisma.playbackLease.findFirst({
+      where: { id: leaseId, userId }
+    });
+    if (!lease) throw Errors.notFound("Playback lease");
+    await this.prisma.$transaction(async (tx) => {
+      await recoverReservations(tx, {
+        userId,
+        deviceId: body.deviceId,
+        leaseId,
+        reason: body.reason,
+        now: new Date()
+      });
+    });
+    return this.active(principal);
+  }
+
   @Delete(":leaseId")
   async close(@CurrentPrincipal() principal: Principal, @Param("leaseId") leaseId: string) {
     const actor = playbackActor(principal);
-    const updated = await this.prisma.playbackLease.updateMany({
-      where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },
-      data: { status: "CLOSED", activeKey: null, closedAt: new Date() }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.playbackLease.updateMany({
+        where: { id: leaseId, ...leaseOwnerWhere(actor), status: "ACTIVE" },
+        data: { status: "CLOSED", activeKey: null, closedAt: new Date() }
+      });
+      if (result.count) await releaseOpenReservations(tx, leaseId);
+      return result;
     });
     if (!updated.count) throw Errors.notFound("Active playback lease");
     return { closed: true };
@@ -447,24 +641,30 @@ export class PlaybackController {
     episodeId: string,
     fileId: string,
     isFree: boolean,
-    remainingSeconds: number | null
+    remainingSeconds: number | null,
+    status: PlaybackLeaseView["status"] = PlaybackLeaseStatus.ACTIVE
   ): Promise<PlaybackLeaseView> {
     const expiresAt = new Date(Date.now() + PLAYBACK_TOKEN_TTL_SECONDS * 1000);
+    const current = await this.prisma.playbackReservation.findFirst({
+      where: { leaseId, status: "RESERVED" },
+      orderBy: { windowIndex: "desc" }
+    });
     return {
       id: leaseId,
       episodeId,
-      status: PlaybackLeaseStatus.ACTIVE,
-      playbackUrl: await this.vod.createPlaybackUrl(fileId, PLAYBACK_TOKEN_TTL_SECONDS),
+      status,
+      playbackUrl: fileId ? await this.vod.createPlaybackUrl(fileId, PLAYBACK_TOKEN_TTL_SECONDS) : "",
       playbackTokenExpiresAt: expiresAt.toISOString(),
       heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
       remainingSeconds,
-      isFree
+      isFree,
+      currentWindow: current ? toReservationView(current) : null
     };
   }
 }
 
 async function activeBalance(
-  prisma: PrismaService,
+  prisma: { entitlementGrant: PrismaService["entitlementGrant"] },
   userId: string,
   dramaId: string,
   now: Date
