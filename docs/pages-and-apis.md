@@ -109,7 +109,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | 登录 | `/login` | 未登录 | 邮箱、密码、OTP 换管理员 JWT |
 | 工作台 | `/` | EDITOR / REVIEWER / ADMIN | 内容状态和发布闸门摘要 |
-| 剧目列表 | `/dramas` | EDITOR / REVIEWER / ADMIN | 按权限查看和筛选剧目 |
+| 剧目列表 | `/dramas` | EDITOR / REVIEWER / ADMIN | 按权限查看和筛选剧目；列表由服务端分页
 | 新建/编辑剧 | `/dramas/new`、`/dramas/:id` | EDITOR | 编辑本人负责的剧目、权利和媒体版本并提交审核 |
 | 审核队列 | `/reviews` | REVIEWER | 通过或驳回；不得审核本人创建或编辑的版本 |
 | 运营控制 | `/operations` | ADMIN | 熔断、人工补偿、账本纠错、回调积压列表/重放、注销查询令牌补发 |
@@ -145,7 +145,9 @@ flowchart LR
 - 完成奖励和人工补偿必须携带 `Idempotency-Key`；同一业务请求的重试返回同一 grant，不得重复发放。
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
-- 为防止恶意遍历拉爆数据库，最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
+- 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
+- 管理端剧目列表与审核队列 `page` 默认 1，`pageSize` 固定 50 且客户端不可修改，最多 100 页；关键词 `q` 最长 100，超过页上限返回空结果，不执行大 OFFSET。权益摘要不按页截断 grant。
+- 管理端回调事件列表 `take` 默认 50、上限 100；`skip` 超过 `(100-1)*take` 时返回空结果。
 - 搜索默认按 `recommendationRank DESC, publishedAt DESC`；`latest` 必须按 `publishedAt DESC`；同值时以稳定 ID 作次级排序。
 - 空结果返回空数组及有效分页元数据，不使用 404。
 
@@ -206,20 +208,20 @@ flowchart LR
 | `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱最长 254；密码 8–128；OTP 6–8 | 换管理员 JWT |
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
-| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围 | 列表和详情 |
+| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情 |
 | `POST /v1/admin/dramas` | EDITOR | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限 | 创建草稿 |
 | `PATCH /v1/admin/dramas/:id` | EDITOR | 仅本人负责且可编辑状态；字段上限与创建一致 | 修改元数据 |
 | `POST .../:id/rights` | EDITOR | 仅本人负责；新版本使内容回到待审链路；权利人/证号/材料键限长 | 写入不可覆盖的权利版本 |
 | `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR | 仅本人负责；禁止修改已发布内容 | 登记媒体版本和获取短期上传签名 |
 | `POST .../:id/submit-review` | EDITOR | 仅本人负责，材料完整 | 提交审核 |
-| `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容 | 审核队列 |
+| `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页 | 审核队列 |
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；列表含写入时的 `requestId`，可按该字段检索 | 审计查询，可与 HTTP 访问日志关联 |
 | `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；`updatedBy` 为管理员 ID 或 `system:*` 作业标识 | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key` | 用户/剧目 ID 限长；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key` | grant/事实 ID 限长；秒数 1–86400；原因 6–300 字 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |
-| `GET /v1/admin/callback-events` | ADMIN | 默认积压状态；不含加密载荷 | 列出回调事件元数据（状态、尝试次数、是否仍有可执行载荷） |
+| `GET /v1/admin/callback-events` | ADMIN | 默认积压状态；不含加密载荷；`take` 默认 50、上限 100；过大 `skip` 返回空结果 | 列出回调事件元数据（状态、尝试次数、是否仍有可执行载荷） |
 | `POST /v1/admin/callback-events/:eventId/replay` | ADMIN + `Idempotency-Key` | 死信事件 ID、原因和审批记录 | 将 RETRYABLE_FAILURE/DEAD_LETTER 事件受审计地迁回 PROCESSING，沿用原 provider 事件幂等键；保留期内若有加密规范化载荷则立即执行；超过 30 天密文会被清除，重放只解锁 |
 | `GET /v1/admin/deletion-requests` | ADMIN | `userId` | 返回该用户最近一条注销申请状态，不含查询令牌明文 |
 | `GET /v1/admin/deletion-requests/:deletionRequestId` | ADMIN | 路径 ID | 返回申请状态，不含查询令牌明文 |

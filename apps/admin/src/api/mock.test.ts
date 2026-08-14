@@ -1,4 +1,4 @@
-import { DramaStatus, MediaStatus } from "@microfocus/contracts";
+import { ADMIN_LIST_MAX_PAGE, DramaStatus, MediaStatus } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
 import { mockApi } from "./mock";
 import type { DramaInput } from "@/types/admin";
@@ -56,6 +56,17 @@ describe("mock admin publish path", () => {
       contentApproved: true,
       copyrightVerified: true,
       wechatApproved: true,
+    });
+  });
+
+  it("returns an empty page past the admin list cap without slicing a large offset", async () => {
+    await expect(mockApi.listDramas("", "", ADMIN_LIST_MAX_PAGE + 1)).resolves.toEqual({
+      items: [],
+      total: 0,
+    });
+    await expect(mockApi.listReviews(ADMIN_LIST_MAX_PAGE + 1)).resolves.toEqual({
+      items: [],
+      total: 0,
     });
   });
 });

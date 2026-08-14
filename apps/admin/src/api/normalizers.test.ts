@@ -8,6 +8,7 @@ import {
   normalizeDashboard,
   normalizeDrama,
   normalizeReviewList,
+  pageTotal,
 } from "./normalizers";
 import { publishDecision } from "@/policies/admin";
 import { createGate, createUser } from "@/test/fixtures";
@@ -226,5 +227,11 @@ describe("admin API normalizers", () => {
       result: "UNKNOWN",
       requestId: "",
     });
+  });
+
+  it("reads an explicit list total including zero", () => {
+    expect(pageTotal({ items: [{ id: "drama-1" }], total: 120 }, 1)).toBe(120);
+    expect(pageTotal({ items: [], total: 0 }, 0)).toBe(0);
+    expect(pageTotal([{ id: "drama-1" }], 1)).toBe(1);
   });
 });

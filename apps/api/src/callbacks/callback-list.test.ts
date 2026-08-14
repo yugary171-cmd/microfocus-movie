@@ -83,4 +83,17 @@ describe("admin callback event list", () => {
       })
     );
   });
+
+  it("rejects a skip past the max page without a large offset", async () => {
+    const findMany = vi.fn();
+    const count = vi.fn();
+    await expect(
+      listAdminCallbackEvents(
+        { callbackEvent: { count, findMany } },
+        { take: 50, skip: 1_000_000 }
+      )
+    ).resolves.toEqual({ total: 0, items: [] });
+    expect(findMany).not.toHaveBeenCalled();
+    expect(count).not.toHaveBeenCalled();
+  });
 });

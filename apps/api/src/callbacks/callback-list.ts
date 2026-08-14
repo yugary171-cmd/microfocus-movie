@@ -1,9 +1,12 @@
 import {
+  ADMIN_LIST_MAX_PAGE,
+  ADMIN_LIST_PAGE_SIZE,
   CallbackEventStatus,
   type AdminCallbackEventList,
   type AdminCallbackEventView
 } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
+import { maxListSkip } from "../common/list-pagination.js";
 
 export const CALLBACK_BACKLOG_STATUSES: CallbackEventStatus[] = [
   CallbackEventStatus.RECEIVED,
@@ -77,10 +80,13 @@ export async function listAdminCallbackEvents(
   const statuses = resolveCallbackListStatuses(input.status);
   const provider = input.provider?.trim().toUpperCase();
   const take = Math.min(
-    100,
-    Math.max(1, Number.isFinite(input.take) ? Number(input.take) : 50)
+    ADMIN_LIST_PAGE_SIZE * 2,
+    Math.max(1, Number.isFinite(input.take) ? Number(input.take) : ADMIN_LIST_PAGE_SIZE)
   );
   const skip = Math.max(0, Number.isFinite(input.skip) ? Number(input.skip) : 0);
+  if (skip > maxListSkip(take, ADMIN_LIST_MAX_PAGE)) {
+    return { total: 0, items: [] };
+  }
   const where = {
     status: { in: statuses },
     ...(provider ? { provider } : {})

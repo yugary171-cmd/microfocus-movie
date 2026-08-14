@@ -12,6 +12,8 @@ import {
 } from "@nestjs/common";
 import {
   API_ROUTES,
+  ADMIN_LIST_MAX_PAGE,
+  ADMIN_LIST_PAGE_SIZE,
   ADMIN_REASON_MAX_LENGTH,
   ADMIN_REASON_MIN_LENGTH,
   AdminRole,
@@ -93,6 +95,7 @@ import { listAdminCallbackEvents } from "../callbacks/callback-list.js";
 import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/callback-payload.js";
 import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
 import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
+import { boundedListWindow, emptyBoundedPage, parsePage } from "../common/list-pagination.js";
 
 export class EpisodeInput {
   @IsInt()
@@ -387,24 +390,53 @@ export class AdminController {
   @Get("dramas")
   async dramas(
     @CurrentPrincipal() principal: Principal,
-    @Query("status") status?: string
+    @Query("status") status?: string,
+    @Query("q") query = "",
+    @Query("page") pageValue = "1"
   ) {
     const admin = requireAdmin(principal);
     const allowed = ["DRAFT", "PENDING_REVIEW", "READY", "PUBLISHED", "OFFLINE"];
-    const items = await this.prisma.drama.findMany({
-      where: {
-        ...editorScope(admin),
-        ...(status && allowed.includes(status) ? { status: status as never } : {})
-      },
-      include: {
-        editor: { select: { email: true } },
-        rightsRecords: { orderBy: { version: "desc" }, take: 1 },
-        reviews: { where: { status: "APPROVED" }, orderBy: { createdAt: "desc" } },
-        episodes: { include: { mediaAssets: { where: { isCurrent: true }, take: 1 } } }
-      },
-      orderBy: { updatedAt: "desc" }
+    const pageSize = ADMIN_LIST_PAGE_SIZE;
+    const window = boundedListWindow({
+      page: parsePage(pageValue),
+      pageSize,
+      maxPage: ADMIN_LIST_MAX_PAGE
     });
-    return { items: items.map(toAdminDrama), total: items.length };
+    if (window.exceeded) {
+      return emptyBoundedPage(window.page, pageSize);
+    }
+    const q = query.trim().slice(0, 100);
+    const where = {
+      ...editorScope(admin),
+      ...(status && allowed.includes(status) ? { status: status as never } : {}),
+      ...(q
+        ? {
+            OR: [{ title: { contains: q } }, { editor: { email: { contains: q } } }]
+          }
+        : {})
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.drama.findMany({
+        where,
+        include: {
+          editor: { select: { email: true } },
+          rightsRecords: { orderBy: { version: "desc" }, take: 1 },
+          reviews: { where: { status: "APPROVED" }, orderBy: { createdAt: "desc" } },
+          episodes: { include: { mediaAssets: { where: { isCurrent: true }, take: 1 } } }
+        },
+        orderBy: { updatedAt: "desc" },
+        skip: window.skip,
+        take: window.take
+      }),
+      this.prisma.drama.count({ where })
+    ]);
+    return {
+      items: items.map(toAdminDrama),
+      page: window.page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize)
+    };
   }
 
   @Post("dramas")
@@ -726,12 +758,27 @@ export class AdminController {
 
   @Get("reviews")
   @Roles(AdminRole.REVIEWER)
-  async reviews() {
-    const items = await this.prisma.drama.findMany({
-      where: { status: "PENDING_REVIEW" },
-      include: { editor: { select: { id: true, email: true } } },
-      orderBy: { updatedAt: "asc" }
+  async reviews(@Query("page") pageValue = "1") {
+    const pageSize = ADMIN_LIST_PAGE_SIZE;
+    const window = boundedListWindow({
+      page: parsePage(pageValue),
+      pageSize,
+      maxPage: ADMIN_LIST_MAX_PAGE
     });
+    if (window.exceeded) {
+      return emptyBoundedPage(window.page, pageSize);
+    }
+    const where = { status: "PENDING_REVIEW" as const };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.drama.findMany({
+        where,
+        include: { editor: { select: { id: true, email: true } } },
+        orderBy: { updatedAt: "asc" },
+        skip: window.skip,
+        take: window.take
+      }),
+      this.prisma.drama.count({ where })
+    ]);
     return {
       items: items.map((drama) => ({
         id: `pending:${drama.id}`,
@@ -743,7 +790,10 @@ export class AdminController {
         riskFlags: [],
         status: "PENDING" as const
       })),
-      total: items.length
+      page: window.page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize)
     };
   }
 

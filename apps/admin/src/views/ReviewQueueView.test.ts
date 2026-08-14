@@ -1,0 +1,76 @@
+import { AdminRole } from "@microfocus/contracts";
+import { flushPromises, mount } from "@vue/test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import ReviewQueueView from "./ReviewQueueView.vue";
+
+const { listReviews } = vi.hoisted(() => ({
+  listReviews: vi.fn(),
+}));
+
+vi.mock("@/api/admin", () => ({
+  adminApi: { listReviews, mode: "mock" },
+}));
+
+vi.mock("@/stores/auth", () => ({
+  useAuthStore: () => ({
+    user: { id: "reviewer-1", name: "审", email: "reviewer@example.com", role: AdminRole.REVIEWER },
+  }),
+}));
+
+describe("ReviewQueueView", () => {
+  beforeEach(() => listReviews.mockReset());
+
+  it("requests paged reviews and can move to the next page", async () => {
+    listReviews.mockResolvedValue({
+      items: [
+        {
+          id: "review-1",
+          dramaId: "drama-1",
+          dramaTitle: "待审剧目",
+          submitterId: "editor-1",
+          submitterName: "林编辑",
+          submittedAt: "2026-08-14T00:00:00.000Z",
+          riskFlags: [],
+          status: "PENDING",
+        },
+      ],
+      total: 51,
+    });
+    const wrapper = mount(ReviewQueueView);
+    await flushPromises();
+
+    expect(listReviews).toHaveBeenCalledWith(1);
+    expect(wrapper.text()).toContain("第 1 页");
+    expect(wrapper.text()).toContain("共 51 条待审");
+
+    await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
+    await flushPromises();
+    expect(listReviews).toHaveBeenLastCalledWith(2);
+  });
+
+  it("falls back to the last populated page when the current page is empty", async () => {
+    const pending = {
+      id: "review-1",
+      dramaId: "drama-1",
+      dramaTitle: "待审剧目",
+      submitterId: "editor-1",
+      submitterName: "林编辑",
+      submittedAt: "2026-08-14T00:00:00.000Z",
+      riskFlags: [],
+      status: "PENDING" as const,
+    };
+    listReviews
+      .mockResolvedValueOnce({ items: [pending], total: 51 })
+      .mockResolvedValueOnce({ items: [], total: 50 })
+      .mockResolvedValueOnce({ items: [pending], total: 50 });
+    const wrapper = mount(ReviewQueueView);
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
+    await flushPromises();
+
+    expect(listReviews.mock.calls.map((call) => call[0])).toEqual([1, 2, 1]);
+    expect(wrapper.text()).toContain("待审剧目");
+    wrapper.unmount();
+  });
+});

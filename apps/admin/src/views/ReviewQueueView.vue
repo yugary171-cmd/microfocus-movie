@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AdminRole } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, AdminRole } from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -13,6 +13,8 @@ import type { ReviewItem } from "@/types/admin";
 
 const auth = useAuthStore();
 const items = ref<ReviewItem[]>([]);
+const total = ref(0);
+const page = ref(1);
 const loading = ref(true);
 const error = ref("");
 const notice = ref("");
@@ -20,6 +22,7 @@ const busy = ref(false);
 const selected = ref<ReviewItem | null>(null);
 const dialog = reactive<{ decision: "approve" | "reject" | null }>({ decision: null });
 const allowed = computed(() => auth.user?.role === AdminRole.REVIEWER);
+const totalPages = computed(() => Math.ceil(total.value / ADMIN_LIST_PAGE_SIZE));
 
 async function load(): Promise<void> {
   if (!allowed.value) {
@@ -29,13 +32,28 @@ async function load(): Promise<void> {
   loading.value = true;
   error.value = "";
   try {
-    const result = await adminApi.listReviews();
-    items.value = Array.isArray(result.items) ? result.items : [];
+    let result = await adminApi.listReviews(page.value);
+    let nextItems = Array.isArray(result.items) ? result.items : [];
+    let nextTotal = Number.isFinite(result.total) ? result.total : nextItems.length;
+    const pages = Math.ceil(nextTotal / ADMIN_LIST_PAGE_SIZE);
+    if (nextItems.length === 0 && nextTotal > 0 && page.value > 1 && pages >= 1 && page.value > pages) {
+      page.value = pages;
+      result = await adminApi.listReviews(page.value);
+      nextItems = Array.isArray(result.items) ? result.items : [];
+      nextTotal = Number.isFinite(result.total) ? result.total : nextItems.length;
+    }
+    items.value = nextItems;
+    total.value = nextTotal;
   } catch (caught) {
     error.value = toErrorMessage(caught);
   } finally {
     loading.value = false;
   }
+}
+
+function go(next: number): void {
+  page.value = next;
+  void load();
 }
 
 function openDecision(item: ReviewItem, decision: "approve" | "reject"): void {
@@ -86,11 +104,17 @@ onMounted(load);
     </header>
     <PageState v-if="!allowed" type="forbidden" message="只有内容审核角色可以访问审核队列。" />
     <PageState v-else-if="loading" type="loading" message="正在加载待审内容…" />
-    <PageState v-else-if="error && items.length === 0" type="error" :message="error" @retry="load" />
+    <PageState v-else-if="error && items.length === 0 && total === 0" type="error" :message="error" @retry="load" />
     <template v-else>
       <div v-if="error" class="review-message review-message--error" role="alert">{{ error }}</div>
       <div v-if="notice" class="review-message" role="status">{{ notice }}</div>
-      <PageState v-if="items.length === 0" type="empty" title="审核队列已清空" message="当前没有需要处理的内容。" />
+      <div v-if="total > 0" class="list-summary">第 {{ page }} 页 · 共 {{ total }} 条待审</div>
+      <PageState
+        v-if="items.length === 0"
+        type="empty"
+        :title="total === 0 ? '审核队列已清空' : '这一页没有待审内容'"
+        :message="total === 0 ? '当前没有需要处理的内容。' : '请返回上一页。'"
+      />
       <div v-else class="review-list">
         <article v-for="item in items" :key="item.id" class="panel review-card">
           <div class="review-card__main">
@@ -116,6 +140,10 @@ onMounted(load);
             <small v-else>{{ reviewDecision(item).reason }}</small>
           </div>
         </article>
+      </div>
+      <div v-if="totalPages > 1 || page > 1" class="pager">
+        <button class="button button--ghost" type="button" :disabled="loading || page <= 1" @click="go(page - 1)">上一页</button>
+        <button class="button button--ghost" type="button" :disabled="loading || page >= totalPages" @click="go(page + 1)">下一页</button>
       </div>
     </template>
     <ConfirmDialog
@@ -143,6 +171,8 @@ onMounted(load);
 </template>
 
 <style scoped>
+.list-summary { margin: 0 0 10px; color: var(--color-muted); font-size: 12px; }
+.pager { display: flex; gap: 8px; margin-top: 12px; }
 .review-list { display: grid; gap: 14px; }
 .review-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; }
 .review-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }

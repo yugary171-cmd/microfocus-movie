@@ -259,6 +259,13 @@ export function normalizeDramaList(value: unknown): DramaRecord[] {
   return collection(value).map(normalizeDrama).filter((drama) => drama.id.length > 0);
 }
 
+export function pageTotal(value: unknown, itemsLength: number): number {
+  const source = record(value);
+  if (!("total" in source)) return itemsLength;
+  const total = Math.round(finiteNumber(source.total));
+  return total >= 0 ? total : itemsLength;
+}
+
 export function normalizeReviewList(value: unknown): ReviewItem[] {
   return collection(value)
     .map((item) => {

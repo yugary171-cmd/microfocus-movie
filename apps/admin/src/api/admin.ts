@@ -28,6 +28,7 @@ import {
   normalizeReleaseGate,
   normalizeReviewList,
   normalizeUploadSignature,
+  pageTotal,
 } from "./normalizers";
 
 const endpoints = {
@@ -99,19 +100,16 @@ export const adminApi = {
     if (isMockMode) return mockApi.releaseGate();
     return normalizeReleaseGate(await request<unknown>(endpoints.releaseGate));
   },
-  async listDramas(query = "", status = ""): Promise<PageResult<DramaRecord>> {
-    if (isMockMode) return mockApi.listDramas(query, status);
+  async listDramas(query = "", status = "", page = 1): Promise<PageResult<DramaRecord>> {
+    if (isMockMode) return mockApi.listDramas(query, status, page);
     const params = new URLSearchParams();
     if (status) params.set("status", status);
+    if (query.trim()) params.set("q", query.trim());
+    if (page > 1) params.set("page", String(page));
     const suffix = params.size ? `?${params}` : "";
-    const normalized = normalizeDramaList(await request<unknown>(`${endpoints.dramas}${suffix}`));
-    const needle = query.trim().toLowerCase();
-    const items = needle
-      ? normalized.filter((drama) =>
-          [drama.title, drama.ownerName].some((value) => value.toLowerCase().includes(needle)),
-        )
-      : normalized;
-    return { items, total: items.length };
+    const payload = await request<unknown>(`${endpoints.dramas}${suffix}`);
+    const items = normalizeDramaList(payload);
+    return { items, total: pageTotal(payload, items.length) };
   },
   async getDrama(id: string): Promise<DramaRecord> {
     if (isMockMode) return mockApi.getDrama(id);
@@ -213,10 +211,12 @@ export const adminApi = {
     if (isMockMode) return mockApi.submitReview(id);
     return request(`${endpoints.dramas}/${encodeURIComponent(id)}/submit-review`, { method: "POST" });
   },
-  async listReviews(): Promise<PageResult<ReviewItem>> {
-    if (isMockMode) return mockApi.listReviews();
-    const items = normalizeReviewList(await request<unknown>(endpoints.reviews));
-    return { items, total: items.length };
+  async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
+    if (isMockMode) return mockApi.listReviews(page);
+    const suffix = page > 1 ? `?page=${page}` : "";
+    const payload = await request<unknown>(`${endpoints.reviews}${suffix}`);
+    const items = normalizeReviewList(payload);
+    return { items, total: pageTotal(payload, items.length) };
   },
   review(dramaId: string, reviewId: string, approved: boolean, reason: string): Promise<void> {
     if (isMockMode) return mockApi.review(reviewId, approved, reason);

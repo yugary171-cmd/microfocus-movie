@@ -1,5 +1,7 @@
 import {
   AdminRole,
+  ADMIN_LIST_MAX_PAGE,
+  ADMIN_LIST_PAGE_SIZE,
   DeletionRequestStatus,
   DramaStatus,
   MediaStatus,
@@ -213,6 +215,16 @@ async function mockDelay<T>(value: T, delay = 160): Promise<T> {
   return clone(value);
 }
 
+function paginate<T>(items: T[], page = 1): PageResult<T> {
+  const safePage = Number.isInteger(page) && page > 0 ? page : 1;
+  if (safePage > ADMIN_LIST_MAX_PAGE) return { items: [], total: 0 };
+  const start = (safePage - 1) * ADMIN_LIST_PAGE_SIZE;
+  return {
+    items: items.slice(start, start + ADMIN_LIST_PAGE_SIZE),
+    total: items.length,
+  };
+}
+
 function writeAudit(action: string, target: string, detail: string): void {
   auditLogs.unshift({
     id: `audit-${crypto.randomUUID()}`,
@@ -305,7 +317,7 @@ export const mockApi = {
   async releaseGate(): Promise<ReleaseGateStatus> {
     return mockDelay(releaseGate);
   },
-  async listDramas(query = "", status = ""): Promise<PageResult<DramaRecord>> {
+  async listDramas(query = "", status = "", page = 1): Promise<PageResult<DramaRecord>> {
     const normalized = query.trim().toLowerCase();
     const items = dramas.filter(
       (drama) =>
@@ -314,7 +326,7 @@ export const mockApi = {
           drama.ownerName.toLowerCase().includes(normalized)) &&
         (!status || drama.status === status),
     );
-    return mockDelay({ items, total: items.length });
+    return mockDelay(paginate(items, page));
   },
   async getDrama(id: string): Promise<DramaRecord> {
     const drama = dramas.find((item) => item.id === id);
@@ -368,8 +380,8 @@ export const mockApi = {
     writeAudit("提交审核", drama.title, "进入演示审核队列");
     return mockDelay(undefined);
   },
-  async listReviews(): Promise<PageResult<ReviewItem>> {
-    return mockDelay({ items: reviews, total: reviews.length });
+  async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
+    return mockDelay(paginate(reviews, page));
   },
   async review(id: string, approved: boolean, reason: string): Promise<void> {
     const review = reviews.find((item) => item.id === id);

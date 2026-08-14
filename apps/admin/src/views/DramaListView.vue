@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DramaStatus } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, DramaStatus } from "@microfocus/contracts";
 import { computed, onMounted, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -10,10 +10,12 @@ import type { DramaRecord } from "@/types/admin";
 
 const items = ref<DramaRecord[]>([]);
 const total = ref(0);
+const page = ref(1);
 const query = ref("");
 const status = ref("");
 const loading = ref(true);
 const error = ref("");
+const totalPages = computed(() => Math.ceil(total.value / ADMIN_LIST_PAGE_SIZE));
 
 const toneByStatus = computed(() => ({
   [DramaStatus.DRAFT]: "neutral",
@@ -31,7 +33,7 @@ async function load(): Promise<void> {
   loading.value = true;
   error.value = "";
   try {
-    const result = await adminApi.listDramas(query.value, status.value);
+    const result = await adminApi.listDramas(query.value, status.value, page.value);
     items.value = Array.isArray(result.items) ? result.items : [];
     total.value = Number.isFinite(result.total) ? result.total : items.value.length;
   } catch (caught) {
@@ -41,9 +43,20 @@ async function load(): Promise<void> {
   }
 }
 
+function filter(): void {
+  page.value = 1;
+  void load();
+}
+
 function reset(): void {
   query.value = "";
   status.value = "";
+  page.value = 1;
+  void load();
+}
+
+function go(next: number): void {
+  page.value = next;
   void load();
 }
 
@@ -57,7 +70,7 @@ onMounted(load);
       <RouterLink class="button button--primary" to="/dramas/new">＋ 新建剧目</RouterLink>
     </header>
     <section class="panel">
-      <form class="toolbar" role="search" @submit.prevent="load">
+      <form class="toolbar" role="search" @submit.prevent="filter">
         <label class="field"><span>关键词</span><input v-model="query" type="search" placeholder="搜索剧名或负责人" /></label>
         <label class="field"><span>内容状态</span><select v-model="status"><option value="">全部状态</option><option v-for="item in DramaStatus" :key="item" :value="item">{{ dramaStatusLabels[item] }}</option></select></label>
         <button class="button button--secondary" type="submit" :disabled="loading">筛选</button>
@@ -65,12 +78,13 @@ onMounted(load);
       </form>
       <PageState v-if="loading" type="loading" message="正在加载剧目列表…" />
       <PageState v-else-if="error" type="error" :message="error" @retry="load" />
-      <PageState v-else-if="items.length === 0" type="empty" title="没有匹配的剧目" message="调整筛选条件，或创建第一部剧目。">
+      <PageState v-else-if="items.length === 0 && total === 0" type="empty" title="没有匹配的剧目" message="调整筛选条件，或创建第一部剧目。">
         <RouterLink class="button button--primary" to="/dramas/new">新建剧目</RouterLink>
       </PageState>
       <template v-else>
-        <div class="list-summary">共 {{ total }} 部剧目</div>
-        <div class="table-wrap">
+        <div class="list-summary">第 {{ page }} 页 · 共 {{ total }} 部剧目</div>
+        <PageState v-if="items.length === 0" type="empty" title="这一页没有剧目" message="请返回上一页，或重新筛选。" />
+        <div v-else class="table-wrap">
           <table>
             <thead><tr><th>剧目</th><th>状态</th><th>负责人</th><th>集数</th><th>许可资料</th><th>最后更新</th><th><span class="sr-only">操作</span></th></tr></thead>
             <tbody>
@@ -86,6 +100,10 @@ onMounted(load);
             </tbody>
           </table>
         </div>
+        <div v-if="totalPages > 1 || page > 1" class="pager">
+          <button class="button button--ghost" type="button" :disabled="loading || page <= 1" @click="go(page - 1)">上一页</button>
+          <button class="button button--ghost" type="button" :disabled="loading || page >= totalPages" @click="go(page + 1)">下一页</button>
+        </div>
       </template>
     </section>
   </div>
@@ -93,5 +111,6 @@ onMounted(load);
 
 <style scoped>
 .list-summary { margin: -4px 0 10px; color: var(--color-muted); font-size: 12px; }
+.pager { display: flex; gap: 8px; margin-top: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 </style>
