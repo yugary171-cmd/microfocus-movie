@@ -142,7 +142,7 @@ flowchart LR
 
 ### 4.2 幂等、分页与排序
 
-- 完成奖励和人工补偿必须携带 `Idempotency-Key`；同一业务请求的重试返回同一 grant，不得重复发放。`Idempotency-Key` 最长 128。
+- 完成奖励和人工补偿必须携带 `Idempotency-Key`；同一业务请求的重试返回同一 grant，不得重复发放。`Idempotency-Key` 会 trim，最长 128。
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
@@ -191,7 +191,7 @@ flowchart LR
 | `PUT /v1/me/progress` | 用户 JWT；按认证用户限频 | `dramaId/episodeId` 限长；`mediaPositionSeconds` 不超过 3600 | 幂等保存有效进度；不得写未发布内容 |
 | `GET /v1/entitlements/:dramaId` | 用户 JWT；按认证用户限频 | 路径 ID | 账本结余、扣除活动 reservation 后的可分配余额、最近过期时间和不可变批次 |
 | `POST /v1/rewards/challenges` | 用户 JWT；按认证用户限频（5 分钟 3 次） | `dramaId` 限长；`sessionId` 最长 128 | challenge、nonce、过期时间、广告位和验证模式 |
-| `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key`；按认证用户限频 | `nonce` 最长 128；`isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
+| `POST /v1/rewards/challenges/:challengeId/complete` | 用户 JWT + `Idempotency-Key`（trim、最长 128）；按认证用户限频；空白或超长键不占桶 | `nonce` 最长 128；`isEnded/clientCompletedAt` | 可信验证通过后返回唯一 grant；未验证时保留原 challenge |
 | `POST /v1/playback/leases` | viewer token；锁定集必须为用户 JWT；按认证主体限频 | `episodeId` 限长；`deviceId` 最长 128 | 服务端重新判断免费状态；锁定内容预留首个短窗口预算，返回租约、外层 120 秒凭证、窗口授权、心跳周期和可分配余额 |
 | `GET /v1/playback/leases/active` | 用户 JWT；按认证用户限频 | 无 | 查询本人活动租约、预留、未确认窗口和恢复动作；不依赖客户端保存旧 lease ID |
 | `POST /v1/playback/leases/:leaseId/heartbeats` | 租约所属 viewer token；按认证主体限频 | `seq` 上限 1000000；媒体位置不超过 3600；窗口 ID 限长 | 结合服务端媒体授权/交付证据确认上一预留并签发下一短窗口；仅活动租约和递增序列结算。存在 UNCONFIRMED 窗口时 `debitedSeconds=0` 且 `reason=UNCONFIRMED_EXPOSURE`，不自动扣费 |

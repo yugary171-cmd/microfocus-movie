@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { IDEMPOTENCY_KEY_MAX_LENGTH } from "@microfocus/contracts";
 import { RewardsController } from "./rewards.module.js";
 import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
@@ -76,5 +77,43 @@ describe("reward challenge rate limits", () => {
       })
     );
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects blank or oversized completion keys before the rate-limit bucket", async () => {
+    const prisma = {
+      rateLimitBucket: exhaustedBucket(),
+      $transaction: vi.fn()
+    };
+    const controller = new RewardsController(prisma as never, {
+      env: { WECHAT_REWARDED_AD_UNIT_ID: "ad-unit" }
+    } as never);
+    const body = {
+      nonce: "n",
+      isEnded: true as const,
+      clientCompletedAt: "2026-08-14T12:00:00.000Z"
+    };
+
+    await expect(
+      controller.complete({ kind: "user", sub: "user-1" } as never, "challenge-1", "   ", body)
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    await expect(
+      controller.complete(
+        { kind: "user", sub: "user-1" } as never,
+        "challenge-1",
+        "x".repeat(IDEMPOTENCY_KEY_MAX_LENGTH + 1),
+        body
+      )
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REQUIRED" });
+    expect(prisma.rateLimitBucket.updateMany).not.toHaveBeenCalled();
+
+    await expect(
+      controller.complete(
+        { kind: "user", sub: "user-1" } as never,
+        "challenge-1",
+        `  ${"k".repeat(IDEMPOTENCY_KEY_MAX_LENGTH)}  `,
+        body
+      )
+    ).rejects.toMatchObject({ code: "RATE_LIMITED" });
+    expect(prisma.rateLimitBucket.updateMany).toHaveBeenCalled();
   });
 });

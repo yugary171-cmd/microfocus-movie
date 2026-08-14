@@ -15,6 +15,7 @@ import { IsBoolean, IsISO8601, IsString, MaxLength, MinLength } from "class-vali
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { requireEntityId } from "../common/entity-id.js";
+import { normalizeIdempotencyKey } from "../common/idempotency.js";
 import { AppConfigService } from "../config/config.service.js";
 import { requireUser } from "../history/history.module.js";
 import { assertCircuitsClosed } from "../domain/circuit.js";
@@ -130,7 +131,7 @@ export class RewardsController {
     }
   }
 
-  @Post("v1/rewards/challenges/:challengeId/complete")
+  @Post(controllerPath(API_ROUTES.rewardComplete(":challengeId")))
   async complete(
     @CurrentPrincipal() principal: Principal,
     @Param("challengeId") challengeId: string,
@@ -138,9 +139,7 @@ export class RewardsController {
     @Body() body: CompleteChallengeDto
   ) {
     const userId = requireUser(principal);
-    if (!idempotencyKey || idempotencyKey.length > 128) {
-      throw Errors.badRequest("IDEMPOTENCY_KEY_REQUIRED", "A valid Idempotency-Key header is required");
-    }
+    const completionKey = normalizeIdempotencyKey(idempotencyKey);
     if (!body.isEnded) throw Errors.badRequest("AD_NOT_COMPLETED", "The rewarded ad was not completed");
     await assertNamedRateLimit(this.prisma, "rewardComplete", `user:${userId}`);
     challengeId = requireEntityId(challengeId, "challengeId");
@@ -195,7 +194,7 @@ export class RewardsController {
           status: "COMPLETED",
           completedAt: now,
           pendingKey: null,
-          completionKey: idempotencyKey
+          completionKey
         }
       });
       await tx.operationalEvent.create({
