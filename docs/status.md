@@ -56,6 +56,9 @@
 
 ## 历史
 
+- 2026-08-14：增加 `npm run db:up`（`docker compose up -d --wait mysql`），避免容器刚启动就 migrate 触发 P1017。
+- 2026-08-14：本地 Docker MySQL 为 Prisma `migrate dev` 影子库补齐 `CREATE DATABASE` 权限（init 脚本；已有数据卷需一次性 GRANT）。
+- 2026-08-14：新增 [deployment.md](./deployment.md)，集中说明数据库、API 托管与各端共用关系。
 - 2026-08-14：收紧管理端角色/所有权，并为人工补偿增加 `Idempotency-Key` 与 `EntitlementGrant.compensationKey` 唯一约束。
 - 2026-08-14：Git 快照 `17babc1` 收录 uni-app、文档口径和内部 Mock 管道。
 - 2026-08-14：新增发给甲方的封面说明 [client-brief.md](./client-brief.md)；对外材料以目标规格和上线门槛为主，不以工程进度原文作为交付包。

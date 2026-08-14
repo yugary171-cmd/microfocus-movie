@@ -9,7 +9,7 @@
 - 根目录 `.env.example` 是 API、脚本和本地运行变量清单，不包含可用秘密；客户端构建变量由对应 Vite/运行时配置另行定义。
 - `apps/api/src/config/env.ts` 是 API 可接受值、默认值和生产启动校验的可执行契约；模板、本文与代码冲突时，以代码拒绝行为为准，并在同一变更中修正文档和模板。
 - 本地 API、Prisma 迁移和种子命令通过根目录 `.env` 加载配置；`.env` 不得提交。
-- 部署环境由平台或密钥管理注入 `process.env`，不得依赖镜像内置 `.env`。
+- 部署环境由平台或密钥管理注入 `process.env`，不得依赖镜像内置 `.env`。各端托管关系与 MySQL 边界见 [deployment.md](./deployment.md)。
 - API 在启动时解析并缓存配置。配置变化需要新进程或滚动重启，不把环境变量当作动态开关。
 - `NODE_ENV` 缺省为 `development`；生产部署必须显式设置 `NODE_ENV=production`，不能依赖默认值判断环境。
 

@@ -31,6 +31,7 @@
     "dev:api": "npm run build -w @microfocus/contracts && npm run dev -w @microfocus/api",
     "dev:admin": "npm run build -w @microfocus/contracts && npm run dev -w @microfocus/admin",
     "dev:uniapp": "npm run build -w @microfocus/contracts && npm run dev:mp-weixin -w @microfocus/uniapp",
+    "db:up": "docker compose up -d --wait mysql",
     "db:generate": "npm run db:generate -w @microfocus/api",
     "db:migrate": "npm run db:migrate -w @microfocus/api",
     "db:migrate:deploy": "npm run db:migrate:deploy -w @microfocus/api",

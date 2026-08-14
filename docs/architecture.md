@@ -24,7 +24,7 @@ flowchart LR
 
 服务端是目录可见性、内容发布、奖励发放、权益余额和播放许可的唯一事实来源。小程序不能直接修改余额，也不能使用长期媒体地址。
 
-页面、接口、认证和错误契约见 [pages-and-apis.md](./pages-and-apis.md)，环境和秘密配置见 [configuration.md](./configuration.md)，事故操作见 [operations.md](./operations.md)。
+页面、接口、认证和错误契约见 [pages-and-apis.md](./pages-and-apis.md)；运行组件、数据库与托管拓扑见 [deployment.md](./deployment.md)；环境和秘密配置见 [configuration.md](./configuration.md)；事故操作见 [operations.md](./operations.md)。
 
 ## 2. 模块边界
 

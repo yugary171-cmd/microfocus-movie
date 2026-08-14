@@ -10,14 +10,14 @@ apps/admin        Vue 3 PC 内容管理后台
 apps/uniapp       Vue 3 uni-app 观看端（微信对齐优先；H5/App 登录与广告单独适配）
 apps/miniprogram  原生微信小程序（过渡对照，微信端验收后弃用）
 packages/contracts 共享接口、枚举和产品常量
-docs              产品计划、架构、上线、合规和运营手册
+docs              产品计划、架构、部署、上线、合规和运营手册
 RULES.md          工程与代码规范（AI Agent 与开发者必读）
 AGENTS.md         Agent 操作边界、验证和交付约定
 ```
 
 当前产品计划见 [docs/product-plan.md](docs/product-plan.md)：先收口内部联调，再验证内容与「看广告换继续看」，不以对外上线为本轮目标。
 
-目标架构与当前代码并非完全等价；已实现、部分实现和仅目标设计的能力以 [docs/status.md](docs/status.md) 的实现矩阵为准。
+目标架构与当前代码并非完全等价；已实现、部分实现和仅目标设计的能力以 [docs/status.md](docs/status.md) 的实现矩阵为准。数据库、服务器与各端关系见 [部署与运行组件](docs/deployment.md)。
 
 实现默认值写在共享常量里：每部剧前 2 集免费；完整观看一次激励广告为当前剧发放 600 秒额度；每笔额度独立在 24 小时后失效；锁定内容每 5 秒按实际媒体进度结算。这些是 v0 账本默认值，灰度前可按计划调整文案和数值，不能绕过服务端账本与发布闸门。
 
@@ -27,7 +27,7 @@ AGENTS.md         Agent 操作边界、验证和交付约定
 
 ```bash
 cp .env.example .env
-docker compose up -d mysql
+npm run db:up
 npm install
 npm run db:generate
 npm run db:migrate
@@ -46,7 +46,7 @@ npm run dev:admin
 - 管理后台：`http://localhost:5174`
 - 观看端：运行 `npm run dev:uniapp` 后，在微信开发者工具导入 `apps/uniapp/dist/dev/mp-weixin`；也可用 HBuilderX 打开 `apps/uniapp`。过渡对照端可直接导入 `apps/miniprogram`。本地设置中允许调试时使用 HTTP。
 
-本地默认使用 Mock 微信登录和 Mock VOD。Mock 状态会在界面显著标识，不能用于外部灰度或正式发布。
+本地默认使用 Mock 微信登录和 Mock VOD。Mock 状态会在界面显著标识，不能用于外部灰度或正式发布。`npm run db:up` 会等到 MySQL 健康检查通过后再返回，避免容器刚 `Started` 就迁移导致 `P1017`。`db:migrate`（Prisma `migrate dev`）需要本地 MySQL 用户能创建影子库；权限由 `docker/mysql/init` 在首次建卷时授予。若容器早已存在并报 `P3014`，见 [部署与运行组件](docs/deployment.md) §4.2。
 
 ### 本地试播视频
 
