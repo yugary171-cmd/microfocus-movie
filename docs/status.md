@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-15：管理端剧目/审计关键词截断测试改走 `LIST_QUERY_MAX_LENGTH`，不再写死 `repeat(100)` / `repeat(120)`。不把灰度指标写成已接入。
 - 2026-08-15：管理端 mock、测试夹具和发布闸门样例摘要改走 `RIGHTS_MATERIAL_DIGEST_LENGTH`，不再写死 `repeat(64)`。不把灰度指标写成已接入。
 - 2026-08-15：两套观看端免费集数、心跳周期和离线宽限改走契约 `FREE_EPISODE_COUNT`、`HEARTBEAT_INTERVAL_SECONDS`、`OFFLINE_GRACE_SECONDS`，不再在本地 runtime 写死 2/5/15。服务端仍重新判定免费集。不把灰度指标写成已接入。
 - 2026-08-15：JSON/urlencoded 请求体上限收入契约 `JSON_BODY_LIMIT=64kb`；Nest body parser 共用该值。不把灰度指标写成已接入。

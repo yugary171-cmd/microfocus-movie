@@ -1,4 +1,4 @@
-import { ADMIN_LIST_MAX_PAGE, ADMIN_LIST_PAGE_SIZE, AdminRole, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_LIST_MAX_PAGE, ADMIN_LIST_PAGE_SIZE, AdminRole, ENTITY_ID_MAX_LENGTH, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { AdminController } from "./admin.module.js";
 
@@ -92,12 +92,15 @@ describe("admin list pagination", () => {
         count: vi.fn().mockResolvedValue(0)
       }
     };
-    const q = "x".repeat(120);
+    const q = "x".repeat(LIST_QUERY_MAX_LENGTH + 20);
     await controller(prisma).dramas(admin, undefined, q, "1");
     expect(prisma.drama.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          OR: [{ title: { contains: "x".repeat(100) } }, { editor: { email: { contains: "x".repeat(100) } } }]
+          OR: [
+            { title: { contains: "x".repeat(LIST_QUERY_MAX_LENGTH) } },
+            { editor: { email: { contains: "x".repeat(LIST_QUERY_MAX_LENGTH) } } }
+          ]
         })
       })
     );
@@ -138,12 +141,12 @@ describe("admin list pagination", () => {
         count: vi.fn().mockResolvedValue(0)
       }
     };
-    const q = "x".repeat(120);
+    const q = "x".repeat(LIST_QUERY_MAX_LENGTH + 20);
     await controller(prisma).auditLogs(q, "1");
     expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          OR: expect.arrayContaining([{ action: { contains: "x".repeat(100) } }])
+          OR: expect.arrayContaining([{ action: { contains: "x".repeat(LIST_QUERY_MAX_LENGTH) } }])
         }
       })
     );
