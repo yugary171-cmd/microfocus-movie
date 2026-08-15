@@ -3,6 +3,7 @@ import {
   ADMIN_LIST_MAX_PAGE,
   ADMIN_LIST_PAGE_SIZE,
   DeletionRequestStatus,
+  DELETION_QUERY_TOKEN_TTL_SECONDS,
   DramaStatus,
   isRightsMaterialDigest,
   MediaStatus,
@@ -524,7 +525,7 @@ export const mockApi = {
     return mockDelay({
       deletionRequestId: input.deletionRequestId,
       status: DeletionRequestStatus.PENDING,
-      tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      tokenExpiresAt: new Date(Date.now() + DELETION_QUERY_TOKEN_TTL_SECONDS * 1000).toISOString(),
       replayed: false,
     });
   },

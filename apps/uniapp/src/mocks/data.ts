@@ -1,6 +1,7 @@
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   DeletionRequestStatus,
+  DELETION_QUERY_TOKEN_TTL_SECONDS,
   FREE_EPISODE_COUNT,
   HEARTBEAT_INTERVAL_SECONDS,
   PlaybackLeaseStatus,
@@ -260,7 +261,7 @@ export const mockApi: ClientApi = {
       deletionRequestId: "demo-deletion",
       status: DeletionRequestStatus.PENDING,
       deletionQueryToken: "demo-query-token",
-      tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      tokenExpiresAt: new Date(Date.now() + DELETION_QUERY_TOKEN_TTL_SECONDS * 1000).toISOString(),
       replayed: false
     }),
   getDeletionRequest: () =>
@@ -269,7 +270,7 @@ export const mockApi: ClientApi = {
       status: DeletionRequestStatus.PENDING,
       createdAt: new Date().toISOString(),
       processedAt: null,
-      tokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      tokenExpiresAt: new Date(Date.now() + DELETION_QUERY_TOKEN_TTL_SECONDS * 1000).toISOString(),
       reason: null
     })
 };
