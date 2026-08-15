@@ -4,6 +4,7 @@ import {
   ADMIN_REASON_MIN_LENGTH,
   AdminRole,
   COMPENSATION_SECONDS_MIN,
+  ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX
 } from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
@@ -91,9 +92,18 @@ async function toggleBreaker(reason: string): Promise<void> {
   }
 }
 
+function requireBoundedEntityId(value: string, emptyMessage: string, label: string): string {
+  const id = value.trim();
+  if (!id) return emptyMessage;
+  if (id.length > ENTITY_ID_MAX_LENGTH) return `${label}最长 ${ENTITY_ID_MAX_LENGTH} 个字符`;
+  return "";
+}
+
 function validateCompensation(): string {
-  if (!compensation.userId.trim()) return "请输入用户 ID";
-  if (!compensation.dramaId.trim()) return "请输入剧目 ID";
+  const userError = requireBoundedEntityId(compensation.userId, "请输入用户 ID", "用户 ID");
+  if (userError) return userError;
+  const dramaError = requireBoundedEntityId(compensation.dramaId, "请输入剧目 ID", "剧目 ID");
+  if (dramaError) return dramaError;
   if (
     !Number.isInteger(compensation.seconds) ||
     compensation.seconds < COMPENSATION_SECONDS_MIN ||
@@ -146,7 +156,8 @@ async function grantCompensation(): Promise<void> {
 }
 
 function validateAdjustment(): string {
-  if (!adjustment.grantId.trim()) return "请输入 grant ID";
+  const grantError = requireBoundedEntityId(adjustment.grantId, "请输入 grant ID", "grant ID");
+  if (grantError) return grantError;
   if (
     !Number.isInteger(adjustment.seconds) ||
     adjustment.seconds < 1 ||
@@ -157,8 +168,12 @@ function validateAdjustment(): string {
   if (adjustment.reason.trim().length < ADMIN_REASON_MIN_LENGTH) {
     return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的纠错原因`;
   }
-  if (adjustment.type === "RELEASE_FREEZE" && !adjustment.freezeAdjustmentId?.trim()) {
-    return "释放冻结必须填写原冻结记录 ID";
+  if (adjustment.type === "RELEASE_FREEZE") {
+    return requireBoundedEntityId(
+      adjustment.freezeAdjustmentId ?? "",
+      "释放冻结必须填写原冻结记录 ID",
+      "原冻结记录 ID"
+    );
   }
   return "";
 }
@@ -210,7 +225,8 @@ async function submitAdjustment(): Promise<void> {
 }
 
 function validateReplay(): string {
-  if (!replay.eventId.trim()) return "请输入回调事件 ID";
+  const eventError = requireBoundedEntityId(replay.eventId, "请输入回调事件 ID", "回调事件 ID");
+  if (eventError) return eventError;
   if (replay.reason.trim().length < ADMIN_REASON_MIN_LENGTH) {
     return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的重放原因`;
   }
@@ -251,8 +267,14 @@ async function submitReplay(): Promise<void> {
 }
 
 function validateReissue(): string {
-  if (!reissue.deletionRequestId.trim()) return "请输入注销申请 ID";
-  if (!reissue.userId.trim()) return "请输入已核验的用户 ID";
+  const requestError = requireBoundedEntityId(
+    reissue.deletionRequestId,
+    "请输入注销申请 ID",
+    "注销申请 ID"
+  );
+  if (requestError) return requestError;
+  const userError = requireBoundedEntityId(reissue.userId, "请输入已核验的用户 ID", "已核验用户 ID");
+  if (userError) return userError;
   if (reissue.reason.trim().length < ADMIN_REASON_MIN_LENGTH) {
     return `请填写至少 ${ADMIN_REASON_MIN_LENGTH} 个字的补发原因`;
   }
@@ -335,8 +357,8 @@ onMounted(load);
           <div class="panel__header"><div><p class="eyebrow">ENTITLEMENT</p><h2 id="compensation-title">补偿权益</h2></div><StatusBadge label="人工授予" tone="warning" /></div>
           <form class="compensation-form" @submit.prevent="requestCompensation">
             <div class="form-grid">
-              <label class="field"><span>用户 ID *</span><input v-model="compensation.userId" required autocomplete="off" placeholder="用户内部 ID" /></label>
-              <label class="field"><span>剧目 ID *</span><input v-model="compensation.dramaId" required autocomplete="off" placeholder="drama-…" /></label>
+              <label class="field"><span>用户 ID *</span><input v-model="compensation.userId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="用户内部 ID" /></label>
+              <label class="field"><span>剧目 ID *</span><input v-model="compensation.dramaId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="drama-…" /></label>
               <label class="field"><span>补偿时长（秒）*</span><input v-model.number="compensation.seconds" type="number" :min="COMPENSATION_SECONDS_MIN" :max="ENTITLEMENT_SECONDS_MAX" :step="COMPENSATION_SECONDS_MIN" required /></label>
               <label class="field field--wide"><span>补偿原因 *</span><textarea v-model="compensation.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单或用户影响" /></label>
             </div>
@@ -355,9 +377,9 @@ onMounted(load);
                   <option value="WRITE_OFF">核销（不改余额）</option>
                 </select>
               </label>
-              <label class="field"><span>Grant ID *</span><input v-model="adjustment.grantId" required autocomplete="off" placeholder="grant-…" /></label>
+              <label class="field"><span>Grant ID *</span><input v-model="adjustment.grantId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="grant-…" /></label>
               <label class="field"><span>秒数 *</span><input v-model.number="adjustment.seconds" type="number" min="1" :max="ENTITLEMENT_SECONDS_MAX" required /></label>
-              <label v-if="adjustment.type === 'RELEASE_FREEZE'" class="field"><span>原冻结记录 ID *</span><input v-model="adjustment.freezeAdjustmentId" required autocomplete="off" placeholder="adjustment-…" /></label>
+              <label v-if="adjustment.type === 'RELEASE_FREEZE'" class="field"><span>原冻结记录 ID *</span><input v-model="adjustment.freezeAdjustmentId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="adjustment-…" /></label>
               <label class="field field--wide"><span>原因 *</span><textarea v-model="adjustment.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单与为何不能改原 grant/debit" /></label>
               <label class="field field--wide"><span>审批记录</span><textarea v-model="adjustment.approvalNote" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
@@ -401,7 +423,7 @@ onMounted(load);
           </div>
           <form class="compensation-form" @submit.prevent="requestReplay">
             <div class="form-grid">
-              <label class="field"><span>回调事件 ID *</span><input v-model="replay.eventId" required autocomplete="off" placeholder="provider 事件 ID" /></label>
+              <label class="field"><span>回调事件 ID *</span><input v-model="replay.eventId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="provider 事件 ID" /></label>
               <label class="field field--wide"><span>原因 *</span><textarea v-model="replay.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明修复依据、工单与为何可以重放" /></label>
               <label class="field field--wide"><span>审批记录</span><textarea v-model="replay.approvalNote" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
@@ -413,8 +435,8 @@ onMounted(load);
           <div class="panel__header"><div><p class="eyebrow">PRIVACY</p><h2 id="reissue-title">注销查询令牌补发</h2></div><StatusBadge label="客服核验" tone="warning" /></div>
           <form class="compensation-form" @submit.prevent="requestReissue">
             <div class="form-grid">
-              <label class="field"><span>注销申请 ID *</span><input v-model="reissue.deletionRequestId" required autocomplete="off" placeholder="deletion-request-…" /></label>
-              <label class="field"><span>已核验用户 ID *</span><input v-model="reissue.userId" required autocomplete="off" placeholder="必须与申请所属用户一致" /></label>
+              <label class="field"><span>注销申请 ID *</span><input v-model="reissue.deletionRequestId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="deletion-request-…" /></label>
+              <label class="field"><span>已核验用户 ID *</span><input v-model="reissue.userId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="必须与申请所属用户一致" /></label>
               <label class="field field--wide"><span>原因 *</span><textarea v-model="reissue.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明令牌遗失/过期、工单与核验方式" /></label>
               <label class="field field--wide"><span>审批/核验记录 *</span><textarea v-model="reissue.approvalNote" rows="2" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="审批人、工单号与身份核验结论" /></label>
             </div>

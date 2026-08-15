@@ -1,4 +1,4 @@
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AuditLogView from "./AuditLogView.vue";
@@ -44,6 +44,7 @@ describe("AuditLogView", () => {
 
     expect(wrapper.text()).toContain("没有匹配的审计记录");
     expect(wrapper.text()).toContain("尝试清空关键词后重新搜索");
+    expect(wrapper.get("input[type='search']").attributes("maxlength")).toBe(String(LIST_QUERY_MAX_LENGTH));
   });
 
   it("pages through the server list and resets to page 1 when searching", async () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ADMIN_LIST_PAGE_SIZE, AdminRole } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, AdminRole, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { computed, onMounted, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -66,7 +66,7 @@ onMounted(load);
     <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以查看全局审计日志。" />
     <section v-else class="panel">
       <form class="toolbar" role="search" @submit.prevent="filter">
-        <label class="field"><span>搜索审计记录</span><input v-model="query" type="search" placeholder="操作人、动作、目标或请求编号" /></label>
+        <label class="field"><span>搜索审计记录</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="操作人、动作、目标或请求编号" /></label>
         <button class="button button--secondary" type="submit" :disabled="loading">搜索</button>
       </form>
       <PageState v-if="loading" type="loading" message="正在读取审计日志…" />

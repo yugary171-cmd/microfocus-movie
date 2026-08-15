@@ -1,4 +1,4 @@
-import { DramaStatus } from "@microfocus/contracts";
+import { DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DramaListView from "./DramaListView.vue";
@@ -54,6 +54,7 @@ describe("DramaListView", () => {
 
     expect(wrapper.text()).toContain("没有匹配的剧目");
     expect(wrapper.text()).toContain("创建第一部剧目");
+    expect(wrapper.get("input[type='search']").attributes("maxlength")).toBe(String(LIST_QUERY_MAX_LENGTH));
   });
 
   it("renders a retryable error state when the API fails", async () => {

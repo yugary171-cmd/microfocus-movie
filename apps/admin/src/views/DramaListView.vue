@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ADMIN_LIST_PAGE_SIZE, DramaStatus } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { computed, onMounted, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -71,7 +71,7 @@ onMounted(load);
     </header>
     <section class="panel">
       <form class="toolbar" role="search" @submit.prevent="filter">
-        <label class="field"><span>关键词</span><input v-model="query" type="search" placeholder="搜索剧名或负责人" /></label>
+        <label class="field"><span>关键词</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="搜索剧名或负责人" /></label>
         <label class="field"><span>内容状态</span><select v-model="status"><option value="">全部状态</option><option v-for="item in DramaStatus" :key="item" :value="item">{{ dramaStatusLabels[item] }}</option></select></label>
         <button class="button button--secondary" type="submit" :disabled="loading">筛选</button>
         <button class="button button--ghost" type="button" :disabled="loading" @click="reset">重置</button>

@@ -2,6 +2,7 @@ import { Controller, Get, Module, Param, Query, Req } from "@nestjs/common";
 import {
   API_ROUTES,
   FREE_EPISODE_COUNT,
+  LIST_QUERY_MAX_LENGTH,
   SEARCH_MAX_PAGE,
   SEARCH_PAGE_SIZE,
   type CatalogResponse,
@@ -68,8 +69,8 @@ export class CatalogController {
     totalPages: number;
   }> {
     await assertNamedRateLimit(this.prisma, "search", requestIpKey(request));
-    const q = query.trim().slice(0, 100);
-    const normalizedCategory = category.trim().slice(0, 100);
+    const q = query.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+    const normalizedCategory = category.trim().slice(0, LIST_QUERY_MAX_LENGTH);
     const page = parsePage(pageValue);
     const pageSize = SEARCH_PAGE_SIZE;
     if (page > SEARCH_MAX_PAGE) {
