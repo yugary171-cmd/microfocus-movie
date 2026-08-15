@@ -659,6 +659,19 @@ describe("search discovery", () => {
   });
 });
 
+describe("playback tap gesture", () => {
+  it("treats a short still touch as tap and ignores swipe or long press", async () => {
+    const { isPlaybackTap, PLAYBACK_TAP_MAX_MS, PLAYBACK_TAP_MOVE_MAX_PX } = await import(
+      "../src/utils/playback-gesture"
+    );
+    expect(isPlaybackTap(0, 120)).toBe(true);
+    expect(isPlaybackTap(PLAYBACK_TAP_MOVE_MAX_PX, PLAYBACK_TAP_MAX_MS)).toBe(true);
+    expect(isPlaybackTap(PLAYBACK_TAP_MOVE_MAX_PX + 1, 120)).toBe(false);
+    expect(isPlaybackTap(0, PLAYBACK_TAP_MAX_MS + 1)).toBe(false);
+    expect(isPlaybackTap(Number.NaN, 120)).toBe(false);
+  });
+});
+
 describe("local engagement helpers", () => {
   it("formats counts and clones comment threads without a backend", async () => {
     const { formatEngagementCount, shareDramaText } = await import("../src/utils/engagement");

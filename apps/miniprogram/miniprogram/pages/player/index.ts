@@ -30,7 +30,8 @@ Page({
     playbackRate: PLAYBACK_RATE_DEFAULT,
     rates: PLAYBACK_RATES,
     currentPosition: 0,
-    started: false
+    started: false,
+    isPlaying: false
   },
 
   controller: null as PlaybackHeartbeatController | null,
@@ -113,7 +114,8 @@ Page({
       lease,
       playbackUrl: lease.playbackUrl || "",
       hasPlaybackUrl: Boolean(lease.playbackUrl),
-      remainingLabel: this.remainingFromLease(lease.isFree, lease.remainingSeconds)
+      remainingLabel: this.remainingFromLease(lease.isFree, lease.remainingSeconds),
+      isPlaying: Boolean(lease.playbackUrl)
     });
     this.scheduleRenewal(lease);
     if (restorePosition && this.data.currentPosition > 0) {
@@ -240,11 +242,12 @@ Page({
 
   onPlay() {
     this.controller?.setState("playing");
-    this.setData({ notice: "" });
+    this.setData({ notice: "", isPlaying: true });
   },
 
   onPause() {
     this.controller?.setState("paused");
+    this.setData({ isPlaying: false });
     void this.persistProgress();
   },
 
@@ -254,6 +257,7 @@ Page({
 
   onEnded() {
     this.controller?.setState("paused");
+    this.setData({ isPlaying: false });
     void this.persistProgress();
   },
 
@@ -266,13 +270,19 @@ Page({
   onVideoError(event: WechatMiniprogram.VideoError) {
     this.controller?.setState("paused");
     const message = event.detail?.errMsg || "视频加载失败";
-    this.setData({ notice: message });
+    this.setData({ notice: message, isPlaying: false });
   },
 
   onVideoReady() {
     if (this.data.currentPosition > 0) {
       this.videoContext?.seek(this.data.currentPosition);
     }
+  },
+
+  togglePlayback() {
+    if (!this.data.hasPlaybackUrl || !this.videoContext) return;
+    if (this.data.isPlaying) this.videoContext.pause();
+    else this.videoContext.play();
   },
 
   changeRate(event: WechatMiniprogram.TouchEvent) {

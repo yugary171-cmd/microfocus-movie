@@ -19,28 +19,31 @@
     <view class="state-title">尚未配置可播放视频</view>
     <view>服务端已返回播放授权，但没有视频地址。请先配置真实 VOD 播放地址。</view>
   </view>
-  <video
-    wx:else
-    id="player"
-    class="video"
-    src="{{playbackUrl}}"
-    autoplay
-    muted="{{false}}"
-    obey-mute-switch="{{false}}"
-    controls
-    show-center-play-btn
-    enable-progress-gesture
-    custom-cache="{{false}}"
-    object-fit="contain"
-    bindplay="onPlay"
-    bindpause="onPause"
-    bindwaiting="onWaiting"
-    bindended="onEnded"
-    bindtimeupdate="onTimeUpdate"
-    binderror="onVideoError"
-    bindloadedmetadata="onVideoReady"
-    aria-label="{{dramaTitle}}第{{episodeNumber}}集播放器"
-  />
+  <view wx:else class="stage">
+    <video
+      id="player"
+      class="video"
+      src="{{playbackUrl}}"
+      autoplay
+      muted="{{false}}"
+      obey-mute-switch="{{false}}"
+      controls
+      show-center-play-btn
+      enable-progress-gesture
+      custom-cache="{{false}}"
+      object-fit="contain"
+      bindplay="onPlay"
+      bindpause="onPause"
+      bindwaiting="onWaiting"
+      bindended="onEnded"
+      bindtimeupdate="onTimeUpdate"
+      binderror="onVideoError"
+      bindloadedmetadata="onVideoReady"
+      aria-label="{{dramaTitle}}第{{episodeNumber}}集播放器"
+    />
+    <view class="playback-toggle" bindtap="togglePlayback" aria-label="暂停或播放" />
+    <view wx:if="{{!isPlaying}}" class="pause-mark" aria-hidden="true">❚❚</view>
+  </view>
 
   <view wx:if="{{notice}}" class="notice" role="status">{{notice}}</view>
   <view class="controls" aria-label="播放速度">

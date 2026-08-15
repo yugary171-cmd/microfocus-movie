@@ -35,6 +35,7 @@ const playbackRate = ref(PLAYBACK_RATE_DEFAULT);
 const rates = PLAYBACK_RATES;
 const currentPosition = ref(0);
 const started = ref(false);
+const isPlaying = ref(false);
 const commentsOpen = ref(false);
 const isFavorite = ref(false);
 const isLiked = ref(false);
@@ -170,6 +171,7 @@ function applyLease(current: PlaybackLeaseView, restorePosition = false) {
   lease.value = current;
   playbackUrl.value = current.playbackUrl || "";
   hasPlaybackUrl.value = Boolean(current.playbackUrl);
+  if (hasPlaybackUrl.value) isPlaying.value = true;
   remainingLabel.value = remainingFromLease(current.isFree, current.remainingSeconds);
   scheduleRenewal(current);
   if (restorePosition && currentPosition.value > 0) {
@@ -241,11 +243,13 @@ async function openLease() {
 
 function onPlay() {
   controller?.setState("playing");
+  isPlaying.value = true;
   notice.value = "";
 }
 
 function onPause() {
   controller?.setState("paused");
+  isPlaying.value = false;
   void persistProgress();
 }
 
@@ -255,6 +259,7 @@ function onWaiting() {
 
 function onEnded() {
   controller?.setState("paused");
+  isPlaying.value = false;
   void persistProgress();
 }
 
@@ -266,12 +271,19 @@ function onTimeUpdate(event: Event) {
 
 function onVideoError(event: Event) {
   controller?.setState("paused");
+  isPlaying.value = false;
   notice.value =
     (event as unknown as { detail?: { errMsg?: string } }).detail?.errMsg || "视频加载失败";
 }
 
 function onVideoReady() {
   if (currentPosition.value > 0) videoContext?.seek(currentPosition.value);
+}
+
+function togglePlayback() {
+  if (!hasPlaybackUrl.value || !videoContext) return;
+  if (isPlaying.value) videoContext.pause();
+  else videoContext.play();
 }
 
 function changeRate(rate: number) {
@@ -384,6 +396,14 @@ onUnload(() => {
         @error="onVideoError"
         @loadedmetadata="onVideoReady"
       />
+      <view
+        v-if="hasPlaybackUrl"
+        class="playback-toggle"
+        role="button"
+        aria-label="暂停或播放"
+        @tap="togglePlayback"
+      />
+      <view v-if="hasPlaybackUrl && !isPlaying" class="pause-mark" aria-hidden="true">❚❚</view>
       <PlayerActions
         class="stage-actions"
         :favorited="isFavorite"

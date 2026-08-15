@@ -5,6 +5,7 @@ import PlayerActions from "../../components/player-actions/index.vue";
 import { RUNTIME_CONFIG } from "../../config/runtime";
 import { getClientPlatform } from "../../platform/env";
 import { shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
+import { isPlaybackTap } from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 type TheaterVideo = {
@@ -162,6 +163,7 @@ const videoMarker = computed(
   () => `Mock 视频 ${currentIndex.value + 1} / ${videos.length}`
 );
 const playbackError = ref("");
+const isPlaying = ref(true);
 const gesture = reactive({ startY: 0, startAt: 0 });
 const layout = reactive({
   pageHeight: 0,
@@ -201,7 +203,14 @@ function openSearch() {
 }
 
 function playCurrent() {
+  isPlaying.value = true;
   uni.createVideoContext("theater-video").play();
+}
+
+function togglePlayback() {
+  const context = uni.createVideoContext("theater-video");
+  if (isPlaying.value) context.pause();
+  else context.play();
 }
 
 function changeVideo(index: number, notice?: string) {
@@ -264,6 +273,7 @@ function onGestureEnd(event: TouchEvent) {
   if (elapsed > 900) return;
   if (distance <= -SWIPE_THRESHOLD) changeVideo(currentIndex.value + 1);
   else if (distance >= SWIPE_THRESHOLD && currentIndex.value > 0) changeVideo(currentIndex.value - 1);
+  else if (isPlaybackTap(distance, elapsed)) togglePlayback();
 }
 
 function handleAction(action: TheaterAction) {
@@ -317,17 +327,25 @@ function prevSimple() {
       :enable-progress-gesture="false"
       object-fit="cover"
       :aria-label="`${currentVideo.dramaTitle}沉浸式短剧播放器`"
+      @play="isPlaying = true"
+      @pause="isPlaying = false"
       @loadedmetadata="playCurrent"
       @error="onVideoError"
     />
     <view class="video-shade" />
     <view
-      v-if="!H5_SIMPLIFIED"
+      v-if="H5_SIMPLIFIED"
+      class="gesture-layer"
+      @tap="togglePlayback"
+    />
+    <view
+      v-else
       class="gesture-layer"
       @touchstart="onGestureStart"
       @touchmove="onGestureMove"
       @touchend="onGestureEnd"
     />
+    <view v-if="!isPlaying && !playbackError" class="pause-mark" aria-hidden="true">❚❚</view>
 
     <view
       class="refresh-panel"
@@ -367,7 +385,7 @@ function prevSimple() {
       {{ videoMarker }}
     </view>
     <view class="swipe-tip" :style="{ top: `${layout.overlayTop + 22}px` }">
-      {{ H5_SIMPLIFIED ? "H5 使用按钮切换，不模拟抖音手势" : "上滑切换下一条 · 首条下拉刷新" }}
+      {{ H5_SIMPLIFIED ? "轻点暂停或播放 · 用按钮切换条目" : "轻点暂停或播放 · 上滑下一条 · 首条下拉刷新" }}
     </view>
     <view v-if="H5_SIMPLIFIED" class="h5-switchers">
       <button class="secondary-button" @tap="prevSimple">上一条</button>

@@ -22,6 +22,17 @@ import {
   playerUrlFromHistory,
   toHistoryCardViews
 } from "../miniprogram/utils/history-view";
+import { isPlaybackTap, PLAYBACK_TAP_MAX_MS, PLAYBACK_TAP_MOVE_MAX_PX } from "../miniprogram/utils/playback-gesture";
+
+describe("playback tap gesture", () => {
+  it("treats a short still touch as tap and ignores swipe or long press", () => {
+    expect(isPlaybackTap(0, 120)).toBe(true);
+    expect(isPlaybackTap(PLAYBACK_TAP_MOVE_MAX_PX, PLAYBACK_TAP_MAX_MS)).toBe(true);
+    expect(isPlaybackTap(PLAYBACK_TAP_MOVE_MAX_PX + 1, 120)).toBe(false);
+    expect(isPlaybackTap(0, PLAYBACK_TAP_MAX_MS + 1)).toBe(false);
+    expect(isPlaybackTap(Number.NaN, 120)).toBe(false);
+  });
+});
 
 describe("explicit WeChat login", () => {
   it("obtains a fresh WeChat code and persists the resulting Mock session", async () => {

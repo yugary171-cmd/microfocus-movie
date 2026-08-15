@@ -30,6 +30,25 @@ page {
   inset: 0;
 }
 
+.pause-mark {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  width: 96rpx;
+  height: 96rpx;
+  margin: -48rpx 0 0 -48rpx;
+  color: #fff;
+  background: rgba(8, 8, 10, 0.45);
+  border-radius: 50%;
+  font-size: 36rpx;
+  font-weight: 700;
+  line-height: 96rpx;
+  letter-spacing: 4rpx;
+  text-align: center;
+  pointer-events: none;
+}
+
 .refresh-panel {
   position: absolute;
   z-index: 3;

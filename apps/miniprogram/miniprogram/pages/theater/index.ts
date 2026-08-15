@@ -1,4 +1,5 @@
 import { RUNTIME_CONFIG } from "../../config/runtime";
+import { isPlaybackTap } from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 
@@ -144,7 +145,8 @@ Page({
     refreshing: false,
     refreshLabel: "下拉刷新内容",
     isFavorite: false,
-    isLiked: false
+    isLiked: false,
+    isPlaying: true
   },
 
   touchStartY: 0,
@@ -196,6 +198,8 @@ Page({
       this.changeVideo(this.data.currentIndex + 1);
     } else if (distance >= SWIPE_THRESHOLD && this.data.currentIndex > 0) {
       this.changeVideo(this.data.currentIndex - 1);
+    } else if (isPlaybackTap(distance, elapsed)) {
+      this.togglePlayback();
     }
   },
 
@@ -226,13 +230,29 @@ Page({
       isLiked: false
     });
     wx.nextTick(() => {
+      this.setData({ isPlaying: true });
       wx.createVideoContext("theater-video", this).play();
     });
     if (notice) wx.showToast({ title: notice, icon: "none" });
   },
 
   onVideoReady() {
+    this.setData({ isPlaying: true });
     wx.createVideoContext("theater-video", this).play();
+  },
+
+  onPlay() {
+    this.setData({ isPlaying: true });
+  },
+
+  onPause() {
+    this.setData({ isPlaying: false });
+  },
+
+  togglePlayback() {
+    const context = wx.createVideoContext("theater-video", this);
+    if (this.data.isPlaying) context.pause();
+    else context.play();
   },
 
   handleAction(event: WechatMiniprogram.TouchEvent) {
