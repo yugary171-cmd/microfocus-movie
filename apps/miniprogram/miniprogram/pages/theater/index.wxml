@@ -1,5 +1,5 @@
 <view class="theater-page">
-  <video id="theater-video" class="theater-video" src="{{currentVideo.url}}" autoplay loop muted controls="{{false}}" show-center-play-btn="{{false}}" object-fit="cover" bindloadedmetadata="onVideoReady" aria-label="{{currentVideo.dramaTitle}}沉浸式短剧播放器" />
+  <video id="theater-video" class="theater-video" src="{{currentVideo.url}}" autoplay loop muted="{{false}}" obey-mute-switch="{{false}}" controls="{{false}}" show-center-play-btn="{{false}}" object-fit="cover" bindloadedmetadata="onVideoReady" aria-label="{{currentVideo.dramaTitle}}沉浸式短剧播放器" />
   <view class="video-shade" />
   <view class="gesture-layer" catchtouchstart="onGestureStart" catchtouchmove="onGestureMove" catchtouchend="onGestureEnd" />
 

@@ -368,6 +368,8 @@ onUnload(() => {
         class="video"
         :src="playbackUrl"
         autoplay
+        :muted="false"
+        :obey-mute-switch="false"
         controls
         show-center-play-btn
         enable-progress-gesture

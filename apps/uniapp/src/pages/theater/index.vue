@@ -310,7 +310,8 @@ function prevSimple() {
       :src="currentVideo.url"
       autoplay
       loop
-      muted
+      :muted="H5_SIMPLIFIED"
+      :obey-mute-switch="false"
       :controls="false"
       :show-center-play-btn="false"
       :enable-progress-gesture="false"
