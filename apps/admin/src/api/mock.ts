@@ -4,6 +4,7 @@ import {
   ADMIN_LIST_PAGE_SIZE,
   DeletionRequestStatus,
   DramaStatus,
+  isRightsMaterialDigest,
   MediaStatus,
   type ReissueDeletionQueryTokenResponse,
   type ReleaseGateStatus,
@@ -249,7 +250,7 @@ function assertMockRights(drama: DramaRecord): void {
     isRightsActive(drama.rightsValidFrom, drama.licenseExpiresAt) &&
     drama.rightsReportNumber.trim() &&
     drama.rightsMaterialObjectKey.trim() &&
-    /^[a-f0-9]{64}$/i.test(drama.rightsMaterialDigestSha256),
+    isRightsMaterialDigest(drama.rightsMaterialDigestSha256),
   );
   if (
     !hasRightsMaterial ||

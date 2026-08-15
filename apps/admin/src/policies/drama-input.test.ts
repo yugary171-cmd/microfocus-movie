@@ -72,6 +72,9 @@ describe("dramaDraftError", () => {
       ),
     ).toContain("单集时长");
     expect(
+      dramaDraftError(draft({ rightsMaterialDigestSha256: "not-a-digest" })),
+    ).toContain("材料 SHA-256");
+    expect(
       dramaDraftError(
         draft({
           episodes: Array.from({ length: DRAMA_EPISODE_MAX_COUNT + 1 }, (_, index) => ({

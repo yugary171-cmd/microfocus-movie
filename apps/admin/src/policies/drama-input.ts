@@ -14,6 +14,7 @@ import {
   UPLOAD_FILE_NAME_MAX_LENGTH,
   isAllowedUploadFileName,
   isAllowedUploadFileSize,
+  isRightsMaterialDigest,
   resolveUploadContentType,
 } from "@microfocus/contracts";
 import type { DramaInput } from "@/types/admin";
@@ -67,6 +68,9 @@ export function dramaDraftError(input: DramaInput): string {
   }
   if (input.rightsMaterialObjectKey.length > RIGHTS_MATERIAL_KEY_MAX_LENGTH) {
     return `材料对象键不能超过 ${RIGHTS_MATERIAL_KEY_MAX_LENGTH} 字`;
+  }
+  if (input.rightsMaterialDigestSha256.trim() && !isRightsMaterialDigest(input.rightsMaterialDigestSha256)) {
+    return "材料 SHA-256 必须是 64 位十六进制摘要";
   }
   if (input.episodes.length > DRAMA_EPISODE_MAX_COUNT) {
     return `集数不能超过 ${DRAMA_EPISODE_MAX_COUNT}`;

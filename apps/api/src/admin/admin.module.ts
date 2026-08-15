@@ -39,6 +39,7 @@ import {
   RIGHTS_DOCUMENT_MAX_LENGTH,
   RIGHTS_HOLDER_MAX_LENGTH,
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
+  RIGHTS_MATERIAL_DIGEST_PATTERN,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES,
   UPLOAD_CONTENT_TYPES,
@@ -166,7 +167,7 @@ export class RightsDto {
   @IsString() @MinLength(1) @MaxLength(RIGHTS_DOCUMENT_MAX_LENGTH) licenseNumber!: string;
   @IsString() @MinLength(1) @MaxLength(RIGHTS_DOCUMENT_MAX_LENGTH) reportNumber!: string;
   @IsString() @MinLength(1) @MaxLength(RIGHTS_MATERIAL_KEY_MAX_LENGTH) materialObjectKey!: string;
-  @Matches(/^[a-f0-9]{64}$/i) materialDigestSha256!: string;
+  @Matches(RIGHTS_MATERIAL_DIGEST_PATTERN) materialDigestSha256!: string;
 }
 
 class MediaAssetDto {

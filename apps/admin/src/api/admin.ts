@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, encodedRoute, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -118,7 +118,7 @@ export const adminApi = {
     if (missingRights.length) {
       throw new Error(`真实保存前请补齐版权资料：${missingRights.join("、")}`);
     }
-    if (!/^[a-f0-9]{64}$/i.test(input.rightsMaterialDigestSha256)) {
+    if (!isRightsMaterialDigest(input.rightsMaterialDigestSha256)) {
       throw new Error("材料 SHA-256 必须是 64 位十六进制摘要");
     }
     if (

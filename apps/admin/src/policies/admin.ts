@@ -1,4 +1,4 @@
-import { AdminRole, DramaStatus, MediaStatus, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, DramaStatus, isRightsMaterialDigest, MediaStatus, type ReleaseGateStatus } from "@microfocus/contracts";
 import type { AdminUser, DramaRecord, ReviewItem } from "@/types/admin";
 
 export interface ActionDecision {
@@ -80,7 +80,7 @@ export function canSubmitReview(user: AdminUser, drama: DramaRecord): ActionDeci
     !isRightsActive(drama.rightsValidFrom, drama.licenseExpiresAt) ||
     !drama.rightsReportNumber.trim() ||
     !drama.rightsMaterialObjectKey.trim() ||
-    !/^[a-f0-9]{64}$/i.test(drama.rightsMaterialDigestSha256) ||
+    !isRightsMaterialDigest(drama.rightsMaterialDigestSha256) ||
     !drama.allowsWechatDistribution ||
     !drama.allowsAdMonetization ||
     !drama.allowsTranscoding ||

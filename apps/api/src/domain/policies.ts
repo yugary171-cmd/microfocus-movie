@@ -1,4 +1,4 @@
-import type { ReleaseGateStatus } from "@microfocus/contracts";
+import { isRightsMaterialDigest, type ReleaseGateStatus } from "@microfocus/contracts";
 
 export type GrantBalance = {
   id: string;
@@ -171,7 +171,7 @@ export function publicationBlockers(input: {
   ) {
     blockers.push("RIGHTS_SCOPE_INCOMPLETE");
   }
-  if (rights && (!rights.materialObjectKey || !/^[a-f0-9]{64}$/i.test(rights.materialDigestSha256))) {
+  if (rights && (!rights.materialObjectKey || !isRightsMaterialDigest(rights.materialDigestSha256))) {
     blockers.push("RIGHTS_MATERIAL_INVALID");
   }
   if (!input.episodes.length) blockers.push("EPISODES_REQUIRED");

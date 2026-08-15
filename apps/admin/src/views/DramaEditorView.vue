@@ -11,6 +11,8 @@ import {
   MediaStatus,
   RIGHTS_DOCUMENT_MAX_LENGTH,
   RIGHTS_HOLDER_MAX_LENGTH,
+  RIGHTS_MATERIAL_DIGEST_INPUT_PATTERN,
+  RIGHTS_MATERIAL_DIGEST_LENGTH,
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
   type ReleaseGateStatus,
 } from "@microfocus/contracts";
@@ -272,7 +274,7 @@ onMounted(load);
             <label class="field"><span>许可到期日 *</span><input v-model="form.licenseExpiresAt" :disabled="!canEdit" type="date" required /></label>
             <label class="field"><span>报备号 *</span><input v-model="form.rightsReportNumber" :disabled="!canEdit" :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH" required /></label>
             <label class="field"><span>私有材料对象键 *</span><input v-model="form.rightsMaterialObjectKey" :disabled="!canEdit" :maxlength="RIGHTS_MATERIAL_KEY_MAX_LENGTH" required placeholder="rights/…/document.pdf" /><small>仅填写私有对象存储键，不使用公开 URL</small></label>
-            <label class="field field--wide"><span>材料 SHA-256 摘要 *</span><input v-model="form.rightsMaterialDigestSha256" :disabled="!canEdit" required minlength="64" maxlength="64" pattern="[A-Fa-f0-9]{64}" spellcheck="false" autocomplete="off" placeholder="64 位十六进制摘要" /></label>
+            <label class="field field--wide"><span>材料 SHA-256 摘要 *</span><input v-model="form.rightsMaterialDigestSha256" :disabled="!canEdit" required :minlength="RIGHTS_MATERIAL_DIGEST_LENGTH" :maxlength="RIGHTS_MATERIAL_DIGEST_LENGTH" :pattern="RIGHTS_MATERIAL_DIGEST_INPUT_PATTERN" spellcheck="false" autocomplete="off" placeholder="64 位十六进制摘要" /></label>
             <fieldset class="rights-scope field--wide" :disabled="!canEdit">
               <legend>授权范围（须逐项确认）</legend>
               <label><input v-model="form.allowsWechatDistribution" type="checkbox" required /> 允许微信分发</label>

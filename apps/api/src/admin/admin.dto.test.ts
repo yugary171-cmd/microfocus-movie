@@ -13,6 +13,7 @@ import {
   EPISODE_DURATION_SECONDS_MAX,
   MEDIA_REVIEW_NOTES_MAX_LENGTH,
   REVIEW_NOTES_MAX_LENGTH,
+  RIGHTS_MATERIAL_DIGEST_LENGTH,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES
 } from "@microfocus/contracts";
@@ -90,10 +91,30 @@ describe("admin content input limits", () => {
         licenseNumber: "license",
         reportNumber: "report",
         materialObjectKey: "private/rights.pdf",
-        materialDigestSha256: "a".repeat(64)
+        materialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH)
       })
     );
     expect(rights.some((error) => error.property === "rightsHolder")).toBe(true);
+    expect(
+      (
+        await validate(
+          plainToInstance(RightsDto, {
+            rightsHolder: "权利方",
+            validFrom: "2026-01-01T00:00:00.000Z",
+            validUntil: "2027-01-01T00:00:00.000Z",
+            territory: "CN",
+            allowsWechatDistribution: true,
+            allowsAdMonetization: true,
+            allowsTranscoding: true,
+            allowsPromotionalMaterial: true,
+            licenseNumber: "license",
+            reportNumber: "report",
+            materialObjectKey: "private/rights.pdf",
+            materialDigestSha256: "g".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH)
+          })
+        )
+      ).some((error) => error.property === "materialDigestSha256")
+    ).toBe(true);
   });
 });
 

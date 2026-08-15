@@ -1,4 +1,4 @@
-import { AdminRole, DRAMA_SUMMARY_MAX_LENGTH, DRAMA_TAG_MAX_COUNT, DRAMA_TITLE_MAX_LENGTH } from "@microfocus/contracts";
+import { AdminRole, DRAMA_SUMMARY_MAX_LENGTH, DRAMA_TAG_MAX_COUNT, DRAMA_TITLE_MAX_LENGTH, RIGHTS_MATERIAL_DIGEST_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DramaEditorView from "./DramaEditorView.vue";
@@ -48,6 +48,9 @@ describe("DramaEditorView", () => {
 
     expect(wrapper.get("input").attributes("maxlength")).toBe(String(DRAMA_TITLE_MAX_LENGTH));
     expect(wrapper.get("textarea").attributes("maxlength")).toBe(String(DRAMA_SUMMARY_MAX_LENGTH));
+    expect(wrapper.get("input[placeholder='64 位十六进制摘要']").attributes("maxlength")).toBe(
+      String(RIGHTS_MATERIAL_DIGEST_LENGTH),
+    );
     expect(wrapper.text()).toContain(`最多 ${DRAMA_TAG_MAX_COUNT} 个`);
 
     await wrapper.get("input[placeholder='使用逗号分隔']").setValue(

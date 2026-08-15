@@ -27,6 +27,12 @@ export const COVER_URL_MAX_LENGTH = 2048;
 export const RIGHTS_HOLDER_MAX_LENGTH = 200;
 export const RIGHTS_DOCUMENT_MAX_LENGTH = 128;
 export const RIGHTS_MATERIAL_KEY_MAX_LENGTH = 512;
+export const RIGHTS_MATERIAL_DIGEST_LENGTH = 64;
+export const RIGHTS_MATERIAL_DIGEST_INPUT_PATTERN = `[A-Fa-f0-9]{${RIGHTS_MATERIAL_DIGEST_LENGTH}}`;
+export const RIGHTS_MATERIAL_DIGEST_PATTERN = new RegExp(
+  `^[a-f0-9]{${RIGHTS_MATERIAL_DIGEST_LENGTH}}$`,
+  "i"
+);
 export const ENTITY_ID_MAX_LENGTH = 191;
 export const ADMIN_REASON_MIN_LENGTH = 6;
 export const ADMIN_REASON_MAX_LENGTH = 300;
@@ -73,6 +79,10 @@ export function isAllowedUploadFileName(fileName: string): boolean {
 
 export function isAllowedUploadFileSize(size: number): boolean {
   return Number.isInteger(size) && size >= 1 && size <= UPLOAD_FILE_SIZE_MAX_BYTES;
+}
+
+export function isRightsMaterialDigest(value: string): boolean {
+  return RIGHTS_MATERIAL_DIGEST_PATTERN.test(value.trim());
 }
 
 export function resolveUploadContentType(fileType: string): UploadContentType | null {
