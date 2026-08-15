@@ -1,5 +1,6 @@
 import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocus/contracts";
 import { getApi, isMockMode } from "../../services/api";
+import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
   describeRewardResult,
@@ -21,6 +22,7 @@ import {
   formatDateTime,
   formatRewardUnlockCopy
 } from "../../utils/format";
+import { buildDramaShareCard } from "../../utils/drama-share";
 
 Page({
   data: {
@@ -68,7 +70,15 @@ Page({
       ]);
       this.setData({ drama });
       this.applyEntitlement(entitlement);
+      trackFunnelEvent("drama_detail_view", { dramaId: drama.id });
       wx.setNavigationBarTitle({ title: drama.title || "短剧详情" });
+      if (!this.data.isMock) {
+        try {
+          wx.showShareMenu({ menus: ["shareAppMessage"] });
+        } catch {
+          // ignore
+        }
+      }
     } catch (error) {
       this.setData({ error: toFriendlyErrorMessage(error), drama: null });
     } finally {
@@ -101,6 +111,10 @@ Page({
     const remaining = this.data.entitlement?.remainingSeconds ?? 0;
     if (!canStartEpisode(episode.episodeNumber, remaining)) {
       this.setData({ unlockVisible: true, unlockEpisode: episode, rewardError: "" });
+      trackFunnelEvent("lock_intercept_shown", {
+        dramaId: this.data.drama.id,
+        episodeNumber: episode.episodeNumber
+      });
       return;
     }
     this.openPlayer(episode);
@@ -144,6 +158,7 @@ Page({
       this.pendingRewardConfirmation = null;
       this.rewardDependencies = null;
       this.applyEntitlement(result.entitlement);
+      trackFunnelEvent("entitlement_credited", { dramaId: this.data.drama.id });
       const episode = this.data.unlockEpisode;
       this.setData({
         unlockVisible: false,
@@ -170,6 +185,13 @@ Page({
       rewardRetryPending: false,
       rewardError: describeRewardResult(result)
     });
+    trackFunnelEvent("ad_fail", { dramaId: this.data.drama?.id, status: result.status });
+  },
+
+  onShareAppMessage() {
+    const card = buildDramaShareCard({ isMock: this.data.isMock, drama: this.data.drama });
+    if (!card) return { title: "内部体验不可外传" };
+    return card;
   },
 
   episodeIsFree(event: WechatMiniprogram.TouchEvent) {

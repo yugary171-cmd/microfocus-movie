@@ -648,3 +648,107 @@ export interface ReleaseGateStatus {
   readyForExternalTraffic: boolean;
   blockers: string[];
 }
+
+/** Fail-closed until product, legal/privacy, and engineering freeze the matrix together. */
+export const RETENTION_MATRIX_APPROVED = false;
+
+export const ANONYMIZED_USER_DISPLAY_NAME = "已注销用户";
+
+export type RetentionAction = "retain" | "anonymize_when_approved" | "delete_when_approved";
+
+export const DATA_RETENTION_CLASSES = [
+  {
+    id: "user_profile",
+    examples: "displayName, avatarUrl, openId",
+    action: "anonymize_when_approved" as const,
+    retainReason: "直接身份在批准后匿名化；批准前只撤权不清理"
+  },
+  {
+    id: "watch_progress",
+    examples: "WatchProgress",
+    action: "delete_when_approved" as const,
+    retainReason: "可删除观看进度；批准前不删除"
+  },
+  {
+    id: "entitlement_ledger",
+    examples: "EntitlementGrant, EntitlementDebit, adjustments",
+    action: "retain" as const,
+    retainReason: "财务与权益审计，注销不得删除"
+  },
+  {
+    id: "reward_challenges",
+    examples: "RewardChallenge",
+    action: "retain" as const,
+    retainReason: "广告争议与补偿核验"
+  },
+  {
+    id: "playback_leases",
+    examples: "PlaybackLease and reservation facts",
+    action: "retain" as const,
+    retainReason: "播放与扣费审计"
+  },
+  {
+    id: "admin_audit",
+    examples: "AuditLog, operationalEvent",
+    action: "retain" as const,
+    retainReason: "安全与运营审计"
+  },
+  {
+    id: "callback_events",
+    examples: "CallbackEvent metadata",
+    action: "retain" as const,
+    retainReason: "事故证据；密文另按已实现载荷保留期清除"
+  },
+  {
+    id: "deletion_requests",
+    examples: "DeletionRequest token hash",
+    action: "retain" as const,
+    retainReason: "注销处理证明"
+  }
+] satisfies Array<{
+  id: string;
+  examples: string;
+  action: RetentionAction;
+  retainReason: string;
+}>;
+
+export const FUNNEL_EVENTS = [
+  "drama_card_click",
+  "drama_detail_view",
+  "episode_click",
+  "playback_start",
+  "playback_pause",
+  "playback_complete",
+  "lock_intercept_shown",
+  "ad_start",
+  "ad_end",
+  "ad_fail",
+  "challenge_create",
+  "reward_confirm",
+  "entitlement_credited",
+  "lease_create",
+  "heartbeat_ok",
+  "heartbeat_fail",
+  "playback_error",
+  "offline_block"
+] as const;
+
+export type FunnelEventName = (typeof FUNNEL_EVENTS)[number];
+
+export const WATCH_PATH_ERROR_CLASSES = {
+  AD_NOT_COMPLETED: "ad_incomplete",
+  AD_NO_FILL: "ad_no_fill",
+  AD_LOAD_FAILED: "ad_load_failed",
+  REWARD_NOT_VERIFIED: "reward_pending",
+  CHALLENGE_EXPIRED: "reward_expired",
+  UNCONFIRMED_EXPOSURE_LIMIT: "playback_unconfirmed",
+  CUSTOMER_SERVICE_REQUIRED: "playback_recover_cs",
+  ACCOUNT_UNAVAILABLE: "account_unavailable"
+} as const;
+
+export function classifyWatchPathError(code: string): string {
+  if (code in WATCH_PATH_ERROR_CLASSES) {
+    return WATCH_PATH_ERROR_CLASSES[code as keyof typeof WATCH_PATH_ERROR_CLASSES];
+  }
+  return "unclassified";
+}

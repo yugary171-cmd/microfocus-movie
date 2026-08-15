@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocus/contracts";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
 import { getApi, isMockMode } from "../../services/api";
+import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
   describeRewardResult,
@@ -25,6 +26,7 @@ import {
   formatRewardUnlockCopy
 } from "../../utils/format";
 import { playerUrlFromEpisode } from "../../utils/player-navigation";
+import { buildDramaShareCard } from "../../utils/drama-share";
 
 const isMock = isMockMode();
 const id = ref("");
@@ -71,7 +73,15 @@ async function loadDetail() {
     ]);
     drama.value = detail;
     applyEntitlement(summary);
+    trackFunnelEvent("drama_detail_view", { dramaId: detail.id });
     uni.setNavigationBarTitle({ title: detail.title || "短剧详情" });
+    if (!isMock) {
+      try {
+        uni.showShareMenu({ menus: ["shareAppMessage"] });
+      } catch {
+        // H5 has no share menu
+      }
+    }
   } catch (caught) {
     error.value = toFriendlyErrorMessage(caught);
     drama.value = null;
@@ -94,6 +104,7 @@ function selectEpisode(episode: EpisodeSummary) {
     unlockVisible.value = true;
     unlockEpisode.value = episode;
     rewardError.value = "";
+    trackFunnelEvent("lock_intercept_shown", { dramaId: current.id, episodeNumber: episode.episodeNumber });
     return;
   }
   openPlayer(episode);
@@ -123,6 +134,7 @@ async function watchRewardAd() {
     pendingRewardConfirmation = null;
     rewardDependencies = null;
     applyEntitlement(result.entitlement);
+    trackFunnelEvent("entitlement_credited", { dramaId: drama.value.id });
     const episode = unlockEpisode.value;
     unlockVisible.value = false;
     rewardLoading.value = false;
@@ -143,6 +155,7 @@ async function watchRewardAd() {
   rewardLoading.value = false;
   rewardRetryPending.value = false;
   rewardError.value = describeRewardResult(result);
+  trackFunnelEvent("ad_fail", { dramaId: drama.value?.id, status: result.status });
 }
 
 onLoad((options) => {
@@ -157,6 +170,14 @@ onLoad((options) => {
 
 onShow(() => {
   if (id.value && drama.value) void loadEntitlement();
+});
+
+onShareAppMessage(() => {
+  const card = buildDramaShareCard({ isMock, drama: drama.value });
+  if (!card) {
+    return { title: "内部体验不可外传" };
+  }
+  return card;
 });
 </script>
 

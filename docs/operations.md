@@ -155,6 +155,8 @@
 4. VOD 故障时不把浏览器上传结果直接标记 READY，不签发无法验证的长期媒体地址。
 5. Provider 恢复后先验证认证、回调、幂等和对账，再逐步解除熔断；严禁切换 Mock 作为外部降级。
 
+错误分类（工单只用 class，不贴原始回调）：`ad_incomplete`、`ad_no_fill`、`ad_load_failed`、`reward_pending`、`reward_expired`、`playback_unconfirmed`、`playback_recover_cs`、`account_unavailable`。未知 `code` 记为 `unclassified`，并保留 `requestId`。核心漏斗事件名见契约 `FUNNEL_EVENTS`；客户端埋点去掉 token/secret/session_key。
+
 ### 7.7 认证、越权或秘密泄露
 
 1. 立即禁用受影响账号/密钥，撤销会话并限制管理端和高风险 API；秘密不得写入事故工单。

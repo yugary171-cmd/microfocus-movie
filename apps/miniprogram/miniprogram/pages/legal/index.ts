@@ -1,4 +1,5 @@
 import { isMockMode } from "../../services/api";
+import { buildSupportPacket } from "../../utils/support-packet";
 
 type LegalSection = "privacy" | "terms" | "ads" | "support" | "deletion";
 
@@ -30,7 +31,8 @@ const LEGAL_CONTENT: Record<
     paragraphs: [
       { heading: "主动触发", body: "激励广告不会自动弹出。只有当你选择锁定剧集并主动点击“观看激励广告”时，才会尝试加载。" },
       { heading: "发放条件", body: "广告完整播放且客户端收到 isEnded=true 后，才会提交领取。中途关闭、无填充或加载失败均不发放，已有额度不变，可以重试。验证中可对同一任务重试确认，不会新建广告挑战。客户端回调不是绝对安全证明，最终结果以服务端为准。" },
-      { heading: "使用与到期", body: "权益仅适用于领取时对应的当前短剧，并按实际播放消耗；暂停、缓冲、进入后台不应扣减。不同批次权益可能有各自到期时间，优先消耗临近到期的时长。" }
+      { heading: "使用与到期", body: "权益仅适用于领取时对应的当前短剧，并按实际播放消耗；暂停、缓冲、进入后台不应扣减。不同批次权益可能有各自到期时间，优先消耗临近到期的时长。" },
+      { heading: "未到账处理", body: "完整观看后若提示验证中，请对同一任务点重试确认，不要再开一条广告。仍未到账时，填写 challengeId、剧目编号和 requestId 生成核验包，通过微信客服提交。管理员核验原挑战后走既有人工补偿，不直接改余额。" }
     ]
   },
   deletion: {
@@ -39,7 +41,7 @@ const LEGAL_CONTENT: Record<
     paragraphs: [
       { heading: "提交后立即生效的撤权", body: "提交前会要求一次新的微信登录确认。申请提交后，账号进入待处理状态：用户登录失效，活动播放租约被撤销，未完成的奖励挑战不再发放。权益账本、事故证据和管理员审计不会因注销申请被删除。" },
       { heading: "查询令牌", body: "首次成功响应会返回查询令牌。服务端只保存令牌摘要。令牌遗失后不能用旧登录恢复查询；需走受控客服核验后由管理员补发新令牌，旧令牌立即失效。" },
-      { heading: "后续清理", body: "可删除个人信息的删除或匿名化依赖已批准的数据保留矩阵；在矩阵确认前，本申请只完成账户不可用与撤权，不假装已完成法定清理。" }
+      { heading: "后续清理", body: "后台作业会清点待处理注销，但在产品、法务/隐私与工程共同批准保留矩阵前保持阻断：不删除进度、不匿名化资料、不删除权益账本或审计。批准后也只匿名化资料并删除观看进度。" }
     ]
   },
   support: {
@@ -47,7 +49,7 @@ const LEGAL_CONTENT: Record<
     updatedAt: "发布前需配置正式主体与渠道",
     paragraphs: [
       { heading: "内容与版权投诉", body: "如发现内容侵权、备案信息异常或其他内容问题，请在正式上线后通过小程序客服提交剧名、集数、问题说明与可核验材料。" },
-      { heading: "广告与权益申诉", body: "如完整观看后权益未到账，请提供短剧名称、发生时间与页面提示。请勿发送密码、验证码、支付口令或其他敏感凭证。" },
+      { heading: "广告与权益申诉", body: "如完整观看后权益未到账，请填写下方核验包字段。请勿发送密码、验证码、支付口令或完整令牌。核验包供客服转交管理员，补偿仍走受审计的人工补偿接口。" },
       { heading: "未成年人保护与违法内容", body: "涉及未成年人保护、违法有害内容或紧急安全问题，请使用发布主体提供的正式投诉渠道。当前首版不硬编码未经确认的电话、邮箱或企业信息。" }
     ]
   }
@@ -59,14 +61,47 @@ Page({
     section: "privacy" as LegalSection,
     title: LEGAL_CONTENT.privacy.title,
     updatedAt: LEGAL_CONTENT.privacy.updatedAt,
-    paragraphs: LEGAL_CONTENT.privacy.paragraphs
+    paragraphs: LEGAL_CONTENT.privacy.paragraphs,
+    showSupportForm: false,
+    challengeId: "",
+    dramaId: "",
+    requestId: "",
+    supportPacket: ""
   },
 
   onLoad(options: Record<string, string | undefined>) {
     const candidate = options.section as LegalSection;
     const section = candidate in LEGAL_CONTENT ? candidate : "privacy";
     const content = LEGAL_CONTENT[section];
-    this.setData({ section, ...content });
+    this.setData({
+      section,
+      title: content.title,
+      updatedAt: content.updatedAt,
+      paragraphs: content.paragraphs,
+      showSupportForm: section === "ads" || section === "support"
+    });
     wx.setNavigationBarTitle({ title: content.title });
+  },
+
+  setChallengeId(event: { detail: { value: string } }) {
+    this.setData({ challengeId: event.detail.value });
+  },
+
+  setDramaId(event: { detail: { value: string } }) {
+    this.setData({ dramaId: event.detail.value });
+  },
+
+  setRequestId(event: { detail: { value: string } }) {
+    this.setData({ requestId: event.detail.value });
+  },
+
+  composeSupportPacket() {
+    this.setData({
+      supportPacket: buildSupportPacket({
+        challengeId: this.data.challengeId,
+        dramaId: this.data.dramaId,
+        requestId: this.data.requestId
+      })
+    });
   }
 });

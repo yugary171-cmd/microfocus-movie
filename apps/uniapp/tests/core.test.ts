@@ -8,6 +8,9 @@ import { ApiClientError, toFriendlyErrorMessage } from "../src/utils/errors";
 import { canStartEpisode, isFreeEpisode } from "../src/utils/episode";
 import { formatApproximateRemainingEpisodes, formatRemainingTime, formatRewardUnlockCopy } from "../src/utils/format";
 import { playerUrlFromHistory, toHistoryCardViews } from "../src/utils/history-view";
+import { buildDramaShareCard } from "../src/utils/drama-share";
+import { buildSupportPacket } from "../src/utils/support-packet";
+import { sanitizeFunnelProps, trackFunnelEvent, recentFunnelEvents } from "../src/services/telemetry";
 import { resolveHistoryPlayerUrl } from "../src/utils/history-navigation";
 import { paginateItems } from "../src/utils/pagination";
 import { playerUrlFromEpisode } from "../src/utils/player-navigation";
@@ -770,5 +773,47 @@ describe("demo media origin", () => {
     expect(urls.urls).toHaveLength(10);
     expect(urls.urls[9]).toBe("http://192.168.1.23:5174/demo/mock-10-healer.mp4");
     expect(pickDemoVideoUrl(urls.urls, "demo-d2-e3", urls.demoVideoUrl)).toMatch(/\/demo\/.+\.mp4$/);
+  });
+});
+
+describe("share, support packet and funnel privacy", () => {
+  it("does not build an exportable share card in Mock", () => {
+    expect(
+      buildDramaShareCard({
+        isMock: true,
+        drama: { id: "d1", title: "内部剧", summary: "s", coverUrl: "https://example.com/c.png" }
+      })
+    ).toBeNull();
+  });
+
+  it("builds a detail-page share card for live published dramas", () => {
+    expect(
+      buildDramaShareCard({
+        isMock: false,
+        drama: { id: "d1", title: "已发布剧", summary: "简介", coverUrl: "https://example.com/c.png" }
+      })
+    ).toEqual({
+      title: "已发布剧",
+      path: "/pages/drama/index?id=d1",
+      imageUrl: "https://example.com/c.png"
+    });
+  });
+
+  it("builds a support packet without secrets", () => {
+    const packet = buildSupportPacket({
+      challengeId: "challenge-1",
+      dramaId: "drama-1",
+      requestId: "req-1"
+    });
+    expect(packet).toContain("challengeId: challenge-1");
+    expect(packet).not.toMatch(/token|password|session_key/i);
+  });
+
+  it("drops sensitive funnel properties", () => {
+    trackFunnelEvent("ad_fail", { dramaId: "drama-1", accessToken: "secret", session_key: "k" });
+    const last = recentFunnelEvents().at(-1);
+    expect(last).toMatchObject({ event: "ad_fail", props: { dramaId: "drama-1" } });
+    expect(last?.props).not.toHaveProperty("accessToken");
+    expect(sanitizeFunnelProps({ Authorization: "Bearer x", ok: true })).toEqual({ ok: true });
   });
 });

@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { ProcessDrain } from "../operations/process-drain.js";
 import { pruneRateLimitBuckets } from "../security/rate-limit.js";
 import { runCallbackPayloadPurgeJob } from "./callback-payload-purge.js";
+import { runDeletionCleanupJob } from "./deletion-cleanup.js";
 import { runLedgerReconcileJob } from "./ledger-reconcile.js";
 import { runRightsExpiryJob } from "./rights-expiry.js";
 
@@ -46,6 +47,12 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
       const purge = await runCallbackPayloadPurgeJob(this.prisma as never, { ownerId });
       if (purge.acquired && purge.purged > 0) {
         this.logger.log(`callback payload purge job purged=${purge.purged}`);
+      }
+      const deletion = await runDeletionCleanupJob(this.prisma as never, { ownerId });
+      if (deletion.acquired && deletion.blocked && deletion.skipped > 0) {
+        this.logger.log(`deletion cleanup blocked pending=${deletion.skipped}`);
+      } else if (deletion.acquired && deletion.cleaned > 0) {
+        this.logger.log(`deletion cleanup cleaned=${deletion.cleaned}`);
       }
       const pruned = await pruneRateLimitBuckets(this.prisma);
       if (pruned > 0) {

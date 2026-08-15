@@ -7,4 +7,14 @@
     <view class="body">{{item.body}}</view>
   </view>
   <view class="review-note" role="note">本页文字用于首版产品与开发评审，不替代正式法律文本。上线前须由运营主体与法务审核并补齐生效日期、主体信息和有效联系渠道。</view>
+  <view wx:if="{{showSupportForm}}" class="legal-section">
+    <view class="heading">生成核验包</view>
+    <view class="body">只填写稳定编号。Mock 环境请把核验包抄给值班人，不要外发。</view>
+    <input class="support-input" maxlength="191" placeholder="challengeId" value="{{challengeId}}" bindinput="setChallengeId" />
+    <input class="support-input" maxlength="191" placeholder="dramaId" value="{{dramaId}}" bindinput="setDramaId" />
+    <input class="support-input" maxlength="191" placeholder="requestId" value="{{requestId}}" bindinput="setRequestId" />
+    <button class="support-button" bindtap="composeSupportPacket">生成核验包</button>
+    <view wx:if="{{supportPacket}}" class="support-packet" role="status">{{supportPacket}}</view>
+    <button class="support-button" open-type="contact">微信客服</button>
+  </view>
 </view>

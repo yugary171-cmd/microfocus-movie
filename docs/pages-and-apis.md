@@ -72,11 +72,11 @@ flowchart LR
 | 首页 | `apps/uniapp/src/pages/home/index.vue` | 分栏、分类入口和剧目发现 | `GET /v1/catalog`、`GET /v1/search` |
 | 搜索 | `apps/uniapp/src/pages/search/index.vue` | 按剧名、简介和分类检索；展示推荐搜索与空状态 | `GET /v1/search`、`GET /v1/catalog` |
 | 分类 | `apps/uniapp/src/pages/category/index.vue` | 按分类浏览公开剧目 | `GET /v1/search?category=...` |
-| 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、简介、目录、免费/锁定状态和播放入口 | `GET /v1/dramas/:dramaId`；登录后可读权益 |
+| 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、简介、目录、免费/锁定状态和播放入口；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益 |
 | 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复 | 播放、奖励、权益及进度接口 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |
 | 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（先拉起微信头像昵称授权）、退出登录（仅清本地用户会话）、观看历史、继续观看和客服入口 | `POST /v1/auth/wechat`、`GET /v1/me/history` |
-| 法律与隐私 | `apps/uniapp/src/pages/legal/index.vue` | 用户协议、隐私指引、广告权益、注销和投诉说明 | 静态内容或受控内容服务；不得依赖 Mock 文案发布 |
+| 法律与隐私 | `apps/uniapp/src/pages/legal/index.vue` | 用户协议、隐私指引、广告权益、注销、投诉说明和广告未到账核验包 | 静态内容或受控内容服务；不得依赖 Mock 文案发布 |
 
 播放器调用（`pages/player` + `services/reward.ts` + `services/playback-controller.ts`）：
 
@@ -237,7 +237,7 @@ flowchart LR
 
 `deletionQueryToken` 只能查询对应申请，服务端仅保存摘要并执行限频；有效期应覆盖承诺的最长处理窗口。令牌遗失或过期后只能通过受控客服身份核验恢复查询能力，不能恢复已撤销的用户会话。管理员补发会作废旧令牌。
 
-注销处理必须依据保留矩阵删除或匿名化可删除数据。依法或为权益、版权、安全和审计必须保留的记录应最小化、限制访问并与直接身份标识隔离；不得通过注销删除权益账本、事故证据或管理员审计事实。
+注销处理必须依据保留矩阵删除或匿名化可删除数据。当前 `RETENTION_MATRIX_APPROVED=false`，清理作业只记录阻断、不删账本。依法或为权益、版权、安全和审计必须保留的记录应最小化、限制访问并与直接身份标识隔离；不得通过注销删除权益账本、事故证据或管理员审计事实。矩阵见 [privacy-retention-matrix.md](./privacy-retention-matrix.md)。
 
 ### 5.4 系统与回调
 

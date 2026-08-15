@@ -22,6 +22,9 @@ import {
   playerUrlFromHistory,
   toHistoryCardViews
 } from "../miniprogram/utils/history-view";
+import { buildDramaShareCard } from "../miniprogram/utils/drama-share";
+import { buildSupportPacket } from "../miniprogram/utils/support-packet";
+import { sanitizeFunnelProps } from "../miniprogram/services/telemetry";
 import { isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MAX_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate, shouldStartHoldBoost } from "../miniprogram/utils/playback-gesture";
 
 describe("playback tap gesture", () => {
@@ -688,5 +691,21 @@ describe("API error fallback", () => {
     expect(toFriendlyErrorMessage(null)).toBe("服务暂时不可用，请稍后重试");
     expect(toFriendlyErrorMessage({ code: "BAD" })).toBe("服务暂时不可用，请稍后重试");
     expect(toFriendlyErrorMessage(new Error("网络超时"))).toBe("网络超时");
+  });
+});
+
+describe("share and support packet", () => {
+  it("does not build an exportable share card in Mock", () => {
+    expect(
+      buildDramaShareCard({
+        isMock: true,
+        drama: { id: "d1", title: "内部剧", summary: "s", coverUrl: "https://example.com/c.png" }
+      })
+    ).toBeNull();
+  });
+
+  it("omits secrets from support packets and funnel props", () => {
+    expect(buildSupportPacket({ challengeId: "c1" })).toContain("challengeId: c1");
+    expect(sanitizeFunnelProps({ session_key: "k", dramaId: "d1" })).toEqual({ dramaId: "d1" });
   });
 });
