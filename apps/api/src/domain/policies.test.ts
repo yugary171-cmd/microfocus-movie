@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLAYBACK_RATE_MAX, RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
+import { OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
 import {
   allocateFefo,
   assertHeartbeatAnchor,
@@ -140,15 +140,15 @@ describe("heartbeat debit policy", () => {
         lastSeq: 0,
         lastHeartbeatAt: new Date("2026-01-01T00:00:19Z"),
         now,
-        graceSeconds: 15
+        graceSeconds: OFFLINE_GRACE_SECONDS
       })
     ).toBe(false);
     expect(
       isLeaseFresh({
         lastSeq: 1,
-        lastHeartbeatAt: new Date("2026-01-01T00:00:00Z"),
+        lastHeartbeatAt: new Date(now.getTime() - (OFFLINE_GRACE_SECONDS + 1) * 1000),
         now,
-        graceSeconds: 15
+        graceSeconds: OFFLINE_GRACE_SECONDS
       })
     ).toBe(false);
   });

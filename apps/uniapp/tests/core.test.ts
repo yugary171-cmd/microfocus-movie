@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PlaybackHeartbeatResponse, RewardChallengeView } from "@microfocus/contracts";
-import { PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
+import { OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
 import { PlaybackHeartbeatController } from "../src/services/playback-controller";
 import { retryRewardConfirmation, runRewardFlow } from "../src/services/reward";
 import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ads";
@@ -449,12 +449,14 @@ describe("playback heartbeat controller", () => {
 
   it("pauses after the offline grace only when playing", () => {
     const controller = new PlaybackHeartbeatController();
+    const offlineSince = 1_000;
+    const pauseAt = offlineSince + OFFLINE_GRACE_SECONDS * 1000;
     controller.setState("playing");
-    controller.setNetworkAvailable(false, 1_000);
-    expect(controller.shouldPauseForOffline(15_999, 15)).toBe(false);
-    expect(controller.shouldPauseForOffline(16_000, 15)).toBe(true);
+    controller.setNetworkAvailable(false, offlineSince);
+    expect(controller.shouldPauseForOffline(pauseAt - 1)).toBe(false);
+    expect(controller.shouldPauseForOffline(pauseAt)).toBe(true);
     controller.setState("paused");
-    expect(controller.shouldPauseForOffline(30_000, 15)).toBe(false);
+    expect(controller.shouldPauseForOffline(pauseAt + OFFLINE_GRACE_SECONDS * 1000)).toBe(false);
   });
 });
 

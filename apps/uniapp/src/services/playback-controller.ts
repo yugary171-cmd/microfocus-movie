@@ -1,5 +1,6 @@
 import {
   clampPlaybackRate,
+  OFFLINE_GRACE_SECONDS,
   PLAYBACK_RATE_DEFAULT,
   type PlaybackHeartbeatRequest,
   type PlaybackHeartbeatResponse
@@ -44,7 +45,7 @@ export class PlaybackHeartbeatController {
     this.offlineSince = available ? null : this.offlineSince ?? now;
   }
 
-  shouldPauseForOffline(now = Date.now(), graceSeconds = 15): boolean {
+  shouldPauseForOffline(now = Date.now(), graceSeconds = OFFLINE_GRACE_SECONDS): boolean {
     return (
       this.state === "playing" &&
       this.offlineSince !== null &&
