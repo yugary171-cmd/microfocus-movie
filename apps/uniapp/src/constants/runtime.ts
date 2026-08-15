@@ -1,8 +1,4 @@
-/** Runtime values used by the uni-app watch client. */
-export const FREE_EPISODE_COUNT = 2;
-export const HEARTBEAT_INTERVAL_SECONDS = 5;
-export const OFFLINE_GRACE_SECONDS = 15;
-
+/** Uni-app watch client values that are not shared through contracts. */
 export const PLAYBACK_LEASE_STATUS = {
   ACTIVE: "ACTIVE",
   REVOKED: "REVOKED",

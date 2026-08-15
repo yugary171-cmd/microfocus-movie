@@ -1,13 +1,11 @@
 import {
+  HEARTBEAT_INTERVAL_SECONDS,
   isPlaybackRatePreset,
+  OFFLINE_GRACE_SECONDS,
   PLAYBACK_RATE_DEFAULT,
   PLAYBACK_RATES,
   type PlaybackLeaseView
 } from "@microfocus/contracts";
-import {
-  HEARTBEAT_INTERVAL_SECONDS,
-  OFFLINE_GRACE_SECONDS
-} from "../../constants/runtime";
 import { getApi, isMockMode } from "../../services/api";
 import { PlaybackHeartbeatController } from "../../services/playback-controller";
 import { restoreOrCreatePlaybackLease } from "../../services/playback-session";

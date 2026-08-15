@@ -1,4 +1,4 @@
-import { FREE_EPISODE_COUNT } from "../constants/runtime";
+import { FREE_EPISODE_COUNT } from "@microfocus/contracts";
 
 export function isFreeEpisode(episodeNumber: number): boolean {
   return Number.isInteger(episodeNumber) && episodeNumber <= FREE_EPISODE_COUNT;

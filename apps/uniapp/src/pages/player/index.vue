@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { isPlaybackRatePreset, PLAYBACK_RATE_DEFAULT, PLAYBACK_RATES, type PlaybackLeaseView } from "@microfocus/contracts";
+import { HEARTBEAT_INTERVAL_SECONDS, isPlaybackRatePreset, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_DEFAULT, PLAYBACK_RATES, type PlaybackLeaseView } from "@microfocus/contracts";
 import { onHide, onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { computed, nextTick, ref } from "vue";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
-import { HEARTBEAT_INTERVAL_SECONDS, OFFLINE_GRACE_SECONDS } from "../../constants/runtime";
 import {
   createVideoContext,
   getNetworkType,
