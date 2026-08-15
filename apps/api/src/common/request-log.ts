@@ -5,7 +5,13 @@ import {
   type ExecutionContext,
   type NestInterceptor
 } from "@nestjs/common";
-import { REQUEST_ID_MAX_LENGTH } from "@microfocus/contracts";
+import {
+  REQUEST_ID_MAX_LENGTH,
+  REQUEST_LOG_ACTOR_KIND_MAX_LENGTH,
+  REQUEST_LOG_LABEL_MAX_LENGTH,
+  REQUEST_LOG_METHOD_MAX_LENGTH,
+  REQUEST_LOG_PATH_MAX_LENGTH
+} from "@microfocus/contracts";
 import type { Observable } from "rxjs";
 import { catchError, tap } from "rxjs/operators";
 import { describeHttpException, type RequestWithContext } from "./http.js";
@@ -26,7 +32,7 @@ const SKIP_PATHS = /^\/(?:health|docs)(?:\/|$)/i;
 
 export function sanitizeRequestPath(url: string | undefined): string {
   const path = (url ?? "/").split("?")[0]?.split("#")[0] || "/";
-  return path.slice(0, 256);
+  return path.slice(0, REQUEST_LOG_PATH_MAX_LENGTH);
 }
 
 export function shouldSkipRequestLog(path: string): boolean {
@@ -36,18 +42,18 @@ export function shouldSkipRequestLog(path: string): boolean {
 export function buildRequestLog(input: RequestLogInput): Record<string, string | number> | null {
   const path = sanitizeRequestPath(input.url);
   if (shouldSkipRequestLog(path)) return null;
-  const method = (input.method ?? "GET").toUpperCase().slice(0, 16);
-  const actorKind = (input.actorKind ?? "anonymous").slice(0, 32);
+  const method = (input.method ?? "GET").toUpperCase().slice(0, REQUEST_LOG_METHOD_MAX_LENGTH);
+  const actorKind = (input.actorKind ?? "anonymous").slice(0, REQUEST_LOG_ACTOR_KIND_MAX_LENGTH);
   return {
     requestId: (input.requestId ?? "").slice(0, REQUEST_ID_MAX_LENGTH),
-    module: (input.module ?? "Unknown").slice(0, 64),
+    module: (input.module ?? "Unknown").slice(0, REQUEST_LOG_LABEL_MAX_LENGTH),
     method,
     path,
     status: input.status,
-    code: input.code.slice(0, 64),
+    code: input.code.slice(0, REQUEST_LOG_LABEL_MAX_LENGTH),
     durationMs: Math.max(0, Math.round(input.durationMs)),
     actorKind,
-    actorId: actorKind === "anonymous" ? "" : (input.actorId ?? "").slice(0, 64)
+    actorId: actorKind === "anonymous" ? "" : (input.actorId ?? "").slice(0, REQUEST_LOG_LABEL_MAX_LENGTH)
   };
 }
 

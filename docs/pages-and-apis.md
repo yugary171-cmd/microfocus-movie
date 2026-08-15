@@ -132,7 +132,7 @@ flowchart LR
 
 ### 4.1 响应与认证
 
-- 成功响应统一为 `{ data, requestId }`，错误响应统一为 `{ code, message, requestId }`。`requestId` 最长 128（`REQUEST_ID_MAX_LENGTH`）；入站 `x-request-id` 须匹配 `REQUEST_ID_PATTERN`，否则服务端签发 UUID。审计写入与访问日志按该上限截断。
+- 成功响应统一为 `{ data, requestId }`，错误响应统一为 `{ code, message, requestId }`。`requestId` 最长 128（`REQUEST_ID_MAX_LENGTH`）；入站 `x-request-id` 须匹配 `REQUEST_ID_PATTERN`，否则服务端签发 UUID。审计写入与访问日志按该上限截断。访问日志去掉查询串后，path 最长 `REQUEST_LOG_PATH_MAX_LENGTH`（256），method 最长 `REQUEST_LOG_METHOD_MAX_LENGTH`（16），actorKind 最长 `REQUEST_LOG_ACTOR_KIND_MAX_LENGTH`（32），module/code/actorId 最长 `REQUEST_LOG_LABEL_MAX_LENGTH`（64）。不记录 Authorization、请求体或健康检查。
 - 观看端使用 `Authorization: Bearer <viewer token>`：匿名 viewer token 只能申请和维护免费集租约，用户 JWT 才能访问锁定集、权益、奖励、历史和进度。管理员使用独立管理员 JWT，三种令牌不可互换。Bearer 令牌最长 4096，超长直接拒绝，不验签。
 - 公开接口仅限匿名 viewer 会话创建、微信登录、公开目录、搜索和已发布剧目详情。
 - `Content-Type` 为 `application/json`；时间使用 ISO 8601 UTC 字符串；秒数使用非负整数。

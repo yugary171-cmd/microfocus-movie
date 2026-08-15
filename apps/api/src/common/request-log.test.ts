@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { REQUEST_ID_MAX_LENGTH } from "@microfocus/contracts";
+import {
+  REQUEST_ID_MAX_LENGTH,
+  REQUEST_LOG_ACTOR_KIND_MAX_LENGTH,
+  REQUEST_LOG_LABEL_MAX_LENGTH,
+  REQUEST_LOG_METHOD_MAX_LENGTH,
+  REQUEST_LOG_PATH_MAX_LENGTH
+} from "@microfocus/contracts";
 import { AppError } from "./app-error.js";
 import { currentRequestId, describeHttpException, requestContext } from "./http.js";
 import { buildRequestLog, sanitizeRequestPath, shouldSkipRequestLog } from "./request-log.js";
@@ -94,6 +100,29 @@ describe("structured request logs", () => {
     expect(headers["x-request-id"]).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     );
+  });
+
+  it("caps path, method, module, code and actor fields to the shared log widths", () => {
+    const line = buildRequestLog({
+      requestId: "req-cap",
+      module: "M".repeat(REQUEST_LOG_LABEL_MAX_LENGTH + 8),
+      method: "m".repeat(REQUEST_LOG_METHOD_MAX_LENGTH + 8),
+      url: `/${"p".repeat(REQUEST_LOG_PATH_MAX_LENGTH + 8)}?secret=1`,
+      status: 200,
+      code: "C".repeat(REQUEST_LOG_LABEL_MAX_LENGTH + 8),
+      durationMs: 1,
+      actorKind: "k".repeat(REQUEST_LOG_ACTOR_KIND_MAX_LENGTH + 8),
+      actorId: "a".repeat(REQUEST_LOG_LABEL_MAX_LENGTH + 8)
+    });
+    expect(line).toMatchObject({
+      path: `/${"p".repeat(REQUEST_LOG_PATH_MAX_LENGTH - 1)}`,
+      method: "M".repeat(REQUEST_LOG_METHOD_MAX_LENGTH),
+      module: "M".repeat(REQUEST_LOG_LABEL_MAX_LENGTH),
+      code: "C".repeat(REQUEST_LOG_LABEL_MAX_LENGTH),
+      actorKind: "k".repeat(REQUEST_LOG_ACTOR_KIND_MAX_LENGTH),
+      actorId: "a".repeat(REQUEST_LOG_LABEL_MAX_LENGTH)
+    });
+    expect(line?.path).toHaveLength(REQUEST_LOG_PATH_MAX_LENGTH);
   });
 
   it("maps AppError to the same stable code the HTTP envelope uses", () => {
