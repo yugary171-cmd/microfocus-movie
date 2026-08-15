@@ -1,3 +1,8 @@
+import {
+  RATE_LIMIT_BUCKET_ID_MAX_LENGTH,
+  RATE_LIMIT_CLIENT_KEY_MAX_LENGTH,
+  RATE_LIMIT_SCOPE_MAX_LENGTH
+} from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   assertRateLimit,
@@ -15,6 +20,18 @@ describe("request rate limit buckets", () => {
       })
     ).toBe("10.0.0.8");
     expect(rateLimitBucketId("search", "10.0.0.8")).toMatch(/^search:[a-f0-9]{64}$/);
+  });
+
+  it("keeps bucket ids and IP keys within the persisted column widths", () => {
+    const longIp = `10.0.0.8/${"x".repeat(RATE_LIMIT_CLIENT_KEY_MAX_LENGTH)}`;
+    expect(requestIpKey({ socket: { remoteAddress: longIp } })).toHaveLength(
+      RATE_LIMIT_CLIENT_KEY_MAX_LENGTH
+    );
+    const longScope = `search-${"y".repeat(RATE_LIMIT_SCOPE_MAX_LENGTH)}`;
+    const bucketId = rateLimitBucketId(longScope, "user:user-1");
+    expect(bucketId.startsWith(`${longScope.slice(0, RATE_LIMIT_SCOPE_MAX_LENGTH)}:`)).toBe(true);
+    expect(bucketId).toHaveLength(RATE_LIMIT_SCOPE_MAX_LENGTH + 1 + 64);
+    expect(bucketId.length).toBeLessThanOrEqual(RATE_LIMIT_BUCKET_ID_MAX_LENGTH);
   });
 
   it("creates a bucket then rejects when the window is exhausted", async () => {

@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+  RATE_LIMIT_BUCKET_ID_MAX_LENGTH,
+  RATE_LIMIT_CLIENT_KEY_MAX_LENGTH,
+  RATE_LIMIT_SCOPE_MAX_LENGTH
+} from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 
 export const RATE_LIMITS = {
@@ -43,12 +48,15 @@ export type SocketRequest = {
 
 export function requestIpKey(request: SocketRequest): string {
   const ip = request.socket?.remoteAddress?.trim() || request.ip?.trim() || "unknown";
-  return ip.slice(0, 128);
+  return ip.slice(0, RATE_LIMIT_CLIENT_KEY_MAX_LENGTH);
 }
 
 export function rateLimitBucketId(scope: string, key: string): string {
   const digest = createHash("sha256").update(`${scope}\0${key}`).digest("hex");
-  return `${scope.slice(0, 32)}:${digest}`.slice(0, 128);
+  return `${scope.slice(0, RATE_LIMIT_SCOPE_MAX_LENGTH)}:${digest}`.slice(
+    0,
+    RATE_LIMIT_BUCKET_ID_MAX_LENGTH
+  );
 }
 
 function isUniqueViolation(error: unknown): boolean {
