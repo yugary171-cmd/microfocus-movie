@@ -2,16 +2,16 @@ import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   DeletionRequestStatus,
   HEARTBEAT_INTERVAL_SECONDS,
+  PlaybackLeaseStatus,
   PLAYBACK_TOKEN_TTL_SECONDS,
   SEARCH_MAX_PAGE,
   SEARCH_PAGE_SIZE,
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
-  type PlaybackLeaseView,
   type WatchHistoryItem
 } from "@microfocus/contracts";
-import { HOME_DRAMA_CHANNELS, HOME_RECOMMEND_CHANNEL, PLAYBACK_LEASE_STATUS } from "../constants/runtime";
+import { HOME_DRAMA_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../constants/runtime";
 import { pickDemoVideoUrl } from "../config/demo-media";
 import { RUNTIME_CONFIG } from "../config/runtime";
 import type { ClientApi, SearchResponse } from "../types/api";
@@ -219,7 +219,7 @@ export const mockApi: ClientApi = {
     return delay({
       id: `demo-lease-${episodeId}`,
       episodeId,
-      status: PLAYBACK_LEASE_STATUS.ACTIVE as PlaybackLeaseView["status"],
+      status: PlaybackLeaseStatus.ACTIVE,
       playbackUrl: pickDemoVideoUrl(
         RUNTIME_CONFIG.demoVideoUrls,
         episodeId,

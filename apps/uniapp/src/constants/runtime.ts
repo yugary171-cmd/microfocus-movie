@@ -1,11 +1,4 @@
 /** Uni-app watch client values that are not shared through contracts. */
-export const PLAYBACK_LEASE_STATUS = {
-  ACTIVE: "ACTIVE",
-  REVOKED: "REVOKED",
-  CLOSED: "CLOSED",
-  EXPIRED: "EXPIRED"
-} as const;
-
 export const HOME_RECOMMEND_CHANNEL = "推荐";
 
 export const HOME_DRAMA_CHANNELS = [
