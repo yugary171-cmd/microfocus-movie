@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLAYBACK_RATE_MAX } from "@microfocus/contracts";
+import { PLAYBACK_RATE_MAX, RIGHTS_TERRITORY } from "@microfocus/contracts";
 import {
   allocateFefo,
   assertHeartbeatAnchor,
@@ -168,7 +168,7 @@ describe("publication gate", () => {
     reportNumber: "report",
     validFrom: new Date("2025-01-01T00:00:00Z"),
     validUntil: new Date("2027-01-01T00:00:00Z"),
-    territory: "CN",
+    territory: RIGHTS_TERRITORY,
     allowsWechatDistribution: true,
     allowsAdMonetization: true,
     allowsTranscoding: true,
@@ -200,5 +200,17 @@ describe("publication gate", () => {
     expect(blockers).toContain("SELF_REVIEW_FORBIDDEN");
     expect(blockers).toContain("RIGHTS_SCOPE_INCOMPLETE");
     expect(blockers).toContain("MANUAL_REVIEW_REQUIRED");
+  });
+
+  it("blocks a rights territory outside the contract allowlist", () => {
+    expect(
+      publicationBlockers({
+        editorId: "editor",
+        reviewerId: "reviewer",
+        now: new Date("2026-01-01T00:00:00Z"),
+        rights: { ...rights, territory: "US" },
+        episodes: [{ currentAsset: approvedAsset }]
+      })
+    ).toContain("CN_TERRITORY_REQUIRED");
   });
 });

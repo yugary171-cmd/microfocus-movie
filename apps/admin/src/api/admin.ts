@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, RIGHTS_TERRITORY, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -178,7 +178,7 @@ export const adminApi = {
         rightsHolder: input.rightsHolder,
         validFrom: input.rightsValidFrom,
         validUntil: input.licenseExpiresAt,
-        territory: "CN",
+        territory: RIGHTS_TERRITORY,
         allowsWechatDistribution: input.allowsWechatDistribution,
         allowsAdMonetization: input.allowsAdMonetization,
         allowsTranscoding: input.allowsTranscoding,

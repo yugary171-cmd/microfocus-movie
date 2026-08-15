@@ -42,6 +42,7 @@ import {
   RIGHTS_HOLDER_MAX_LENGTH,
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
   RIGHTS_MATERIAL_DIGEST_PATTERN,
+  RIGHTS_TERRITORY,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES,
   UPLOAD_CONTENT_TYPES,
@@ -161,7 +162,7 @@ export class RightsDto {
   @IsString() @MinLength(1) @MaxLength(RIGHTS_HOLDER_MAX_LENGTH) rightsHolder!: string;
   @IsDateString() validFrom!: string;
   @IsDateString() validUntil!: string;
-  @IsIn(["CN"]) territory!: string;
+  @IsIn([RIGHTS_TERRITORY]) territory!: string;
   @IsBoolean() allowsWechatDistribution!: boolean;
   @IsBoolean() allowsAdMonetization!: boolean;
   @IsBoolean() allowsTranscoding!: boolean;

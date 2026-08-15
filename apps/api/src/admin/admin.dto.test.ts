@@ -16,6 +16,7 @@ import {
   RECOMMENDATION_RANK_MIN,
   REVIEW_NOTES_MAX_LENGTH,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
+  RIGHTS_TERRITORY,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES
 } from "@microfocus/contracts";
@@ -96,7 +97,7 @@ describe("admin content input limits", () => {
         rightsHolder: "x".repeat(201),
         validFrom: "2026-01-01T00:00:00.000Z",
         validUntil: "2027-01-01T00:00:00.000Z",
-        territory: "CN",
+        territory: RIGHTS_TERRITORY,
         allowsWechatDistribution: true,
         allowsAdMonetization: true,
         allowsTranscoding: true,
@@ -115,7 +116,27 @@ describe("admin content input limits", () => {
             rightsHolder: "权利方",
             validFrom: "2026-01-01T00:00:00.000Z",
             validUntil: "2027-01-01T00:00:00.000Z",
-            territory: "CN",
+            territory: "US",
+            allowsWechatDistribution: true,
+            allowsAdMonetization: true,
+            allowsTranscoding: true,
+            allowsPromotionalMaterial: true,
+            licenseNumber: "license",
+            reportNumber: "report",
+            materialObjectKey: "private/rights.pdf",
+            materialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH)
+          })
+        )
+      ).some((error) => error.property === "territory")
+    ).toBe(true);
+    expect(
+      (
+        await validate(
+          plainToInstance(RightsDto, {
+            rightsHolder: "权利方",
+            validFrom: "2026-01-01T00:00:00.000Z",
+            validUntil: "2027-01-01T00:00:00.000Z",
+            territory: RIGHTS_TERRITORY,
             allowsWechatDistribution: true,
             allowsAdMonetization: true,
             allowsTranscoding: true,

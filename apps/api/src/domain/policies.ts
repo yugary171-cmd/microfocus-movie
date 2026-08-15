@@ -1,4 +1,4 @@
-import { clampPlaybackRate, isRightsMaterialDigest, type ReleaseGateStatus } from "@microfocus/contracts";
+import { clampPlaybackRate, isRightsMaterialDigest, RIGHTS_TERRITORY, type ReleaseGateStatus } from "@microfocus/contracts";
 
 export type GrantBalance = {
   id: string;
@@ -161,7 +161,7 @@ export function publicationBlockers(input: {
   if (rights && (rights.validFrom > input.now || rights.validUntil <= input.now)) {
     blockers.push("RIGHTS_NOT_ACTIVE");
   }
-  if (rights && rights.territory !== "CN") blockers.push("CN_TERRITORY_REQUIRED");
+  if (rights && rights.territory !== RIGHTS_TERRITORY) blockers.push("CN_TERRITORY_REQUIRED");
   if (
     rights &&
     (!rights.allowsWechatDistribution ||
