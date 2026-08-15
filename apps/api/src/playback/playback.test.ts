@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ERROR_CODES, UNCONFIRMED_EXPOSURE_LIMIT } from "@microfocus/contracts";
+import { ERROR_CODES, REWARD_SECONDS, UNCONFIRMED_EXPOSURE_LIMIT } from "@microfocus/contracts";
 import { PlaybackController } from "./playback.module.js";
 import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
@@ -131,7 +131,7 @@ describe("playback renewal", () => {
       },
       circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) },
       entitlementGrant: {
-        aggregate: vi.fn().mockResolvedValue({ _sum: { remainingSeconds: 600 } })
+        aggregate: vi.fn().mockResolvedValue({ _sum: { remainingSeconds: REWARD_SECONDS } })
       },
       playbackReservation: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -193,7 +193,7 @@ describe("playback renewal", () => {
       circuitBreaker: { findFirst: vi.fn().mockResolvedValue(null) },
       entitlementGrant: {
         findMany: vi.fn().mockResolvedValue([
-          { id: "grant", remainingSeconds: 600, expiresAt: new Date(now + 60_000) }
+          { id: "grant", remainingSeconds: REWARD_SECONDS, expiresAt: new Date(now + 60_000) }
         ]),
         updateMany: vi.fn()
       },

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { REWARD_SECONDS } from "@microfocus/contracts";
 import {
   LEDGER_RECONCILE_JOB,
   mismatchesForGrant,
@@ -10,8 +11,8 @@ import {
 function grant(input: Partial<LedgerGrantRow> = {}): LedgerGrantRow {
   return {
     id: "grant-1",
-    grantedSeconds: 600,
-    remainingSeconds: 600,
+    grantedSeconds: REWARD_SECONDS,
+    remainingSeconds: REWARD_SECONDS,
     challengeId: "challenge-1",
     challenge: { status: "COMPLETED" },
     debits: [],
@@ -24,12 +25,12 @@ describe("entitlement ledger reconstruction", () => {
   it("rebuilds remaining seconds from grants, debits, freezes and releases", () => {
     expect(
       reconstructedRemaining({
-        grantedSeconds: 600,
+        grantedSeconds: REWARD_SECONDS,
         debitSeconds: 200,
         freezeSeconds: 100,
         releaseSeconds: 50
       })
-    ).toBe(350);
+    ).toBe(REWARD_SECONDS - 200 - 100 + 50);
   });
 
   it("ignores write-off facts when reconstructing the user balance", () => {

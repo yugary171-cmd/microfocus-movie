@@ -15,6 +15,7 @@ import {
   RECOMMENDATION_RANK_MAX,
   RECOMMENDATION_RANK_MIN,
   REVIEW_NOTES_MAX_LENGTH,
+  REWARD_SECONDS,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
   RIGHTS_TERRITORY,
   UPLOAD_FILE_NAME_MAX_LENGTH,
@@ -156,7 +157,7 @@ function validCompensation(overrides: Record<string, unknown> = {}) {
   return {
     userId: "user-1",
     dramaId: "drama-1",
-    seconds: 600,
+    seconds: REWARD_SECONDS,
     expiresAt: "2026-08-15T00:00:00.000Z",
     reason: "事故补偿工单",
     ...overrides

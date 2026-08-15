@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { REWARD_SECONDS } from "@microfocus/contracts";
 import {
   InMemoryHeartbeatSequence,
   InMemoryLeaseRegistry,
@@ -9,7 +10,7 @@ describe("reward completion idempotency", () => {
   it("does not issue a second grant for duplicate completion", () => {
     const completion = new InMemoryRewardCompletion();
     expect(completion.complete()).toBe(completion.complete());
-    expect(completion.complete().seconds).toBe(600);
+    expect(completion.complete().seconds).toBe(REWARD_SECONDS);
   });
 });
 

@@ -1,4 +1,4 @@
-import { AdminRole, REVIEW_NOTES_MAX_LENGTH, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
+import { AdminRole, REVIEW_NOTES_MAX_LENGTH, REWARD_SECONDS, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function success(data: unknown): Response {
@@ -105,7 +105,7 @@ describe("live admin API adapter", () => {
     await adminApi.compensate({
       userId: "user-1",
       dramaId: "drama-1",
-      seconds: 600,
+      seconds: REWARD_SECONDS,
       reason: "事故补偿工单",
     });
 
@@ -117,7 +117,7 @@ describe("live admin API adapter", () => {
     expect(JSON.parse(String(compensateInit?.body))).toEqual({
       userId: "user-1",
       dramaId: "drama-1",
-      seconds: 600,
+      seconds: REWARD_SECONDS,
       reason: "事故补偿工单",
       expiresAt: "2026-08-13T00:00:00.000Z",
     });

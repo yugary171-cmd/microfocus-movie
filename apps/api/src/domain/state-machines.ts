@@ -1,3 +1,4 @@
+import { REWARD_SECONDS } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 
 export type ChallengeGrant = { id: string; seconds: number };
@@ -6,7 +7,7 @@ export class InMemoryRewardCompletion {
   private grant: ChallengeGrant | undefined;
 
   complete(): ChallengeGrant {
-    if (!this.grant) this.grant = { id: "grant-1", seconds: 600 };
+    if (!this.grant) this.grant = { id: "grant-1", seconds: REWARD_SECONDS };
     return this.grant;
   }
 }

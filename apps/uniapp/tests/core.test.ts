@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PlaybackHeartbeatResponse, RewardChallengeView } from "@microfocus/contracts";
-import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
+import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN, REWARD_SECONDS } from "@microfocus/contracts";
 import { PlaybackHeartbeatController } from "../src/services/playback-controller";
 import { retryRewardConfirmation, runRewardFlow } from "../src/services/reward";
 import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ads";
@@ -274,7 +274,7 @@ describe("reward flow", () => {
     };
     const entitlement = {
       dramaId: "drama-1",
-      remainingSeconds: 600,
+      remainingSeconds: REWARD_SECONDS,
       nearestExpiresAt: "2026-08-13T12:00:00.000Z",
       grants: []
     };

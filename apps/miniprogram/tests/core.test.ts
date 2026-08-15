@@ -12,7 +12,7 @@ import type {
   PlaybackHeartbeatResponse,
   RewardChallengeView
 } from "@microfocus/contracts";
-import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
+import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN, REWARD_SECONDS } from "@microfocus/contracts";
 import type {
   RewardedAdCloseResult,
   RewardedAdHandle
@@ -292,7 +292,7 @@ describe("reward flow", () => {
     };
     const entitlement = {
       dramaId: "drama-1",
-      remainingSeconds: 600,
+      remainingSeconds: REWARD_SECONDS,
       nearestExpiresAt: "2026-08-13T12:00:00.000Z",
       grants: []
     };

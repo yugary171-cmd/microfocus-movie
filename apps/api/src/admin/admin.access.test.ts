@@ -1,4 +1,4 @@
-import { AdminRole, IDEMPOTENCY_KEY_MAX_LENGTH } from "@microfocus/contracts";
+import { AdminRole, IDEMPOTENCY_KEY_MAX_LENGTH, REWARD_SECONDS } from "@microfocus/contracts";
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../common/app-error.js";
@@ -49,7 +49,7 @@ describe("compensation idempotency", () => {
     compensationKey: "comp-1",
     userId: "user-1",
     dramaId: "drama-1",
-    seconds: 600,
+    seconds: REWARD_SECONDS,
     expiresAt: new Date("2026-08-15T00:00:00.000Z"),
     reason: "事故补偿"
   };

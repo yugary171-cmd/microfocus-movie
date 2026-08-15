@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
+import { OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, REWARD_SECONDS, RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
 import {
   allocateFefo,
   assertHeartbeatAnchor,
@@ -30,7 +30,7 @@ describe("entitlement FEFO allocation", () => {
 
   it("ignores expired grants", () => {
     const result = allocateFefo(
-      [{ id: "expired", remainingSeconds: 600, expiresAt: now }],
+      [{ id: "expired", remainingSeconds: REWARD_SECONDS, expiresAt: now }],
       5,
       now
     );
