@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AdminRole, EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH } from "@microfocus/contracts";
+import { AdminRole, EMAIL_MAX_LENGTH, OTP_INPUT_LENGTH, OTP_INPUT_PATTERN, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@microfocus/contracts";
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
@@ -26,6 +26,14 @@ async function submit(): Promise<void> {
   }
   if (password.value.length > PASSWORD_MAX_LENGTH) {
     error.value = `密码最长 ${PASSWORD_MAX_LENGTH} 个字符`;
+    return;
+  }
+  if (password.value.length < PASSWORD_MIN_LENGTH) {
+    error.value = `密码至少 ${PASSWORD_MIN_LENGTH} 个字符`;
+    return;
+  }
+  if (otp.value.length !== OTP_INPUT_LENGTH) {
+    error.value = `请输入 ${OTP_INPUT_LENGTH} 位验证码`;
     return;
   }
   busy.value = true;
@@ -66,7 +74,7 @@ async function submit(): Promise<void> {
       </div>
       <div v-if="adminApi.mode === 'mock'" class="login-mock-notice" role="status">
         <strong>演示 Mock 模式</strong>
-        <span>不会连接真实账号或云服务；输入任意符合格式的账号、密码和 6 位验证码即可体验。</span>
+        <span>不会连接真实账号或云服务；输入任意符合格式的账号、密码和 {{ OTP_INPUT_LENGTH }} 位验证码即可体验。</span>
       </div>
       <form @submit.prevent="submit">
         <label class="field">
@@ -86,7 +94,7 @@ async function submit(): Promise<void> {
             v-model="password"
             type="password"
             autocomplete="current-password"
-            minlength="8"
+            :minlength="PASSWORD_MIN_LENGTH"
             :maxlength="PASSWORD_MAX_LENGTH"
             required
           />
@@ -98,11 +106,11 @@ async function submit(): Promise<void> {
             type="text"
             inputmode="numeric"
             autocomplete="one-time-code"
-            pattern="[0-9]{6}"
-            minlength="6"
-            maxlength="6"
+            :pattern="OTP_INPUT_PATTERN"
+            :minlength="OTP_INPUT_LENGTH"
+            :maxlength="OTP_INPUT_LENGTH"
             required
-            placeholder="6 位验证码"
+            :placeholder="`${OTP_INPUT_LENGTH} 位验证码`"
           />
         </label>
         <label v-if="adminApi.mode === 'mock'" class="field">

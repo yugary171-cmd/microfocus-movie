@@ -8,7 +8,9 @@ import {
   EPISODE_DURATION_SECONDS_MAX,
   HEARTBEAT_SEQ_MAX,
   OTP_MAX_LENGTH,
+  OTP_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
   PLAYBACK_RATE_MAX,
   PLAYBACK_RATE_MIN,
   REWARD_NONCE_MAX_LENGTH,
@@ -44,6 +46,26 @@ describe("remaining write input limits", () => {
     expect(await propertyError(plainToInstance(AdminLoginDto, login), "email")).toBe(true);
     expect(await propertyError(plainToInstance(AdminLoginDto, login), "password")).toBe(true);
     expect(await propertyError(plainToInstance(AdminLoginDto, login), "otp")).toBe(true);
+    expect(
+      await propertyError(
+        plainToInstance(AdminLoginDto, {
+          email: "ops@example.invalid",
+          password: "p".repeat(PASSWORD_MIN_LENGTH - 1),
+          otp: "123456"
+        }),
+        "password"
+      )
+    ).toBe(true);
+    expect(
+      await propertyError(
+        plainToInstance(AdminLoginDto, {
+          email: "ops@example.invalid",
+          password: "password1",
+          otp: "1".repeat(OTP_MIN_LENGTH - 1)
+        }),
+        "otp"
+      )
+    ).toBe(true);
     expect(
       await validate(
         plainToInstance(AdminLoginDto, {

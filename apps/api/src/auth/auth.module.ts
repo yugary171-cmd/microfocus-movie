@@ -7,7 +7,9 @@ import {
   EMAIL_MAX_LENGTH,
   ERROR_CODES,
   OTP_MAX_LENGTH,
+  OTP_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
   SESSION_ID_MAX_LENGTH,
   WECHAT_CODE_MAX_LENGTH,
   type AnonymousSessionResponse,
@@ -50,12 +52,12 @@ export class AdminLoginDto {
   email!: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(PASSWORD_MIN_LENGTH)
   @MaxLength(PASSWORD_MAX_LENGTH)
   password!: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(OTP_MIN_LENGTH)
   @MaxLength(OTP_MAX_LENGTH)
   otp!: string;
 }
