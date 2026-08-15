@@ -1,4 +1,4 @@
-import { CallbackEventStatus, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, CallbackEventStatus, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   listAdminCallbackEvents,
@@ -90,7 +90,7 @@ describe("admin callback event list", () => {
     await expect(
       listAdminCallbackEvents(
         { callbackEvent: { count, findMany } },
-        { take: 50, skip: 1_000_000 }
+        { take: ADMIN_LIST_PAGE_SIZE, skip: 1_000_000 }
       )
     ).resolves.toEqual({ total: 0, items: [] });
     expect(findMany).not.toHaveBeenCalled();

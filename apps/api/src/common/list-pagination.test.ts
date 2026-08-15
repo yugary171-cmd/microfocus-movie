@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ADMIN_LIST_MAX_PAGE, ADMIN_LIST_PAGE_SIZE } from "@microfocus/contracts";
 import { boundedListWindow, emptyBoundedPage, maxListSkip, parsePage } from "./list-pagination.js";
 
 describe("bounded list pagination", () => {
@@ -9,22 +10,24 @@ describe("bounded list pagination", () => {
   });
 
   it("does not compute a large offset past the max page", () => {
-    expect(boundedListWindow({ page: 2, pageSize: 50, maxPage: 100 })).toEqual({
+    expect(boundedListWindow({ page: 2, pageSize: ADMIN_LIST_PAGE_SIZE, maxPage: ADMIN_LIST_MAX_PAGE })).toEqual({
       page: 2,
-      pageSize: 50,
-      skip: 50,
-      take: 50,
+      pageSize: ADMIN_LIST_PAGE_SIZE,
+      skip: ADMIN_LIST_PAGE_SIZE,
+      take: ADMIN_LIST_PAGE_SIZE,
       exceeded: false
     });
-    expect(boundedListWindow({ page: 101, pageSize: 50, maxPage: 100 })).toMatchObject({
+    expect(boundedListWindow({ page: ADMIN_LIST_MAX_PAGE + 1, pageSize: ADMIN_LIST_PAGE_SIZE, maxPage: ADMIN_LIST_MAX_PAGE })).toMatchObject({
       skip: 0,
       exceeded: true
     });
-    expect(maxListSkip(50, 100)).toBe(4950);
-    expect(emptyBoundedPage(101, 50)).toEqual({
+    expect(maxListSkip(ADMIN_LIST_PAGE_SIZE, ADMIN_LIST_MAX_PAGE)).toBe(
+      ADMIN_LIST_PAGE_SIZE * (ADMIN_LIST_MAX_PAGE - 1)
+    );
+    expect(emptyBoundedPage(ADMIN_LIST_MAX_PAGE + 1, ADMIN_LIST_PAGE_SIZE)).toEqual({
       items: [],
-      page: 101,
-      pageSize: 50,
+      page: ADMIN_LIST_MAX_PAGE + 1,
+      pageSize: ADMIN_LIST_PAGE_SIZE,
       total: 0,
       totalPages: 0
     });
