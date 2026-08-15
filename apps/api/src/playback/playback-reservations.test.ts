@@ -33,7 +33,7 @@ describe("playback reservations", () => {
   });
 
   it("routes recovery to customer service after the rolling grace is exhausted", () => {
-    expect(recoverActionFor(2, PLAYBACK_RECOVERY_GRACE_LIMIT)).toBe("customer_service");
+    expect(recoverActionFor(PLAYBACK_RECOVERY_GRACE_LIMIT - 1, PLAYBACK_RECOVERY_GRACE_LIMIT)).toBe("customer_service");
     expect(recoverActionFor(1, 0)).toBe("recover");
     expect(recoverActionFor(0, 0)).toBe("none");
   });
