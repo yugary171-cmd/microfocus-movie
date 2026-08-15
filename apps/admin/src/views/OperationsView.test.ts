@@ -1,4 +1,4 @@
-import { AdminRole, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
+import { AdminRole, COMPENSATION_SECONDS_MIN, ENTITY_ID_MAX_LENGTH, REWARD_SECONDS } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import OperationsView from "./OperationsView.vue";
@@ -38,6 +38,11 @@ describe("OperationsView", () => {
   it("uses contract entity-id limits on compensation, replay, and reissue fields", async () => {
     const wrapper = mount(OperationsView);
     await flushPromises();
+
+    const compensationSeconds = wrapper
+      .findAll("input[type='number']")
+      .find((input) => input.attributes("min") === String(COMPENSATION_SECONDS_MIN));
+    expect(Number((compensationSeconds?.element as HTMLInputElement).value)).toBe(REWARD_SECONDS);
 
     const bounded = wrapper
       .findAll("input")

@@ -5,7 +5,8 @@ import {
   AdminRole,
   COMPENSATION_SECONDS_MIN,
   ENTITY_ID_MAX_LENGTH,
-  ENTITLEMENT_SECONDS_MAX
+  ENTITLEMENT_SECONDS_MAX,
+  REWARD_SECONDS
 } from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
@@ -26,7 +27,7 @@ const notice = ref("");
 const breaker = ref<CircuitBreakerState | null>(null);
 const breakerDialogOpen = ref(false);
 const compensationDialogOpen = ref(false);
-const compensation = reactive<CompensationInput>({ userId: "", dramaId: "", seconds: 600, reason: "" });
+const compensation = reactive<CompensationInput>({ userId: "", dramaId: "", seconds: REWARD_SECONDS, reason: "" });
 const adjustmentDialogOpen = ref(false);
 const adjustment = reactive<AdjustmentInput>({
   type: "FREEZE_REMAINDER",
@@ -146,7 +147,7 @@ async function grantCompensation(): Promise<void> {
     notice.value = adminApi.mode === "mock"
       ? "演示补偿已记入审计视图；未授予真实权益。"
       : "补偿权益已授予。";
-    Object.assign(compensation, { userId: "", dramaId: "", seconds: 600, reason: "" });
+    Object.assign(compensation, { userId: "", dramaId: "", seconds: REWARD_SECONDS, reason: "" });
     compensationDialogOpen.value = false;
   } catch (caught) {
     error.value = toErrorMessage(caught);
