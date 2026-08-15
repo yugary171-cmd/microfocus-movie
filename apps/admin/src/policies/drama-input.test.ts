@@ -113,5 +113,10 @@ describe("uploadFileError", () => {
     expect(uploadFileError({ name: "episode.mp4", size: UPLOAD_FILE_SIZE_MAX_BYTES + 1 })).toContain(
       "不能超过 5GB",
     );
+    expect(uploadFileError({ name: "episode.mp4", size: 12, type: "" })).toBe("");
+    expect(uploadFileError({ name: "episode.mp4", size: 12, type: "video/webm" })).toBe("");
+    expect(uploadFileError({ name: "episode.mp4", size: 12, type: "video/x-matroska" })).toContain(
+      "仅支持 MP4、MOV、WebM",
+    );
   });
 });

@@ -14,6 +14,7 @@ import {
   UPLOAD_FILE_NAME_MAX_LENGTH,
   isAllowedUploadFileName,
   isAllowedUploadFileSize,
+  resolveUploadContentType,
 } from "@microfocus/contracts";
 import type { DramaInput } from "@/types/admin";
 
@@ -25,12 +26,15 @@ export function uploadFileNameError(fileName: string): string {
   return `文件名不能超过 ${UPLOAD_FILE_NAME_MAX_LENGTH} 个字符`;
 }
 
-export function uploadFileError(file: { name: string; size: number }): string {
+export function uploadFileError(file: { name: string; size: number; type?: string }): string {
   const nameError = uploadFileNameError(file.name);
   if (nameError) return nameError;
-  if (isAllowedUploadFileSize(file.size)) return "";
-  if (!Number.isFinite(file.size) || file.size < 1) return "文件不能为空";
-  return "文件不能超过 5GB";
+  if (!isAllowedUploadFileSize(file.size)) {
+    if (!Number.isFinite(file.size) || file.size < 1) return "文件不能为空";
+    return "文件不能超过 5GB";
+  }
+  if (!resolveUploadContentType(file.type ?? "")) return "仅支持 MP4、MOV、WebM 视频文件";
+  return "";
 }
 
 export function dramaDraftError(input: DramaInput): string {

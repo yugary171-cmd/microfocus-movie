@@ -49,6 +49,14 @@ export const ADMIN_LIST_MAX_PAGE = 100;
 export const LIST_QUERY_MAX_LENGTH = 100;
 export const UPLOAD_FILE_NAME_MAX_LENGTH = 255;
 export const UPLOAD_FILE_SIZE_MAX_BYTES = 5 * 1024 * 1024 * 1024;
+export const UPLOAD_CONTENT_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "application/octet-stream"
+] as const;
+export type UploadContentType = (typeof UPLOAD_CONTENT_TYPES)[number];
+export const UPLOAD_FILE_ACCEPT = "video/mp4,video/quicktime,video/webm";
 
 /** Trim then cap list/search keywords so clients match server truncation. */
 export function boundListQuery(value: string): string {
@@ -62,6 +70,12 @@ export function isAllowedUploadFileName(fileName: string): boolean {
 
 export function isAllowedUploadFileSize(size: number): boolean {
   return Number.isInteger(size) && size >= 1 && size <= UPLOAD_FILE_SIZE_MAX_BYTES;
+}
+
+export function resolveUploadContentType(fileType: string): UploadContentType | null {
+  const type = fileType.trim();
+  if (!type) return "application/octet-stream";
+  return (UPLOAD_CONTENT_TYPES as readonly string[]).includes(type) ? (type as UploadContentType) : null;
 }
 
 export const ERROR_CODES = {

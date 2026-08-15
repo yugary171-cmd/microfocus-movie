@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, encodedRoute, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, encodedRoute, resolveUploadContentType, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -231,6 +231,8 @@ export const adminApi = {
     const fileError = uploadFileError(file);
     if (fileError) throw new Error(fileError);
     const fileName = file.name.trim();
+    const contentType = resolveUploadContentType(file.type);
+    if (!contentType) throw new Error("仅支持 MP4、MOV、WebM 视频文件");
     const signature = isMockMode
       ? await mockApi.signUpload(file, dramaId, episodeId)
       : normalizeUploadSignature(
@@ -241,7 +243,7 @@ export const adminApi = {
               episodeId,
               fileName,
               size: file.size,
-              contentType: file.type || "application/octet-stream",
+              contentType,
             }),
           }),
         );

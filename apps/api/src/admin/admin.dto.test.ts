@@ -212,5 +212,15 @@ describe("admin entitlement write input limits", () => {
     expect(
       await validate(plainToInstance(UploadSignDto, { ...valid, size: UPLOAD_FILE_SIZE_MAX_BYTES }))
     ).toEqual([]);
+    expect(
+      await validate(
+        plainToInstance(UploadSignDto, { ...valid, contentType: "application/octet-stream" })
+      )
+    ).toEqual([]);
+    expect(
+      (await validate(
+        plainToInstance(UploadSignDto, { ...valid, contentType: "video/x-matroska" })
+      )).some((error) => error.property === "contentType")
+    ).toBe(true);
   });
 });

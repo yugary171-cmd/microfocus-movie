@@ -1,4 +1,4 @@
-import { DRAMA_EPISODE_MAX_COUNT, EPISODE_DURATION_SECONDS_MAX, EPISODE_TITLE_MAX_LENGTH, MediaStatus, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
+import { DRAMA_EPISODE_MAX_COUNT, EPISODE_DURATION_SECONDS_MAX, EPISODE_TITLE_MAX_LENGTH, MediaStatus, UPLOAD_FILE_ACCEPT, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { adminApi } from "@/api/admin";
@@ -71,6 +71,7 @@ describe("EpisodeTable Mock upload path", () => {
     const capped = mount(EpisodeTable, {
       props: { modelValue: full, dramaId: "drama-upload-test" },
     });
+    expect(wrapper.get('input[type="file"]').attributes("accept")).toBe(UPLOAD_FILE_ACCEPT);
     expect(
       capped.findAll("button").find((button) => button.text().includes("添加剧集"))?.attributes("disabled"),
     ).toBeDefined();
@@ -120,6 +121,26 @@ describe("EpisodeTable Mock upload path", () => {
 
     expect(upload).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain("文件不能超过 5GB");
+    upload.mockRestore();
+    wrapper.unmount();
+  });
+
+  it("rejects a selected file whose content type is not allowed", async () => {
+    const upload = vi.spyOn(adminApi, "uploadEpisode");
+    const wrapper = mount(EpisodeTable, {
+      props: { modelValue: [episode], dramaId: "drama-upload-test" },
+    });
+
+    const fileInput = wrapper.get('input[type="file"]');
+    Object.defineProperty(fileInput.element, "files", {
+      configurable: true,
+      value: [new File(["not a video"], "notes.txt", { type: "text/plain" })],
+    });
+    await fileInput.trigger("change");
+    await flushPromises();
+
+    expect(upload).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain("仅支持 MP4、MOV、WebM");
     upload.mockRestore();
     wrapper.unmount();
   });

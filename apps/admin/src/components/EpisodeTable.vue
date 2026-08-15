@@ -4,6 +4,7 @@ import {
   EPISODE_DURATION_SECONDS_MAX,
   EPISODE_TITLE_MAX_LENGTH,
   MediaStatus,
+  UPLOAD_FILE_ACCEPT,
 } from "@microfocus/contracts";
 import { computed, reactive } from "vue";
 import { adminApi } from "@/api/admin";
@@ -159,7 +160,7 @@ function completeMockProcessing(episode: EpisodeRecord): void {
         <div v-if="!readonly" class="episode-actions">
           <label class="button button--secondary button--small upload-button">
             选择视频
-            <input type="file" accept="video/mp4,video/quicktime,video/webm" @change="chooseFile(episode, $event)" />
+            <input type="file" :accept="UPLOAD_FILE_ACCEPT" @change="chooseFile(episode, $event)" />
           </label>
           <button class="button button--ghost button--small" type="button" :disabled="uploads[episode.id]?.state === 'uploading'" @click="removeEpisode(episode.id)">移除</button>
         </div>

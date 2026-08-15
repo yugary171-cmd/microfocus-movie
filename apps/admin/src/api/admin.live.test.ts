@@ -235,4 +235,32 @@ describe("live admin API adapter", () => {
     );
     expect(fetch).not.toHaveBeenCalled();
   });
+
+  it("maps an empty file type to application/octet-stream", async () => {
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockResolvedValueOnce(
+      success({ uploadUrl: "http://api.test/mock-upload", headers: {}, mock: true }),
+    );
+    const { adminApi } = await import("./admin");
+    const file = new File(["video"], "episode.mp4", { type: "" });
+
+    const upload = adminApi.uploadEpisode("drama-1", "episode-1", file, vi.fn());
+    const rejection = expect(upload).rejects.toThrow("fileId 注册链路尚未配置");
+    await vi.runAllTimersAsync();
+    await rejection;
+
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toMatchObject({
+      contentType: "application/octet-stream",
+    });
+  });
+
+  it("does not request an upload signature for a disallowed content type", async () => {
+    const { adminApi } = await import("./admin");
+    const file = new File(["video"], "episode.mkv", { type: "video/x-matroska" });
+
+    await expect(adminApi.uploadEpisode("drama-1", "episode-1", file, vi.fn())).rejects.toThrow(
+      "仅支持 MP4、MOV、WebM",
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

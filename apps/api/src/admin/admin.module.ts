@@ -38,6 +38,7 @@ import {
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES,
+  UPLOAD_CONTENT_TYPES,
   type CreateEntitlementAdjustmentRequest,
   type ReplayCallbackEventRequest,
   type ReissueDeletionQueryTokenRequest,
@@ -194,7 +195,7 @@ export class UploadSignDto {
   @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) episodeId!: string;
   @IsString() @Length(1, UPLOAD_FILE_NAME_MAX_LENGTH) @Matches(/^[^/\\\0]+$/) fileName!: string;
   @IsInt() @Min(1) @Max(UPLOAD_FILE_SIZE_MAX_BYTES) size!: number;
-  @IsIn(["video/mp4", "video/quicktime", "video/webm", "application/octet-stream"])
+  @IsIn([...UPLOAD_CONTENT_TYPES])
   contentType!: string;
 }
 
