@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { ERROR_CODES, PLAYBACK_RECOVERY_GRACE_LIMIT } from "@microfocus/contracts";
+import {
+  DEVICE_ID_MAX_LENGTH,
+  ENTITY_ID_MAX_LENGTH,
+  ERROR_CODES,
+  PLAYBACK_RECOVERY_GRACE_LIMIT
+} from "@microfocus/contracts";
 import {
   assertCanOpenPaidLease,
   allowedDebitSeconds,
@@ -72,6 +77,44 @@ describe("playback reservations", () => {
       })
     );
     expect(entitlementDebit.create).not.toHaveBeenCalled();
+  });
+
+  it("caps stored recovery deviceId and reason to contract limits", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "event" });
+    const count = vi.fn().mockResolvedValue(0);
+    const db = {
+      playbackReservation: {
+        count: vi.fn().mockResolvedValue(1),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findFirst: vi.fn()
+      },
+      playbackRecoveryEvent: { count, create },
+      entitlementDebit: { create: vi.fn() }
+    };
+    const deviceId = "d".repeat(DEVICE_ID_MAX_LENGTH + 8);
+    const reason = "r".repeat(ENTITY_ID_MAX_LENGTH + 8);
+
+    await recoverReservations(db as never, {
+      userId: "user",
+      deviceId,
+      leaseId: "lease",
+      reason,
+      now: new Date()
+    });
+
+    expect(count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        deviceId: "d".repeat(DEVICE_ID_MAX_LENGTH)
+      })
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        userId: "user",
+        deviceId: "d".repeat(DEVICE_ID_MAX_LENGTH),
+        leaseId: "lease",
+        reason: "r".repeat(ENTITY_ID_MAX_LENGTH)
+      }
+    });
   });
 
   it("does not confirm an unconfirmed window as a heartbeat settlement", async () => {

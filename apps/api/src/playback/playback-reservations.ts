@@ -1,4 +1,7 @@
 import {
+  DEVICE_ID_MAX_LENGTH,
+  ENTITY_ID_MAX_LENGTH,
+  ERROR_CODES,
   OFFLINE_GRACE_SECONDS,
   PLAYBACK_RECOVERY_GRACE_LIMIT,
   PLAYBACK_WINDOW_SECONDS,
@@ -8,7 +11,6 @@ import {
 } from "@microfocus/contracts";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { Errors } from "../common/app-error.js";
-import { ERROR_CODES } from "@microfocus/contracts";
 
 import { LIVE_PROVIDER_IMPLEMENTATIONS_READY } from "../providers/providers.js";
 
@@ -161,11 +163,13 @@ export async function recoverReservations(
     where: { leaseId: input.leaseId, status: "UNCONFIRMED" }
   });
   if (unconfirmed > 0) {
+    const deviceId = input.deviceId.slice(0, DEVICE_ID_MAX_LENGTH);
+    const reason = input.reason.slice(0, ENTITY_ID_MAX_LENGTH);
     const windowStart = new Date(input.now.getTime() - 24 * 60 * 60 * 1000);
     const graceUsed = await db.playbackRecoveryEvent.count({
       where: {
         userId: input.userId,
-        deviceId: input.deviceId,
+        deviceId,
         createdAt: { gte: windowStart }
       }
     });
@@ -178,9 +182,9 @@ export async function recoverReservations(
     await db.playbackRecoveryEvent.create({
       data: {
         userId: input.userId,
-        deviceId: input.deviceId.slice(0, 128),
+        deviceId,
         leaseId: input.leaseId,
-        reason: input.reason.slice(0, 191)
+        reason
       }
     });
     if (unconfirmedAutoSettlement() === "release") {
