@@ -1,4 +1,4 @@
-import { AdminRole, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
+import { AdminRole, REVIEW_NOTES_MAX_LENGTH, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function success(data: unknown): Response {
@@ -175,6 +175,29 @@ describe("live admin API adapter", () => {
       approvalNote: "工单 CS-1 已核验",
     });
     expect(new Headers(reissueInit?.headers).get("Idempotency-Key")).toMatch(/^q:[a-f0-9]{64}$/);
+  });
+
+  it("omits blank approve notes and rejects oversized review notes before fetch", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(success(null));
+    const { adminApi } = await import("./admin");
+
+    await adminApi.review("drama-1", "unused-review-id", true, "   ");
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
+      status: "APPROVED",
+    });
+
+    await expect(
+      adminApi.review("drama-1", "unused-review-id", false, ""),
+    ).rejects.toThrow("请填写退回原因");
+    await expect(
+      adminApi.review(
+        "drama-1",
+        "unused-review-id",
+        false,
+        "x".repeat(REVIEW_NOTES_MAX_LENGTH + 1),
+      ),
+    ).rejects.toThrow("审核说明不能超过");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("encodes path entity ids on live admin requests", async () => {

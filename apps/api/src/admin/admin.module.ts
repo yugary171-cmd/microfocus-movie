@@ -16,6 +16,9 @@ import {
   ADMIN_LIST_PAGE_SIZE,
   ADMIN_REASON_MAX_LENGTH,
   ADMIN_REASON_MIN_LENGTH,
+  MEDIA_REVIEW_NOTES_MAX_LENGTH,
+  MEDIA_REVIEW_NOTES_MIN_LENGTH,
+  REVIEW_NOTES_MAX_LENGTH,
   AdminRole,
   COMPENSATION_SECONDS_MIN,
   COVER_URL_MAX_LENGTH,
@@ -171,14 +174,14 @@ class MediaAssetDto {
   @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) fileId!: string;
 }
 
-class ReviewDto {
+export class ReviewDto {
   @IsIn(["APPROVED", "REJECTED"])
   status!: "APPROVED" | "REJECTED";
 
-  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+  @IsOptional() @IsString() @MaxLength(REVIEW_NOTES_MAX_LENGTH) notes?: string;
 }
 
-class MediaReviewDto {
+export class MediaReviewDto {
   @IsOptional()
   @IsIn(["APPROVED", "REJECTED"])
   manualReviewStatus?: "APPROVED" | "REJECTED";
@@ -187,7 +190,7 @@ class MediaReviewDto {
   @IsIn(["APPROVED", "REJECTED"])
   wechatReviewStatus?: "APPROVED" | "REJECTED";
 
-  @IsString() @Length(6, 500) notes!: string;
+  @IsString() @Length(MEDIA_REVIEW_NOTES_MIN_LENGTH, MEDIA_REVIEW_NOTES_MAX_LENGTH) notes!: string;
 }
 
 export class UploadSignDto {

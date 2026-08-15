@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ADMIN_LIST_PAGE_SIZE, AdminRole } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, AdminRole, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -163,7 +163,7 @@ onMounted(load);
       tone="danger"
       require-reason
       reason-label="退回原因"
-      :reason-max-length="2000"
+      :reason-max-length="REVIEW_NOTES_MAX_LENGTH"
       :busy="busy"
       @close="closeDialog"
       @confirm="confirmDecision"

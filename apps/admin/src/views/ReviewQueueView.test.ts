@@ -1,4 +1,4 @@
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ReviewQueueView from "./ReviewQueueView.vue";
@@ -47,6 +47,32 @@ describe("ReviewQueueView", () => {
     await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
     await flushPromises();
     expect(listReviews).toHaveBeenLastCalledWith(2);
+  });
+
+  it("caps reject notes to the content-review contract limit", async () => {
+    listReviews.mockResolvedValue({
+      items: [
+        {
+          id: "review-1",
+          dramaId: "drama-1",
+          dramaTitle: "待审剧目",
+          submitterId: "editor-1",
+          submitterName: "林编辑",
+          submittedAt: "2026-08-14T00:00:00.000Z",
+          riskFlags: [],
+          status: "PENDING",
+        },
+      ],
+      total: 1,
+    });
+    const wrapper = mount(ReviewQueueView, {
+      global: { stubs: { Teleport: true } },
+    });
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "拒绝并退回")?.trigger("click");
+    expect(wrapper.get("textarea").attributes("maxlength")).toBe(String(REVIEW_NOTES_MAX_LENGTH));
+    wrapper.unmount();
   });
 
   it("falls back to the last populated page when the current page is empty", async () => {

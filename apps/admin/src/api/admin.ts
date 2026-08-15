@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, encodedRoute, resolveUploadContentType, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, encodedRoute, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -205,10 +205,20 @@ export const adminApi = {
     return { items, total: pageTotal(payload, items.length) };
   },
   review(dramaId: string, reviewId: string, approved: boolean, reason: string): Promise<void> {
-    if (isMockMode) return mockApi.review(reviewId, approved, reason);
+    const notes = reason.trim();
+    if (notes.length > REVIEW_NOTES_MAX_LENGTH) {
+      return Promise.reject(new Error(`审核说明不能超过 ${REVIEW_NOTES_MAX_LENGTH} 字`));
+    }
+    if (!approved && !notes) {
+      return Promise.reject(new Error("请填写退回原因"));
+    }
+    if (isMockMode) return mockApi.review(reviewId, approved, notes);
     return request(encodedRoute(endpoints.review, dramaId), {
       method: "POST",
-      body: json({ status: approved ? "APPROVED" : "REJECTED", notes: reason }),
+      body: json({
+        status: approved ? "APPROVED" : "REJECTED",
+        ...(notes ? { notes } : {}),
+      }),
     });
   },
   publish(id: string): Promise<void> {

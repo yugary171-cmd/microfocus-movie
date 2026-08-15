@@ -11,10 +11,12 @@ import {
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
   EPISODE_DURATION_SECONDS_MAX,
+  MEDIA_REVIEW_NOTES_MAX_LENGTH,
+  REVIEW_NOTES_MAX_LENGTH,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES
 } from "@microfocus/contracts";
-import { AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, OfflineDto, RightsDto, UploadSignDto } from "./admin.module.js";
+import { AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, MediaReviewDto, OfflineDto, ReviewDto, RightsDto, UploadSignDto } from "./admin.module.js";
 
 function validDrama(overrides: Record<string, unknown> = {}) {
   return {
@@ -221,6 +223,37 @@ describe("admin entitlement write input limits", () => {
       (await validate(
         plainToInstance(UploadSignDto, { ...valid, contentType: "video/x-matroska" })
       )).some((error) => error.property === "contentType")
+    ).toBe(true);
+  });
+
+  it("bounds content-review notes at 2000 and media-review notes at 500", async () => {
+    expect(await validate(plainToInstance(ReviewDto, { status: "APPROVED" }))).toEqual([]);
+    expect(
+      await validate(plainToInstance(ReviewDto, { status: "REJECTED", notes: "需要补齐版权资料" }))
+    ).toEqual([]);
+    expect(
+      (await validate(
+        plainToInstance(ReviewDto, {
+          status: "REJECTED",
+          notes: "x".repeat(REVIEW_NOTES_MAX_LENGTH + 1)
+        })
+      )).some((error) => error.property === "notes")
+    ).toBe(true);
+    expect(
+      await validate(
+        plainToInstance(MediaReviewDto, {
+          manualReviewStatus: "APPROVED",
+          notes: "人工复核通过说明"
+        })
+      )
+    ).toEqual([]);
+    expect(
+      (await validate(
+        plainToInstance(MediaReviewDto, {
+          manualReviewStatus: "REJECTED",
+          notes: "x".repeat(MEDIA_REVIEW_NOTES_MAX_LENGTH + 1)
+        })
+      )).some((error) => error.property === "notes")
     ).toBe(true);
   });
 });
