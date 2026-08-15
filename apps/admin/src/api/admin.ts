@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, RIGHTS_TERRITORY, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -305,7 +305,7 @@ export const adminApi = {
       headers: { "Idempotency-Key": idempotencyKey },
       body: json({
         ...input,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString(),
+        expiresAt: new Date(Date.now() + REWARD_TTL_SECONDS * 1_000).toISOString(),
       }),
     });
   },

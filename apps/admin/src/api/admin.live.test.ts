@@ -1,4 +1,4 @@
-import { AdminRole, REVIEW_NOTES_MAX_LENGTH, REWARD_SECONDS, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
+import { AdminRole, REVIEW_NOTES_MAX_LENGTH, REWARD_SECONDS, REWARD_TTL_SECONDS, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function success(data: unknown): Response {
@@ -97,7 +97,8 @@ describe("live admin API adapter", () => {
 
   it("uses backend review and compensation request contracts", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-12T00:00:00.000Z"));
+    const now = new Date("2026-08-12T00:00:00.000Z");
+    vi.setSystemTime(now);
     vi.mocked(fetch).mockResolvedValue(success(null));
     const { adminApi } = await import("./admin");
 
@@ -119,7 +120,7 @@ describe("live admin API adapter", () => {
       dramaId: "drama-1",
       seconds: REWARD_SECONDS,
       reason: "事故补偿工单",
-      expiresAt: "2026-08-13T00:00:00.000Z",
+      expiresAt: new Date(now.getTime() + REWARD_TTL_SECONDS * 1_000).toISOString(),
     });
     expect(new Headers(compensateInit?.headers).get("Idempotency-Key")).toMatch(/^c:[a-f0-9]{64}$/);
 
