@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, RATE_LIMIT_CLIENT_KEY_MAX_LENGTH } from "@microfocus/contracts";
 import { RATE_LIMITS, rateLimitBucketId } from "./rate-limit.js";
 import {
   AdminWriteRateLimitGuard,
@@ -23,6 +23,9 @@ describe("admin write rate limits", () => {
     expect(isAdminReadMethod("HEAD")).toBe(true);
     expect(isAdminReadMethod("POST")).toBe(false);
     expect(adminWriteRateLimitKey("admin-1")).toBe("admin:admin-1");
+    expect(
+      adminWriteRateLimitKey("a".repeat(RATE_LIMIT_CLIENT_KEY_MAX_LENGTH + 8))
+    ).toBe(`admin:${"a".repeat(RATE_LIMIT_CLIENT_KEY_MAX_LENGTH)}`);
     expect(RATE_LIMITS.adminRead).toEqual({ limit: 60, windowMs: 60_000 });
   });
 

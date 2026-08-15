@@ -1,4 +1,5 @@
 import { type CanActivate, type ExecutionContext, Injectable } from "@nestjs/common";
+import { RATE_LIMIT_CLIENT_KEY_MAX_LENGTH } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { assertNamedRateLimit } from "./rate-limit.js";
@@ -16,7 +17,7 @@ export function isAdminReadMethod(method: string | undefined): boolean {
 }
 
 export function adminWriteRateLimitKey(adminId: string): string {
-  return `admin:${adminId.slice(0, 64)}`;
+  return `admin:${adminId.slice(0, RATE_LIMIT_CLIENT_KEY_MAX_LENGTH)}`;
 }
 
 type AdminWriteRequest = AuthenticatedRequest & { method?: string };
