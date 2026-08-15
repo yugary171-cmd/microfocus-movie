@@ -1,3 +1,8 @@
+import {
+  boundCircuitUpdatedBy,
+  CIRCUIT_PROVIDER_NAME_MAX_LENGTH,
+  CIRCUIT_UPDATED_BY_MAX_LENGTH
+} from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { assertCircuitsClosed, openProviderCircuit, providerCircuitKey } from "./circuit.js";
 
@@ -71,5 +76,30 @@ describe("operational circuit enforcement", () => {
       "PROVIDER:VOD"
     );
     expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("caps provider names and updatedBy to persisted widths", async () => {
+    const upsert = vi.fn().mockResolvedValue({});
+    const prisma = {
+      circuitBreaker: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        upsert
+      }
+    };
+    const longName = "a".repeat(CIRCUIT_PROVIDER_NAME_MAX_LENGTH + 8);
+    const longActor = `system:${"y".repeat(CIRCUIT_UPDATED_BY_MAX_LENGTH)}`;
+    const key = providerCircuitKey(longName);
+    expect(key).toBe(`PROVIDER:${"A".repeat(CIRCUIT_PROVIDER_NAME_MAX_LENGTH)}`);
+    await expect(
+      openProviderCircuit(prisma as never, longName, "dead letter", longActor)
+    ).resolves.toBe(key);
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          provider: key,
+          updatedBy: boundCircuitUpdatedBy(longActor)
+        })
+      })
+    );
   });
 });

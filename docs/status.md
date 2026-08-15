@@ -30,7 +30,7 @@
 | 播放 | 单活租约、短凭证、心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 5 秒 reservation、未确认暴露上限、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约、心跳、续签、恢复、关闭、活动租约查询和进度写入按认证主体限频；租约/心跳/进度的 ID、设备、seq 和媒体位置有长度或数值上限；恢复事件 `deviceId`/`reason` 写入按 `DEVICE_ID_MAX_LENGTH`/`ENTITY_ID_MAX_LENGTH` 截断，宽限计数使用同一截断后的设备 ID；心跳 `playbackRate` 0.75–2（`PLAYBACK_RATE_MIN`/`MAX`），结算与两端播放器倍速按钮共用 `clampPlaybackRate`/`PLAYBACK_RATES`；播放租约路径走 `API_ROUTES`；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；入口路径走 `API_ROUTES.callbacks`（provider 专用，观看端/管理端客户端不调用）；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；列表/重放路径走 `API_ROUTES.admin`；重放 handler 入口规范化 `Idempotency-Key`；重放原因/审批记录写入按 `ADMIN_REASON_MAX_LENGTH` 截断；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频；回调 `eventId`/`fileId`/`challengeId` 限长；`x-provider-signature` 最长 256；列表 `take` 默认 50、上限 100，过大 `skip` 返回空结果 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
 | 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话；登录后播放先查活动租约并可宽限恢复；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌，补发 handler 入口规范化 `Idempotency-Key`；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页；管理端剧目/审核队列/审计日志由服务端分页；首页 latest 按发布时间独立查询；观看历史按认证用户限频；注销进度查询按连接 IP 限频；剧目详情、权益、播放租约和注销由服务端走 `API_ROUTES`；两套观看端 HTTP 路径同样走契约，路径 ID 会 URL-encode；管理端路径 ID 同样经 `encodedRoute`；观看端奖励完成/注销申请的 `Idempotency-Key` 经 `boundedIdempotencyKey` 限制在 128 以内；管理端登录表单邮箱/密码 min/maxlength 与契约共用；剧目/审计搜索与运营页实体 ID 输入 maxlength 与契约共用；观看端首页/搜索/分类搜索框 maxlength 与 `LIST_QUERY_MAX_LENGTH` 共用，提交前走 `boundListQuery` | 完整法定清理尚未实现 |
-| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId` 最长 `REQUEST_ID_MAX_LENGTH`/模块/错误码/耗时/脱敏 actor）；熔断行保存 `updatedBy`（管理员或 `system:*`）；管理端只读 GET 按认证管理员限频；生产不挂载 OpenAPI/Swagger；JSON/urlencoded 请求体 64kb | Live provider 和真实发布证据尚未完成 |
+| 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId` 最长 `REQUEST_ID_MAX_LENGTH`/模块/错误码/耗时/脱敏 actor）；熔断行保存 `updatedBy`（管理员或 `system:*`，最长 `CIRCUIT_UPDATED_BY_MAX_LENGTH`）；自动打开的 provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH`；管理端只读 GET 按认证管理员限频；生产不挂载 OpenAPI/Swagger；JSON/urlencoded 请求体 64kb | Live provider 和真实发布证据尚未完成 |
 
 ## 下一步（Now）
 
@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-15：熔断 `updatedBy` 收入契约 `CIRCUIT_UPDATED_BY_MAX_LENGTH=128`，管理员写入与死信/对账作业共用 `boundCircuitUpdatedBy`；provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH=32`。已打开的熔断仍不覆盖操作者。不把灰度指标写成已接入。
 - 2026-08-15：限频桶主键/IP 键/scope 前缀收入契约 `RATE_LIMIT_BUCKET_ID_MAX_LENGTH=128`、`RATE_LIMIT_CLIENT_KEY_MAX_LENGTH=128`、`RATE_LIMIT_SCOPE_MAX_LENGTH=32`，与 Prisma 列宽对齐。哈希仍覆盖完整 scope 与主体键。不把灰度指标写成已接入。
 - 2026-08-15：HTTP `requestId` 收入契约 `REQUEST_ID_MAX_LENGTH=128` 与 `REQUEST_ID_PATTERN`；入站 `x-request-id`、访问日志和审计写入共用。不把灰度指标写成已接入。
 - 2026-08-15：播放恢复事件写入 `deviceId`/`reason` 改走 `DEVICE_ID_MAX_LENGTH` 与 `ENTITY_ID_MAX_LENGTH`；宽限计数使用同一截断后的设备 ID。不把灰度指标写成已接入。

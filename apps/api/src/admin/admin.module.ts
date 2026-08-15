@@ -34,6 +34,7 @@ import {
   REQUEST_ID_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
+  boundCircuitUpdatedBy,
   boundListQuery,
   EPISODE_DURATION_SECONDS_MAX,
   EPISODE_TITLE_MAX_LENGTH,
@@ -903,6 +904,7 @@ export class AdminController {
       throw Errors.badRequest("TARGET_REQUIRED", "targetId is required for a scoped circuit breaker");
     }
     const key = `${scope}:${body.targetId ?? "GLOBAL"}`;
+    const actor = boundCircuitUpdatedBy(admin.sub);
     const row = await this.prisma.circuitBreaker.upsert({
       where: { provider: key },
       create: {
@@ -910,13 +912,13 @@ export class AdminController {
         state: body.enabled ? "OPEN" : "CLOSED",
         reason: body.reason,
         openedAt: body.enabled ? new Date() : null,
-        updatedBy: admin.sub
+        updatedBy: actor
       },
       update: {
         state: body.enabled ? "OPEN" : "CLOSED",
         reason: body.reason,
         openedAt: body.enabled ? new Date() : null,
-        updatedBy: admin.sub
+        updatedBy: actor
       }
     });
     await this.audit(admin.sub, "CIRCUIT_CHANGED", "CircuitBreaker", key);
@@ -924,7 +926,7 @@ export class AdminController {
       enabled: row.state === "OPEN",
       reason: row.reason ?? "",
       updatedAt: row.updatedAt.toISOString(),
-      updatedBy: admin.sub
+      updatedBy: actor
     };
   }
 
@@ -937,6 +939,7 @@ export class AdminController {
   ) {
     const admin = requireAdmin(principal);
     provider = requireEntityId(provider, "provider");
+    const actor = boundCircuitUpdatedBy(admin.sub);
     const row = await this.prisma.circuitBreaker.upsert({
       where: { provider },
       create: {
@@ -944,13 +947,13 @@ export class AdminController {
         state: body.state,
         ...(body.reason !== undefined ? { reason: body.reason } : {}),
         openedAt: body.state === "OPEN" ? new Date() : null,
-        updatedBy: admin.sub
+        updatedBy: actor
       },
       update: {
         state: body.state,
         ...(body.reason !== undefined ? { reason: body.reason } : {}),
         openedAt: body.state === "OPEN" ? new Date() : null,
-        updatedBy: admin.sub
+        updatedBy: actor
       }
     });
     await this.audit(admin.sub, "CIRCUIT_CHANGED", "CircuitBreaker", provider);

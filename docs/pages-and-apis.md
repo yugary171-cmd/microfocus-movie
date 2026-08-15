@@ -219,7 +219,7 @@ flowchart LR
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计；内容审核 `notes` 可选、最长 2000（`REVIEW_NOTES_MAX_LENGTH`），退回时管理端必填；媒体审核 `notes` 仍为 6–500（`MEDIA_REVIEW_NOTES_*`），不与内容审核混用 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId` 和操作人邮箱过滤；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联 |
-| `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；原因 6–300 字；`targetId` 限长 191；`updatedBy` 为管理员 ID 或 `system:*` 作业标识 | 全局/用户/剧目/广告位/provider 熔断 |
+| `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；原因 6–300 字；`targetId` 限长 191；`updatedBy` 为管理员 ID 或 `system:*` 作业标识，写入最长 `CIRCUIT_UPDATED_BY_MAX_LENGTH`（128）；自动打开的 provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH`（32） | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key`（trim、最长 128）；写 Guard 仍先占桶 | 用户/剧目 ID 限长 191，管理端表单 maxlength 与之共用；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key`（trim、最长 128）；空白或超长在 handler 拒绝，写 Guard 仍先占桶 | grant/事实 ID 限长；秒数 1–86400；原因/审批记录 6–300 字（`ADMIN_REASON_MAX_LENGTH`），写入时按该上限截断 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |
 | `GET /v1/admin/callback-events` | ADMIN | 默认积压状态；不含加密载荷；`take` 默认 50、上限 100；过大 `skip` 返回空结果 | 列出回调事件元数据（状态、尝试次数、是否仍有可执行载荷） |

@@ -53,6 +53,8 @@ export const REQUEST_ID_MAX_LENGTH = 128;
 export const RATE_LIMIT_BUCKET_ID_MAX_LENGTH = 128;
 export const RATE_LIMIT_SCOPE_MAX_LENGTH = 32;
 export const RATE_LIMIT_CLIENT_KEY_MAX_LENGTH = 128;
+export const CIRCUIT_UPDATED_BY_MAX_LENGTH = 128;
+export const CIRCUIT_PROVIDER_NAME_MAX_LENGTH = 32;
 export const REQUEST_ID_PATTERN = new RegExp(
   `^[A-Za-z0-9._:-]{1,${REQUEST_ID_MAX_LENGTH}}$`
 );
@@ -90,6 +92,11 @@ export const UPLOAD_FILE_ACCEPT = "video/mp4,video/quicktime,video/webm";
 /** Trim then cap list/search keywords so clients match server truncation. */
 export function boundListQuery(value: string): string {
   return value.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+}
+
+/** Cap circuit actor ids so writes fit CircuitBreaker.updatedBy. */
+export function boundCircuitUpdatedBy(value: string): string {
+  return value.trim().slice(0, CIRCUIT_UPDATED_BY_MAX_LENGTH);
 }
 
 export function isAllowedUploadFileName(fileName: string): boolean {

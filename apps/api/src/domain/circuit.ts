@@ -1,10 +1,18 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
+import {
+  boundCircuitUpdatedBy,
+  CIRCUIT_PROVIDER_NAME_MAX_LENGTH
+} from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 
 type CircuitReader = Pick<PrismaClient, "circuitBreaker"> | Prisma.TransactionClient;
 
 export function providerCircuitKey(provider: string): string {
-  const normalized = provider.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 32);
+  const normalized = provider
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, "")
+    .slice(0, CIRCUIT_PROVIDER_NAME_MAX_LENGTH);
   return `PROVIDER:${normalized || "UNKNOWN"}`;
 }
 
@@ -44,7 +52,7 @@ export async function openProviderCircuit(
   const key = providerCircuitKey(provider);
   const existing = await prisma.circuitBreaker.findUnique({ where: { provider: key } });
   if (existing?.state === "OPEN") return key;
-  const actor = updatedBy.trim().slice(0, 128) || "system";
+  const actor = boundCircuitUpdatedBy(updatedBy) || "system";
   await prisma.circuitBreaker.upsert({
     where: { provider: key },
     create: {
