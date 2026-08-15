@@ -1,4 +1,4 @@
-export const JSON_BODY_LIMIT = "64kb";
+import { JSON_BODY_LIMIT } from "@microfocus/contracts";
 
 type BodyParserApp = {
   useBodyParser(

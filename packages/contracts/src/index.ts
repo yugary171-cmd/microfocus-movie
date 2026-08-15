@@ -59,6 +59,7 @@ export const REQUEST_LOG_PATH_MAX_LENGTH = 256;
 export const REQUEST_LOG_METHOD_MAX_LENGTH = 16;
 export const REQUEST_LOG_ACTOR_KIND_MAX_LENGTH = 32;
 export const REQUEST_LOG_LABEL_MAX_LENGTH = 64;
+export const JSON_BODY_LIMIT = "64kb";
 export const REQUEST_ID_PATTERN = new RegExp(
   `^[A-Za-z0-9._:-]{1,${REQUEST_ID_MAX_LENGTH}}$`
 );

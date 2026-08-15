@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyJsonBodyLimit, JSON_BODY_LIMIT } from "./http-limits.js";
+import { JSON_BODY_LIMIT } from "@microfocus/contracts";
+import { applyJsonBodyLimit } from "./http-limits.js";
 
 describe("JSON body limit", () => {
   it("registers a 64kb json and urlencoded parser", () => {
