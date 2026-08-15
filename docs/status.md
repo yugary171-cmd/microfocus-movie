@@ -55,6 +55,7 @@
 
 ## 历史
 
+- 2026-08-15：权利方超长测试改走 `RIGHTS_HOLDER_MAX_LENGTH + 1`，不再写死 `repeat(201)`。DTO 上限已用同一长度。不把灰度指标写成已接入。
 - 2026-08-15：回调死信夹具的 `attempts` 改走 `CALLBACK_MAX_ATTEMPTS`，不再写死 `5`。死信判定已用同一上限。不把灰度指标写成已接入。
 - 2026-08-15：管理端 live 补偿 `expiresAt` 改走 `REWARD_TTL_SECONDS`，不再写死 `24 * 60 * 60`。服务端奖励 grant 过期已用同一 TTL。不把灰度指标写成已接入。
 - 2026-08-15：三端 Mock 注销查询令牌过期时间改走 `DELETION_QUERY_TOKEN_TTL_SECONDS`，不再写死 `30 * 24 * 60 * 60`。服务端签发已用同一 TTL。不把灰度指标写成已接入。

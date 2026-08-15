@@ -16,6 +16,7 @@ import {
   RECOMMENDATION_RANK_MIN,
   REVIEW_NOTES_MAX_LENGTH,
   REWARD_SECONDS,
+  RIGHTS_HOLDER_MAX_LENGTH,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
   RIGHTS_TERRITORY,
   UPLOAD_FILE_NAME_MAX_LENGTH,
@@ -95,7 +96,7 @@ describe("admin content input limits", () => {
 
     const rights = await validate(
       plainToInstance(RightsDto, {
-        rightsHolder: "x".repeat(201),
+        rightsHolder: "x".repeat(RIGHTS_HOLDER_MAX_LENGTH + 1),
         validFrom: "2026-01-01T00:00:00.000Z",
         validUntil: "2027-01-01T00:00:00.000Z",
         territory: RIGHTS_TERRITORY,
