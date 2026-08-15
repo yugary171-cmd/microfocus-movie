@@ -49,6 +49,10 @@ export const REVIEW_NOTES_MAX_LENGTH = 2000;
 export const MEDIA_REVIEW_NOTES_MIN_LENGTH = 6;
 export const MEDIA_REVIEW_NOTES_MAX_LENGTH = 500;
 export const IDEMPOTENCY_KEY_MAX_LENGTH = 128;
+export const REQUEST_ID_MAX_LENGTH = 128;
+export const REQUEST_ID_PATTERN = new RegExp(
+  `^[A-Za-z0-9._:-]{1,${REQUEST_ID_MAX_LENGTH}}$`
+);
 export const DELETION_QUERY_TOKEN_MAX_LENGTH = 128;
 export const BEARER_TOKEN_MAX_LENGTH = 4096;
 export const PROVIDER_SIGNATURE_MAX_LENGTH = 256;
@@ -96,6 +100,10 @@ export function isAllowedUploadFileSize(size: number): boolean {
 
 export function isRightsMaterialDigest(value: string): boolean {
   return RIGHTS_MATERIAL_DIGEST_PATTERN.test(value.trim());
+}
+
+export function isRequestId(value: string): boolean {
+  return REQUEST_ID_PATTERN.test(value);
 }
 
 export function isPlaybackRatePreset(rate: number): rate is PlaybackRatePreset {

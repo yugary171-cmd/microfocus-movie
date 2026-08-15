@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { Observable } from "rxjs";
 import { map } from "rxjs/operators";
+import { isRequestId } from "@microfocus/contracts";
 import { AppError } from "./app-error.js";
 
 type HeaderRequest = {
@@ -40,7 +41,7 @@ export function requestContext(
 ): void {
   const candidate = request.header("x-request-id");
   request.requestId =
-    candidate && /^[A-Za-z0-9._:-]{1,128}$/.test(candidate)
+    candidate && isRequestId(candidate)
       ? candidate
       : randomUUID();
   response.setHeader("x-request-id", request.requestId);

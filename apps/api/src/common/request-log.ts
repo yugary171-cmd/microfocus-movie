@@ -5,6 +5,7 @@ import {
   type ExecutionContext,
   type NestInterceptor
 } from "@nestjs/common";
+import { REQUEST_ID_MAX_LENGTH } from "@microfocus/contracts";
 import type { Observable } from "rxjs";
 import { catchError, tap } from "rxjs/operators";
 import { describeHttpException, type RequestWithContext } from "./http.js";
@@ -38,7 +39,7 @@ export function buildRequestLog(input: RequestLogInput): Record<string, string |
   const method = (input.method ?? "GET").toUpperCase().slice(0, 16);
   const actorKind = (input.actorKind ?? "anonymous").slice(0, 32);
   return {
-    requestId: (input.requestId ?? "").slice(0, 128),
+    requestId: (input.requestId ?? "").slice(0, REQUEST_ID_MAX_LENGTH),
     module: (input.module ?? "Unknown").slice(0, 64),
     method,
     path,

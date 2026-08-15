@@ -31,6 +31,7 @@ import {
   DRAMA_TITLE_MAX_LENGTH,
   RECOMMENDATION_RANK_MAX,
   RECOMMENDATION_RANK_MIN,
+  REQUEST_ID_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
   boundListQuery,
@@ -1129,7 +1130,7 @@ export class AdminController {
     targetId: string,
     metadata?: Record<string, string>
   ): Promise<void> {
-    const requestId = currentRequestId().slice(0, 128);
+    const requestId = currentRequestId().slice(0, REQUEST_ID_MAX_LENGTH);
     await this.prisma.auditLog.create({
       data: {
         adminId,
