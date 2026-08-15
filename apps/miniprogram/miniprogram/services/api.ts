@@ -276,6 +276,23 @@ export function clearStoredSession(): void {
   wx.removeStorageSync(SESSION_USER_KEY);
 }
 
+export function applyLocalWechatProfile(profile: {
+  displayName: string;
+  avatarUrl: string | null;
+}): AuthSession | null {
+  const session = getStoredSession();
+  if (!session) return null;
+  const displayName = profile.displayName.trim().slice(0, 32) || session.user.displayName;
+  return storeSession({
+    ...session,
+    user: {
+      ...session.user,
+      displayName,
+      avatarUrl: profile.avatarUrl ?? session.user.avatarUrl
+    }
+  });
+}
+
 function storeSession(session: AuthSession): AuthSession {
   wx.setStorageSync(ACCESS_TOKEN_KEY, session.accessToken);
   wx.setStorageSync(SESSION_USER_KEY, session.user);

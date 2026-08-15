@@ -75,7 +75,7 @@ flowchart LR
 | 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、简介、目录、免费/锁定状态和播放入口 | `GET /v1/dramas/:dramaId`；登录后可读权益 |
 | 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复 | 播放、奖励、权益及进度接口 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |
-| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录、观看历史、继续观看和客服入口 | `POST /v1/auth/wechat`、`GET /v1/me/history` |
+| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（先拉起微信头像昵称授权）、退出登录（仅清本地用户会话）、观看历史、继续观看和客服入口 | `POST /v1/auth/wechat`、`GET /v1/me/history` |
 | 法律与隐私 | `apps/uniapp/src/pages/legal/index.vue` | 用户协议、隐私指引、广告权益、注销和投诉说明 | 静态内容或受控内容服务；不得依赖 Mock 文案发布 |
 
 播放器调用（`pages/player` + `services/reward.ts` + `services/playback-controller.ts`）：
@@ -184,7 +184,7 @@ flowchart LR
 | 方法与路径 | 认证 | 关键请求 | 关键响应/语义 |
 | --- | --- | --- | --- |
 | `POST /v1/auth/anonymous` | 公开、按连接 IP 限频（新建会话）；刷新已有 device/session 不占桶 | `deviceId/sessionId`，各最长 128 | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
-| `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` 最长 256 | 用户 JWT；H5/App 不得复用 |
+| `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` 最长 256 | 用户 JWT；H5/App 不得复用。观看端在点登录时先调微信 `getUserProfile` 拉起头像昵称授权，取消则不换会话；昵称仅本地展示，不写入该接口 |
 | `GET /v1/catalog` | 公开、按连接 IP 限频 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容；`latest` 按发布时间倒序，不从推荐榜重排 |
 | `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page`；`q` 与 `category` 最长 100（`LIST_QUERY_MAX_LENGTH` / `boundListQuery`），观看端搜索框 maxlength 与之共用 | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
 | `GET /v1/dramas/:dramaId` | 公开、按连接 IP 限频 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算 |

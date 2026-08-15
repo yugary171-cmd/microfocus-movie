@@ -18,6 +18,13 @@ function stubUni(overrides: Record<string, unknown> = {}) {
     login: vi.fn((options: { success: (value: { code: string }) => void }) => {
       options.success({ code: "fresh-wechat-code" });
     }),
+    getUserProfile: vi.fn(
+      (options: {
+        success: (value: { userInfo: { nickName: string; avatarUrl: string } }) => void;
+      }) => {
+        options.success({ userInfo: { nickName: "内部体验用户", avatarUrl: "" } });
+      }
+    ),
     getAccountInfoSync: () => ({ miniProgram: { envVersion: "develop" } }),
     getStorageSync: (key: string) => storage.get(key) ?? "",
     setStorageSync: (key: string, value: unknown) => storage.set(key, value),
@@ -34,13 +41,42 @@ describe("explicit WeChat login", () => {
   it("obtains a fresh WeChat code and persists the resulting Mock session", async () => {
     vi.resetModules();
     stubUni();
-    const { ensureSession, getStoredSession } = await import("../src/services/api");
+    const { ensureSession, getStoredSession, clearStoredSession } = await import("../src/services/api");
     const session = await ensureSession();
     expect(session).toMatchObject({
       accessToken: "internal-mock-session-fresh-wechat",
       user: { id: "internal-user-fresh-wechat", displayName: "内部体验用户" }
     });
     expect(getStoredSession()).toMatchObject({ accessToken: "internal-mock-session-fresh-wechat" });
+    clearStoredSession();
+    expect(getStoredSession()).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it("treats WeChat nickname authorization cancel as a denied profile", async () => {
+    vi.resetModules();
+    stubUni({
+      getUserProfile: (options: { fail: (error: { errMsg: string }) => void }) => {
+        options.fail({ errMsg: "getUserProfile:fail auth deny" });
+      }
+    });
+    const { isWechatProfileAuthorizationDenied, obtainWechatUserProfile } = await import("../src/platform/auth");
+    await expect(obtainWechatUserProfile()).rejects.toSatisfy((error: unknown) =>
+      isWechatProfileAuthorizationDenied(error)
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("applies the WeChat nickname locally after a Mock session is stored", async () => {
+    vi.resetModules();
+    stubUni();
+    const { ensureSession, applyLocalWechatProfile, getStoredSession } = await import("../src/services/api");
+    await ensureSession();
+    applyLocalWechatProfile({ displayName: "Stellan", avatarUrl: "https://example.com/a.png" });
+    expect(getStoredSession()?.user).toMatchObject({
+      displayName: "Stellan",
+      avatarUrl: "https://example.com/a.png"
+    });
     vi.unstubAllGlobals();
   });
 });

@@ -2,8 +2,20 @@
 import { DELETION_CONFIRMATION } from "@microfocus/contracts";
 import { onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { obtainWechatLoginCode } from "../../platform";
-import { clearStoredSession, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import {
+  isWechatProfileAuthorizationDenied,
+  obtainWechatLoginCode,
+  obtainWechatUserProfile,
+  wechatMiniprogramAuthSupported
+} from "../../platform";
+import {
+  applyLocalWechatProfile,
+  clearStoredSession,
+  ensureSession,
+  getApi,
+  getStoredSession,
+  isMockMode
+} from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { resolveHistoryPlayerUrl } from "../../utils/history-navigation";
 import {
@@ -70,18 +82,44 @@ onShow(() => {
 
 async function login() {
   if (loginLoading.value) return;
-  loginLoading.value = true;
   loginError.value = "";
   try {
+    const profile = wechatMiniprogramAuthSupported() ? await obtainWechatUserProfile() : null;
+    loginLoading.value = true;
     const session = await ensureSession();
-    user.value = toUserView(session);
+    const stored = profile ? applyLocalWechatProfile(profile) : session;
+    user.value = toUserView(stored);
     if (!isMock) await loadLiveHistory();
     uni.showToast({ title: "登录成功", icon: "success" });
   } catch (error) {
+    if (isWechatProfileAuthorizationDenied(error)) {
+      uni.showToast({ title: "已取消授权", icon: "none" });
+      return;
+    }
     loginError.value = toFriendlyErrorMessage(error);
   } finally {
     loginLoading.value = false;
   }
+}
+
+function logout() {
+  if (!user.value) return;
+  uni.showModal({
+    title: "退出登录",
+    content: "只会退出当前设备上的登录，不会注销账号。退出后仍可观看免费内容。",
+    confirmText: "退出",
+    success: (result) => {
+      if (!result.confirm) return;
+      clearStoredSession();
+      user.value = null;
+      loginError.value = "";
+      if (!isMock) {
+        historyItems.value = [];
+        historyError.value = "";
+      }
+      uni.showToast({ title: "已退出登录", icon: "none" });
+    }
+  });
 }
 
 function showFeature(label: string) {
@@ -197,6 +235,7 @@ async function openHistory(id: string) {
       <button class="privacy-link" @tap="openLegal('support')">客服与投诉</button>
       <button class="privacy-link" @tap="openLegal('ads')">广告未到账</button>
       <button class="privacy-link" @tap="openLegal('deletion')">注销说明</button>
+      <button v-if="user" class="privacy-link" @tap="logout">退出登录</button>
       <button v-if="user" class="privacy-link" :disabled="deletionBusy" @tap="requestDeletion">
         {{ deletionBusy ? "提交中…" : "申请注销" }}
       </button>

@@ -1,6 +1,13 @@
 import { DELETION_CONFIRMATION } from "@microfocus/contracts";
-import { clearStoredSession, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
-import { wechatAdapter } from "../../services/wechat-adapter";
+import {
+  applyLocalWechatProfile,
+  clearStoredSession,
+  ensureSession,
+  getApi,
+  getStoredSession,
+  isMockMode
+} from "../../services/api";
+import { isWechatProfileAuthorizationDenied, wechatAdapter } from "../../services/wechat-adapter";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import {
   playerUrlFromHistory,
@@ -59,17 +66,44 @@ Page({
 
   async login() {
     if (this.data.loginLoading) return;
-    this.setData({ loginLoading: true, loginError: "" });
+    this.setData({ loginError: "" });
     try {
-      const session = await ensureSession();
-      this.setData({ user: toUserView(session) });
+      const profile = await wechatAdapter.getUserProfile();
+      this.setData({ loginLoading: true });
+      await ensureSession();
+      this.setData({ user: toUserView(applyLocalWechatProfile(profile)) });
       if (!this.data.isMock) await this.loadLiveHistory();
       wx.showToast({ title: "登录成功", icon: "success" });
     } catch (error) {
+      if (isWechatProfileAuthorizationDenied(error)) {
+        wx.showToast({ title: "已取消授权", icon: "none" });
+        return;
+      }
       this.setData({ loginError: toFriendlyErrorMessage(error) });
     } finally {
       this.setData({ loginLoading: false });
     }
+  },
+
+  logout() {
+    if (!this.data.user) return;
+    wx.showModal({
+      title: "退出登录",
+      content: "只会退出当前设备上的登录，不会注销账号。退出后仍可观看免费内容。",
+      confirmText: "退出",
+      success: (result) => {
+        if (!result.confirm) return;
+        clearStoredSession();
+        this.setData({
+          user: null,
+          loginError: "",
+          ...(this.data.isMock
+            ? {}
+            : { historyItems: [] as HistoryCardView[], historyError: "" })
+        });
+        wx.showToast({ title: "已退出登录", icon: "none" });
+      }
+    });
   },
 
   selectHistoryTab(event: WechatMiniprogram.TouchEvent) {

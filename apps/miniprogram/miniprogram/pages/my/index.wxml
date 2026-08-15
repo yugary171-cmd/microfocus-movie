@@ -18,6 +18,7 @@
     <button class="privacy-link" data-section="support" bindtap="openLegal">客服与投诉</button>
     <button class="privacy-link" data-section="ads" bindtap="openLegal">广告未到账</button>
     <button class="privacy-link" data-section="deletion" bindtap="openLegal">注销说明</button>
+    <button wx:if="{{user}}" class="privacy-link" bindtap="logout">退出登录</button>
     <button wx:if="{{user}}" class="privacy-link" bindtap="requestDeletion" disabled="{{deletionBusy}}">{{deletionBusy ? '提交中…' : '申请注销'}}</button>
     <button class="privacy-link" bindtap="lookupDeletion">查询注销进度</button>
   </view>
