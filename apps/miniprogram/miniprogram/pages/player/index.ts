@@ -11,7 +11,7 @@ import { PlaybackHeartbeatController } from "../../services/playback-controller"
 import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { formatRemainingTime } from "../../utils/format";
+import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
 
 Page({
   data: {
@@ -42,6 +42,7 @@ Page({
   closingLeaseId: "",
   pageVisible: true,
   networkAvailable: true,
+  episodeDurations: [] as number[],
 
   onLoad(options: Record<string, string | undefined>) {
     const dramaId = options.dramaId ? decodeURIComponent(options.dramaId) : "";
@@ -85,7 +86,11 @@ Page({
     if (this.data.lease || this.data.loading && this.data.started) return;
     this.setData({ loading: true, error: "", notice: "" });
     try {
-      const lease = await restoreOrCreatePlaybackLease(this.data.episodeId, getDeviceId());
+      const [lease, detail] = await Promise.all([
+        restoreOrCreatePlaybackLease(this.data.episodeId, getDeviceId()),
+        getApi().getDrama(this.data.dramaId).catch(() => null)
+      ]);
+      this.episodeDurations = episodeDurationsFromDrama(detail);
       if (!this.pageVisible) {
         void getApi().closePlaybackLease(lease.id).catch(() => undefined);
         return;
@@ -108,7 +113,7 @@ Page({
       lease,
       playbackUrl: lease.playbackUrl || "",
       hasPlaybackUrl: Boolean(lease.playbackUrl),
-      remainingLabel: lease.isFree ? "免费集" : formatRemainingTime(lease.remainingSeconds)
+      remainingLabel: this.remainingFromLease(lease.isFree, lease.remainingSeconds)
     });
     this.scheduleRenewal(lease);
     if (restorePosition && this.data.currentPosition > 0) {
@@ -184,7 +189,7 @@ Page({
     if (result.status !== "confirmed") return;
     const response = result.response;
     if (typeof response.remainingSeconds === "number") {
-      this.setData({ remainingLabel: formatRemainingTime(response.remainingSeconds) });
+      this.setData({ remainingLabel: this.remainingFromLease(Boolean(lease.isFree), response.remainingSeconds) });
     }
     if (!response.mayContinue) {
       this.videoContext?.pause();
@@ -192,6 +197,11 @@ Page({
       this.setData({ notice: this.getStopReason(response.reason) });
       void this.persistProgress();
     }
+  },
+
+  remainingFromLease(isFree: boolean, remainingSeconds: number | null | undefined): string {
+    if (isFree) return "免费集";
+    return formatApproximateRemainingEpisodes(remainingSeconds, this.episodeDurations);
   },
 
   getStopReason(reason?: string) {

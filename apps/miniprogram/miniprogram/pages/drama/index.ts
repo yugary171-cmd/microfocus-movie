@@ -12,7 +12,14 @@ import { wechatAdapter } from "../../services/wechat-adapter";
 import { canStartEpisode, isFreeEpisode } from "../../utils/episode";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { formatDateTime, formatRemainingTime } from "../../utils/format";
+import {
+  ENTITLEMENT_INCOMPLETE_AD_LABEL,
+  ENTITLEMENT_SCOPE_LABEL,
+  episodeDurationsFromDrama,
+  formatApproximateRemainingEpisodes,
+  formatDateTime,
+  formatRewardUnlockCopy
+} from "../../utils/format";
 
 Page({
   data: {
@@ -22,8 +29,11 @@ Page({
     error: "",
     drama: null as DramaDetail | null,
     entitlement: null as EntitlementSummary | null,
-    remainingLabel: "0秒",
+    remainingLabel: "约 0 集",
     expiryLabel: "暂无到期时间",
+    scopeLabel: ENTITLEMENT_SCOPE_LABEL,
+    incompleteAdLabel: ENTITLEMENT_INCOMPLETE_AD_LABEL,
+    unlockCopy: formatRewardUnlockCopy("", []),
     unlockVisible: false,
     unlockEpisode: null as EpisodeSummary | null,
     rewardLoading: false,
@@ -74,10 +84,12 @@ Page({
   },
 
   applyEntitlement(entitlement: EntitlementSummary | null) {
+    const durations = episodeDurationsFromDrama(this.data.drama);
     this.setData({
       entitlement,
-      remainingLabel: formatRemainingTime(entitlement?.remainingSeconds),
-      expiryLabel: formatDateTime(entitlement?.nearestExpiresAt)
+      remainingLabel: formatApproximateRemainingEpisodes(entitlement?.remainingSeconds, durations),
+      expiryLabel: formatDateTime(entitlement?.nearestExpiresAt),
+      unlockCopy: formatRewardUnlockCopy(this.data.drama?.title ?? "", durations)
     });
   },
 

@@ -15,7 +15,7 @@ import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
 import { PlaybackHeartbeatController } from "../../services/playback-controller";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { formatRemainingTime } from "../../utils/format";
+import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
 import { copyShareText, formatEngagementCount, shareDramaText } from "../../utils/engagement";
 
 const isMock = isMockMode();
@@ -30,6 +30,7 @@ const playbackUrl = ref("");
 const hasPlaybackUrl = ref(false);
 const lease = ref<PlaybackLeaseView | null>(null);
 const remainingLabel = ref("免费集");
+let episodeDurations: number[] = [];
 const playbackRate = ref(PLAYBACK_RATE_DEFAULT);
 const rates = PLAYBACK_RATES;
 const currentPosition = ref(0);
@@ -61,6 +62,11 @@ function clearTimers() {
   heartbeatTimer = 0;
   offlineTimer = 0;
   renewTimer = 0;
+}
+
+function remainingFromLease(isFree: boolean, remainingSeconds: number | null | undefined): string {
+  if (isFree) return "免费集";
+  return formatApproximateRemainingEpisodes(remainingSeconds, episodeDurations);
 }
 
 function getStopReason(reason?: string) {
@@ -114,7 +120,7 @@ async function sendHeartbeat() {
   if (result.status !== "confirmed") return;
   const response = result.response;
   if (typeof response.remainingSeconds === "number") {
-    remainingLabel.value = formatRemainingTime(response.remainingSeconds);
+    remainingLabel.value = remainingFromLease(Boolean(currentLease.isFree), response.remainingSeconds);
   }
   if (!response.mayContinue) {
     videoContext?.pause();
@@ -164,7 +170,7 @@ function applyLease(current: PlaybackLeaseView, restorePosition = false) {
   lease.value = current;
   playbackUrl.value = current.playbackUrl || "";
   hasPlaybackUrl.value = Boolean(current.playbackUrl);
-  remainingLabel.value = current.isFree ? "免费集" : formatRemainingTime(current.remainingSeconds);
+  remainingLabel.value = remainingFromLease(current.isFree, current.remainingSeconds);
   scheduleRenewal(current);
   if (restorePosition && currentPosition.value > 0) {
     void nextTick(() => videoContext?.seek(currentPosition.value));
@@ -208,7 +214,11 @@ async function openLease() {
   error.value = "";
   notice.value = "";
   try {
-    const created = await restoreOrCreatePlaybackLease(episodeId.value, getDeviceId());
+    const [created, detail] = await Promise.all([
+      restoreOrCreatePlaybackLease(episodeId.value, getDeviceId()),
+      getApi().getDrama(dramaId.value).catch(() => null)
+    ]);
+    episodeDurations = episodeDurationsFromDrama(detail);
     if (!pageVisible) {
       void getApi().closePlaybackLease(created.id).catch(() => undefined);
       return;
@@ -334,7 +344,7 @@ onUnload(() => {
         <view class="drama-title">{{ dramaTitle }}</view>
         <view class="episode-title">第 {{ episodeNumber }} 集</view>
       </view>
-      <view class="remaining" :aria-label="`剩余观看时长 ${remainingLabel}`">{{ remainingLabel }}</view>
+      <view class="remaining" :aria-label="`剩余 ${remainingLabel}，仅本剧有效`">{{ remainingLabel }}</view>
     </view>
 
     <internal-banner :visible="isMock" />

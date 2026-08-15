@@ -4,7 +4,15 @@ import { onLoad, onPullDownRefresh } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { getApi, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { formatDateTime, formatRemainingTime } from "../../utils/format";
+import {
+  ENTITLEMENT_INCOMPLETE_AD_LABEL,
+  ENTITLEMENT_SCOPE_LABEL,
+  episodeDurationsFromDrama,
+  formatApproximateRemainingEpisodes,
+  formatDateTime,
+  formatRemainingTime,
+  formatRewardUnlockCopy
+} from "../../utils/format";
 
 interface GrantView extends EntitlementGrantView {
   sourceLabel: string;
@@ -19,18 +27,26 @@ const dramaId = ref("");
 const loading = ref(true);
 const error = ref("");
 const summary = ref<EntitlementSummary | null>(null);
-const remainingLabel = ref("0秒");
+const remainingLabel = ref("约 0 集");
 const nearestExpiryLabel = ref("暂无到期时间");
+const grantCopy = ref(formatRewardUnlockCopy("", []));
+const scopeLabel = ENTITLEMENT_SCOPE_LABEL;
+const incompleteAdLabel = ENTITLEMENT_INCOMPLETE_AD_LABEL;
 const grants = ref<GrantView[]>([]);
 
 async function loadEntitlement() {
   loading.value = true;
   error.value = "";
   try {
-    const data = await getApi().getEntitlement(dramaId.value);
+    const [data, drama] = await Promise.all([
+      getApi().getEntitlement(dramaId.value),
+      getApi().getDrama(dramaId.value).catch(() => null)
+    ]);
+    const durations = episodeDurationsFromDrama(drama);
     summary.value = data;
-    remainingLabel.value = formatRemainingTime(data.remainingSeconds);
+    remainingLabel.value = formatApproximateRemainingEpisodes(data.remainingSeconds, durations);
     nearestExpiryLabel.value = formatDateTime(data.nearestExpiresAt);
+    grantCopy.value = formatRewardUnlockCopy(drama?.title ?? "", durations);
     grants.value = data.grants.map((grant) => ({
       ...grant,
       sourceLabel: grant.source === "REWARDED_AD" ? "完整观看激励广告" : "平台补偿",
@@ -78,6 +94,8 @@ onPullDownRefresh(() => {
         <view class="summary-label">当前短剧可用时长</view>
         <view class="remaining">{{ remainingLabel }}</view>
         <view class="expiry">最近到期：{{ nearestExpiryLabel }}</view>
+        <view class="expiry">{{ scopeLabel }} · {{ incompleteAdLabel }}</view>
+        <view class="grant-copy">{{ grantCopy }}</view>
       </view>
       <view class="section-title">发放记录</view>
       <view v-if="!grants.length" class="state-card">

@@ -15,7 +15,14 @@ import {
 import { getDeviceId } from "../../utils/device";
 import { canStartEpisode } from "../../utils/episode";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { formatDateTime, formatRemainingTime } from "../../utils/format";
+import {
+  ENTITLEMENT_INCOMPLETE_AD_LABEL,
+  ENTITLEMENT_SCOPE_LABEL,
+  episodeDurationsFromDrama,
+  formatApproximateRemainingEpisodes,
+  formatDateTime,
+  formatRewardUnlockCopy
+} from "../../utils/format";
 import { playerUrlFromEpisode } from "../../utils/player-navigation";
 
 const isMock = isMockMode();
@@ -24,8 +31,11 @@ const loading = ref(true);
 const error = ref("");
 const drama = ref<DramaDetail | null>(null);
 const entitlement = ref<EntitlementSummary | null>(null);
-const remainingLabel = ref("0秒");
+const remainingLabel = ref("约 0 集");
 const expiryLabel = ref("暂无到期时间");
+const scopeLabel = ENTITLEMENT_SCOPE_LABEL;
+const incompleteAdLabel = ENTITLEMENT_INCOMPLETE_AD_LABEL;
+const unlockCopy = ref(formatRewardUnlockCopy("", []));
 const unlockVisible = ref(false);
 const unlockEpisode = ref<EpisodeSummary | null>(null);
 const rewardLoading = ref(false);
@@ -36,8 +46,10 @@ let pendingRewardConfirmation: PendingRewardConfirmation | null = null;
 
 function applyEntitlement(summary: EntitlementSummary | null) {
   entitlement.value = summary;
-  remainingLabel.value = formatRemainingTime(summary?.remainingSeconds);
+  const durations = episodeDurationsFromDrama(drama.value);
+  remainingLabel.value = formatApproximateRemainingEpisodes(summary?.remainingSeconds, durations);
   expiryLabel.value = formatDateTime(summary?.nearestExpiresAt);
+  unlockCopy.value = formatRewardUnlockCopy(drama.value?.title ?? "", durations);
 }
 
 async function loadEntitlement() {
@@ -184,6 +196,7 @@ onShow(() => {
       <view class="entitlement" role="status">
         <view><text class="muted">当前短剧剩余</text> {{ remainingLabel }}</view>
         <view class="expiry">最近到期：{{ expiryLabel }}</view>
+        <view class="expiry">{{ scopeLabel }} · {{ incompleteAdLabel }}</view>
         <navigator class="detail-link" :url="`/pages/entitlements/index?dramaId=${drama.id}`">
           查看权益明细
         </navigator>
@@ -194,12 +207,12 @@ onShow(() => {
           v-for="item in drama.episodes"
           :key="item.id"
           class="episode"
-          :class="{ free: item.episodeNumber <= 2 }"
-          :aria-label="`第 ${item.episodeNumber} 集，${item.episodeNumber <= 2 ? '免费' : '需要当前短剧观看时长'}`"
+          :class="{ free: item.isFree }"
+          :aria-label="`第 ${item.episodeNumber} 集，${item.isFree ? '免费' : '需要当前短剧观看时长'}`"
           @tap="selectEpisode(item)"
         >
           <text>{{ item.episodeNumber }}</text>
-          <text class="episode-state">{{ item.episodeNumber <= 2 ? "免费" : "🔒" }}</text>
+          <text class="episode-state">{{ item.isFree ? "免费" : "🔒" }}</text>
         </button>
       </view>
     </template>
@@ -209,7 +222,7 @@ onShow(() => {
     <view class="dialog" role="dialog" aria-modal="true" aria-label="观看广告解锁" @tap.stop>
       <view class="dialog-title">观看广告，获得本剧时长</view>
       <view class="dialog-copy">
-        第 {{ unlockEpisode?.episodeNumber }} 集需要“{{ drama?.title }}”的观看时长。请主动点击下方按钮；只有完整观看广告后才会提交领取。
+        第 {{ unlockEpisode?.episodeNumber }} 集需要当前短剧观看时长。{{ unlockCopy }}请主动点击下方按钮。
       </view>
       <view class="safety-note">广告完成回调并非绝对安全证明，最终发放结果以服务端校验为准。</view>
       <view v-if="rewardError" class="reward-error" role="alert">{{ rewardError }}</view>

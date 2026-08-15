@@ -6,7 +6,7 @@ import { retryRewardConfirmation, runRewardFlow } from "../src/services/reward";
 import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ads";
 import { ApiClientError, toFriendlyErrorMessage } from "../src/utils/errors";
 import { canStartEpisode, isFreeEpisode } from "../src/utils/episode";
-import { formatRemainingTime } from "../src/utils/format";
+import { formatApproximateRemainingEpisodes, formatRemainingTime, formatRewardUnlockCopy } from "../src/utils/format";
 import { playerUrlFromHistory, toHistoryCardViews } from "../src/utils/history-view";
 import { resolveHistoryPlayerUrl } from "../src/utils/history-navigation";
 import { paginateItems } from "../src/utils/pagination";
@@ -231,6 +231,26 @@ describe("formatRemainingTime", () => {
     expect(formatRemainingTime(59)).toBe("59秒");
     expect(formatRemainingTime(125)).toBe("2分钟");
     expect(formatRemainingTime(3_900)).toBe("1小时5分钟");
+  });
+});
+
+describe("entitlement episode copy", () => {
+  it("converts remaining seconds with published median duration", () => {
+    expect(formatApproximateRemainingEpisodes(600, [120, 120, 150])).toBe("约 5 集");
+    expect(formatApproximateRemainingEpisodes(30, [120])).toBe("不足1集");
+    expect(formatApproximateRemainingEpisodes(0, [120])).toBe("约 0 集");
+  });
+
+  it("falls back to clock time when durations are missing", () => {
+    expect(formatApproximateRemainingEpisodes(125, [])).toBe("2分钟");
+  });
+
+  it("describes a full reward with TTL, scope and incomplete-ad rules", () => {
+    const copy = formatRewardUnlockCopy("样片", [120]);
+    expect(copy).toContain("约 5 集");
+    expect(copy).toContain("24 小时内有效");
+    expect(copy).toContain("仅本剧有效");
+    expect(copy).toContain("广告未看完不发奖");
   });
 });
 

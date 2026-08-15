@@ -12,6 +12,8 @@
       <view class="summary-label">当前短剧可用时长</view>
       <view class="remaining">{{remainingLabel}}</view>
       <view class="expiry">最近到期：{{nearestExpiryLabel}}</view>
+      <view class="expiry">{{scopeLabel}} · {{incompleteAdLabel}}</view>
+      <view class="grant-copy">{{grantCopy}}</view>
     </view>
     <view class="section-title">发放记录</view>
     <view wx:if="{{!grants.length}}" class="state-card">

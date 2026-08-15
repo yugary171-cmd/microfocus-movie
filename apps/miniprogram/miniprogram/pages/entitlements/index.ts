@@ -1,7 +1,15 @@
 import type { EntitlementGrantView, EntitlementSummary } from "@microfocus/contracts";
 import { getApi, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { formatDateTime, formatRemainingTime } from "../../utils/format";
+import {
+  ENTITLEMENT_INCOMPLETE_AD_LABEL,
+  ENTITLEMENT_SCOPE_LABEL,
+  episodeDurationsFromDrama,
+  formatApproximateRemainingEpisodes,
+  formatDateTime,
+  formatRemainingTime,
+  formatRewardUnlockCopy
+} from "../../utils/format";
 
 interface GrantView extends EntitlementGrantView {
   sourceLabel: string;
@@ -18,8 +26,11 @@ Page({
     loading: true,
     error: "",
     summary: null as EntitlementSummary | null,
-    remainingLabel: "0秒",
+    remainingLabel: "约 0 集",
     nearestExpiryLabel: "暂无到期时间",
+    grantCopy: formatRewardUnlockCopy("", []),
+    scopeLabel: ENTITLEMENT_SCOPE_LABEL,
+    incompleteAdLabel: ENTITLEMENT_INCOMPLETE_AD_LABEL,
     grants: [] as GrantView[]
   },
 
@@ -40,11 +51,16 @@ Page({
   async loadEntitlement() {
     this.setData({ loading: true, error: "" });
     try {
-      const summary = await getApi().getEntitlement(this.data.dramaId);
+      const [summary, drama] = await Promise.all([
+        getApi().getEntitlement(this.data.dramaId),
+        getApi().getDrama(this.data.dramaId).catch(() => null)
+      ]);
+      const durations = episodeDurationsFromDrama(drama);
       this.setData({
         summary,
-        remainingLabel: formatRemainingTime(summary.remainingSeconds),
+        remainingLabel: formatApproximateRemainingEpisodes(summary.remainingSeconds, durations),
         nearestExpiryLabel: formatDateTime(summary.nearestExpiresAt),
+        grantCopy: formatRewardUnlockCopy(drama?.title ?? "", durations),
         grants: summary.grants.map((grant) => ({
           ...grant,
           sourceLabel: grant.source === "REWARDED_AD" ? "完整观看激励广告" : "平台补偿",

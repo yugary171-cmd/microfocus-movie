@@ -130,6 +130,33 @@ export function clampPlaybackRate(rate: number): number {
   return Math.min(PLAYBACK_RATE_MAX, Math.max(PLAYBACK_RATE_MIN, rate));
 }
 
+/** Median of positive episode durations; even counts average the two middle values. */
+export function medianPositiveDurationSeconds(values: readonly number[]): number | null {
+  const positive = values.filter((value) => Number.isFinite(value) && value > 0);
+  if (positive.length === 0) return null;
+  const sorted = [...positive].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[middle]!;
+  return (sorted[middle - 1]! + sorted[middle]!) / 2;
+}
+
+/** Remaining-balance episode count; 0 when remaining is below one median episode. */
+export function approximateRemainingEpisodeCount(
+  remainingSeconds: number,
+  medianDurationSeconds: number
+): number {
+  if (!Number.isFinite(remainingSeconds) || remainingSeconds <= 0) return 0;
+  if (!Number.isFinite(medianDurationSeconds) || medianDurationSeconds <= 0) return 0;
+  return Math.floor(remainingSeconds / medianDurationSeconds);
+}
+
+/** Grant-size copy: N = max(1, floor(REWARD_SECONDS / median published duration)). */
+export function approximateRewardEpisodeCount(durationsSeconds: readonly number[]): number {
+  const median = medianPositiveDurationSeconds(durationsSeconds);
+  if (median == null) return 1;
+  return Math.max(1, Math.floor(REWARD_SECONDS / median));
+}
+
 export function resolveUploadContentType(fileType: string): UploadContentType | null {
   const type = fileType.trim();
   if (!type) return "application/octet-stream";

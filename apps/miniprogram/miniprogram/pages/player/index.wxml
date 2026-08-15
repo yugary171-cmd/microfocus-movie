@@ -5,7 +5,7 @@
       <view class="drama-title">{{dramaTitle}}</view>
       <view class="episode-title">第 {{episodeNumber}} 集</view>
     </view>
-    <view class="remaining" aria-label="剩余观看时长 {{remainingLabel}}">{{remainingLabel}}</view>
+    <view class="remaining" aria-label="剩余 {{remainingLabel}}，仅本剧有效">{{remainingLabel}}</view>
   </view>
 
   <internal-banner visible="{{isMock}}" />
