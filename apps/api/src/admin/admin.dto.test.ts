@@ -12,6 +12,8 @@ import {
   ENTITLEMENT_SECONDS_MAX,
   EPISODE_DURATION_SECONDS_MAX,
   MEDIA_REVIEW_NOTES_MAX_LENGTH,
+  RECOMMENDATION_RANK_MAX,
+  RECOMMENDATION_RANK_MIN,
   REVIEW_NOTES_MAX_LENGTH,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
   UPLOAD_FILE_NAME_MAX_LENGTH,
@@ -65,6 +67,17 @@ describe("admin content input limits", () => {
       )
     );
     expect(tooManyEpisodes.some((error) => error.property === "episodes")).toBe(true);
+
+    expect(
+      (await validate(plainToInstance(CreateDramaDto, validDrama({ recommendationRank: RECOMMENDATION_RANK_MAX + 1 })))).some(
+        (error) => error.property === "recommendationRank"
+      )
+    ).toBe(true);
+    expect(
+      (await validate(plainToInstance(CreateDramaDto, validDrama({ recommendationRank: RECOMMENDATION_RANK_MIN - 1 })))).some(
+        (error) => error.property === "recommendationRank"
+      )
+    ).toBe(true);
   });
 
   it("rejects an episode longer than one hour and unbounded rights strings", async () => {

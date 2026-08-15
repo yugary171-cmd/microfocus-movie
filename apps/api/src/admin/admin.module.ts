@@ -29,6 +29,8 @@ import {
   DRAMA_TAG_MAX_COUNT,
   DRAMA_TAG_MAX_LENGTH,
   DRAMA_TITLE_MAX_LENGTH,
+  RECOMMENDATION_RANK_MAX,
+  RECOMMENDATION_RANK_MIN,
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
   boundListQuery,
@@ -132,7 +134,7 @@ export class CreateDramaDto {
   @IsString({ each: true })
   @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })
   tags!: string[];
-  @IsInt() @Min(0) @Max(9999) recommendationRank!: number;
+  @IsInt() @Min(RECOMMENDATION_RANK_MIN) @Max(RECOMMENDATION_RANK_MAX) recommendationRank!: number;
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(DRAMA_EPISODE_MAX_COUNT)
@@ -152,7 +154,7 @@ export class UpdateDramaDto {
   @IsString({ each: true })
   @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })
   tags?: string[];
-  @IsOptional() @IsInt() @Min(0) @Max(9999) recommendationRank?: number;
+  @IsOptional() @IsInt() @Min(RECOMMENDATION_RANK_MIN) @Max(RECOMMENDATION_RANK_MAX) recommendationRank?: number;
 }
 
 export class RightsDto {

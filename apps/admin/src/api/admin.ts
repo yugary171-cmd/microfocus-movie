@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AuditLog,
@@ -150,7 +150,7 @@ export const adminApi = {
           coverUrl: input.coverUrl,
           category: input.category,
           tags: input.tags,
-          recommendationRank: 0,
+          recommendationRank: RECOMMENDATION_RANK_DEFAULT,
         }
       : {
           title: input.title,
@@ -158,7 +158,7 @@ export const adminApi = {
           coverUrl: input.coverUrl,
           category: input.category,
           tags: input.tags,
-          recommendationRank: 0,
+          recommendationRank: RECOMMENDATION_RANK_DEFAULT,
           episodes: input.episodes.map((episode) => ({
             episodeNumber: episode.episodeNumber,
             title: episode.title,
