@@ -12,7 +12,7 @@ import type {
   PlaybackHeartbeatResponse,
   RewardChallengeView
 } from "@microfocus/contracts";
-import { OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
+import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
 import type {
   RewardedAdCloseResult,
   RewardedAdHandle
@@ -250,15 +250,14 @@ describe("formatRemainingTime", () => {
 });
 
 describe("episode access", () => {
-  it("keeps exactly the first two episodes free", () => {
-    expect(isFreeEpisode(1)).toBe(true);
-    expect(isFreeEpisode(2)).toBe(true);
-    expect(isFreeEpisode(3)).toBe(false);
+  it("keeps exactly the first contract-free episodes unlocked", () => {
+    expect(isFreeEpisode(FREE_EPISODE_COUNT)).toBe(true);
+    expect(isFreeEpisode(FREE_EPISODE_COUNT + 1)).toBe(false);
   });
 
   it("requires current-drama balance for locked episodes", () => {
-    expect(canStartEpisode(3, 0)).toBe(false);
-    expect(canStartEpisode(3, 1)).toBe(true);
+    expect(canStartEpisode(FREE_EPISODE_COUNT + 1, 0)).toBe(false);
+    expect(canStartEpisode(FREE_EPISODE_COUNT + 1, 1)).toBe(true);
   });
 });
 

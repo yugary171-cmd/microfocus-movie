@@ -1,6 +1,7 @@
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   DeletionRequestStatus,
+  FREE_EPISODE_COUNT,
   HEARTBEAT_INTERVAL_SECONDS,
   PlaybackLeaseStatus,
   PLAYBACK_TOKEN_TTL_SECONDS,
@@ -12,6 +13,13 @@ import {
 import { pickDemoVideoUrl } from "../config/demo-media";
 import { RUNTIME_CONFIG } from "../config/runtime";
 import type { ClientApi, SearchResponse } from "../types/api";
+
+function mockIsFreeEpisodeId(episodeId: string): boolean {
+  const matched = /e(\d+)$/.exec(episodeId);
+  if (!matched) return false;
+  const episodeNumber = Number(matched[1]);
+  return episodeNumber >= 1 && episodeNumber <= FREE_EPISODE_COUNT;
+}
 
 const dramas: DramaDetail[] = [
   {
@@ -49,7 +57,7 @@ const dramas: DramaDetail[] = [
       episodeNumber: index + 1,
       title: `第 ${index + 1} 集`,
       durationSeconds: 150,
-      isFree: index < 2
+      isFree: index < FREE_EPISODE_COUNT
     }))
   },
   {
@@ -68,7 +76,7 @@ const dramas: DramaDetail[] = [
       episodeNumber: index + 1,
       title: `第 ${index + 1} 集`,
       durationSeconds: 200,
-      isFree: index < 2
+      isFree: index < FREE_EPISODE_COUNT
     }))
   }
 ];
@@ -145,8 +153,9 @@ export const mockApi: ClientApi = {
     Promise.reject(new Error("内部体验未配置微信广告位，请连接测试环境验证广告流程")),
   completeRewardChallenge: () =>
     Promise.reject(new Error("内部体验不发放真实权益")),
-  createPlaybackLease: ({ episodeId }) =>
-    delay({
+  createPlaybackLease: ({ episodeId }) => {
+    const isFree = mockIsFreeEpisodeId(episodeId);
+    return delay({
       id: `demo-lease-${episodeId}`,
       episodeId,
       status: PlaybackLeaseStatus.ACTIVE,
@@ -157,9 +166,10 @@ export const mockApi: ClientApi = {
       ),
       playbackTokenExpiresAt: new Date(Date.now() + PLAYBACK_TOKEN_TTL_SECONDS * 1000).toISOString(),
       heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
-      remainingSeconds: episodeId.endsWith("e1") || episodeId.endsWith("e2") ? null : 0,
-      isFree: episodeId.endsWith("e1") || episodeId.endsWith("e2")
-    }),
+      remainingSeconds: isFree ? null : 0,
+      isFree
+    });
+  },
   getActivePlaybackLease: () =>
     delay({
       lease: null,

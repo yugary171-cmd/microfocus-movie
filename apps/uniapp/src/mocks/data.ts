@@ -1,6 +1,7 @@
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   DeletionRequestStatus,
+  FREE_EPISODE_COUNT,
   HEARTBEAT_INTERVAL_SECONDS,
   PlaybackLeaseStatus,
   PLAYBACK_TOKEN_TTL_SECONDS,
@@ -35,7 +36,7 @@ const dramas: DramaDetail[] = [
       episodeNumber: index + 1,
       title: `第${index + 1}集`,
       durationSeconds: 120,
-      isFree: index < 2
+      isFree: index < FREE_EPISODE_COUNT
     }))
   },
   {
@@ -54,7 +55,7 @@ const dramas: DramaDetail[] = [
       episodeNumber: index + 1,
       title: `第 ${index + 1} 集`,
       durationSeconds: 150,
-      isFree: index < 2
+      isFree: index < FREE_EPISODE_COUNT
     }))
   },
   {
@@ -73,7 +74,7 @@ const dramas: DramaDetail[] = [
       episodeNumber: index + 1,
       title: `第 ${index + 1} 集`,
       durationSeconds: 200,
-      isFree: index < 2
+      isFree: index < FREE_EPISODE_COUNT
     }))
   },
   ...[
@@ -102,7 +103,7 @@ const dramas: DramaDetail[] = [
       episodeNumber: index + 1,
       title: `第 ${index + 1} 集`,
       durationSeconds: 150,
-      isFree: index < 2
+      isFree: index < FREE_EPISODE_COUNT
     }))
   })),
   ...["战神", "赘婿", "甜宠", "重生", "宫斗", "萌宝", "神医", "兵王"].flatMap((category, categoryIndex) =>
@@ -124,7 +125,7 @@ const dramas: DramaDetail[] = [
           episodeNumber: episodeIndex + 1,
           title: `第 ${episodeIndex + 1} 集`,
           durationSeconds: 150,
-          isFree: episodeIndex < 2
+          isFree: episodeIndex < FREE_EPISODE_COUNT
         }))
       };
     })

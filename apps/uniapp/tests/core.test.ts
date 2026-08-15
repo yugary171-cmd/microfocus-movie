@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PlaybackHeartbeatResponse, RewardChallengeView } from "@microfocus/contracts";
-import { OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
+import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
 import { PlaybackHeartbeatController } from "../src/services/playback-controller";
 import { retryRewardConfirmation, runRewardFlow } from "../src/services/reward";
 import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ads";
@@ -235,15 +235,14 @@ describe("formatRemainingTime", () => {
 });
 
 describe("episode access", () => {
-  it("keeps exactly the first two episodes free", () => {
-    expect(isFreeEpisode(1)).toBe(true);
-    expect(isFreeEpisode(2)).toBe(true);
-    expect(isFreeEpisode(3)).toBe(false);
+  it("keeps exactly the first contract-free episodes unlocked", () => {
+    expect(isFreeEpisode(FREE_EPISODE_COUNT)).toBe(true);
+    expect(isFreeEpisode(FREE_EPISODE_COUNT + 1)).toBe(false);
   });
 
   it("requires current-drama balance for locked episodes", () => {
-    expect(canStartEpisode(3, 0)).toBe(false);
-    expect(canStartEpisode(3, 1)).toBe(true);
+    expect(canStartEpisode(FREE_EPISODE_COUNT + 1, 0)).toBe(false);
+    expect(canStartEpisode(FREE_EPISODE_COUNT + 1, 1)).toBe(true);
   });
 });
 
@@ -509,7 +508,9 @@ describe("home feed pagination", () => {
 
     const detail = await mockApi.getDrama("seed-drama-1");
     expect(detail.episodes).toHaveLength(4);
-    expect(detail.episodes.map((episode) => episode.isFree)).toEqual([true, true, false, false]);
+    expect(detail.episodes.map((episode) => episode.isFree)).toEqual(
+      detail.episodes.map((_, index) => index < FREE_EPISODE_COUNT)
+    );
     expect((await mockApi.search("成长", "", 1)).items).toHaveLength(0);
     expect((await mockApi.search("本地开发", "", 1)).items[0]?.id).toBe("seed-drama-1");
   });
@@ -527,18 +528,18 @@ describe("home feed pagination", () => {
     expect(fallbackUrls.every((url) => /\/demo\/.+\.mp4$/.test(url))).toBe(true);
 
     const freeLeases = await Promise.all(
-      detail.episodes.slice(0, 2).map((episode) =>
+      detail.episodes.slice(0, FREE_EPISODE_COUNT).map((episode) =>
         mockApi.createPlaybackLease({ episodeId: episode.id, deviceId: "test-device" })
       )
     );
-    expect(freeLeases.map((lease) => lease.episodeId)).toEqual(episodeIds.slice(0, 2));
+    expect(freeLeases.map((lease) => lease.episodeId)).toEqual(episodeIds.slice(0, FREE_EPISODE_COUNT));
     expect(freeLeases.every((lease) => lease.isFree && /\/demo\/.+\.mp4$/.test(lease.playbackUrl))).toBe(true);
 
     await expect(
-      mockApi.createPlaybackLease({ episodeId: episodeIds[2]!, deviceId: "test-device" })
+      mockApi.createPlaybackLease({ episodeId: episodeIds[FREE_EPISODE_COUNT]!, deviceId: "test-device" })
     ).rejects.toThrow("需要本剧观看时长");
     await expect(
-      mockApi.createPlaybackLease({ episodeId: episodeIds[3]!, deviceId: "test-device" })
+      mockApi.createPlaybackLease({ episodeId: episodeIds[FREE_EPISODE_COUNT + 1]!, deviceId: "test-device" })
     ).rejects.toThrow("需要本剧观看时长");
     await expect(
       mockApi.createPlaybackLease({ episodeId: "unknown-episode", deviceId: "test-device" })
