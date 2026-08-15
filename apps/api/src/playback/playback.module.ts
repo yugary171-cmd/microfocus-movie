@@ -18,6 +18,8 @@ import {
   HEARTBEAT_INTERVAL_SECONDS,
   HEARTBEAT_SEQ_MAX,
   OFFLINE_GRACE_SECONDS,
+  PLAYBACK_RATE_MAX,
+  PLAYBACK_RATE_MIN,
   PLAYBACK_TOKEN_TTL_SECONDS,
   PLAYBACK_WINDOW_SECONDS,
   PlaybackLeaseStatus,
@@ -95,8 +97,8 @@ export class HeartbeatDto implements PlaybackHeartbeatRequest {
   previousMediaPositionSeconds!: number;
 
   @IsNumber()
-  @Min(0.75)
-  @Max(2)
+  @Min(PLAYBACK_RATE_MIN)
+  @Max(PLAYBACK_RATE_MAX)
   playbackRate!: number;
 
   @IsIn(["playing", "paused", "buffering", "background"])

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PLAYBACK_RATE_MAX } from "@microfocus/contracts";
 import {
   allocateFefo,
   assertHeartbeatAnchor,
@@ -101,7 +102,17 @@ describe("heartbeat debit policy", () => {
         mediaPositionSeconds: 300,
         lastMediaPositionSeconds: 10,
         serverElapsedSeconds: 5,
-        playbackRate: 2,
+        playbackRate: PLAYBACK_RATE_MAX,
+        isFree: false
+      })
+    ).toBe(14);
+    expect(
+      heartbeatDebitSeconds({
+        state: "playing",
+        mediaPositionSeconds: 300,
+        lastMediaPositionSeconds: 10,
+        serverElapsedSeconds: 5,
+        playbackRate: PLAYBACK_RATE_MAX + 1,
         isFree: false
       })
     ).toBe(14);

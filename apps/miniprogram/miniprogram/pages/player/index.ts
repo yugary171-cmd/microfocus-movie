@@ -1,4 +1,7 @@
 import {
+  isPlaybackRatePreset,
+  PLAYBACK_RATE_DEFAULT,
+  PLAYBACK_RATES,
   type PlaybackLeaseView
 } from "@microfocus/contracts";
 import {
@@ -11,8 +14,6 @@ import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { formatRemainingTime } from "../../utils/format";
-
-const RATES = [0.75, 1, 1.25, 1.5, 2] as const;
 
 Page({
   data: {
@@ -28,8 +29,8 @@ Page({
     hasPlaybackUrl: false,
     lease: null as PlaybackLeaseView | null,
     remainingLabel: "免费集",
-    playbackRate: 1,
-    rates: RATES,
+    playbackRate: PLAYBACK_RATE_DEFAULT,
+    rates: PLAYBACK_RATES,
     currentPosition: 0,
     started: false
   },
@@ -268,7 +269,7 @@ Page({
 
   changeRate(event: WechatMiniprogram.TouchEvent) {
     const rate = Number(event.currentTarget.dataset.rate);
-    if (!RATES.includes(rate as (typeof RATES)[number])) return;
+    if (!isPlaybackRatePreset(rate)) return;
     this.videoContext?.playbackRate(rate);
     this.controller?.setPlaybackRate(rate);
     this.setData({ playbackRate: rate });

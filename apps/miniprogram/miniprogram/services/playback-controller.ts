@@ -1,6 +1,8 @@
-import type {
-  PlaybackHeartbeatRequest,
-  PlaybackHeartbeatResponse
+import {
+  clampPlaybackRate,
+  PLAYBACK_RATE_DEFAULT,
+  type PlaybackHeartbeatRequest,
+  type PlaybackHeartbeatResponse
 } from "@microfocus/contracts";
 
 export type PlaybackState = PlaybackHeartbeatRequest["state"];
@@ -14,7 +16,7 @@ export class PlaybackHeartbeatController {
   private state: PlaybackState = "paused";
   private currentPosition = 0;
   private acknowledgedPosition = 0;
-  private playbackRate = 1;
+  private playbackRate = PLAYBACK_RATE_DEFAULT;
   private offlineSince: number | null = null;
   private pending: PlaybackHeartbeatRequest | null = null;
   private inFlight = false;
@@ -35,7 +37,7 @@ export class PlaybackHeartbeatController {
   }
 
   setPlaybackRate(rate: number): void {
-    this.playbackRate = Math.min(2, Math.max(0.75, rate));
+    this.playbackRate = clampPlaybackRate(rate);
   }
 
   setNetworkAvailable(available: boolean, now = Date.now()): void {

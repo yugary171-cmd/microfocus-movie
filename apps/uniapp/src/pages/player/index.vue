@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PlaybackLeaseView } from "@microfocus/contracts";
+import { isPlaybackRatePreset, PLAYBACK_RATE_DEFAULT, PLAYBACK_RATES, type PlaybackLeaseView } from "@microfocus/contracts";
 import { onHide, onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { computed, nextTick, ref } from "vue";
 import CommentSheet from "../../components/comment-sheet/index.vue";
@@ -19,8 +19,6 @@ import { toFriendlyErrorMessage } from "../../utils/errors";
 import { formatRemainingTime } from "../../utils/format";
 import { copyShareText, formatEngagementCount, shareDramaText } from "../../utils/engagement";
 
-const RATES = [0.75, 1, 1.25, 1.5, 2] as const;
-
 const isMock = isMockMode();
 const dramaId = ref("");
 const episodeId = ref("");
@@ -33,8 +31,8 @@ const playbackUrl = ref("");
 const hasPlaybackUrl = ref(false);
 const lease = ref<PlaybackLeaseView | null>(null);
 const remainingLabel = ref("免费集");
-const playbackRate = ref(1);
-const rates = RATES;
+const playbackRate = ref(PLAYBACK_RATE_DEFAULT);
+const rates = PLAYBACK_RATES;
 const currentPosition = ref(0);
 const started = ref(false);
 const commentsOpen = ref(false);
@@ -268,7 +266,7 @@ function onVideoReady() {
 }
 
 function changeRate(rate: number) {
-  if (!RATES.includes(rate as (typeof RATES)[number])) return;
+  if (!isPlaybackRatePreset(rate)) return;
   videoContext?.playbackRate(rate);
   controller?.setPlaybackRate(rate);
   playbackRate.value = rate;

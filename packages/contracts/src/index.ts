@@ -3,6 +3,11 @@ export const REWARD_SECONDS = 600;
 export const REWARD_TTL_SECONDS = 24 * 60 * 60;
 export const HEARTBEAT_INTERVAL_SECONDS = 5;
 export const OFFLINE_GRACE_SECONDS = 15;
+export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 2] as const;
+export type PlaybackRatePreset = (typeof PLAYBACK_RATES)[number];
+export const PLAYBACK_RATE_MIN = 0.75;
+export const PLAYBACK_RATE_MAX = 2;
+export const PLAYBACK_RATE_DEFAULT = 1;
 export const PLAYBACK_TOKEN_TTL_SECONDS = 120;
 export const ANONYMOUS_VIEWER_TTL_SECONDS = 30 * 60;
 export const PLAYBACK_WINDOW_SECONDS = HEARTBEAT_INTERVAL_SECONDS;
@@ -83,6 +88,15 @@ export function isAllowedUploadFileSize(size: number): boolean {
 
 export function isRightsMaterialDigest(value: string): boolean {
   return RIGHTS_MATERIAL_DIGEST_PATTERN.test(value.trim());
+}
+
+export function isPlaybackRatePreset(rate: number): rate is PlaybackRatePreset {
+  return (PLAYBACK_RATES as readonly number[]).includes(rate);
+}
+
+export function clampPlaybackRate(rate: number): number {
+  if (!Number.isFinite(rate)) return PLAYBACK_RATE_DEFAULT;
+  return Math.min(PLAYBACK_RATE_MAX, Math.max(PLAYBACK_RATE_MIN, rate));
 }
 
 export function resolveUploadContentType(fileType: string): UploadContentType | null {

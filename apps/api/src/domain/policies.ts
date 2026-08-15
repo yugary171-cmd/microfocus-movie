@@ -1,4 +1,4 @@
-import { isRightsMaterialDigest, type ReleaseGateStatus } from "@microfocus/contracts";
+import { clampPlaybackRate, isRightsMaterialDigest, type ReleaseGateStatus } from "@microfocus/contracts";
 
 export type GrantBalance = {
   id: string;
@@ -53,7 +53,7 @@ export function heartbeatDebitSeconds(input: {
   // Bound consumption by server-observed wall time and the accepted playback
   // rate so skipped media is never charged as watched time. Two seconds of
   // jitter keeps a delayed heartbeat from undercharging normal playback.
-  const rate = Math.min(2, Math.max(0.75, input.playbackRate));
+  const rate = clampPlaybackRate(input.playbackRate);
   const serverBound = Math.max(
     0,
     Math.ceil((Math.max(0, input.serverElapsedSeconds) + 2) * rate)

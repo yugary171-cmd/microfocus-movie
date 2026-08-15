@@ -9,6 +9,8 @@ import {
   HEARTBEAT_SEQ_MAX,
   OTP_MAX_LENGTH,
   PASSWORD_MAX_LENGTH,
+  PLAYBACK_RATE_MAX,
+  PLAYBACK_RATE_MIN,
   REWARD_NONCE_MAX_LENGTH,
   SESSION_ID_MAX_LENGTH,
   WECHAT_CODE_MAX_LENGTH
@@ -82,6 +84,18 @@ describe("remaining write input limits", () => {
       true
     );
     expect(await propertyError(plainToInstance(HeartbeatDto, heartbeat), "windowId")).toBe(true);
+    expect(
+      await propertyError(
+        plainToInstance(HeartbeatDto, { ...heartbeat, seq: 1, mediaPositionSeconds: 12, playbackRate: PLAYBACK_RATE_MAX + 0.25, windowId: "window-1" }),
+        "playbackRate"
+      )
+    ).toBe(true);
+    expect(
+      await propertyError(
+        plainToInstance(HeartbeatDto, { ...heartbeat, seq: 1, mediaPositionSeconds: 12, playbackRate: PLAYBACK_RATE_MIN - 0.25, windowId: "window-1" }),
+        "playbackRate"
+      )
+    ).toBe(true);
     expect(
       await validate(
         plainToInstance(HeartbeatDto, {

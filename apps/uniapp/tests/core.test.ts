@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PlaybackHeartbeatResponse, RewardChallengeView } from "@microfocus/contracts";
+import { PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN } from "@microfocus/contracts";
 import { PlaybackHeartbeatController } from "../src/services/playback-controller";
 import { retryRewardConfirmation, runRewardFlow } from "../src/services/reward";
 import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ads";
@@ -385,6 +386,24 @@ describe("playback heartbeat controller", () => {
     );
     controller.setState("buffering");
     await expect(controller.tick(send)).resolves.toEqual({ status: "idle" });
+  });
+
+  it("clamps heartbeat playback rate to the contract range", async () => {
+    const controller = new PlaybackHeartbeatController();
+    const send = vi.fn(async (request) => heartbeatResponse(request.seq));
+    controller.setState("playing");
+    controller.setPosition(5);
+    controller.setPlaybackRate(PLAYBACK_RATE_MAX + 1);
+    await expect(controller.tick(send)).resolves.toMatchObject({ status: "confirmed" });
+    expect(send).toHaveBeenLastCalledWith(
+      expect.objectContaining({ playbackRate: PLAYBACK_RATE_MAX })
+    );
+    controller.setPlaybackRate(PLAYBACK_RATE_MIN - 0.5);
+    controller.setPosition(10);
+    await expect(controller.tick(send)).resolves.toMatchObject({ status: "confirmed" });
+    expect(send).toHaveBeenLastCalledWith(
+      expect.objectContaining({ playbackRate: PLAYBACK_RATE_MIN })
+    );
   });
 
   it("does not start a second heartbeat while a slow request is in flight", async () => {
