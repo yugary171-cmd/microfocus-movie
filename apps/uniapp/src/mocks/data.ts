@@ -1,6 +1,7 @@
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   DeletionRequestStatus,
+  HEARTBEAT_INTERVAL_SECONDS,
   PLAYBACK_TOKEN_TTL_SECONDS,
   SEARCH_MAX_PAGE,
   SEARCH_PAGE_SIZE,
@@ -225,7 +226,7 @@ export const mockApi: ClientApi = {
         RUNTIME_CONFIG.demoVideoUrl
       ),
       playbackTokenExpiresAt: new Date(Date.now() + PLAYBACK_TOKEN_TTL_SECONDS * 1000).toISOString(),
-      heartbeatIntervalSeconds: 5,
+      heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
       remainingSeconds: isFree ? null : 0,
       isFree
     });
