@@ -44,6 +44,11 @@ describe("OperationsView", () => {
       .find((input) => input.attributes("min") === String(COMPENSATION_SECONDS_MIN));
     expect(Number((compensationSeconds?.element as HTMLInputElement).value)).toBe(REWARD_SECONDS);
 
+    const adjustmentSeconds = wrapper
+      .findAll("input[type='number']")
+      .find((input) => input.attributes("min") === "1");
+    expect(Number((adjustmentSeconds?.element as HTMLInputElement).value)).toBe(COMPENSATION_SECONDS_MIN);
+
     const bounded = wrapper
       .findAll("input")
       .filter((input) => input.attributes("maxlength") === String(ENTITY_ID_MAX_LENGTH));

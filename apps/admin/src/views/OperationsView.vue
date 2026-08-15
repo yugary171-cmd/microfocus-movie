@@ -32,7 +32,7 @@ const adjustmentDialogOpen = ref(false);
 const adjustment = reactive<AdjustmentInput>({
   type: "FREEZE_REMAINDER",
   grantId: "",
-  seconds: 60,
+  seconds: COMPENSATION_SECONDS_MIN,
   reason: "",
   freezeAdjustmentId: "",
   approvalNote: "",
@@ -212,7 +212,7 @@ async function submitAdjustment(): Promise<void> {
     Object.assign(adjustment, {
       type: "FREEZE_REMAINDER",
       grantId: "",
-      seconds: 60,
+      seconds: COMPENSATION_SECONDS_MIN,
       reason: "",
       freezeAdjustmentId: "",
       approvalNote: "",
