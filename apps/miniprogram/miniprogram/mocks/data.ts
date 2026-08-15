@@ -1,4 +1,5 @@
 import {
+  ANONYMOUS_VIEWER_TTL_SECONDS,
   DeletionRequestStatus,
   type CatalogResponse,
   type DramaDetail,
@@ -107,7 +108,7 @@ export const mockApi: ClientApi = {
   authAnonymous: (input) =>
     delay({
       accessToken: `internal-mock-viewer-${input.sessionId.slice(0, 8)}`,
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + ANONYMOUS_VIEWER_TTL_SECONDS * 1000).toISOString(),
       tokenKind: "viewer" as const
     }),
   getCatalog: () => delay(catalog),
