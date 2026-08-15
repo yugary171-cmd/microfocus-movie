@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ERROR_CODES, UNCONFIRMED_EXPOSURE_LIMIT } from "@microfocus/contracts";
 import { PlaybackController } from "./playback.module.js";
 import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
@@ -134,7 +135,7 @@ describe("playback renewal", () => {
       },
       playbackReservation: {
         findMany: vi.fn().mockResolvedValue([]),
-        count: vi.fn().mockResolvedValue(3)
+        count: vi.fn().mockResolvedValue(UNCONFIRMED_EXPOSURE_LIMIT)
       },
       rateLimitBucket: allowRateLimit()
     };
@@ -145,7 +146,7 @@ describe("playback renewal", () => {
         { kind: "user", sub: "user" },
         { episodeId: "episode-3", deviceId: "device-1" }
       )
-    ).rejects.toMatchObject({ code: "UNCONFIRMED_EXPOSURE_LIMIT" });
+    ).rejects.toMatchObject({ code: ERROR_CODES.UNCONFIRMED_EXPOSURE_LIMIT });
   });
 
   it("does not debit a playing heartbeat while unconfirmed windows lack VOD delivery logs", async () => {

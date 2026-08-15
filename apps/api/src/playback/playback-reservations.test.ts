@@ -3,7 +3,8 @@ import {
   DEVICE_ID_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   ERROR_CODES,
-  PLAYBACK_RECOVERY_GRACE_LIMIT
+  PLAYBACK_RECOVERY_GRACE_LIMIT,
+  UNCONFIRMED_EXPOSURE_LIMIT
 } from "@microfocus/contracts";
 import {
   assertCanOpenPaidLease,
@@ -18,7 +19,7 @@ import {
 describe("playback reservations", () => {
   it("blocks a locked lease once unconfirmed exposure reaches the limit", async () => {
     const db = {
-      playbackReservation: { count: vi.fn().mockResolvedValue(3) }
+      playbackReservation: { count: vi.fn().mockResolvedValue(UNCONFIRMED_EXPOSURE_LIMIT) }
     };
 
     await expect(
