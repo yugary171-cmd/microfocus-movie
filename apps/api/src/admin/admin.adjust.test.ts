@@ -2,7 +2,8 @@ import {
   ADMIN_REASON_MAX_LENGTH,
   EntitlementAdjustmentType,
   EntitlementFactType,
-  ERROR_CODES
+  ERROR_CODES,
+  PLAYBACK_WINDOW_SECONDS
 } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../common/app-error.js";
@@ -81,14 +82,14 @@ describe("entitlement adjustments", () => {
   it("freezes only remaining seconds after active reservations", async () => {
     const prisma = transactionPrisma({
       playbackReservation: {
-        findMany: vi.fn().mockResolvedValue([{ reservedSeconds: 5 }])
+        findMany: vi.fn().mockResolvedValue([{ reservedSeconds: PLAYBACK_WINDOW_SECONDS }])
       }
     });
     await expect(
       createIdempotentAdjustment(prisma as unknown as PrismaService, {
         type: EntitlementAdjustmentType.FREEZE_REMAINDER,
         grantId: grant.id,
-        seconds: 96,
+        seconds: grant.remainingSeconds - PLAYBACK_WINDOW_SECONDS + 1,
         reason: "错误发放冻结",
         idempotencyKey: "a:2",
         operatorAdminId: "admin-1"
