@@ -48,6 +48,11 @@ export const ADMIN_LIST_PAGE_SIZE = 50;
 export const ADMIN_LIST_MAX_PAGE = 100;
 export const LIST_QUERY_MAX_LENGTH = 100;
 
+/** Trim then cap list/search keywords so clients match server truncation. */
+export function boundListQuery(value: string): string {
+  return value.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+}
+
 export const ERROR_CODES = {
   ANONYMOUS_SESSION_EXPIRED: "ANONYMOUS_SESSION_EXPIRED",
   USER_TOKEN_REQUIRED: "USER_TOKEN_REQUIRED",

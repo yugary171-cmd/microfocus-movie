@@ -3,7 +3,7 @@
     <button class="back-button" bindtap="goBack" aria-label="返回">‹</button>
     <view class="search-box">
       <view class="magnifier" />
-      <input class="search-input" value="{{query}}" bindinput="onQueryInput" bindconfirm="submitSearch" confirm-type="search" placeholder="搜索短剧、角色、剧情" placeholder-class="search-placeholder" aria-label="搜索短剧、角色、剧情" />
+      <input class="search-input" value="{{query}}" maxlength="{{queryMaxLength}}" bindinput="onQueryInput" bindconfirm="submitSearch" confirm-type="search" placeholder="搜索短剧、角色、剧情" placeholder-class="search-placeholder" aria-label="搜索短剧、角色、剧情" />
     </view>
     <button class="submit-button" bindtap="submitSearch">搜索</button>
   </view>

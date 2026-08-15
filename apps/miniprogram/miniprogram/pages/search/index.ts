@@ -1,3 +1,5 @@
+import { boundListQuery, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+
 type HotSearch = {
   rank: number;
   title: string;
@@ -19,6 +21,7 @@ const SUGGESTIONS = ["先婚后爱", "甜宠", "逆袭", "重生", "豪门", "�
 Page({
   data: {
     query: "",
+    queryMaxLength: LIST_QUERY_MAX_LENGTH,
     suggestions: SUGGESTIONS,
     hotSearches: HOT_SEARCHES,
     visibleHotSearches: HOT_SEARCHES
@@ -29,23 +32,23 @@ Page({
   },
 
   onQueryInput(event: WechatMiniprogram.Input) {
-    const query = event.detail.value;
+    const query = event.detail.value.slice(0, LIST_QUERY_MAX_LENGTH);
     this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
   },
 
   submitSearch() {
-    const query = this.data.query.trim();
+    const query = boundListQuery(this.data.query);
     this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
     wx.showToast({ title: query ? `正在搜索“${query}”` : "请输入搜索内容", icon: "none" });
   },
 
   chooseSuggestion(event: WechatMiniprogram.TouchEvent) {
-    const query = String(event.currentTarget.dataset.query || "");
+    const query = boundListQuery(String(event.currentTarget.dataset.query || ""));
     this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
   },
 
   chooseHotSearch(event: WechatMiniprogram.TouchEvent) {
-    const query = String(event.currentTarget.dataset.title || "");
+    const query = boundListQuery(String(event.currentTarget.dataset.title || ""));
     this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
     wx.showToast({ title: `正在搜索“${query}”`, icon: "none" });
   },

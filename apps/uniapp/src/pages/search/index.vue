@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DramaCard } from "@microfocus/contracts";
+import { boundListQuery, LIST_QUERY_MAX_LENGTH, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import {
@@ -26,7 +26,7 @@ const error = ref("");
 const discoveryTitle = ref("");
 
 async function runSearch(reset: boolean) {
-  const keyword = query.value.trim();
+  const keyword = boundListQuery(query.value);
   if (!keyword) {
     uni.showToast({ title: "请输入搜索内容", icon: "none" });
     return;
@@ -79,7 +79,7 @@ async function loadCatalogList(kind: "rank" | "new") {
 }
 
 onLoad((options) => {
-  const initial = options?.q ? decodeURIComponent(options.q) : "";
+  const initial = options?.q ? boundListQuery(decodeURIComponent(options.q)) : "";
   if (initial) {
     query.value = initial;
     void runSearch(true);
@@ -101,7 +101,7 @@ function submitSearch() {
 }
 
 function chooseSuggestion(value: string) {
-  query.value = value;
+  query.value = boundListQuery(value);
   void runSearch(true);
 }
 
@@ -136,6 +136,7 @@ function handleShortcut(id: SearchShortcutId) {
           class="search-input"
           v-model="query"
           confirm-type="search"
+          :maxlength="LIST_QUERY_MAX_LENGTH"
           :placeholder="SEARCH_PLACEHOLDER"
           placeholder-class="search-placeholder"
           :aria-label="SEARCH_PLACEHOLDER"

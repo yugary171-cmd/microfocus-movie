@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DramaCard } from "@microfocus/contracts";
+import { boundListQuery, LIST_QUERY_MAX_LENGTH, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { getApi, isMockMode } from "../../services/api";
@@ -30,8 +30,8 @@ async function search(reset: boolean) {
   }
   try {
     const response = await getApi().search(
-      query.value.trim(),
-      category.value === "全部" ? "" : category.value,
+      boundListQuery(query.value),
+      category.value === "全部" ? "" : boundListQuery(category.value),
       nextPage
     );
     results.value = reset ? response.items : [...results.value, ...response.items];
@@ -91,6 +91,7 @@ function loadMore() {
         class="search-input"
         v-model="query"
         confirm-type="search"
+        :maxlength="LIST_QUERY_MAX_LENGTH"
         placeholder="搜索剧名或标签"
         placeholder-class="search-placeholder"
         aria-label="搜索剧名或标签"

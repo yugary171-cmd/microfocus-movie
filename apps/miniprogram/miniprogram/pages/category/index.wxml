@@ -2,7 +2,7 @@
   <internal-banner visible="{{isMock}}" />
   <view class="page-title">找你想看的</view>
   <view class="search-box">
-    <input class="search-input" value="{{query}}" bindinput="onQueryInput" bindconfirm="onSearchConfirm" confirm-type="search" placeholder="搜索剧名或标签" placeholder-class="search-placeholder" aria-label="搜索剧名或标签" />
+    <input class="search-input" value="{{query}}" maxlength="{{queryMaxLength}}" bindinput="onQueryInput" bindconfirm="onSearchConfirm" confirm-type="search" placeholder="搜索剧名或标签" placeholder-class="search-placeholder" aria-label="搜索剧名或标签" />
     <button class="search-button" bindtap="onSearchConfirm" loading="{{loading}}" aria-label="提交搜索">搜索</button>
   </view>
   <scroll-view scroll-x enable-flex class="filters" aria-label="短剧分类">

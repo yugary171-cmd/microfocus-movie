@@ -28,7 +28,7 @@ import {
   DRAMA_TITLE_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
-  LIST_QUERY_MAX_LENGTH,
+  boundListQuery,
   EPISODE_DURATION_SECONDS_MAX,
   EPISODE_TITLE_MAX_LENGTH,
   EntitlementAdjustmentType,
@@ -411,7 +411,7 @@ export class AdminController {
     if (window.exceeded) {
       return emptyBoundedPage(window.page, pageSize);
     }
-    const q = query.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+    const q = boundListQuery(query);
     const where = {
       ...editorScope(admin),
       ...(status && allowed.includes(status) ? { status: status as never } : {}),
@@ -825,7 +825,7 @@ export class AdminController {
     if (window.exceeded) {
       return emptyBoundedPage(window.page, pageSize);
     }
-    const normalized = query.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+    const normalized = boundListQuery(query);
     const where = normalized
       ? {
           OR: [

@@ -185,7 +185,7 @@ flowchart LR
 | `POST /v1/auth/anonymous` | 公开、按连接 IP 限频（新建会话）；刷新已有 device/session 不占桶 | `deviceId/sessionId`，各最长 128 | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
 | `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` 最长 256 | 用户 JWT；H5/App 不得复用 |
 | `GET /v1/catalog` | 公开、按连接 IP 限频 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容；`latest` 按发布时间倒序，不从推荐榜重排 |
-| `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page` | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
+| `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page`；`q` 与 `category` 最长 100（`LIST_QUERY_MAX_LENGTH` / `boundListQuery`），观看端搜索框 maxlength 与之共用 | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
 | `GET /v1/dramas/:dramaId` | 公开、按连接 IP 限频 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算 |
 | `GET /v1/me/history` | 用户 JWT；按认证用户限频 | 无 | 观看历史，按最近更新时间排序 |
 | `PUT /v1/me/progress` | 用户 JWT；按认证用户限频 | `dramaId/episodeId` 限长；`mediaPositionSeconds` 不超过 3600 | 幂等保存有效进度；不得写未发布内容 |

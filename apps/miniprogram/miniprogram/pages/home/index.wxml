@@ -2,7 +2,7 @@
   <view class="search-row">
     <view class="search-field">
       <text class="search-icon">⌕</text>
-      <input value="{{query}}" bindinput="onQueryInput" bindconfirm="openSearch" confirm-type="search" placeholder="搜剧名、演员、剧情" placeholder-class="search-placeholder" aria-label="搜索短剧" />
+      <input value="{{query}}" maxlength="{{queryMaxLength}}" bindinput="onQueryInput" bindconfirm="openSearch" confirm-type="search" placeholder="搜剧名、演员、剧情" placeholder-class="search-placeholder" aria-label="搜索短剧" />
     </view>
     <button class="recognize" bindtap="showAction" data-label="识别" aria-label="识别图片中的剧">▣ 识别</button>
   </view>

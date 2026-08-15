@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DramaCard } from "@microfocus/contracts";
+import { boundListQuery, LIST_QUERY_MAX_LENGTH, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { HOME_RECOMMEND_CHANNEL } from "../../constants/runtime";
@@ -92,7 +92,7 @@ onReachBottom(() => {
 });
 
 function openSearch() {
-  const q = query.value.trim();
+  const q = boundListQuery(query.value);
   uni.navigateTo({
     url: q ? `/pages/search/index?q=${encodeURIComponent(q)}` : "/pages/search/index"
   });
@@ -122,6 +122,7 @@ function openDrama(id: string) {
         <input
           v-model="query"
           confirm-type="search"
+          :maxlength="LIST_QUERY_MAX_LENGTH"
           placeholder="搜剧名、演员、剧情"
           placeholder-class="search-placeholder"
           aria-label="搜索短剧"

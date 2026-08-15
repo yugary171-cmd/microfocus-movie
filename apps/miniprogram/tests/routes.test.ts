@@ -1,11 +1,18 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   API_ROUTES as CONTRACT_ROUTES,
+  boundListQuery,
   boundedIdempotencyKey,
   ENTITY_ID_MAX_LENGTH,
-  IDEMPOTENCY_KEY_MAX_LENGTH
+  IDEMPOTENCY_KEY_MAX_LENGTH,
+  LIST_QUERY_MAX_LENGTH
 } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
 import { API_ROUTES, encodedRoute } from "../miniprogram/constants/routes";
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 describe("viewer routes follow contracts", () => {
   it("re-exports the shared API_ROUTES object", () => {
@@ -40,5 +47,17 @@ describe("viewer routes follow contracts", () => {
     expect(deletionKey.length).toBeLessThanOrEqual(IDEMPOTENCY_KEY_MAX_LENGTH);
     expect(rewardKey).toBe(boundedIdempotencyKey("reward-", `  ${longId}  `));
     expect(rewardKey).not.toBe(boundedIdempotencyKey("reward-", "y".repeat(ENTITY_ID_MAX_LENGTH)));
+  });
+
+  it("caps list queries to the shared max length", () => {
+    expect(boundListQuery("  ab  ")).toBe("ab");
+    expect(boundListQuery("x".repeat(LIST_QUERY_MAX_LENGTH + 10))).toHaveLength(LIST_QUERY_MAX_LENGTH);
+  });
+
+  it("binds viewer search inputs to LIST_QUERY_MAX_LENGTH", () => {
+    for (const page of ["home", "search", "category"]) {
+      const source = readFileSync(resolve(here, `../miniprogram/pages/${page}/index.wxml`), "utf8");
+      expect(source).toContain('maxlength="{{queryMaxLength}}"');
+    }
   });
 });

@@ -1,4 +1,4 @@
-import type { DramaCard } from "@microfocus/contracts";
+import { boundListQuery, LIST_QUERY_MAX_LENGTH, type DramaCard } from "@microfocus/contracts";
 import { getApi, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 
@@ -6,6 +6,7 @@ Page({
   data: {
     isMock: isMockMode(),
     query: "",
+    queryMaxLength: LIST_QUERY_MAX_LENGTH,
     category: "全部",
     categories: ["全部"] as string[],
     results: [] as DramaCard[],
@@ -41,7 +42,7 @@ Page({
   },
 
   onQueryInput(event: WechatMiniprogram.Input) {
-    this.setData({ query: event.detail.value });
+    this.setData({ query: event.detail.value.slice(0, LIST_QUERY_MAX_LENGTH) });
   },
 
   onSearchConfirm() {
@@ -59,8 +60,8 @@ Page({
     this.setData(reset ? { loading: true, error: "" } : { loadingMore: true, error: "" });
     try {
       const response = await getApi().search(
-        this.data.query.trim(),
-        this.data.category === "全部" ? "" : this.data.category,
+        boundListQuery(this.data.query),
+        this.data.category === "全部" ? "" : boundListQuery(this.data.category),
         page
       );
       this.setData({
