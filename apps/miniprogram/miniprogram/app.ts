@@ -7,5 +7,12 @@ App<IAppOption>({
     isMock: isMockMode()
   },
 
-  onLaunch() {}
+  onLaunch() {
+    if (!isMockMode()) return;
+    try {
+      wx.hideShareMenu({ menus: ["shareAppMessage", "shareTimeline"] });
+    } catch {
+      // ignore
+    }
+  }
 });

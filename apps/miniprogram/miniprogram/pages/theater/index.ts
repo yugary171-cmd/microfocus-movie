@@ -126,7 +126,7 @@ const ACTION_LABELS: Record<TheaterAction, string> = {
   favorite: "已收藏到我的片单",
   comment: "评论区即将开放",
   like: "已点赞，感谢喜欢",
-  share: "已准备好分享给好友"
+  share: "内部体验不可外部分享"
 };
 
 const PULL_REFRESH_THRESHOLD = 96;
@@ -241,13 +241,5 @@ Page({
     if (action === "favorite") this.setData({ isFavorite: !this.data.isFavorite });
     if (action === "like") this.setData({ isLiked: !this.data.isLiked });
     wx.showToast({ title: ACTION_LABELS[action], icon: "none" });
-  },
-
-  onShareAppMessage() {
-    const video = this.data.currentVideo || VIDEOS[0];
-    return {
-      title: `${video?.dramaTitle || "微焦短剧"} · ${video?.episodeLabel || "精彩短剧"}`,
-      path: "/pages/theater/index"
-    };
   }
 });

@@ -27,3 +27,13 @@ export function copyShareText(text: string): void {
     uni.showToast({ title: "暂时无法分享", icon: "none" });
   }
 }
+
+/** Mock, unpublished or rights-invalid titles must not produce an outward share payload. */
+export function shareIfExternallyAllowed(text: string, allowExternalShare: boolean): boolean {
+  if (!allowExternalShare) {
+    uni.showToast({ title: "内部体验不可外部分享", icon: "none" });
+    return false;
+  }
+  copyShareText(text);
+  return true;
+}

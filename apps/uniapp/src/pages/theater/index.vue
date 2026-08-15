@@ -4,7 +4,7 @@ import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
 import { RUNTIME_CONFIG } from "../../config/runtime";
 import { getClientPlatform } from "../../platform/env";
-import { copyShareText, shareDramaText } from "../../utils/engagement";
+import { shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 type TheaterVideo = {
@@ -272,7 +272,10 @@ function handleAction(action: TheaterAction) {
     return;
   }
   if (action === "share") {
-    copyShareText(shareDramaText(currentVideo.value.dramaTitle, currentVideo.value.episodeLabel));
+    shareIfExternallyAllowed(
+      shareDramaText(currentVideo.value.dramaTitle, currentVideo.value.episodeLabel),
+      false
+    );
     return;
   }
   if (action === "favorite") isFavorite.value = !isFavorite.value;

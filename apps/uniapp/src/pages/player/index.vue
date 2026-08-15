@@ -16,7 +16,7 @@ import { PlaybackHeartbeatController } from "../../services/playback-controller"
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
-import { copyShareText, formatEngagementCount, shareDramaText } from "../../utils/engagement";
+import { formatEngagementCount, shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
 
 const isMock = isMockMode();
 const dramaId = ref("");
@@ -298,7 +298,10 @@ function toggleLike() {
 }
 
 function shareCurrent() {
-  copyShareText(shareDramaText(dramaTitle.value, `第${episodeNumber.value}集`));
+  shareIfExternallyAllowed(
+    shareDramaText(dramaTitle.value, `第${episodeNumber.value}集`),
+    !isMock
+  );
 }
 
 onLoad((options) => {

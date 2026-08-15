@@ -3,7 +3,7 @@
   <view class="top-actions"><button bindtap="showFeature" data-label="夜间模式" aria-label="夜间模式">☾</button><button bindtap="showFeature" data-label="更多设置" aria-label="更多设置">☰<text class="new-dot" /></button></view>
 
   <view wx:if="{{!user}}" class="guest-profile">
-    <view class="guest-copy"><view class="guest-title">免费短剧，尽在微焦</view><view class="guest-subtitle">登录后同步观看记录与福利权益</view></view>
+    <view class="guest-copy"><view class="guest-title">免费短剧，尽在微焦</view><view class="guest-subtitle">登录后同步观看记录</view></view>
     <button class="login-button" bindtap="login" loading="{{loginLoading}}" disabled="{{loginLoading}}">{{loginLoading ? '微信登录中…' : '立即登录'}}</button>
   </view>
   <view wx:else class="member-profile">
@@ -15,6 +15,8 @@
   <view wx:if="{{deletionNotice}}" class="login-error" role="status">{{deletionNotice}}</view>
   <view class="privacy-actions">
     <button class="privacy-link" data-section="privacy" bindtap="openLegal">隐私政策</button>
+    <button class="privacy-link" data-section="support" bindtap="openLegal">客服与投诉</button>
+    <button class="privacy-link" data-section="ads" bindtap="openLegal">广告未到账</button>
     <button class="privacy-link" data-section="deletion" bindtap="openLegal">注销说明</button>
     <button wx:if="{{user}}" class="privacy-link" bindtap="requestDeletion" disabled="{{deletionBusy}}">{{deletionBusy ? '提交中…' : '申请注销'}}</button>
     <button class="privacy-link" bindtap="lookupDeletion">查询注销进度</button>

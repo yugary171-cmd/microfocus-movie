@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { onLaunch } from "@dcloudio/uni-app";
+import { isMockMode } from "./services/api";
 
 onLaunch(() => {
-  // Session is created only when the user taps login.
+  if (!isMockMode()) return;
+  try {
+    uni.hideShareMenu({ hideShareItems: ["shareAppMessage", "shareTimeline"] });
+  } catch {
+    // H5 / App have no WeChat share menu
+  }
 });
 </script>
 

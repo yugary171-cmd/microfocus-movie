@@ -666,6 +666,19 @@ describe("local engagement helpers", () => {
     expect(formatEngagementCount(9712)).toBe("9712");
     expect(formatEngagementCount(1194000)).toBe("119.4万");
     expect(shareDramaText("皇后娘娘来打工", "第65集")).toBe("皇后娘娘来打工 · 第65集");
+    const { shareIfExternallyAllowed } = await import("../src/utils/engagement");
+    stubUni({
+      showToast: vi.fn(),
+      setClipboardData: vi.fn()
+    });
+    expect(shareIfExternallyAllowed("样片 · 第1集", false)).toBe(false);
+    expect(uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "内部体验不可外部分享" })
+    );
+    expect(uni.setClipboardData).not.toHaveBeenCalled();
+    expect(shareIfExternallyAllowed("样片 · 第1集", true)).toBe(true);
+    expect(uni.setClipboardData).toHaveBeenCalled();
+    vi.unstubAllGlobals();
     const comments = cloneLocalComments();
     expect(countLocalComments(comments)).toBeGreaterThan(comments.length);
     expect(comments[0]?.replies.length).toBeGreaterThan(0);

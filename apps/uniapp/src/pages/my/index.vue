@@ -175,7 +175,7 @@ async function openHistory(id: string) {
     <view v-if="!user" class="guest-profile">
       <view class="guest-copy">
         <view class="guest-title">免费短剧，尽在微焦</view>
-        <view class="guest-subtitle">登录后同步观看记录与福利权益</view>
+        <view class="guest-subtitle">登录后同步观看记录</view>
       </view>
       <button class="login-button" :loading="loginLoading" :disabled="loginLoading" @tap="login">
         {{ loginLoading ? "微信登录中…" : "立即登录" }}
@@ -194,6 +194,8 @@ async function openHistory(id: string) {
 
     <view class="privacy-actions">
       <button class="privacy-link" @tap="openLegal('privacy')">隐私政策</button>
+      <button class="privacy-link" @tap="openLegal('support')">客服与投诉</button>
+      <button class="privacy-link" @tap="openLegal('ads')">广告未到账</button>
       <button class="privacy-link" @tap="openLegal('deletion')">注销说明</button>
       <button v-if="user" class="privacy-link" :disabled="deletionBusy" @tap="requestDeletion">
         {{ deletionBusy ? "提交中…" : "申请注销" }}
