@@ -87,7 +87,7 @@ let dramas: DramaRecord[] = [
         episodeNumber: 2,
         title: "雨夜重逢",
         durationSeconds: 106,
-        mediaStatus: MediaStatus.PENDING_MANUAL_REVIEW,
+        mediaStatus: MediaStatus.PROCESSING,
         transcodeStatus: "READY",
         machineReviewStatus: "APPROVED",
         manualReviewStatus: "PENDING",

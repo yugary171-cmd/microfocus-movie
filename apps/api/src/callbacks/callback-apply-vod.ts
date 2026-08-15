@@ -1,4 +1,6 @@
 import type { PrismaService } from "../prisma/prisma.service.js";
+import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
+import { resolveVodMediaUpdate } from "../domain/media-state.js";
 import type { VodCallbackBody } from "./callback-payload.js";
 
 export async function applyVodCallback(
@@ -11,38 +13,40 @@ export async function applyVodCallback(
       include: { episode: { include: { drama: true } } }
     });
     if (!asset) return "MEDIA_NOT_FOUND";
-    await tx.mediaAsset.update({
-      where: { id: asset.id },
-      data: {
-        mediaStatus: body.mediaStatus,
-        transcodeStatus: body.transcodeStatus,
-        machineReviewStatus: body.machineReviewStatus
-      }
-    });
+    const next = {
+      mediaStatus: body.mediaStatus,
+      transcodeStatus: body.transcodeStatus,
+      machineReviewStatus: body.machineReviewStatus
+    };
+    const decision = resolveVodMediaUpdate(
+      {
+        mediaStatus: asset.mediaStatus,
+        transcodeStatus: asset.transcodeStatus,
+        machineReviewStatus: asset.machineReviewStatus
+      },
+      next
+    );
+    if (decision.action === "reject") return "REJECTED";
+    if (decision.action === "apply") {
+      await tx.mediaAsset.update({
+        where: { id: asset.id },
+        data: {
+          mediaStatus: body.mediaStatus,
+          transcodeStatus: body.transcodeStatus,
+          machineReviewStatus: body.machineReviewStatus
+        }
+      });
+    }
+    const applied = decision.action === "apply" ? decision.next : next;
     const failed =
-      body.mediaStatus === "FAILED" ||
-      body.transcodeStatus === "FAILED" ||
-      body.machineReviewStatus === "REJECTED" ||
+      applied.mediaStatus === "FAILED" ||
+      applied.transcodeStatus === "FAILED" ||
+      applied.machineReviewStatus === "REJECTED" ||
       asset.manualReviewStatus === "REJECTED" ||
       asset.wechatReviewStatus === "REJECTED";
     if (failed && asset.episode.drama.status === "PUBLISHED") {
-      const now = new Date();
-      await tx.drama.update({
-        where: { id: asset.episode.dramaId },
-        data: { status: "OFFLINE" }
-      });
-      const episodes = await tx.episode.findMany({
-        where: { dramaId: asset.episode.dramaId },
-        select: { id: true }
-      });
-      await tx.playbackLease.updateMany({
-        where: {
-          episodeId: { in: episodes.map((episode) => episode.id) },
-          status: "ACTIVE"
-        },
-        data: { status: "REVOKED", activeKey: null, revokedAt: now }
-      });
-      return "PROCESSED_EMERGENCY_OFFLINE";
+      const offlined = await tryOfflinePublishedDrama(tx, asset.episode.dramaId);
+      return offlined ? "PROCESSED_EMERGENCY_OFFLINE" : "PROCESSED";
     }
     return "PROCESSED";
   });

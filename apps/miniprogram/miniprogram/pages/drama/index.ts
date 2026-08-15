@@ -2,6 +2,7 @@ import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocu
 import { getApi, isMockMode } from "../../services/api";
 import {
   createRewardDependencies,
+  describeRewardResult,
   retryRewardConfirmation,
   runRewardFlow,
   type PendingRewardConfirmation,
@@ -158,7 +159,7 @@ Page({
       this.setData({
         rewardLoading: false,
         rewardRetryPending: true,
-        rewardError: "奖励确认中，可重试。再次点击不会创建新广告任务。"
+        rewardError: describeRewardResult(result)
       });
       return;
     }
@@ -167,10 +168,7 @@ Page({
     this.setData({
       rewardLoading: false,
       rewardRetryPending: false,
-      rewardError:
-        result.status === "incomplete"
-          ? "广告未完整播放，本次未发放观看时长。你可以重试。"
-          : toFriendlyErrorMessage(result.error)
+      rewardError: describeRewardResult(result)
     });
   },
 

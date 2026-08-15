@@ -4,6 +4,7 @@ import { toFriendlyErrorMessage } from "../miniprogram/utils/errors";
 import { formatApproximateRemainingEpisodes, formatRemainingTime, formatRewardUnlockCopy } from "../miniprogram/utils/format";
 import { PlaybackHeartbeatController } from "../miniprogram/services/playback-controller";
 import {
+  describeRewardResult,
   retryRewardConfirmation,
   runRewardFlow
 } from "../miniprogram/services/reward";
@@ -303,6 +304,61 @@ describe("reward flow", () => {
     expect(completeChallenge).not.toHaveBeenCalled();
     expect(fake.ad.offClose).toHaveBeenCalledOnce();
     expect(fake.ad.offError).toHaveBeenCalledOnce();
+  });
+
+  it("treats WeChat 1004 as no-fill without completing", async () => {
+    const fake = createFakeAd();
+    const completeChallenge = vi.fn();
+    const pending = runRewardFlow({
+      createChallenge: vi.fn().mockResolvedValue({
+        id: "challenge-1",
+        nonce: "nonce",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        adUnitId: "test-ad-unit",
+        verificationMode: "client_attestation"
+      }),
+      completeChallenge,
+      createAd: () => fake.ad
+    });
+    await vi.waitFor(() => expect(fake.ad.show).toHaveBeenCalled());
+    fake.fail({ errCode: 1004, errMsg: "no advertisement" });
+    await expect(pending).resolves.toMatchObject({ status: "unavailable", reason: "no_fill" });
+    expect(completeChallenge).not.toHaveBeenCalled();
+  });
+
+  it("keeps load failures distinguishable from verification failure", async () => {
+    const fake = createFakeAd();
+    const pending = runRewardFlow({
+      createChallenge: vi.fn().mockResolvedValue({
+        id: "challenge-1",
+        nonce: "nonce",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        adUnitId: "test-ad-unit",
+        verificationMode: "client_attestation"
+      }),
+      completeChallenge: vi.fn(),
+      createAd: () => fake.ad
+    });
+    await vi.waitFor(() => expect(fake.ad.show).toHaveBeenCalled());
+    fake.fail({ errCode: 1000, errMsg: "backend error" });
+    const result = await pending;
+    expect(result).toMatchObject({ status: "unavailable", reason: "load_failed" });
+    if (result.status === "completed") return;
+    expect(describeRewardResult(result)).toContain("广告加载失败");
+    expect(describeRewardResult({ status: "incomplete" })).toContain("未完整播放");
+    expect(
+      describeRewardResult({
+        status: "unavailable",
+        reason: "no_fill",
+        error: { errCode: 1004 }
+      })
+    ).toContain("没有可播放的广告");
+    expect(
+      describeRewardResult({
+        status: "failed",
+        error: new Error("boom")
+      })
+    ).toContain("奖励确认失败");
   });
 
   it("polls server verification with the same challenge and bounded delays", async () => {

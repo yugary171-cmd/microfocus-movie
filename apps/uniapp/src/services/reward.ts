@@ -10,9 +10,16 @@ export interface PendingRewardConfirmation {
   clientCompletedAt: string;
 }
 
+export type RewardUnavailableReason = "no_fill" | "load_failed";
+
 export type RewardResult =
   | { status: "completed"; entitlement: EntitlementSummary }
   | { status: "incomplete" }
+  | {
+      status: "unavailable";
+      reason: RewardUnavailableReason;
+      error: unknown;
+    }
   | {
       status: "confirmation_pending";
       pending: PendingRewardConfirmation;
@@ -45,6 +52,47 @@ function errorCode(error: unknown): string {
       ? error.code
       : ""
   );
+}
+
+function numericAdErrorCode(error: unknown): number | null {
+  if (typeof error !== "object" || error === null) return null;
+  if ("errCode" in error && typeof error.errCode === "number") return error.errCode;
+  if ("code" in error && typeof error.code === "number") return error.code;
+  return null;
+}
+
+export function classifyAdError(error: unknown): RewardUnavailableReason {
+  const code = numericAdErrorCode(error);
+  if (code === 1004) return "no_fill";
+  const message =
+    typeof error === "object" &&
+    error !== null &&
+    "errMsg" in error &&
+    typeof error.errMsg === "string"
+      ? error.errMsg
+      : error instanceof Error
+        ? error.message
+        : "";
+  if (/\b1004\b|无合适/.test(message)) return "no_fill";
+  return "load_failed";
+}
+
+export function describeRewardResult(
+  result: Exclude<RewardResult, { status: "completed" }>
+): string {
+  if (result.status === "incomplete") {
+    return "广告未完整播放，本次未发放观看时长。已有额度不变，你可以重试。";
+  }
+  if (result.status === "unavailable" && result.reason === "no_fill") {
+    return "当前没有可播放的广告，本次未发放观看时长。已有额度不变，你可以稍后重试。";
+  }
+  if (result.status === "unavailable") {
+    return "广告加载失败，本次未发放观看时长。已有额度不变，你可以重试。";
+  }
+  if (result.status === "confirmation_pending") {
+    return "奖励确认中，可重试。再次点击不会创建新广告任务。";
+  }
+  return "奖励确认失败，本次未发放观看时长。已有额度不变，你可以重试。";
 }
 
 function isRetryableConfirmationError(error: unknown): boolean {
@@ -124,7 +172,12 @@ export async function runRewardFlow(
       cleanup();
       resolve(result);
     };
-    const onError = (error: unknown) => settle({ status: "failed", error });
+    const onError = (error: unknown) =>
+      settle({
+        status: "unavailable",
+        reason: classifyAdError(error),
+        error
+      });
     const onClose = async (result: RewardedAdCloseResult) => {
       if (result?.isEnded !== true) {
         settle({ status: "incomplete" });

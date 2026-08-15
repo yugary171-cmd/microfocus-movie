@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PlaybackHeartbeatResponse, RewardChallengeView } from "@microfocus/contracts";
 import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN, REWARD_SECONDS } from "@microfocus/contracts";
 import { PlaybackHeartbeatController } from "../src/services/playback-controller";
-import { retryRewardConfirmation, runRewardFlow } from "../src/services/reward";
+import { retryRewardConfirmation, runRewardFlow, describeRewardResult } from "../src/services/reward";
 import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ads";
 import { ApiClientError, toFriendlyErrorMessage } from "../src/utils/errors";
 import { canStartEpisode, isFreeEpisode } from "../src/utils/episode";
@@ -285,6 +285,61 @@ describe("reward flow", () => {
     fake.close({ isEnded: false });
     await expect(pending).resolves.toEqual({ status: "incomplete" });
     expect(completeChallenge).not.toHaveBeenCalled();
+  });
+
+  it("treats WeChat 1004 as no-fill without completing", async () => {
+    const fake = createFakeAd();
+    const completeChallenge = vi.fn();
+    const pending = runRewardFlow({
+      createChallenge: vi.fn().mockResolvedValue({
+        id: "challenge-1",
+        nonce: "nonce",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        adUnitId: "test-ad-unit",
+        verificationMode: "client_attestation"
+      }),
+      completeChallenge,
+      createAd: () => fake.ad
+    });
+    await vi.waitFor(() => expect(fake.ad.show).toHaveBeenCalled());
+    fake.fail({ errCode: 1004, errMsg: "no advertisement" });
+    await expect(pending).resolves.toMatchObject({ status: "unavailable", reason: "no_fill" });
+    expect(completeChallenge).not.toHaveBeenCalled();
+  });
+
+  it("keeps load failures distinguishable from verification failure", async () => {
+    const fake = createFakeAd();
+    const pending = runRewardFlow({
+      createChallenge: vi.fn().mockResolvedValue({
+        id: "challenge-1",
+        nonce: "nonce",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        adUnitId: "test-ad-unit",
+        verificationMode: "client_attestation"
+      }),
+      completeChallenge: vi.fn(),
+      createAd: () => fake.ad
+    });
+    await vi.waitFor(() => expect(fake.ad.show).toHaveBeenCalled());
+    fake.fail({ errCode: 1000, errMsg: "backend error" });
+    const result = await pending;
+    expect(result).toMatchObject({ status: "unavailable", reason: "load_failed" });
+    if (result.status === "completed") return;
+    expect(describeRewardResult(result)).toContain("广告加载失败");
+    expect(describeRewardResult({ status: "incomplete" })).toContain("未完整播放");
+    expect(
+      describeRewardResult({
+        status: "unavailable",
+        reason: "no_fill",
+        error: { errCode: 1004 }
+      })
+    ).toContain("没有可播放的广告");
+    expect(
+      describeRewardResult({
+        status: "failed",
+        error: new Error("boom")
+      })
+    ).toContain("奖励确认失败");
   });
 
   it("polls server verification with the same challenge and bounded delays", async () => {
