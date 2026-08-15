@@ -205,7 +205,7 @@ flowchart LR
 
 | 方法与路径 | 角色 | 所有权/状态约束 | 用途 |
 | --- | --- | --- | --- |
-| `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱最长 254；密码 8–128；OTP 6–8 | 换管理员 JWT |
+| `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱最长 254；密码 8–128；OTP 6–8；管理端登录表单邮箱/密码 maxlength 与契约共用，验证码输入仍为 6 位 TOTP | 换管理员 JWT |
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
 | `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情 |

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH } from "@microfocus/contracts";
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
@@ -19,9 +19,18 @@ const error = ref("");
 
 async function submit(): Promise<void> {
   error.value = "";
+  const trimmedEmail = email.value.trim();
+  if (trimmedEmail.length > EMAIL_MAX_LENGTH) {
+    error.value = `邮箱最长 ${EMAIL_MAX_LENGTH} 个字符`;
+    return;
+  }
+  if (password.value.length > PASSWORD_MAX_LENGTH) {
+    error.value = `密码最长 ${PASSWORD_MAX_LENGTH} 个字符`;
+    return;
+  }
   busy.value = true;
   try {
-    await auth.login(email.value.trim(), password.value, otp.value, mockRole.value);
+    await auth.login(trimmedEmail, password.value, otp.value, mockRole.value);
     const redirect = typeof route.query.redirect === "string" && route.query.redirect.startsWith("/")
       ? route.query.redirect
       : "/";
@@ -62,11 +71,25 @@ async function submit(): Promise<void> {
       <form @submit.prevent="submit">
         <label class="field">
           <span>邮箱</span>
-          <input v-model="email" type="email" autocomplete="username" required placeholder="name@company.com" />
+          <input
+            v-model="email"
+            type="email"
+            autocomplete="username"
+            required
+            :maxlength="EMAIL_MAX_LENGTH"
+            placeholder="name@company.com"
+          />
         </label>
         <label class="field">
           <span>密码</span>
-          <input v-model="password" type="password" autocomplete="current-password" minlength="8" required />
+          <input
+            v-model="password"
+            type="password"
+            autocomplete="current-password"
+            minlength="8"
+            :maxlength="PASSWORD_MAX_LENGTH"
+            required
+          />
         </label>
         <label class="field">
           <span>一次性验证码</span>
