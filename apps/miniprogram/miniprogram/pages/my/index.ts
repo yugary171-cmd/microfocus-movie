@@ -1,7 +1,5 @@
-import { DELETION_CONFIRMATION } from "@microfocus/contracts";
 import {
   applyLocalWechatProfile,
-  clearStoredSession,
   ensureSession,
   getApi,
   getStoredSession,
@@ -24,7 +22,7 @@ const HISTORY_ITEMS: HistoryCardView[] = [
   { id: "history-6", title: "苏太太高调离婚了", episode: "1 集 / 52 集", tag: "真人剧", tone: "night", dramaId: "", episodeNumber: 1, position: 0 }
 ];
 
-type UserView = { displayName: string; microfocusId: string; initial: string };
+type UserView = { displayName: string; microfocusId: string; initial: string; avatarUrl: string };
 
 function toUserView(session: ReturnType<typeof getStoredSession>): UserView | null {
   if (!session) return null;
@@ -32,7 +30,8 @@ function toUserView(session: ReturnType<typeof getStoredSession>): UserView | nu
   return {
     displayName: name,
     microfocusId: `微焦号 · ${session.user.id.slice(0, 12).toUpperCase()}`,
-    initial: name.slice(0, 1) || "微"
+    initial: name.slice(0, 1) || "微",
+    avatarUrl: session.user.avatarUrl || ""
   };
 }
 
@@ -42,19 +41,16 @@ Page({
     isMock: isMockMode(),
     loginLoading: false,
     loginError: "",
-    deletionBusy: false,
-    deletionNotice: "",
     historyLoading: false,
     historyError: "",
     activeHistoryTab: "历史",
-    historyTabs: ["历史", "收藏", "点赞", "预约", "动态"],
+    historyTabs: ["历史", "收藏", "点赞"],
     historyFilters: ["全部", "已看完", "未看完"],
     activeFilter: "全部",
     historyItems: (isMockMode() ? HISTORY_ITEMS : []) as HistoryCardView[],
     utilities: [
-      { title: "商城", subtitle: "查看订单", icon: "商" },
-      { title: "消息", subtitle: "1 条未读", icon: "信" },
-      { title: "追更", subtitle: "管理追更", icon: "追" }
+      { title: "消息", subtitle: "1 条未读" },
+      { title: "追更", subtitle: "管理追更" }
     ]
   },
 
@@ -85,27 +81,6 @@ Page({
     }
   },
 
-  logout() {
-    if (!this.data.user) return;
-    wx.showModal({
-      title: "退出登录",
-      content: "只会退出当前设备上的登录，不会注销账号。退出后仍可观看免费内容。",
-      confirmText: "退出",
-      success: (result) => {
-        if (!result.confirm) return;
-        clearStoredSession();
-        this.setData({
-          user: null,
-          loginError: "",
-          ...(this.data.isMock
-            ? {}
-            : { historyItems: [] as HistoryCardView[], historyError: "" })
-        });
-        wx.showToast({ title: "已退出登录", icon: "none" });
-      }
-    });
-  },
-
   selectHistoryTab(event: WechatMiniprogram.TouchEvent) {
     this.setData({ activeHistoryTab: String(event.currentTarget.dataset.tab || "历史") });
   },
@@ -131,65 +106,8 @@ Page({
     wx.showToast({ title: `${label}为体验数据`, icon: "none" });
   },
 
-  openLegal(event: WechatMiniprogram.TouchEvent) {
-    const section = String(event.currentTarget.dataset.section || "privacy");
-    wx.navigateTo({ url: `/pages/legal/index?section=${encodeURIComponent(section)}` });
-  },
-
-  async requestDeletion() {
-    if (!this.data.user || this.data.deletionBusy) return;
-    const confirmed = await new Promise<boolean>((resolve) => {
-      wx.showModal({
-        title: "申请注销账号",
-        content: "提交前会再次通过微信确认是你本人。提交后立即退出登录，活动播放授权会被撤销，未完成广告奖励不再发放。查询进度的令牌只会显示一次。确定继续？",
-        confirmText: "确认注销",
-        success: (result) => resolve(Boolean(result.confirm))
-      });
-    });
-    if (!confirmed) return;
-    this.setData({ deletionBusy: true, deletionNotice: "" });
-    try {
-      const wechatCode = this.data.isMock ? "mock-reauth" : await wechatAdapter.login();
-      const result = await getApi().createDeletionRequest({
-        confirmation: DELETION_CONFIRMATION,
-        wechatCode
-      });
-      if (result.deletionQueryToken) {
-        wx.setStorageSync("microfocus.deletion-request", {
-          deletionRequestId: result.deletionRequestId,
-          deletionQueryToken: result.deletionQueryToken,
-          tokenExpiresAt: result.tokenExpiresAt
-        });
-      }
-      clearStoredSession();
-      this.setData({
-        user: null,
-        deletionNotice: result.deletionQueryToken
-          ? `注销已受理。请保存查询令牌（只显示一次）：${result.deletionQueryToken}`
-          : "注销已受理。若未看到查询令牌，请通过客服核验后查询进度。"
-      });
-    } catch (error) {
-      this.setData({ deletionNotice: toFriendlyErrorMessage(error) });
-    } finally {
-      this.setData({ deletionBusy: false });
-    }
-  },
-
-  async lookupDeletion() {
-    const stored = wx.getStorageSync("microfocus.deletion-request") as {
-      deletionRequestId?: string;
-      deletionQueryToken?: string;
-    };
-    if (!stored?.deletionRequestId || !stored.deletionQueryToken) {
-      wx.showToast({ title: "没有可查询的注销申请", icon: "none" });
-      return;
-    }
-    try {
-      const view = await getApi().getDeletionRequest(stored.deletionRequestId, stored.deletionQueryToken);
-      wx.showToast({ title: `注销状态：${view.status}`, icon: "none" });
-    } catch (error) {
-      wx.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
-    }
+  openProfile() {
+    wx.navigateTo({ url: "/pages/profile/edit" });
   },
 
   async openHistory(event: WechatMiniprogram.TouchEvent) {

@@ -5,6 +5,7 @@ import { CallbacksModule } from "./callbacks/callbacks.module.js";
 import { CatalogModule } from "./catalog/catalog.module.js";
 import { EntitlementsModule } from "./entitlements/entitlements.module.js";
 import { HistoryModule } from "./history/history.module.js";
+import { ProfileModule } from "./profile/profile.module.js";
 import { OperationsModule } from "./operations/operations.module.js";
 import { InfrastructureModule } from "./infrastructure.module.js";
 import { PlaybackModule } from "./playback/playback.module.js";
@@ -19,6 +20,7 @@ import { RewardsModule } from "./rewards/rewards.module.js";
     AuthModule,
     CatalogModule,
     HistoryModule,
+    ProfileModule,
     EntitlementsModule,
     RewardsModule,
     PlaybackModule,

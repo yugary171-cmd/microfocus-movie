@@ -52,6 +52,8 @@ describe("deletion cleanup retention gate", () => {
       data: {
         displayName: ANONYMIZED_USER_DISPLAY_NAME,
         avatarUrl: null,
+        signature: "",
+        gender: "unset",
         openId: "deleted:user-1"
       }
     });

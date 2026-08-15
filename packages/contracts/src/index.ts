@@ -32,6 +32,11 @@ export const RECOMMENDATION_RANK_DEFAULT = 0;
 export const EPISODE_TITLE_MAX_LENGTH = 120;
 export const EPISODE_DURATION_SECONDS_MAX = 3600;
 export const COVER_URL_MAX_LENGTH = 2048;
+export const DISPLAY_NAME_MIN_LENGTH = 1;
+export const DISPLAY_NAME_MAX_LENGTH = 10;
+export const SIGNATURE_MAX_LENGTH = 100;
+export const PROFILE_GENDERS = ["male", "female", "unset"] as const;
+export type ProfileGender = (typeof PROFILE_GENDERS)[number];
 export const RIGHTS_HOLDER_MAX_LENGTH = 200;
 export const RIGHTS_DOCUMENT_MAX_LENGTH = 128;
 export const RIGHTS_MATERIAL_KEY_MAX_LENGTH = 512;
@@ -194,6 +199,7 @@ export const API_ROUTES = {
   drama: (dramaId: string) => `/v1/dramas/${dramaId}`,
   history: "/v1/me/history",
   progress: "/v1/me/progress",
+  profile: "/v1/me/profile",
   entitlement: (dramaId: string) => `/v1/entitlements/${dramaId}`,
   deletionRequests: "/v1/me/deletion-requests",
   deletionRequest: (deletionRequestId: string) =>
@@ -464,6 +470,32 @@ export interface AuthenticatedUser {
   id: string;
   displayName: string;
   avatarUrl: string | null;
+  signature: string;
+  gender: ProfileGender;
+}
+
+export interface UpdateUserProfileRequest {
+  displayName?: string;
+  signature?: string;
+  gender?: ProfileGender;
+  avatarUrl?: string | null;
+}
+
+export function isProfileGender(value: unknown): value is ProfileGender {
+  return value === "male" || value === "female" || value === "unset";
+}
+
+export function normalizeAuthenticatedUser(value: unknown): AuthenticatedUser | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.id !== "string" || typeof record.displayName !== "string") return null;
+  return {
+    id: record.id,
+    displayName: record.displayName,
+    avatarUrl: typeof record.avatarUrl === "string" && record.avatarUrl.trim() ? record.avatarUrl.trim() : null,
+    signature: typeof record.signature === "string" ? record.signature.slice(0, SIGNATURE_MAX_LENGTH) : "",
+    gender: isProfileGender(record.gender) ? record.gender : "unset"
+  };
 }
 
 export interface WechatLoginResponse {
@@ -659,7 +691,7 @@ export type RetentionAction = "retain" | "anonymize_when_approved" | "delete_whe
 export const DATA_RETENTION_CLASSES = [
   {
     id: "user_profile",
-    examples: "displayName, avatarUrl, openId",
+    examples: "displayName, avatarUrl, signature, gender, openId",
     action: "anonymize_when_approved" as const,
     retainReason: "直接身份在批准后匿名化；批准前只撤权不清理"
   },

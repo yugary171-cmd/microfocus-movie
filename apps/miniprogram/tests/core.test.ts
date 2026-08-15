@@ -26,6 +26,13 @@ import { buildDramaShareCard } from "../miniprogram/utils/drama-share";
 import { buildSupportPacket } from "../miniprogram/utils/support-packet";
 import { sanitizeFunnelProps } from "../miniprogram/services/telemetry";
 import { isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MAX_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate, shouldStartHoldBoost } from "../miniprogram/utils/playback-gesture";
+import {
+  applyProfilePatch,
+  boundNickname,
+  canSaveNickname,
+  canSaveSignature,
+  formatMicrofocusId
+} from "../miniprogram/utils/profile";
 
 describe("playback tap gesture", () => {
   it("treats a short still touch as tap and ignores swipe or long press", () => {
@@ -707,5 +714,60 @@ describe("share and support packet", () => {
   it("omits secrets from support packets and funnel props", () => {
     expect(buildSupportPacket({ challengeId: "c1" })).toContain("challengeId: c1");
     expect(sanitizeFunnelProps({ session_key: "k", dramaId: "d1" })).toEqual({ dramaId: "d1" });
+  });
+});
+
+describe("user profile", () => {
+  it("keeps nicknames within 1-10 characters and rejects no-op saves", () => {
+    expect(formatMicrofocusId("user-abcdef123456")).toBe("USER-ABCDEF1");
+    expect(boundNickname("一二三四五六七八九十超了")).toBe("一二三四五六七八九十");
+    expect(canSaveNickname("旧名", "")).toBe(false);
+    expect(canSaveNickname("旧名", "旧名")).toBe(false);
+    expect(canSaveNickname("旧名", "新昵称")).toBe(true);
+  });
+
+  it("applies signature and gender patches", () => {
+    const current = {
+      id: "user-1",
+      displayName: "旧名",
+      avatarUrl: null,
+      signature: "",
+      gender: "unset" as const
+    };
+    expect(applyProfilePatch(current, { signature: "hi", gender: "male" })).toEqual({
+      ...current,
+      signature: "hi",
+      gender: "male"
+    });
+    expect(canSaveSignature("", "介绍一下自己")).toBe(true);
+    expect(canSaveSignature("介绍一下自己", "介绍一下自己")).toBe(false);
+  });
+
+  it("persists mock profile updates through get/patch", async () => {
+    const { mockApi } = await import("../miniprogram/mocks/data");
+    await mockApi.authWechat("fresh-wechat-code");
+    await mockApi.updateProfile({ displayName: "新昵称", signature: "介绍一下自己", gender: "female" });
+    await expect(mockApi.getProfile()).resolves.toMatchObject({
+      displayName: "新昵称",
+      signature: "介绍一下自己",
+      gender: "female"
+    });
+  });
+
+  it("hydrates mock profile from a restored session without a new login", async () => {
+    const { resetMockProfile, syncMockProfile } = await import("../miniprogram/mocks/profile-state");
+    const { mockApi } = await import("../miniprogram/mocks/data");
+    resetMockProfile();
+    syncMockProfile({
+      id: "internal-user-restored",
+      displayName: "已登录用户",
+      avatarUrl: null,
+      signature: "",
+      gender: "unset"
+    });
+    await expect(mockApi.getProfile()).resolves.toMatchObject({
+      id: "internal-user-restored",
+      displayName: "已登录用户"
+    });
   });
 });

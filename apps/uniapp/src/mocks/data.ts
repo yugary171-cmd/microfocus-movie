@@ -11,6 +11,7 @@ import {
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
+  type AuthenticatedUser,
   type WatchHistoryItem
 } from "@microfocus/contracts";
 import { HOME_DRAMA_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../constants/runtime";
@@ -19,6 +20,8 @@ import { RUNTIME_CONFIG } from "../config/runtime";
 import type { ClientApi, SearchResponse } from "../types/api";
 import { matchesHomeChannel } from "../utils/home-channels";
 import { paginateItems } from "../utils/pagination";
+import { applyProfilePatch } from "../utils/profile";
+import { readMockProfile, requireMockProfile, writeMockProfile } from "./profile-state";
 
 const dramas: DramaDetail[] = [
   {
@@ -153,17 +156,28 @@ function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), 180));
 }
 
+function mockUser(code: string): AuthenticatedUser {
+  const id = `internal-user-${code.slice(0, 12)}`;
+  const current = readMockProfile();
+  if (!current || current.id !== id) {
+    return writeMockProfile({
+      id,
+      displayName: "内部体验用户",
+      avatarUrl: null,
+      signature: "",
+      gender: "unset"
+    });
+  }
+  return current;
+}
+
 export const mockApi: ClientApi = {
   authWechat: (code) => {
     const normalizedCode = code.trim();
     if (!normalizedCode) return Promise.reject(new Error("微信登录未返回有效 code"));
     return delay({
       accessToken: `internal-mock-session-${normalizedCode.slice(0, 12)}`,
-      user: {
-        id: `internal-user-${normalizedCode.slice(0, 12)}`,
-        displayName: "内部体验用户",
-        avatarUrl: null
-      }
+      user: mockUser(normalizedCode)
     });
   },
   authAnonymous: (input) =>
@@ -204,6 +218,8 @@ export const mockApi: ClientApi = {
         updatedAt: new Date().toISOString()
       }
     ]),
+  getProfile: () => delay({ ...requireMockProfile() }),
+  updateProfile: (input) => delay(writeMockProfile(applyProfilePatch(requireMockProfile(), input))),
   saveProgress: () => delay(undefined),
   getEntitlement: (dramaId) => delay({ ...entitlement, dramaId }),
   createRewardChallenge: () =>

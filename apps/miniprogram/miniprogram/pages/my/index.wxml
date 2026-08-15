@@ -1,33 +1,25 @@
 <view class="my-page">
   <view class="ambient" />
-  <view class="top-actions"><button bindtap="showFeature" data-label="夜间模式" aria-label="夜间模式">☾</button><button bindtap="showFeature" data-label="更多设置" aria-label="更多设置">☰<text class="new-dot" /></button></view>
 
   <view wx:if="{{!user}}" class="guest-profile">
     <view class="guest-copy"><view class="guest-title">免费短剧，尽在微焦</view><view class="guest-subtitle">登录后同步观看记录</view></view>
     <button class="login-button" bindtap="login" loading="{{loginLoading}}" disabled="{{loginLoading}}">{{loginLoading ? '微信登录中…' : '立即登录'}}</button>
   </view>
   <view wx:else class="member-profile">
-    <view class="avatar">{{user.initial}}</view>
+    <view class="avatar">
+      <image wx:if="{{user.avatarUrl}}" class="avatar-photo" src="{{user.avatarUrl}}" mode="aspectFill" />
+      <text wx:else>{{user.initial}}</text>
+    </view>
     <view class="member-copy"><view class="member-name">{{user.displayName}}</view><view class="member-id">{{user.microfocusId}} ⧉</view></view>
-    <button class="edit-button" bindtap="showFeature" data-label="编辑资料">编辑资料</button>
+    <button class="edit-button" bindtap="openProfile">编辑资料</button>
   </view>
   <view wx:if="{{loginError}}" class="login-error" role="alert">{{loginError}}</view>
-  <view wx:if="{{deletionNotice}}" class="login-error" role="status">{{deletionNotice}}</view>
-  <view class="privacy-actions">
-    <button class="privacy-link" data-section="privacy" bindtap="openLegal">隐私政策</button>
-    <button class="privacy-link" data-section="support" bindtap="openLegal">客服与投诉</button>
-    <button class="privacy-link" data-section="ads" bindtap="openLegal">广告未到账</button>
-    <button class="privacy-link" data-section="deletion" bindtap="openLegal">注销说明</button>
-    <button wx:if="{{user}}" class="privacy-link" bindtap="logout">退出登录</button>
-    <button wx:if="{{user}}" class="privacy-link" bindtap="requestDeletion" disabled="{{deletionBusy}}">{{deletionBusy ? '提交中…' : '申请注销'}}</button>
-    <button class="privacy-link" bindtap="lookupDeletion">查询注销进度</button>
-  </view>
 
   <view wx:if="{{user}}" class="stats"><view><strong>0</strong><text>关注</text></view><view><strong>0</strong><text>粉丝</text></view><view><strong>0</strong><text>获赞</text></view></view>
 
   <scroll-view scroll-x enable-flex class="utility-scroll" aria-label="个人功能">
     <view class="utility-row">
-      <button wx:for="{{utilities}}" wx:key="title" class="utility-card" data-label="{{item.title}}" bindtap="showFeature"><view class="utility-icon">{{item.icon}}</view><view class="utility-title">{{item.title}}</view><view class="utility-subtitle">{{item.subtitle}}</view></button>
+      <button wx:for="{{utilities}}" wx:key="title" class="utility-card" data-label="{{item.title}}" bindtap="showFeature"><view class="utility-title">{{item.title}}</view><view class="utility-subtitle">{{item.subtitle}}</view></button>
     </view>
   </scroll-view>
 

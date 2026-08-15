@@ -125,7 +125,9 @@ model User {
   id          String            @id @default(cuid())
   openId      String            @unique
   displayName String
-  avatarUrl   String?
+  avatarUrl   String?           @db.VarChar(2048)
+  signature   String            @default("") @db.VarChar(100)
+  gender      String            @default("unset") @db.VarChar(16)
   status      UserAccountStatus @default(ACTIVE)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt

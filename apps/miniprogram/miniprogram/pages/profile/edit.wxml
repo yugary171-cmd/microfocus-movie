@@ -1,0 +1,58 @@
+<view class="profile-page">
+  <view class="avatar-wrap">
+    <button class="avatar-button" hover-class="none" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" aria-label="修改头像">
+      <view class="avatar-face">
+        <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" />
+        <text wx:else>{{initial}}</text>
+      </view>
+      <view class="camera-badge">📷</view>
+    </button>
+  </view>
+
+  <view class="card">
+    <view class="row" bindtap="openNickname">
+      <text class="row-label">昵称</text>
+      <text class="row-value">{{displayName}}</text>
+      <text class="row-arrow">›</text>
+    </view>
+    <view class="row">
+      <text class="row-label">微焦号</text>
+      <text class="row-value">{{microfocusId}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="row" bindtap="openSignature">
+      <text class="row-label">个人签名</text>
+      <text class="row-value {{signature ? '' : 'placeholder'}}">{{signatureText}}</text>
+      <text class="row-arrow">›</text>
+    </view>
+    <view class="row" bindtap="openGender">
+      <text class="row-label">性别</text>
+      <text class="row-value {{gender === 'unset' ? 'placeholder' : ''}}">{{genderText}}</text>
+      <text class="row-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="footnote">个人信息不用于个性化推荐，仅丰富主页内容</view>
+
+  <view wx:if="{{genderOpen}}" class="sheet-mask" bindtap="closeGender">
+    <view class="sheet" catchtap="stopSheet">
+      <view class="sheet-head">
+        <button class="sheet-close" hover-class="none" bindtap="closeGender" aria-label="关闭">⌄</button>
+        <text class="sheet-title">选择性别</text>
+        <button class="sheet-save" hover-class="none" bindtap="saveGender">保存</button>
+      </view>
+      <view
+        wx:for="{{genderOptions}}"
+        wx:key="id"
+        class="sheet-option {{genderDraft === item.id ? 'active' : ''}}"
+        data-gender="{{item.id}}"
+        bindtap="selectGender"
+      >
+        <text>{{item.label}}</text>
+        <text wx:if="{{genderDraft === item.id}}" class="sheet-check">✓</text>
+      </view>
+    </view>
+  </view>
+</view>

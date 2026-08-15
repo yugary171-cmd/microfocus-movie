@@ -2,7 +2,9 @@ import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { describe, expect, it } from "vitest";
 import {
+  COVER_URL_MAX_LENGTH,
   DEVICE_ID_MAX_LENGTH,
+  DISPLAY_NAME_MAX_LENGTH,
   EMAIL_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
@@ -15,12 +17,14 @@ import {
   PLAYBACK_RATE_MIN,
   REWARD_NONCE_MAX_LENGTH,
   SESSION_ID_MAX_LENGTH,
+  SIGNATURE_MAX_LENGTH,
   WECHAT_CODE_MAX_LENGTH
 } from "@microfocus/contracts";
 import { AdminLoginDto, WechatLoginDto } from "./auth/auth.module.js";
 import { RewardCallbackDto, VodCallbackDto } from "./callbacks/callbacks.module.js";
 import { ProgressDto } from "./history/history.module.js";
 import { CreateLeaseDto, HeartbeatDto } from "./playback/playback.module.js";
+import { UpdateProfileDto } from "./profile/profile.module.js";
 import { CompleteChallengeDto, CreateChallengeDto } from "./rewards/rewards.module.js";
 
 async function propertyError(dto: object, property: string): Promise<boolean> {
@@ -184,5 +188,27 @@ describe("remaining write input limits", () => {
         "challengeId"
       )
     ).toBe(true);
+  });
+
+  it("rejects oversized profile fields", async () => {
+    expect(
+      await propertyError(
+        plainToInstance(UpdateProfileDto, { displayName: "x".repeat(DISPLAY_NAME_MAX_LENGTH + 1) }),
+        "displayName"
+      )
+    ).toBe(true);
+    expect(
+      await propertyError(
+        plainToInstance(UpdateProfileDto, { signature: "s".repeat(SIGNATURE_MAX_LENGTH + 1) }),
+        "signature"
+      )
+    ).toBe(true);
+    expect(
+      await propertyError(
+        plainToInstance(UpdateProfileDto, { avatarUrl: `https://example.com/${"a".repeat(COVER_URL_MAX_LENGTH)}` }),
+        "avatarUrl"
+      )
+    ).toBe(true);
+    expect(await validate(plainToInstance(UpdateProfileDto, { displayName: "新昵称", gender: "unset" }))).toEqual([]);
   });
 });

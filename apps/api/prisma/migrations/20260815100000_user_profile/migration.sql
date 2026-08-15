@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE `User` ADD COLUMN `signature` VARCHAR(100) NOT NULL DEFAULT '',
+    ADD COLUMN `gender` VARCHAR(16) NOT NULL DEFAULT 'unset';
+
+-- AlterTable
+ALTER TABLE `User` MODIFY `avatarUrl` VARCHAR(2048) NULL;

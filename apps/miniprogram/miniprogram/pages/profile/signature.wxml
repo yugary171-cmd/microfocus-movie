@@ -1,0 +1,12 @@
+<view class="editor-page">
+  <view class="editor-nav">
+    <button class="editor-back" hover-class="none" bindtap="goBack" aria-label="返回">‹</button>
+    <text class="editor-title">个人签名</text>
+    <button class="editor-save {{canSave ? '' : 'disabled'}}" hover-class="none" bindtap="save">保存</button>
+  </view>
+  <view class="textarea-box">
+    <textarea value="{{signature}}" maxlength="{{maxLength}}" placeholder="介绍一下自己" bindinput="onInput" />
+    <view class="counter">{{count}}/{{maxLength}}</view>
+  </view>
+  <view class="hint">个人签名最多支持{{maxLength}}个字符</view>
+</view>

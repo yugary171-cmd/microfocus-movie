@@ -7,7 +7,7 @@
 
 | 数据类 | 例子 | 批准前 | 批准后 |
 | --- | --- | --- | --- |
-| 用户资料 | displayName、avatarUrl、openId | 只撤权 | 匿名化为 `已注销用户` / `deleted:{userId}` |
+| 用户资料 | displayName、avatarUrl、signature、gender、openId | 只撤权 | 匿名化为 `已注销用户` / `deleted:{userId}`；签名清空、性别 `unset` |
 | 观看进度 | WatchProgress | 不删除 | 删除 |
 | 权益账本 | grant / debit / adjustment | 保留 | 保留 |
 | 广告挑战 | RewardChallenge | 保留 | 保留（补偿核验） |

@@ -32,6 +32,8 @@ export async function anonymizeDeletableUserData(
     data: {
       displayName: ANONYMIZED_USER_DISPLAY_NAME,
       avatarUrl: null,
+      signature: "",
+      gender: "unset",
       openId: `deleted:${userId}`
     }
   });

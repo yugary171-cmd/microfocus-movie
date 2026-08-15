@@ -1,0 +1,15 @@
+<view class="editor-page">
+  <view class="editor-nav">
+    <button class="editor-back" hover-class="none" bindtap="goBack" aria-label="返回">‹</button>
+    <text class="editor-title">昵称</text>
+    <button class="editor-save {{canSave ? '' : 'disabled'}}" hover-class="none" bindtap="save">保存</button>
+  </view>
+  <view class="field">
+    <input value="{{nickname}}" maxlength="{{maxLength}}" placeholder="请输入昵称" bindinput="onInput" />
+    <view class="field-meta">
+      <button wx:if="{{nickname}}" class="clear" hover-class="none" bindtap="clear" aria-label="清空">×</button>
+      <text>{{count}}/{{maxLength}}</text>
+    </view>
+  </view>
+  <view class="hint">昵称请填写1-{{maxLength}}个字符</view>
+</view>

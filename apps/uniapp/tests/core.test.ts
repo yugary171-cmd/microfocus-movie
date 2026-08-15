@@ -14,6 +14,13 @@ import { sanitizeFunnelProps, trackFunnelEvent, recentFunnelEvents } from "../sr
 import { resolveHistoryPlayerUrl } from "../src/utils/history-navigation";
 import { paginateItems } from "../src/utils/pagination";
 import { playerUrlFromEpisode } from "../src/utils/player-navigation";
+import {
+  applyProfilePatch,
+  boundNickname,
+  canSaveNickname,
+  canSaveSignature,
+  formatMicrofocusId
+} from "../src/utils/profile";
 
 function stubUni(overrides: Record<string, unknown> = {}) {
   const storage = (overrides.storage as Map<string, unknown>) ?? new Map<string, unknown>();
@@ -815,5 +822,60 @@ describe("share, support packet and funnel privacy", () => {
     expect(last).toMatchObject({ event: "ad_fail", props: { dramaId: "drama-1" } });
     expect(last?.props).not.toHaveProperty("accessToken");
     expect(sanitizeFunnelProps({ Authorization: "Bearer x", ok: true })).toEqual({ ok: true });
+  });
+});
+
+describe("user profile", () => {
+  it("keeps nicknames within 1-10 characters and rejects no-op saves", () => {
+    expect(formatMicrofocusId("user-abcdef123456")).toBe("USER-ABCDEF1");
+    expect(boundNickname("一二三四五六七八九十超了")).toBe("一二三四五六七八九十");
+    expect(canSaveNickname("旧名", "")).toBe(false);
+    expect(canSaveNickname("旧名", "旧名")).toBe(false);
+    expect(canSaveNickname("旧名", "新昵称")).toBe(true);
+  });
+
+  it("applies signature and gender patches", () => {
+    const current = {
+      id: "user-1",
+      displayName: "旧名",
+      avatarUrl: null,
+      signature: "",
+      gender: "unset" as const
+    };
+    expect(applyProfilePatch(current, { signature: "hi", gender: "male" })).toEqual({
+      ...current,
+      signature: "hi",
+      gender: "male"
+    });
+    expect(canSaveSignature("", "介绍一下自己")).toBe(true);
+    expect(canSaveSignature("介绍一下自己", "介绍一下自己")).toBe(false);
+  });
+
+  it("persists mock profile updates through get/patch", async () => {
+    const { mockApi } = await import("../src/mocks/data");
+    await mockApi.authWechat("fresh-wechat-code");
+    await mockApi.updateProfile({ displayName: "新昵称", signature: "介绍一下自己", gender: "female" });
+    await expect(mockApi.getProfile()).resolves.toMatchObject({
+      displayName: "新昵称",
+      signature: "介绍一下自己",
+      gender: "female"
+    });
+  });
+
+  it("hydrates mock profile from a restored session without a new login", async () => {
+    const { resetMockProfile, syncMockProfile } = await import("../src/mocks/profile-state");
+    const { mockApi } = await import("../src/mocks/data");
+    resetMockProfile();
+    syncMockProfile({
+      id: "internal-user-restored",
+      displayName: "已登录用户",
+      avatarUrl: null,
+      signature: "",
+      gender: "unset"
+    });
+    await expect(mockApi.getProfile()).resolves.toMatchObject({
+      id: "internal-user-restored",
+      displayName: "已登录用户"
+    });
   });
 });

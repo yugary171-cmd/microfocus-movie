@@ -1,7 +1,8 @@
-import { boundedIdempotencyKey, ERROR_CODES, type AnonymousSessionResponse, type ApiError, type ApiSuccess } from "@microfocus/contracts";
+import { boundedIdempotencyKey, ERROR_CODES, normalizeAuthenticatedUser, type AnonymousSessionResponse, type ApiError, type ApiSuccess, type AuthenticatedUser, type UpdateUserProfileRequest } from "@microfocus/contracts";
 import { RUNTIME_CONFIG } from "../config/runtime";
 import { API_ROUTES, encodedRoute } from "../constants/routes";
 import { mockApi } from "../mocks/data";
+import { syncMockProfile } from "../mocks/profile-state";
 import {
   getEnvVersion,
   obtainWechatLoginCode,
@@ -20,7 +21,7 @@ const VIEWER_SESSION_ID_KEY = "microfocus.viewer-session-id";
 let sessionRefreshPromise: Promise<AuthSession> | null = null;
 let viewerTokenPromise: Promise<string> | null = null;
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 function resolveHasMore(
   result: { hasMore?: boolean; page?: number; totalPages?: number; items?: unknown[] } | null,
@@ -49,22 +50,13 @@ export function getStoredSession(): AuthSession | null {
   try {
     const accessToken = getStoredAccessToken();
     const storedUser = getStorageSync<Record<string, unknown>>(SESSION_USER_KEY);
-    if (
-      !accessToken ||
-      !storedUser ||
-      typeof storedUser !== "object" ||
-      typeof storedUser.id !== "string" ||
-      typeof storedUser.displayName !== "string"
-    ) {
+    const user = normalizeAuthenticatedUser(storedUser);
+    if (!accessToken || !user) {
       return null;
     }
     return {
       accessToken,
-      user: {
-        id: storedUser.id,
-        displayName: storedUser.displayName,
-        avatarUrl: typeof storedUser.avatarUrl === "string" ? storedUser.avatarUrl : null
-      }
+      user
     };
   } catch {
     return null;
@@ -228,6 +220,8 @@ const realApi: ClientApi = {
   },
   getDrama: (id) => request(encodedRoute(API_ROUTES.drama, id)),
   getHistory: () => request(API_ROUTES.history),
+  getProfile: () => request(API_ROUTES.profile),
+  updateProfile: (input) => request(API_ROUTES.profile, "PATCH", input),
   saveProgress: (input) => request<void>(API_ROUTES.progress, "PUT", input),
   getEntitlement: (dramaId) => request(encodedRoute(API_ROUTES.entitlement, dramaId)),
   createRewardChallenge: (input) => request(API_ROUTES.rewardChallenges, "POST", input),
@@ -283,7 +277,7 @@ export function applyLocalWechatProfile(profile: {
   const session = getStoredSession();
   if (!session) return null;
   const displayName = profile.displayName.trim().slice(0, 32) || session.user.displayName;
-  return storeSession({
+  const stored = storeSession({
     ...session,
     user: {
       ...session.user,
@@ -291,6 +285,31 @@ export function applyLocalWechatProfile(profile: {
       avatarUrl: profile.avatarUrl ?? session.user.avatarUrl
     }
   });
+  if (isMockMode()) syncMockProfile(stored.user);
+  return stored;
+}
+
+export async function saveProfile(input: UpdateUserProfileRequest): Promise<AuthSession | null> {
+  const session = getStoredSession();
+  if (!session) return null;
+  if (isMockMode()) syncMockProfile(session.user);
+  const user = await getApi().updateProfile(input);
+  return replaceStoredUser(user);
+}
+
+export async function loadProfile(): Promise<AuthenticatedUser | null> {
+  const session = getStoredSession();
+  if (!session) return null;
+  if (isMockMode()) syncMockProfile(session.user);
+  const user = await getApi().getProfile();
+  return replaceStoredUser(user)?.user ?? user;
+}
+
+export function replaceStoredUser(user: AuthenticatedUser): AuthSession | null {
+  const session = getStoredSession();
+  const next = normalizeAuthenticatedUser(user);
+  if (!session || !next) return null;
+  return storeSession({ ...session, user: next });
 }
 
 function storeSession(session: AuthSession): AuthSession {

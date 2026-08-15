@@ -26,6 +26,7 @@ import { AppConfigService } from "../config/config.service.js";
 import { tryDecryptTotpSecret } from "../security/totp-crypto.js";
 import { decodeTotpSecretBase32 } from "../security/totp-secret.js";
 import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
+import { toProfile } from "../profile/profile.module.js";
 
 export class WechatLoginDto {
   @IsString()
@@ -92,7 +93,7 @@ export class AuthController {
         { sub: user.id, kind: "user" },
         { expiresIn: "2h" }
       ),
-      user: { id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl }
+      user: toProfile(user)
     };
   }
 

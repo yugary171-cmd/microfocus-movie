@@ -1,5 +1,6 @@
 import type {
   AnonymousSessionResponse,
+  AuthenticatedUser,
   CatalogResponse,
   CompleteRewardChallengeRequest,
   CreateAnonymousSessionRequest,
@@ -16,6 +17,7 @@ import type {
   PlaybackLeaseView,
   RecoverPlaybackLeaseRequest,
   RewardChallengeView,
+  UpdateUserProfileRequest,
   UpdateWatchProgressRequest,
   WechatLoginResponse,
   WatchHistoryItem
@@ -36,6 +38,8 @@ export interface ClientApi {
   search(query: string, category: string, page: number): Promise<SearchResponse>;
   getDrama(id: string): Promise<import("@microfocus/contracts").DramaDetail>;
   getHistory(): Promise<WatchHistoryItem[]>;
+  getProfile(): Promise<AuthenticatedUser>;
+  updateProfile(input: UpdateUserProfileRequest): Promise<AuthenticatedUser>;
   saveProgress(input: UpdateWatchProgressRequest): Promise<void>;
   getEntitlement(dramaId: string): Promise<EntitlementSummary>;
   createRewardChallenge(input: CreateRewardChallengeRequest): Promise<RewardChallengeView>;

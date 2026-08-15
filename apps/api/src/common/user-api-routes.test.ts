@@ -6,6 +6,7 @@ import { CatalogController } from "../catalog/catalog.module.js";
 import { EntitlementsController } from "../entitlements/entitlements.module.js";
 import { PlaybackController } from "../playback/playback.module.js";
 import { DeletionController } from "../privacy/privacy.module.js";
+import { ProfileController } from "../profile/profile.module.js";
 import { controllerPath } from "./http.js";
 
 function routeOf(handler: object) {
@@ -38,6 +39,14 @@ describe("user-facing Nest routes follow contracts", () => {
     expect(routeOf(DeletionController.prototype.lookup)).toEqual({
       path: controllerPath(API_ROUTES.deletionRequest(":deletionRequestId")),
       method: RequestMethod.GET
+    });
+    expect(routeOf(ProfileController.prototype.getProfile)).toEqual({
+      path: controllerPath(API_ROUTES.profile),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(ProfileController.prototype.updateProfile)).toEqual({
+      path: controllerPath(API_ROUTES.profile),
+      method: RequestMethod.PATCH
     });
   });
 
