@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
 import { encryptTotpSecret } from "../src/security/totp-crypto.js";
 import { assertTotpSecretBase32, isExampleTotpSecret } from "../src/security/totp-secret.js";
 
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
             rightsHolder: "本地开发样例",
             validFrom: new Date("2025-01-01T00:00:00.000Z"),
             validUntil: new Date("2035-01-01T00:00:00.000Z"),
-            territory: "CN",
+            territory: RIGHTS_TERRITORY,
             allowsWechatDistribution: true,
             allowsAdMonetization: true,
             allowsTranscoding: true,
@@ -70,7 +71,7 @@ async function main(): Promise<void> {
             licenseNumber: "LOCAL-DEMO-001",
             reportNumber: "LOCAL-REPORT-001",
             materialObjectKey: "private/local-demo-rights.pdf",
-            materialDigestSha256: "0".repeat(64)
+            materialDigestSha256: "0".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH)
           }
         },
         episodes: {
