@@ -8,7 +8,7 @@ import {
 import { computed, reactive } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
-import { uploadFileNameError } from "@/policies/drama-input";
+import { uploadFileError } from "@/policies/drama-input";
 import { formatDuration, mediaStatusLabels } from "@/i18n";
 import type { EpisodeRecord, UploadProgress } from "@/types/admin";
 import StatusBadge from "./StatusBadge.vue";
@@ -57,9 +57,9 @@ function chooseFile(episode: EpisodeRecord, event: Event): void {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-  const nameError = uploadFileNameError(file.name);
-  if (nameError) {
-    uploads[episode.id] = { state: "error", progress: 0, error: nameError, file };
+  const fileError = uploadFileError(file);
+  if (fileError) {
+    uploads[episode.id] = { state: "error", progress: 0, error: fileError, file };
     return;
   }
   uploads[episode.id] = { state: "idle", progress: 0, error: "", file };

@@ -48,6 +48,7 @@ export const ADMIN_LIST_PAGE_SIZE = 50;
 export const ADMIN_LIST_MAX_PAGE = 100;
 export const LIST_QUERY_MAX_LENGTH = 100;
 export const UPLOAD_FILE_NAME_MAX_LENGTH = 255;
+export const UPLOAD_FILE_SIZE_MAX_BYTES = 5 * 1024 * 1024 * 1024;
 
 /** Trim then cap list/search keywords so clients match server truncation. */
 export function boundListQuery(value: string): string {
@@ -57,6 +58,10 @@ export function boundListQuery(value: string): string {
 export function isAllowedUploadFileName(fileName: string): boolean {
   const name = fileName.trim();
   return name.length >= 1 && name.length <= UPLOAD_FILE_NAME_MAX_LENGTH && !/[/\\\0]/.test(name);
+}
+
+export function isAllowedUploadFileSize(size: number): boolean {
+  return Number.isInteger(size) && size >= 1 && size <= UPLOAD_FILE_SIZE_MAX_BYTES;
 }
 
 export const ERROR_CODES = {

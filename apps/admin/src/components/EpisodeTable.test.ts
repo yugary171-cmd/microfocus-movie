@@ -1,4 +1,4 @@
-import { DRAMA_EPISODE_MAX_COUNT, EPISODE_DURATION_SECONDS_MAX, EPISODE_TITLE_MAX_LENGTH, MediaStatus, UPLOAD_FILE_NAME_MAX_LENGTH } from "@microfocus/contracts";
+import { DRAMA_EPISODE_MAX_COUNT, EPISODE_DURATION_SECONDS_MAX, EPISODE_TITLE_MAX_LENGTH, MediaStatus, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { adminApi } from "@/api/admin";
@@ -98,6 +98,28 @@ describe("EpisodeTable Mock upload path", () => {
 
     expect(upload).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain("文件名不能超过");
+    upload.mockRestore();
+    wrapper.unmount();
+  });
+
+  it("rejects a selected file whose size exceeds the contract limit", async () => {
+    const upload = vi.spyOn(adminApi, "uploadEpisode");
+    const wrapper = mount(EpisodeTable, {
+      props: { modelValue: [episode], dramaId: "drama-upload-test" },
+    });
+
+    const oversized = new File(["mock video"], "episode.mp4", { type: "video/mp4" });
+    Object.defineProperty(oversized, "size", { value: UPLOAD_FILE_SIZE_MAX_BYTES + 1 });
+    const fileInput = wrapper.get('input[type="file"]');
+    Object.defineProperty(fileInput.element, "files", {
+      configurable: true,
+      value: [oversized],
+    });
+    await fileInput.trigger("change");
+    await flushPromises();
+
+    expect(upload).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain("文件不能超过 5GB");
     upload.mockRestore();
     wrapper.unmount();
   });

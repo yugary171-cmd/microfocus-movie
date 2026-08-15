@@ -5,9 +5,10 @@ import {
   EPISODE_DURATION_SECONDS_MAX,
   MediaStatus,
   UPLOAD_FILE_NAME_MAX_LENGTH,
+  UPLOAD_FILE_SIZE_MAX_BYTES,
 } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
-import { dramaDraftError, uploadFileNameError } from "./drama-input";
+import { dramaDraftError, uploadFileError, uploadFileNameError } from "./drama-input";
 import type { DramaInput } from "@/types/admin";
 
 function draft(overrides: Partial<DramaInput> = {}): DramaInput {
@@ -97,5 +98,20 @@ describe("uploadFileNameError", () => {
     expect(uploadFileNameError("../x.mp4")).toContain("路径分隔符");
     expect(uploadFileNameError("dir\\clip.mp4")).toContain("路径分隔符");
     expect(uploadFileNameError("a".repeat(UPLOAD_FILE_NAME_MAX_LENGTH + 1))).toContain("不能超过");
+  });
+});
+
+describe("uploadFileError", () => {
+  it("accepts a named file within the size cap", () => {
+    expect(uploadFileError({ name: "episode.mp4", size: 12 })).toBe("");
+    expect(uploadFileError({ name: "episode.mp4", size: UPLOAD_FILE_SIZE_MAX_BYTES })).toBe("");
+  });
+
+  it("rejects empty and oversized files after the name check", () => {
+    expect(uploadFileError({ name: "../x.mp4", size: 0 })).toContain("路径分隔符");
+    expect(uploadFileError({ name: "episode.mp4", size: 0 })).toContain("不能为空");
+    expect(uploadFileError({ name: "episode.mp4", size: UPLOAD_FILE_SIZE_MAX_BYTES + 1 })).toContain(
+      "不能超过 5GB",
+    );
   });
 });

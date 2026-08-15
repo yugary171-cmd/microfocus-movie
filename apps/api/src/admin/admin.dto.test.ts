@@ -11,7 +11,8 @@ import {
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
   EPISODE_DURATION_SECONDS_MAX,
-  UPLOAD_FILE_NAME_MAX_LENGTH
+  UPLOAD_FILE_NAME_MAX_LENGTH,
+  UPLOAD_FILE_SIZE_MAX_BYTES
 } from "@microfocus/contracts";
 import { AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, OfflineDto, RightsDto, UploadSignDto } from "./admin.module.js";
 
@@ -198,5 +199,18 @@ describe("admin entitlement write input limits", () => {
         (error) => error.property === "fileName"
       )
     ).toBe(true);
+    expect(
+      (await validate(plainToInstance(UploadSignDto, { ...valid, size: 0 }))).some(
+        (error) => error.property === "size"
+      )
+    ).toBe(true);
+    expect(
+      (await validate(
+        plainToInstance(UploadSignDto, { ...valid, size: UPLOAD_FILE_SIZE_MAX_BYTES + 1 })
+      )).some((error) => error.property === "size")
+    ).toBe(true);
+    expect(
+      await validate(plainToInstance(UploadSignDto, { ...valid, size: UPLOAD_FILE_SIZE_MAX_BYTES }))
+    ).toEqual([]);
   });
 });
