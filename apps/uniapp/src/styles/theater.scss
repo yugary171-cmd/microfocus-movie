@@ -40,9 +40,11 @@
   line-height: 1.55;
 }
 
+.theater-swiper,
+.slide,
 .theater-video,
 .video-shade,
-.gesture-layer {
+.hit-layer {
   position: absolute;
   top: 0;
   right: 0;
@@ -52,7 +54,11 @@
   height: 100%;
 }
 
-.gesture-layer {
+.theater-swiper {
+  z-index: 0;
+}
+
+.hit-layer {
   z-index: 2;
 }
 

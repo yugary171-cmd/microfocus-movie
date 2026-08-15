@@ -5,7 +5,7 @@ import PlayerActions from "../../components/player-actions/index.vue";
 import { RUNTIME_CONFIG } from "../../config/runtime";
 import { getClientPlatform } from "../../platform/env";
 import { shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
-import { isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
+import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 type TheaterVideo = {
@@ -145,7 +145,6 @@ const ACTION_LABELS: Record<Exclude<TheaterAction, "comment" | "share">, string>
 };
 
 const PULL_REFRESH_THRESHOLD = 96;
-const SWIPE_THRESHOLD = 56;
 const H5_SIMPLIFIED = getClientPlatform() === "h5";
 
 const categories = ["漫画剧", "真人剧", "推荐"];
@@ -166,8 +165,6 @@ const playbackError = ref("");
 const isPlaying = ref(true);
 const holdBoosting = ref(false);
 const gesture = reactive({ startY: 0, startAt: 0 });
-let holdTimer = 0;
-let holdMoved = false;
 let suppressTap = false;
 const layout = reactive({
   pageHeight: 0,
@@ -206,15 +203,35 @@ function openSearch() {
   uni.navigateTo({ url: "/pages/search/index" });
 }
 
+function videoId(index: number): string {
+  return `theater-video-${index}`;
+}
+
+function isMountedSlide(index: number): boolean {
+  return Math.abs(index - currentIndex.value) <= 1;
+}
+
+function theaterContext(index = currentIndex.value) {
+  return uni.createVideoContext(videoId(index));
+}
+
 function applyTheaterRate(rate: number) {
-  uni.createVideoContext("theater-video").playbackRate(restoreHoldRate(rate));
+  theaterContext().playbackRate(restoreHoldRate(rate));
 }
 
 function playCurrent() {
   holdBoosting.value = false;
   isPlaying.value = true;
   applyTheaterRate(1);
-  uni.createVideoContext("theater-video").play();
+  theaterContext().play();
+}
+
+function pauseIndex(index: number) {
+  try {
+    theaterContext(index).pause();
+  } catch {
+    // slide may be unmounted
+  }
 }
 
 function startHoldBoost() {
@@ -234,17 +251,12 @@ function endHoldBoost() {
   }, 80);
 }
 
-function clearHoldTimer() {
-  if (holdTimer) clearTimeout(holdTimer);
-  holdTimer = 0;
-}
-
 function togglePlayback() {
   if (suppressTap || holdBoosting.value) {
     suppressTap = false;
     return;
   }
-  const context = uni.createVideoContext("theater-video");
+  const context = theaterContext();
   if (isPlaying.value) context.pause();
   else context.play();
 }
@@ -257,6 +269,7 @@ function changeVideo(index: number, notice?: string) {
     uni.showToast({ title: nextIndex === 0 ? "已经是第一条" : "已经是最后一条", icon: "none" });
     return;
   }
+  pauseIndex(currentIndex.value);
   currentIndex.value = nextIndex;
   isFavorite.value = false;
   isLiked.value = false;
@@ -265,33 +278,55 @@ function changeVideo(index: number, notice?: string) {
   if (notice) uni.showToast({ title: notice, icon: "none" });
 }
 
-function onGestureStart(event: TouchEvent) {
-  const touch = event.touches[0];
-  if (!touch || refreshing.value) return;
-  gesture.startY = touch.clientY;
-  gesture.startAt = Date.now();
-  holdMoved = false;
-  clearHoldTimer();
-  holdTimer = setTimeout(() => {
-    holdTimer = 0;
-    if (!holdMoved) startHoldBoost();
-  }, PLAYBACK_HOLD_MS) as unknown as number;
+function onSwiperChange(event: { detail?: { current?: number } }) {
+  const next = Number(event.detail?.current);
+  if (!Number.isFinite(next) || next === currentIndex.value) return;
+  pauseIndex(currentIndex.value);
+  currentIndex.value = next;
+  isFavorite.value = false;
+  isLiked.value = false;
+  holdBoosting.value = false;
+  applyTheaterRate(1);
 }
 
-function onGestureMove(event: TouchEvent) {
+function onSwiperFinish() {
+  playCurrent();
+}
+
+function onFirstTouchStart(event: TouchEvent) {
   const touch = event.touches[0];
-  if (!touch || refreshing.value) return;
+  if (!touch || refreshing.value || currentIndex.value !== 0) return;
+  gesture.startY = touch.clientY;
+  gesture.startAt = Date.now();
+}
+
+function onFirstTouchMove(event: TouchEvent) {
+  const touch = event.touches[0];
+  if (!touch || refreshing.value || currentIndex.value !== 0) return;
   const distance = touch.clientY - gesture.startY;
-  if (Math.abs(distance) > PLAYBACK_TAP_MOVE_MAX_PX) {
-    holdMoved = true;
-    clearHoldTimer();
-    endHoldBoost();
+  if (distance <= 0) {
+    isPulling.value = false;
+    pullDistance.value = 0;
+    return;
   }
-  if (currentIndex.value !== 0) return;
-  if (distance <= 0) return;
   pullDistance.value = Math.min(124, Math.round(distance * 0.48));
   isPulling.value = true;
   refreshLabel.value = pullDistance.value >= PULL_REFRESH_THRESHOLD ? "松开刷新内容" : "下拉刷新内容";
+}
+
+function onSlideTouchEnd(event: TouchEvent) {
+  endHoldBoost();
+  if (currentIndex.value !== 0 || refreshing.value) return;
+  const touch = event.changedTouches[0];
+  if (!touch) return;
+  const distance = touch.clientY - gesture.startY;
+  if (distance >= PULL_REFRESH_THRESHOLD) {
+    void refreshFirstVideo();
+    return;
+  }
+  isPulling.value = false;
+  pullDistance.value = 0;
+  refreshLabel.value = "下拉刷新内容";
 }
 
 async function refreshFirstVideo() {
@@ -304,32 +339,6 @@ async function refreshFirstVideo() {
   refreshing.value = false;
   pullDistance.value = 0;
   refreshLabel.value = "下拉刷新内容";
-}
-
-function onGestureEnd(event: TouchEvent) {
-  const touch = event.changedTouches[0];
-  clearHoldTimer();
-  if (!touch || refreshing.value) return;
-  const distance = touch.clientY - gesture.startY;
-  const elapsed = Date.now() - gesture.startAt;
-  if (holdBoosting.value) {
-    endHoldBoost();
-    isPulling.value = false;
-    pullDistance.value = 0;
-    refreshLabel.value = "下拉刷新内容";
-    return;
-  }
-  if (currentIndex.value === 0 && distance >= PULL_REFRESH_THRESHOLD) {
-    void refreshFirstVideo();
-    return;
-  }
-  isPulling.value = false;
-  pullDistance.value = 0;
-  refreshLabel.value = "下拉刷新内容";
-  if (elapsed > 900) return;
-  if (distance <= -SWIPE_THRESHOLD) changeVideo(currentIndex.value + 1);
-  else if (distance >= SWIPE_THRESHOLD && currentIndex.value > 0) changeVideo(currentIndex.value - 1);
-  else if (isPlaybackTap(distance, elapsed)) togglePlayback();
 }
 
 function handleAction(action: TheaterAction) {
@@ -354,6 +363,10 @@ function onTheaterPause() {
   endHoldBoost();
 }
 
+function onSlideReady(index: number) {
+  if (index === currentIndex.value) playCurrent();
+}
+
 function onVideoError() {
   playbackError.value =
     "试播视频未加载。请启动 npm run dev:admin，并在微信开发者工具勾选不校验合法域名。成片文件在 apps/admin/public/demo/，不在小程序包内。";
@@ -374,41 +387,51 @@ function prevSimple() {
       <view class="fallback-title">{{ currentVideo.dramaTitle }}</view>
       <view class="fallback-copy">{{ playbackError || "正在加载本地试播视频…" }}</view>
     </view>
-    <video
+    <swiper
       v-if="!playbackError"
-      id="theater-video"
-      class="theater-video"
-      :src="currentVideo.url"
-      autoplay
-      loop
-      :muted="H5_SIMPLIFIED"
-      :obey-mute-switch="false"
-      :controls="false"
-      :show-center-play-btn="false"
-      :enable-progress-gesture="false"
-      object-fit="cover"
+      class="theater-swiper"
+      vertical
+      :circular="false"
+      :current="currentIndex"
+      :duration="280"
       :aria-label="`${currentVideo.dramaTitle}沉浸式短剧播放器`"
-      @play="isPlaying = true"
-      @pause="onTheaterPause"
-      @loadedmetadata="playCurrent"
-      @error="onVideoError"
-    />
-    <view class="video-shade" />
-    <view
-      v-if="H5_SIMPLIFIED"
-      class="gesture-layer"
-      @tap="togglePlayback"
-      @longpress="startHoldBoost"
-      @touchend="endHoldBoost"
-      @touchcancel="endHoldBoost"
-    />
-    <view
-      v-else
-      class="gesture-layer"
-      @touchstart="onGestureStart"
-      @touchmove="onGestureMove"
-      @touchend="onGestureEnd"
-    />
+      @change="onSwiperChange"
+      @animationfinish="onSwiperFinish"
+    >
+      <swiper-item v-for="(item, index) in videos" :key="item.id">
+        <view class="slide" :class="`poster-${item.tone}`">
+          <video
+            v-if="isMountedSlide(index)"
+            :id="videoId(index)"
+            class="theater-video"
+            :src="item.url"
+            :autoplay="index === currentIndex"
+            loop
+            :muted="H5_SIMPLIFIED"
+            :obey-mute-switch="false"
+            :controls="false"
+            :show-center-play-btn="false"
+            :enable-progress-gesture="false"
+            object-fit="cover"
+            :aria-label="item.dramaTitle"
+            @play="isPlaying = true"
+            @pause="onTheaterPause"
+            @loadedmetadata="onSlideReady(index)"
+            @error="onVideoError"
+          />
+          <view class="video-shade" />
+          <view
+            class="hit-layer"
+            @tap="togglePlayback"
+            @longpress="startHoldBoost"
+            @touchstart="index === 0 ? onFirstTouchStart($event) : undefined"
+            @touchmove="index === 0 ? onFirstTouchMove($event) : undefined"
+            @touchend="onSlideTouchEnd"
+            @touchcancel="endHoldBoost"
+          />
+        </view>
+      </swiper-item>
+    </swiper>
     <view v-if="!isPlaying && !playbackError" class="pause-mark" aria-hidden="true">❚❚</view>
     <view v-else-if="holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
 
@@ -450,7 +473,7 @@ function prevSimple() {
       {{ videoMarker }}
     </view>
     <view class="swipe-tip" :style="{ top: `${layout.overlayTop + 22}px` }">
-      {{ H5_SIMPLIFIED ? "轻点暂停 · 长按加速 · 用按钮切换条目" : "轻点暂停 · 长按加速 · 上滑下一条" }}
+      {{ H5_SIMPLIFIED ? "轻点暂停 · 长按加速 · 用按钮切换条目" : "轻点暂停 · 长按加速 · 上下滑切换拼接条目" }}
     </view>
     <view v-if="H5_SIMPLIFIED" class="h5-switchers">
       <button class="secondary-button" @tap="prevSimple">上一条</button>

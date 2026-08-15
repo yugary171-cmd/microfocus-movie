@@ -1,7 +1,13 @@
 <view class="theater-page">
-  <video id="theater-video" class="theater-video" src="{{currentVideo.url}}" autoplay loop muted="{{false}}" obey-mute-switch="{{false}}" controls="{{false}}" show-center-play-btn="{{false}}" object-fit="cover" bindplay="onPlay" bindpause="onPause" bindloadedmetadata="onVideoReady" aria-label="{{currentVideo.dramaTitle}}沉浸式短剧播放器" />
-  <view class="video-shade" />
-  <view class="gesture-layer" catchtouchstart="onGestureStart" catchtouchmove="onGestureMove" catchtouchend="onGestureEnd" />
+  <swiper class="theater-swiper" vertical circular="{{false}}" current="{{currentIndex}}" duration="280" bindchange="onSwiperChange" bindanimationfinish="onSwiperFinish" aria-label="{{currentVideo.dramaTitle}}沉浸式短剧播放器">
+    <swiper-item wx:for="{{videos}}" wx:key="id" wx:for-index="index">
+      <view class="slide">
+        <video wx:if="{{index >= currentIndex - 1 && index <= currentIndex + 1}}" id="theater-video-{{index}}" class="theater-video" src="{{item.url}}" autoplay="{{index === currentIndex}}" loop muted="{{false}}" obey-mute-switch="{{false}}" controls="{{false}}" show-center-play-btn="{{false}}" object-fit="cover" bindplay="onPlay" bindpause="onPause" bindloadedmetadata="onSlideReady" aria-label="{{item.dramaTitle}}" />
+        <view class="video-shade" />
+        <view class="hit-layer" bindtap="togglePlayback" bindlongpress="startHoldBoost" bindtouchstart="onFirstTouchStart" bindtouchmove="onFirstTouchMove" bindtouchend="onSlideTouchEnd" bindtouchcancel="endHoldBoost" />
+      </view>
+    </swiper-item>
+  </swiper>
   <view wx:if="{{!isPlaying}}" class="pause-mark" aria-hidden="true">❚❚</view>
   <view wx:elif="{{holdBoosting}}" class="boost-mark" aria-live="polite">{{boostRateLabel}}</view>
 
@@ -18,7 +24,7 @@
   </view>
 
   <view class="video-marker">Mock 视频 {{currentIndex + 1}} / {{videos.length}}</view>
-  <view class="swipe-tip">轻点暂停 · 长按加速 · 上滑下一条</view>
+  <view class="swipe-tip">轻点暂停 · 长按加速 · 上下滑切换拼接条目</view>
 
   <view class="content">
     <view class="story">

@@ -1,5 +1,5 @@
 import { RUNTIME_CONFIG } from "../../config/runtime";
-import { isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
+import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 
@@ -131,7 +131,10 @@ const ACTION_LABELS: Record<TheaterAction, string> = {
 };
 
 const PULL_REFRESH_THRESHOLD = 96;
-const SWIPE_THRESHOLD = 56;
+
+function videoId(index: number): string {
+  return `theater-video-${index}`;
+}
 
 Page({
   data: {
@@ -153,8 +156,6 @@ Page({
 
   touchStartY: 0,
   touchStartAt: 0,
-  holdTimer: 0 as number,
-  holdMoved: false,
 
   selectCategory(event: WechatMiniprogram.TouchEvent) {
     const category = String(event.currentTarget.dataset.category || "推荐");
@@ -167,30 +168,54 @@ Page({
     wx.navigateTo({ url: "/pages/search/index" });
   },
 
-  onGestureStart(event: WechatMiniprogram.TouchEvent) {
-    const touch = event.touches[0];
-    if (!touch || this.data.refreshing) return;
-    this.touchStartY = touch.clientY;
-    this.touchStartAt = Date.now();
-    this.holdMoved = false;
-    this.clearHoldTimer();
-    this.holdTimer = setTimeout(() => {
-      this.holdTimer = 0;
-      if (!this.holdMoved) this.startHoldBoost();
-    }, PLAYBACK_HOLD_MS) as unknown as number;
+  theaterContext(index?: number) {
+    const target = typeof index === "number" ? index : this.data.currentIndex;
+    return wx.createVideoContext(videoId(target), this);
   },
 
-  onGestureMove(event: WechatMiniprogram.TouchEvent) {
-    const touch = event.touches[0];
-    if (!touch || this.data.refreshing) return;
-    const distance = touch.clientY - this.touchStartY;
-    if (Math.abs(distance) > PLAYBACK_TAP_MOVE_MAX_PX) {
-      this.holdMoved = true;
-      this.clearHoldTimer();
-      this.endHoldBoost();
+  pauseIndex(index: number) {
+    try {
+      this.theaterContext(index).pause();
+    } catch {
+      // slide may be unmounted
     }
-    if (this.data.currentIndex !== 0) return;
-    if (distance <= 0) return;
+  },
+
+  onSwiperChange(event: WechatMiniprogram.SwiperChange) {
+    const next = Number(event.detail.current);
+    if (!Number.isFinite(next) || next === this.data.currentIndex) return;
+    const nextVideo = VIDEOS[next];
+    if (!nextVideo) return;
+    this.pauseIndex(this.data.currentIndex);
+    this.setData({
+      currentIndex: next,
+      currentVideo: nextVideo,
+      isFavorite: false,
+      isLiked: false,
+      holdBoosting: false
+    });
+    this.applyTheaterRate(1);
+  },
+
+  onSwiperFinish() {
+    this.playCurrent();
+  },
+
+  onFirstTouchStart(event: WechatMiniprogram.TouchEvent) {
+    const touch = event.touches[0];
+    if (!touch || this.data.refreshing || this.data.currentIndex !== 0) return;
+    this.touchStartY = touch.clientY;
+    this.touchStartAt = Date.now();
+  },
+
+  onFirstTouchMove(event: WechatMiniprogram.TouchEvent) {
+    const touch = event.touches[0];
+    if (!touch || this.data.refreshing || this.data.currentIndex !== 0) return;
+    const distance = touch.clientY - this.touchStartY;
+    if (distance <= 0) {
+      this.setData({ isPulling: false, pullDistance: 0 });
+      return;
+    }
     const pullDistance = Math.min(124, Math.round(distance * 0.48));
     this.setData({
       isPulling: true,
@@ -199,30 +224,17 @@ Page({
     });
   },
 
-  onGestureEnd(event: WechatMiniprogram.TouchEvent) {
+  onSlideTouchEnd(event: WechatMiniprogram.TouchEvent) {
+    this.endHoldBoost();
+    if (this.data.currentIndex !== 0 || this.data.refreshing) return;
     const touch = event.changedTouches[0];
-    this.clearHoldTimer();
-    if (!touch || this.data.refreshing) return;
+    if (!touch) return;
     const distance = touch.clientY - this.touchStartY;
-    const elapsed = Date.now() - this.touchStartAt;
-    if (this.data.holdBoosting) {
-      this.endHoldBoost();
-      this.setData({ isPulling: false, pullDistance: 0, refreshLabel: "下拉刷新内容" });
-      return;
-    }
-    if (this.data.currentIndex === 0 && distance >= PULL_REFRESH_THRESHOLD) {
+    if (distance >= PULL_REFRESH_THRESHOLD) {
       void this.refreshFirstVideo();
       return;
     }
     this.setData({ isPulling: false, pullDistance: 0, refreshLabel: "下拉刷新内容" });
-    if (elapsed > 900) return;
-    if (distance <= -SWIPE_THRESHOLD) {
-      this.changeVideo(this.data.currentIndex + 1);
-    } else if (distance >= SWIPE_THRESHOLD && this.data.currentIndex > 0) {
-      this.changeVideo(this.data.currentIndex - 1);
-    } else if (isPlaybackTap(distance, elapsed)) {
-      this.togglePlayback();
-    }
   },
 
   async refreshFirstVideo() {
@@ -245,25 +257,27 @@ Page({
       wx.showToast({ title: nextIndex === 0 ? "已经是第一条" : "已经是最后一条", icon: "none" });
       return;
     }
+    this.pauseIndex(this.data.currentIndex);
     this.setData({
       currentIndex: nextIndex,
       currentVideo,
       isFavorite: false,
       isLiked: false
     });
-    wx.nextTick(() => {
-      this.endHoldBoost();
-      this.setData({ isPlaying: true });
-      this.applyTheaterRate(1);
-      wx.createVideoContext("theater-video", this).play();
-    });
+    wx.nextTick(() => this.playCurrent());
     if (notice) wx.showToast({ title: notice, icon: "none" });
   },
 
-  onVideoReady() {
+  playCurrent() {
+    this.endHoldBoost();
     this.setData({ isPlaying: true });
     this.applyTheaterRate(1);
-    wx.createVideoContext("theater-video", this).play();
+    this.theaterContext().play();
+  },
+
+  onSlideReady(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.id || "");
+    if (id === videoId(this.data.currentIndex)) this.playCurrent();
   },
 
   onPlay() {
@@ -276,7 +290,7 @@ Page({
   },
 
   applyTheaterRate(rate: number) {
-    wx.createVideoContext("theater-video", this).playbackRate(restoreHoldRate(rate));
+    this.theaterContext().playbackRate(restoreHoldRate(rate));
   },
 
   startHoldBoost() {
@@ -291,13 +305,8 @@ Page({
     this.applyTheaterRate(1);
   },
 
-  clearHoldTimer() {
-    if (this.holdTimer) clearTimeout(this.holdTimer);
-    this.holdTimer = 0;
-  },
-
   togglePlayback() {
-    const context = wx.createVideoContext("theater-video", this);
+    const context = this.theaterContext();
     if (this.data.isPlaying) context.pause();
     else context.play();
   },

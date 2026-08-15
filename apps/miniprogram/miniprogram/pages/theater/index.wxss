@@ -6,8 +6,11 @@ page {
 }
 
 .theater-page,
+.theater-swiper,
+.slide,
 .theater-video,
-.video-shade {
+.video-shade,
+.hit-layer {
   width: 100%;
   height: 100%;
 }
@@ -18,16 +21,17 @@ page {
   background: #08080a;
 }
 
+.theater-swiper,
+.slide,
 .theater-video,
-.video-shade {
+.video-shade,
+.hit-layer {
   position: absolute;
   inset: 0;
 }
 
-.gesture-layer {
-  position: absolute;
+.hit-layer {
   z-index: 2;
-  inset: 0;
 }
 
 .pause-mark,
