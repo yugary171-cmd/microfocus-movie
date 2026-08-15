@@ -1,13 +1,14 @@
 import {
   DeletionRequestStatus,
   SEARCH_MAX_PAGE,
+  SEARCH_PAGE_SIZE,
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
   type PlaybackLeaseView,
   type WatchHistoryItem
 } from "@microfocus/contracts";
-import { FEED_PAGE_SIZE, HOME_DRAMA_CHANNELS, HOME_RECOMMEND_CHANNEL, PLAYBACK_LEASE_STATUS } from "../constants/runtime";
+import { HOME_DRAMA_CHANNELS, HOME_RECOMMEND_CHANNEL, PLAYBACK_LEASE_STATUS } from "../constants/runtime";
 import { pickDemoVideoUrl } from "../config/demo-media";
 import { RUNTIME_CONFIG } from "../config/runtime";
 import type { ClientApi, SearchResponse } from "../types/api";
@@ -181,7 +182,7 @@ export const mockApi: ClientApi = {
     return delay(
       safePage > SEARCH_MAX_PAGE
         ? { items: [], page: safePage, hasMore: false }
-        : paginateItems(filtered, safePage, FEED_PAGE_SIZE)
+        : paginateItems(filtered, safePage, SEARCH_PAGE_SIZE)
     );
   },
   getDrama: async (id) => {

@@ -6,8 +6,6 @@ export const PLAYBACK_LEASE_STATUS = {
   EXPIRED: "EXPIRED"
 } as const;
 
-export const FEED_PAGE_SIZE = 20;
-
 export const HOME_RECOMMEND_CHANNEL = "推荐";
 
 export const HOME_DRAMA_CHANNELS = [

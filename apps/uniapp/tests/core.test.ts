@@ -482,12 +482,12 @@ describe("home feed pagination", () => {
 
   it("does not return the full mock catalog on the first search page", async () => {
     const { mockApi } = await import("../src/mocks/data");
-    const { FEED_PAGE_SIZE } = await import("../src/constants/runtime");
+    const { SEARCH_PAGE_SIZE } = await import("@microfocus/contracts");
     const first = await mockApi.search("", "", 1);
-    expect(first.items).toHaveLength(FEED_PAGE_SIZE);
+    expect(first.items).toHaveLength(SEARCH_PAGE_SIZE);
     expect(first.hasMore).toBe(true);
     const second = await mockApi.search("", "", 2);
-    expect(second.items).toHaveLength(FEED_PAGE_SIZE);
+    expect(second.items).toHaveLength(SEARCH_PAGE_SIZE);
     expect(second.items[0]?.id).not.toBe(first.items[0]?.id);
   });
 
