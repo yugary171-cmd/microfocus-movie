@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RIGHTS_MATERIAL_DIGEST_LENGTH } from "@microfocus/contracts";
 import { toAdminDrama } from "./admin.module.js";
 
 function fixture() {
@@ -22,7 +23,7 @@ function fixture() {
         validUntil: new Date("2027-01-01T00:00:00Z"),
         reportNumber: "report",
         materialObjectKey: "private/rights.pdf",
-        materialDigestSha256: "a".repeat(64),
+        materialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH),
         allowsWechatDistribution: true,
         allowsAdMonetization: true,
         allowsTranscoding: true,
@@ -63,7 +64,7 @@ describe("admin drama mapper", () => {
       rightsValidUntil: "2027-01-01T00:00:00.000Z",
       rightsReportNumber: "report",
       rightsMaterialObjectKey: "private/rights.pdf",
-      rightsMaterialDigestSha256: "a".repeat(64),
+      rightsMaterialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH),
       allowsWechatDistribution: true,
       allowsAdMonetization: true,
       allowsTranscoding: true,

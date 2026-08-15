@@ -1,4 +1,4 @@
-import { ADMIN_LIST_MAX_PAGE, DRAMA_TITLE_MAX_LENGTH, DramaStatus, MediaStatus } from "@microfocus/contracts";
+import { ADMIN_LIST_MAX_PAGE, DRAMA_TITLE_MAX_LENGTH, DramaStatus, MediaStatus, RIGHTS_MATERIAL_DIGEST_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
 import { mockApi } from "./mock";
 import type { DramaInput } from "@/types/admin";
@@ -17,7 +17,7 @@ describe("mock admin publish path", () => {
       licenseExpiresAt: "2028-12-31",
       rightsReportNumber: "MOCK-REPORT-001",
       rightsMaterialObjectKey: "rights/mock-publish/license.pdf",
-      rightsMaterialDigestSha256: "a".repeat(64),
+      rightsMaterialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH),
       allowsWechatDistribution: true,
       allowsAdMonetization: true,
       allowsTranscoding: true,

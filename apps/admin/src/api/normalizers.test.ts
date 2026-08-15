@@ -1,4 +1,4 @@
-import { AdminRole, DramaStatus, MediaStatus } from "@microfocus/contracts";
+import { AdminRole, DramaStatus, MediaStatus, RIGHTS_MATERIAL_DIGEST_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
 import {
   normalizeAdminSession,
@@ -58,7 +58,7 @@ describe("admin API normalizers", () => {
   });
 
   it("preserves flattened rights and allows an approved READY live fixture to publish", () => {
-    const digest = "a".repeat(64);
+    const digest = "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH);
     const drama = normalizeDrama({
       id: "drama-live-ready",
       title: "已就绪短剧",

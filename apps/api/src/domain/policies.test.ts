@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLAYBACK_RATE_MAX, RIGHTS_TERRITORY } from "@microfocus/contracts";
+import { PLAYBACK_RATE_MAX, RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
 import {
   allocateFefo,
   assertHeartbeatAnchor,
@@ -174,7 +174,7 @@ describe("publication gate", () => {
     allowsTranscoding: true,
     allowsPromotionalMaterial: true,
     materialObjectKey: "private/rights.pdf",
-    materialDigestSha256: "a".repeat(64)
+    materialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH)
   };
 
   it("allows a fully approved drama reviewed by another admin", () => {

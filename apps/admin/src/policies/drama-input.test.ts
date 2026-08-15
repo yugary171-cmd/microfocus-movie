@@ -4,6 +4,7 @@ import {
   DRAMA_TITLE_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
   MediaStatus,
+  RIGHTS_MATERIAL_DIGEST_LENGTH,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES,
 } from "@microfocus/contracts";
@@ -24,7 +25,7 @@ function draft(overrides: Partial<DramaInput> = {}): DramaInput {
     licenseExpiresAt: "2027-01-01",
     rightsReportNumber: "report",
     rightsMaterialObjectKey: "private/rights.pdf",
-    rightsMaterialDigestSha256: "a".repeat(64),
+    rightsMaterialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH),
     allowsWechatDistribution: true,
     allowsAdMonetization: true,
     allowsTranscoding: true,

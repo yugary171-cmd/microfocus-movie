@@ -1,4 +1,4 @@
-import { AdminRole, DramaStatus, MediaStatus, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, DramaStatus, MediaStatus, RIGHTS_MATERIAL_DIGEST_LENGTH, type ReleaseGateStatus } from "@microfocus/contracts";
 import type { AdminUser, DramaRecord } from "@/types/admin";
 
 export function createUser(role: AdminRole, overrides: Partial<AdminUser> = {}): AdminUser {
@@ -40,7 +40,7 @@ export function createDrama(overrides: Partial<DramaRecord> = {}): DramaRecord {
     licenseExpiresAt: "2028-01-01",
     rightsReportNumber: "REPORT-001",
     rightsMaterialObjectKey: "rights/test/license.pdf",
-    rightsMaterialDigestSha256: "a".repeat(64),
+    rightsMaterialDigestSha256: "a".repeat(RIGHTS_MATERIAL_DIGEST_LENGTH),
     allowsWechatDistribution: true,
     allowsAdMonetization: true,
     allowsTranscoding: true,
