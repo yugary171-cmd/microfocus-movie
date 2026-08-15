@@ -40,6 +40,7 @@ describe("ReviewQueueView", () => {
     await flushPromises();
 
     expect(listReviews).toHaveBeenCalledWith(1);
+    expect(wrapper.find("input[type='search']").exists()).toBe(false);
     expect(wrapper.text()).toContain("第 1 页");
     expect(wrapper.text()).toContain("共 51 条待审");
 

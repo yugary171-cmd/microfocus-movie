@@ -146,7 +146,7 @@ flowchart LR
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
-- 管理端剧目列表与审核队列 `page` 默认 1，`pageSize` 固定 50 且客户端不可修改，最多 100 页；关键词 `q` 最长 100（`LIST_QUERY_MAX_LENGTH`），超过页上限返回空结果，不执行大 OFFSET。权益摘要不按页截断 grant。
+- 管理端剧目列表与审计日志 `page` 默认 1，`pageSize` 固定 50 且客户端不可修改，最多 100 页；剧目关键词 `q`、审计关键词 `query` 最长 100（`LIST_QUERY_MAX_LENGTH`），超过页上限返回空结果，不执行大 OFFSET。审核队列共用同一分页上限，但不接受 `q`/`query`，只返回待审剧目。权益摘要不按页截断 grant。
 - 路径与查询中的实体 ID（剧目、剧集、租约、challenge、回调事件、注销申请、熔断 provider）最长 191；超长返回 `INVALID_ENTITY_ID`，不执行数据库查找。公开详情、权益摘要、播放和注销查询仍先占限频桶。
 - 搜索默认按 `recommendationRank DESC, publishedAt DESC`；`latest` 必须按 `publishedAt DESC`；同值时以稳定 ID 作次级排序。
 - 空结果返回空数组及有效分页元数据，不使用 404。
@@ -214,7 +214,7 @@ flowchart LR
 | `POST .../:id/rights` | EDITOR | 仅本人负责；新版本使内容回到待审链路；权利人/证号/材料键限长 | 写入不可覆盖的权利版本 |
 | `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR | 仅本人负责；禁止修改已发布内容；签发成功写入审计，不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL，管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |
 | `POST .../:id/submit-review` | EDITOR | 仅本人负责，材料完整 | 提交审核 |
-| `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页 | 审核队列 |
+| `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页；无 `q`/`query`，不按标题或提交人过滤；超过页上限返回空结果 | 审核队列 |
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId` 和操作人邮箱过滤；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联 |

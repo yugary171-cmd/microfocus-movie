@@ -42,6 +42,25 @@ describe("admin list pagination", () => {
     expect(prisma.auditLog.findMany).not.toHaveBeenCalled();
   });
 
+  it("lists pending reviews by status only, without a keyword filter", async () => {
+    const prisma = {
+      $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+      drama: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0)
+      }
+    };
+    await controller(prisma).reviews("1");
+    expect(prisma.drama.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: ADMIN_LIST_PAGE_SIZE,
+        where: { status: "PENDING_REVIEW" }
+      })
+    );
+    expect(prisma.drama.count).toHaveBeenCalledWith({ where: { status: "PENDING_REVIEW" } });
+  });
+
   it("queries a bounded drama page, server-side keyword, and editor scope", async () => {
     const prisma = {
       $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
