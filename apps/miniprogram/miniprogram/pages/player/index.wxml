@@ -41,8 +41,9 @@
       bindloadedmetadata="onVideoReady"
       aria-label="{{dramaTitle}}第{{episodeNumber}}集播放器"
     />
-    <view class="playback-toggle" bindtap="togglePlayback" aria-label="暂停或播放" />
+    <view class="playback-toggle" bindtap="togglePlayback" bindlongpress="startHoldBoost" bindtouchend="endHoldBoost" bindtouchcancel="endHoldBoost" aria-label="暂停、播放或长按加速" />
     <view wx:if="{{!isPlaying}}" class="pause-mark" aria-hidden="true">❚❚</view>
+    <view wx:elif="{{holdBoosting}}" class="boost-mark" aria-live="polite">{{boostRateLabel}}</view>
   </view>
 
   <view wx:if="{{notice}}" class="notice" role="status">{{notice}}</view>
@@ -50,5 +51,5 @@
     <view class="control-label">倍速</view>
     <button wx:for="{{rates}}" wx:key="*this" class="rate {{playbackRate === item ? 'active' : ''}}" data-rate="{{item}}" bindtap="changeRate" aria-pressed="{{playbackRate === item}}">{{item}}x</button>
   </view>
-  <view class="tip">仅在实际播放时每 5 秒同步一次进度；暂停、缓冲或进入后台不会发送扣减心跳。</view>
+  <view class="tip">轻点暂停或播放，长按按 {{boostRateLabel}} 加速，松开回到所选倍速。减速请用下方按钮。仅在实际播放时每 5 秒同步一次进度；暂停、缓冲或进入后台不会发送扣减心跳。</view>
 </view>

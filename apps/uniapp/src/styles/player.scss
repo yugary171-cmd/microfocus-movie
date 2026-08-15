@@ -91,11 +91,16 @@ page {
   left: 0;
 }
 
-.pause-mark {
+.pause-mark,
+.boost-mark {
   position: absolute;
   z-index: 2;
   top: 50%;
   left: 50%;
+  pointer-events: none;
+}
+
+.pause-mark {
   width: 96rpx;
   height: 96rpx;
   margin: -48rpx 0 0 -48rpx;
@@ -107,7 +112,19 @@ page {
   line-height: 96rpx;
   letter-spacing: 4rpx;
   text-align: center;
-  pointer-events: none;
+}
+
+.boost-mark {
+  min-width: 120rpx;
+  height: 64rpx;
+  margin: -32rpx 0 0 -60rpx;
+  color: #17130a;
+  background: rgba(255, 207, 90, 0.92);
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 64rpx;
+  text-align: center;
 }
 
 .player-state {

@@ -12,6 +12,7 @@ import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
+import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
 
 Page({
   data: {
@@ -31,7 +32,9 @@ Page({
     rates: PLAYBACK_RATES,
     currentPosition: 0,
     started: false,
-    isPlaying: false
+    isPlaying: false,
+    holdBoosting: false,
+    boostRateLabel: `${holdBoostRate()}x`
   },
 
   controller: null as PlaybackHeartbeatController | null,
@@ -44,6 +47,8 @@ Page({
   pageVisible: true,
   networkAvailable: true,
   episodeDurations: [] as number[],
+  suppressTap: false,
+  holdRestoreRate: PLAYBACK_RATE_DEFAULT,
 
   onLoad(options: Record<string, string | undefined>) {
     const dramaId = options.dramaId ? decodeURIComponent(options.dramaId) : "";
@@ -247,6 +252,7 @@ Page({
 
   onPause() {
     this.controller?.setState("paused");
+    this.endHoldBoost();
     this.setData({ isPlaying: false });
     void this.persistProgress();
   },
@@ -257,6 +263,7 @@ Page({
 
   onEnded() {
     this.controller?.setState("paused");
+    this.endHoldBoost();
     this.setData({ isPlaying: false });
     void this.persistProgress();
   },
@@ -271,6 +278,7 @@ Page({
     this.controller?.setState("paused");
     const message = event.detail?.errMsg || "视频加载失败";
     this.setData({ notice: message, isPlaying: false });
+    this.endHoldBoost();
   },
 
   onVideoReady() {
@@ -279,18 +287,47 @@ Page({
     }
   },
 
+  applyRate(rate: number, persistSelection = false) {
+    const next = restoreHoldRate(rate);
+    this.videoContext?.playbackRate(next);
+    this.controller?.setPlaybackRate(next);
+    if (persistSelection && isPlaybackRatePreset(next)) this.setData({ playbackRate: next });
+  },
+
   togglePlayback() {
+    if (this.suppressTap || this.data.holdBoosting) {
+      this.suppressTap = false;
+      return;
+    }
     if (!this.data.hasPlaybackUrl || !this.videoContext) return;
     if (this.data.isPlaying) this.videoContext.pause();
     else this.videoContext.play();
   },
 
+  startHoldBoost() {
+    if (!this.data.isPlaying || this.data.holdBoosting || !this.videoContext) return;
+    this.suppressTap = true;
+    this.holdRestoreRate = this.data.playbackRate;
+    this.setData({ holdBoosting: true });
+    this.applyRate(holdBoostRate());
+  },
+
+  endHoldBoost() {
+    if (!this.data.holdBoosting) return;
+    this.setData({ holdBoosting: false });
+    this.applyRate(this.holdRestoreRate);
+    this.suppressTap = true;
+    setTimeout(() => {
+      this.suppressTap = false;
+    }, 80);
+  },
+
   changeRate(event: WechatMiniprogram.TouchEvent) {
     const rate = Number(event.currentTarget.dataset.rate);
     if (!isPlaybackRatePreset(rate)) return;
-    this.videoContext?.playbackRate(rate);
-    this.controller?.setPlaybackRate(rate);
+    this.holdRestoreRate = rate;
     this.setData({ playbackRate: rate });
+    if (!this.data.holdBoosting) this.applyRate(rate, true);
   },
 
   async persistProgress() {
@@ -303,6 +340,7 @@ Page({
   },
 
   suspendAndClose() {
+    this.endHoldBoost();
     this.videoContext?.pause();
     this.controller?.stop();
     this.clearTimers();

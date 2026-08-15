@@ -17,6 +17,7 @@ import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
 import { formatEngagementCount, shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
+import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
 
 const isMock = isMockMode();
 const dramaId = ref("");
@@ -36,6 +37,7 @@ const rates = PLAYBACK_RATES;
 const currentPosition = ref(0);
 const started = ref(false);
 const isPlaying = ref(false);
+const holdBoosting = ref(false);
 const commentsOpen = ref(false);
 const isFavorite = ref(false);
 const isLiked = ref(false);
@@ -55,6 +57,8 @@ let networkListener: ((result: UniApp.OnNetworkStatusChangeSuccess) => void) | n
 let closingLeaseId = "";
 let pageVisible = true;
 let networkAvailable = true;
+let suppressTap = false;
+let holdRestoreRate = PLAYBACK_RATE_DEFAULT;
 
 function clearTimers() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -193,6 +197,7 @@ function setupNetworkMonitoring() {
 }
 
 function suspendAndClose() {
+  endHoldBoost();
   videoContext?.pause();
   controller?.stop();
   clearTimers();
@@ -250,6 +255,7 @@ function onPlay() {
 function onPause() {
   controller?.setState("paused");
   isPlaying.value = false;
+  endHoldBoost();
   void persistProgress();
 }
 
@@ -260,6 +266,7 @@ function onWaiting() {
 function onEnded() {
   controller?.setState("paused");
   isPlaying.value = false;
+  endHoldBoost();
   void persistProgress();
 }
 
@@ -280,17 +287,46 @@ function onVideoReady() {
   if (currentPosition.value > 0) videoContext?.seek(currentPosition.value);
 }
 
+function applyRate(rate: number, persistSelection = false) {
+  const next = restoreHoldRate(rate);
+  videoContext?.playbackRate(next);
+  controller?.setPlaybackRate(next);
+  if (persistSelection && isPlaybackRatePreset(next)) playbackRate.value = next;
+}
+
 function togglePlayback() {
+  if (suppressTap || holdBoosting.value) {
+    suppressTap = false;
+    return;
+  }
   if (!hasPlaybackUrl.value || !videoContext) return;
   if (isPlaying.value) videoContext.pause();
   else videoContext.play();
 }
 
+function startHoldBoost() {
+  if (!isPlaying.value || holdBoosting.value || !videoContext) return;
+  suppressTap = true;
+  holdBoosting.value = true;
+  holdRestoreRate = playbackRate.value;
+  applyRate(holdBoostRate());
+}
+
+function endHoldBoost() {
+  if (!holdBoosting.value) return;
+  holdBoosting.value = false;
+  applyRate(holdRestoreRate);
+  suppressTap = true;
+  setTimeout(() => {
+    suppressTap = false;
+  }, 80);
+}
+
 function changeRate(rate: number) {
   if (!isPlaybackRatePreset(rate)) return;
-  videoContext?.playbackRate(rate);
-  controller?.setPlaybackRate(rate);
+  holdRestoreRate = rate;
   playbackRate.value = rate;
+  if (!holdBoosting.value) applyRate(rate, true);
 }
 
 function goBack() {
@@ -400,10 +436,14 @@ onUnload(() => {
         v-if="hasPlaybackUrl"
         class="playback-toggle"
         role="button"
-        aria-label="暂停或播放"
+        aria-label="暂停、播放或长按加速"
         @tap="togglePlayback"
+        @longpress="startHoldBoost"
+        @touchend="endHoldBoost"
+        @touchcancel="endHoldBoost"
       />
       <view v-if="hasPlaybackUrl && !isPlaying" class="pause-mark" aria-hidden="true">❚❚</view>
+      <view v-else-if="hasPlaybackUrl && holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
       <PlayerActions
         class="stage-actions"
         :favorited="isFavorite"
@@ -433,7 +473,7 @@ onUnload(() => {
         {{ item }}x
       </button>
     </view>
-    <view class="tip">仅在实际播放时每 5 秒同步一次进度；暂停、缓冲或进入后台不会发送扣减心跳。</view>
+    <view class="tip">轻点暂停或播放，长按按 {{ holdBoostRate() }} 倍加速，松开回到所选倍速。减速请用下方按钮。仅在实际播放时每 5 秒同步一次进度；暂停、缓冲或进入后台不会发送扣减心跳。</view>
     <CommentSheet
       :visible="commentsOpen"
       :drama-title="dramaTitle"

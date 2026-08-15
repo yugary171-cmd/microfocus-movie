@@ -5,7 +5,7 @@ import PlayerActions from "../../components/player-actions/index.vue";
 import { RUNTIME_CONFIG } from "../../config/runtime";
 import { getClientPlatform } from "../../platform/env";
 import { shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
-import { isPlaybackTap } from "../../utils/playback-gesture";
+import { isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 type TheaterVideo = {
@@ -164,7 +164,11 @@ const videoMarker = computed(
 );
 const playbackError = ref("");
 const isPlaying = ref(true);
+const holdBoosting = ref(false);
 const gesture = reactive({ startY: 0, startAt: 0 });
+let holdTimer = 0;
+let holdMoved = false;
+let suppressTap = false;
 const layout = reactive({
   pageHeight: 0,
   statusBarHeight: 20,
@@ -202,12 +206,44 @@ function openSearch() {
   uni.navigateTo({ url: "/pages/search/index" });
 }
 
+function applyTheaterRate(rate: number) {
+  uni.createVideoContext("theater-video").playbackRate(restoreHoldRate(rate));
+}
+
 function playCurrent() {
+  holdBoosting.value = false;
   isPlaying.value = true;
+  applyTheaterRate(1);
   uni.createVideoContext("theater-video").play();
 }
 
+function startHoldBoost() {
+  if (!isPlaying.value || holdBoosting.value || playbackError.value) return;
+  suppressTap = true;
+  holdBoosting.value = true;
+  applyTheaterRate(holdBoostRate());
+}
+
+function endHoldBoost() {
+  if (!holdBoosting.value) return;
+  holdBoosting.value = false;
+  applyTheaterRate(1);
+  suppressTap = true;
+  setTimeout(() => {
+    suppressTap = false;
+  }, 80);
+}
+
+function clearHoldTimer() {
+  if (holdTimer) clearTimeout(holdTimer);
+  holdTimer = 0;
+}
+
 function togglePlayback() {
+  if (suppressTap || holdBoosting.value) {
+    suppressTap = false;
+    return;
+  }
   const context = uni.createVideoContext("theater-video");
   if (isPlaying.value) context.pause();
   else context.play();
@@ -234,12 +270,24 @@ function onGestureStart(event: TouchEvent) {
   if (!touch || refreshing.value) return;
   gesture.startY = touch.clientY;
   gesture.startAt = Date.now();
+  holdMoved = false;
+  clearHoldTimer();
+  holdTimer = setTimeout(() => {
+    holdTimer = 0;
+    if (!holdMoved) startHoldBoost();
+  }, PLAYBACK_HOLD_MS) as unknown as number;
 }
 
 function onGestureMove(event: TouchEvent) {
   const touch = event.touches[0];
-  if (!touch || refreshing.value || currentIndex.value !== 0) return;
+  if (!touch || refreshing.value) return;
   const distance = touch.clientY - gesture.startY;
+  if (Math.abs(distance) > PLAYBACK_TAP_MOVE_MAX_PX) {
+    holdMoved = true;
+    clearHoldTimer();
+    endHoldBoost();
+  }
+  if (currentIndex.value !== 0) return;
   if (distance <= 0) return;
   pullDistance.value = Math.min(124, Math.round(distance * 0.48));
   isPulling.value = true;
@@ -260,9 +308,17 @@ async function refreshFirstVideo() {
 
 function onGestureEnd(event: TouchEvent) {
   const touch = event.changedTouches[0];
+  clearHoldTimer();
   if (!touch || refreshing.value) return;
   const distance = touch.clientY - gesture.startY;
   const elapsed = Date.now() - gesture.startAt;
+  if (holdBoosting.value) {
+    endHoldBoost();
+    isPulling.value = false;
+    pullDistance.value = 0;
+    refreshLabel.value = "下拉刷新内容";
+    return;
+  }
   if (currentIndex.value === 0 && distance >= PULL_REFRESH_THRESHOLD) {
     void refreshFirstVideo();
     return;
@@ -291,6 +347,11 @@ function handleAction(action: TheaterAction) {
   if (action === "favorite") isFavorite.value = !isFavorite.value;
   if (action === "like") isLiked.value = !isLiked.value;
   if (action in ACTION_LABELS) uni.showToast({ title: ACTION_LABELS[action as keyof typeof ACTION_LABELS], icon: "none" });
+}
+
+function onTheaterPause() {
+  isPlaying.value = false;
+  endHoldBoost();
 }
 
 function onVideoError() {
@@ -328,7 +389,7 @@ function prevSimple() {
       object-fit="cover"
       :aria-label="`${currentVideo.dramaTitle}沉浸式短剧播放器`"
       @play="isPlaying = true"
-      @pause="isPlaying = false"
+      @pause="onTheaterPause"
       @loadedmetadata="playCurrent"
       @error="onVideoError"
     />
@@ -337,6 +398,9 @@ function prevSimple() {
       v-if="H5_SIMPLIFIED"
       class="gesture-layer"
       @tap="togglePlayback"
+      @longpress="startHoldBoost"
+      @touchend="endHoldBoost"
+      @touchcancel="endHoldBoost"
     />
     <view
       v-else
@@ -346,6 +410,7 @@ function prevSimple() {
       @touchend="onGestureEnd"
     />
     <view v-if="!isPlaying && !playbackError" class="pause-mark" aria-hidden="true">❚❚</view>
+    <view v-else-if="holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
 
     <view
       class="refresh-panel"
@@ -385,7 +450,7 @@ function prevSimple() {
       {{ videoMarker }}
     </view>
     <view class="swipe-tip" :style="{ top: `${layout.overlayTop + 22}px` }">
-      {{ H5_SIMPLIFIED ? "轻点暂停或播放 · 用按钮切换条目" : "轻点暂停或播放 · 上滑下一条 · 首条下拉刷新" }}
+      {{ H5_SIMPLIFIED ? "轻点暂停 · 长按加速 · 用按钮切换条目" : "轻点暂停 · 长按加速 · 上滑下一条" }}
     </view>
     <view v-if="H5_SIMPLIFIED" class="h5-switchers">
       <button class="secondary-button" @tap="prevSimple">上一条</button>

@@ -1,5 +1,5 @@
 import { RUNTIME_CONFIG } from "../../config/runtime";
-import { isPlaybackTap } from "../../utils/playback-gesture";
+import { isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 
@@ -146,11 +146,15 @@ Page({
     refreshLabel: "下拉刷新内容",
     isFavorite: false,
     isLiked: false,
-    isPlaying: true
+    isPlaying: true,
+    holdBoosting: false,
+    boostRateLabel: `${holdBoostRate()}x`
   },
 
   touchStartY: 0,
   touchStartAt: 0,
+  holdTimer: 0 as number,
+  holdMoved: false,
 
   selectCategory(event: WechatMiniprogram.TouchEvent) {
     const category = String(event.currentTarget.dataset.category || "推荐");
@@ -168,12 +172,24 @@ Page({
     if (!touch || this.data.refreshing) return;
     this.touchStartY = touch.clientY;
     this.touchStartAt = Date.now();
+    this.holdMoved = false;
+    this.clearHoldTimer();
+    this.holdTimer = setTimeout(() => {
+      this.holdTimer = 0;
+      if (!this.holdMoved) this.startHoldBoost();
+    }, PLAYBACK_HOLD_MS) as unknown as number;
   },
 
   onGestureMove(event: WechatMiniprogram.TouchEvent) {
     const touch = event.touches[0];
-    if (!touch || this.data.refreshing || this.data.currentIndex !== 0) return;
+    if (!touch || this.data.refreshing) return;
     const distance = touch.clientY - this.touchStartY;
+    if (Math.abs(distance) > PLAYBACK_TAP_MOVE_MAX_PX) {
+      this.holdMoved = true;
+      this.clearHoldTimer();
+      this.endHoldBoost();
+    }
+    if (this.data.currentIndex !== 0) return;
     if (distance <= 0) return;
     const pullDistance = Math.min(124, Math.round(distance * 0.48));
     this.setData({
@@ -185,9 +201,15 @@ Page({
 
   onGestureEnd(event: WechatMiniprogram.TouchEvent) {
     const touch = event.changedTouches[0];
+    this.clearHoldTimer();
     if (!touch || this.data.refreshing) return;
     const distance = touch.clientY - this.touchStartY;
     const elapsed = Date.now() - this.touchStartAt;
+    if (this.data.holdBoosting) {
+      this.endHoldBoost();
+      this.setData({ isPulling: false, pullDistance: 0, refreshLabel: "下拉刷新内容" });
+      return;
+    }
     if (this.data.currentIndex === 0 && distance >= PULL_REFRESH_THRESHOLD) {
       void this.refreshFirstVideo();
       return;
@@ -230,7 +252,9 @@ Page({
       isLiked: false
     });
     wx.nextTick(() => {
+      this.endHoldBoost();
       this.setData({ isPlaying: true });
+      this.applyTheaterRate(1);
       wx.createVideoContext("theater-video", this).play();
     });
     if (notice) wx.showToast({ title: notice, icon: "none" });
@@ -238,6 +262,7 @@ Page({
 
   onVideoReady() {
     this.setData({ isPlaying: true });
+    this.applyTheaterRate(1);
     wx.createVideoContext("theater-video", this).play();
   },
 
@@ -246,7 +271,29 @@ Page({
   },
 
   onPause() {
+    this.endHoldBoost();
     this.setData({ isPlaying: false });
+  },
+
+  applyTheaterRate(rate: number) {
+    wx.createVideoContext("theater-video", this).playbackRate(restoreHoldRate(rate));
+  },
+
+  startHoldBoost() {
+    if (!this.data.isPlaying || this.data.holdBoosting) return;
+    this.setData({ holdBoosting: true });
+    this.applyTheaterRate(holdBoostRate());
+  },
+
+  endHoldBoost() {
+    if (!this.data.holdBoosting) return;
+    this.setData({ holdBoosting: false });
+    this.applyTheaterRate(1);
+  },
+
+  clearHoldTimer() {
+    if (this.holdTimer) clearTimeout(this.holdTimer);
+    this.holdTimer = 0;
   },
 
   togglePlayback() {

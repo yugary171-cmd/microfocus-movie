@@ -661,14 +661,26 @@ describe("search discovery", () => {
 
 describe("playback tap gesture", () => {
   it("treats a short still touch as tap and ignores swipe or long press", async () => {
-    const { isPlaybackTap, PLAYBACK_TAP_MAX_MS, PLAYBACK_TAP_MOVE_MAX_PX } = await import(
-      "../src/utils/playback-gesture"
-    );
+    const {
+      holdBoostRate,
+      isPlaybackTap,
+      PLAYBACK_HOLD_MS,
+      PLAYBACK_TAP_MAX_MS,
+      PLAYBACK_TAP_MOVE_MAX_PX,
+      restoreHoldRate,
+      shouldStartHoldBoost
+    } = await import("../src/utils/playback-gesture");
+    const { PLAYBACK_RATE_MAX } = await import("@microfocus/contracts");
     expect(isPlaybackTap(0, 120)).toBe(true);
     expect(isPlaybackTap(PLAYBACK_TAP_MOVE_MAX_PX, PLAYBACK_TAP_MAX_MS)).toBe(true);
     expect(isPlaybackTap(PLAYBACK_TAP_MOVE_MAX_PX + 1, 120)).toBe(false);
     expect(isPlaybackTap(0, PLAYBACK_TAP_MAX_MS + 1)).toBe(false);
     expect(isPlaybackTap(Number.NaN, 120)).toBe(false);
+    expect(shouldStartHoldBoost(true, 0, PLAYBACK_HOLD_MS)).toBe(true);
+    expect(shouldStartHoldBoost(false, 0, PLAYBACK_HOLD_MS)).toBe(false);
+    expect(shouldStartHoldBoost(true, PLAYBACK_TAP_MOVE_MAX_PX + 1, PLAYBACK_HOLD_MS)).toBe(false);
+    expect(holdBoostRate()).toBe(PLAYBACK_RATE_MAX);
+    expect(restoreHoldRate(1.5)).toBe(1.5);
   });
 });
 
