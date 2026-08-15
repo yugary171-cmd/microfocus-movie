@@ -1,6 +1,7 @@
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   DeletionRequestStatus,
+  PLAYBACK_TOKEN_TTL_SECONDS,
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
@@ -154,7 +155,7 @@ export const mockApi: ClientApi = {
         episodeId,
         RUNTIME_CONFIG.demoVideoUrl
       ),
-      playbackTokenExpiresAt: new Date(Date.now() + 120_000).toISOString(),
+      playbackTokenExpiresAt: new Date(Date.now() + PLAYBACK_TOKEN_TTL_SECONDS * 1000).toISOString(),
       heartbeatIntervalSeconds: 5,
       remainingSeconds: episodeId.endsWith("e1") || episodeId.endsWith("e2") ? null : 0,
       isFree: episodeId.endsWith("e1") || episodeId.endsWith("e2")

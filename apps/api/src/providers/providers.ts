@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { PROVIDER_SIGNATURE_MAX_LENGTH } from "@microfocus/contracts";
+import { PLAYBACK_TOKEN_TTL_SECONDS, PROVIDER_SIGNATURE_MAX_LENGTH } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 import { AppConfigService } from "../config/config.service.js";
 
@@ -113,7 +113,7 @@ export class VodProviderService implements VodProvider {
     }
     const token = await this.jwt.signAsync(
       { scope: "playback", mediaId },
-      { expiresIn: Math.min(120, ttlSeconds) }
+      { expiresIn: Math.min(PLAYBACK_TOKEN_TTL_SECONDS, ttlSeconds) }
     );
     return `https://${this.config.env.VOD_MEDIA_HOST}/${encodeURIComponent(mediaId)}.m3u8?token=${encodeURIComponent(token)}`;
   }
