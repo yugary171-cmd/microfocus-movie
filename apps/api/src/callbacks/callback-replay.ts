@@ -1,4 +1,5 @@
 import {
+  ADMIN_REASON_MAX_LENGTH,
   CallbackEventStatus,
   ERROR_CODES,
   type CallbackReplayView,
@@ -149,8 +150,8 @@ async function applyReplay(
       data: {
         eventId: event.id,
         operatorAdminId: payload.operatorAdminId,
-        reason: payload.reason.slice(0, 300),
-        approvalNote: payload.approvalNote?.slice(0, 300) ?? null,
+        reason: payload.reason.slice(0, ADMIN_REASON_MAX_LENGTH),
+        approvalNote: payload.approvalNote?.slice(0, ADMIN_REASON_MAX_LENGTH) ?? null,
         idempotencyKey: payload.idempotencyKey
       }
     });

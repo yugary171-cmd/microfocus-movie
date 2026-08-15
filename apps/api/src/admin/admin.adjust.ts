@@ -1,4 +1,5 @@
 import {
+  ADMIN_REASON_MAX_LENGTH,
   EntitlementAdjustmentType,
   EntitlementFactType,
   ERROR_CODES,
@@ -201,8 +202,8 @@ async function applyAdjustment(
         sourceFactId,
         freezeAdjustmentId: payload.freezeAdjustmentId ?? null,
         seconds: payload.seconds,
-        reason: payload.reason.slice(0, 300),
-        approvalNote: payload.approvalNote?.slice(0, 300) ?? null,
+        reason: payload.reason.slice(0, ADMIN_REASON_MAX_LENGTH),
+        approvalNote: payload.approvalNote?.slice(0, ADMIN_REASON_MAX_LENGTH) ?? null,
         operatorAdminId: payload.operatorAdminId,
         idempotencyKey: payload.idempotencyKey
       }

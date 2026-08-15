@@ -1,4 +1,5 @@
 import {
+  ADMIN_REASON_MAX_LENGTH,
   EntitlementAdjustmentType,
   EntitlementFactType,
   ERROR_CODES
@@ -171,6 +172,33 @@ describe("entitlement adjustments", () => {
     });
     expect(result.remainingSeconds).toBe(100);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("caps stored reason and approval note to the contract max", async () => {
+    const create = vi.fn().mockResolvedValue({ ...freezeRow, seconds: 40 });
+    const prisma = transactionPrisma({
+      entitlementGrant: {
+        findUnique: vi.fn().mockResolvedValue(grant),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      },
+      entitlementAdjustment: { create },
+      playbackReservation: { findMany: vi.fn().mockResolvedValue([]) }
+    });
+    await createIdempotentAdjustment(prisma as unknown as PrismaService, {
+      type: EntitlementAdjustmentType.FREEZE_REMAINDER,
+      grantId: grant.id,
+      seconds: 40,
+      reason: "错".repeat(ADMIN_REASON_MAX_LENGTH + 5),
+      approvalNote: "批".repeat(ADMIN_REASON_MAX_LENGTH + 5),
+      idempotencyKey: "a:cap",
+      operatorAdminId: "admin-1"
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        reason: "错".repeat(ADMIN_REASON_MAX_LENGTH),
+        approvalNote: "批".repeat(ADMIN_REASON_MAX_LENGTH)
+      })
+    });
   });
 
   it("rejects a reused key with a different payload", async () => {

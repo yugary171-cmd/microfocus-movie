@@ -1,4 +1,4 @@
-import { CallbackEventStatus, ERROR_CODES } from "@microfocus/contracts";
+import { ADMIN_REASON_MAX_LENGTH, CallbackEventStatus, ERROR_CODES } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../common/app-error.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
@@ -138,6 +138,55 @@ describe("callback replay", () => {
       )
     ).rejects.toMatchObject({ code: ERROR_CODES.CALLBACK_NOT_REPLAYABLE });
     expect(tx.callbackEvent.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("caps stored reason and approval note to the contract max", async () => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      callbackEvent: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "event-1",
+          status: CallbackEventStatus.DEAD_LETTER,
+          attempts: 5,
+          processedAt: null
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      },
+      callbackReplay: {
+        create: vi.fn().mockResolvedValue(replayRow)
+      }
+    };
+    const prisma = {
+      callbackReplay: { findUnique: vi.fn().mockResolvedValue(null) },
+      callbackEvent: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "event-1",
+          status: CallbackEventStatus.PROCESSING,
+          attempts: 5,
+          payloadCiphertext: null,
+          payloadSchema: null,
+          payloadRetainUntil: null
+        })
+      },
+      $transaction: vi.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx))
+    };
+    await replayCallbackEvent(
+      prisma as unknown as PrismaService,
+      {
+        eventId: "event-1",
+        reason: "修".repeat(ADMIN_REASON_MAX_LENGTH + 5),
+        approvalNote: "批".repeat(ADMIN_REASON_MAX_LENGTH + 5),
+        idempotencyKey: "r:cap",
+        operatorAdminId: "admin-1"
+      },
+      deps
+    );
+    expect(tx.callbackReplay.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        reason: "修".repeat(ADMIN_REASON_MAX_LENGTH),
+        approvalNote: "批".repeat(ADMIN_REASON_MAX_LENGTH)
+      })
+    });
   });
 
   it("rejects a reused idempotency key with a different payload", async () => {
