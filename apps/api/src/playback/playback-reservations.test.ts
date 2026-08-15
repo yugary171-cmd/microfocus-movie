@@ -4,6 +4,8 @@ import {
   ENTITY_ID_MAX_LENGTH,
   ERROR_CODES,
   PLAYBACK_RECOVERY_GRACE_LIMIT,
+  PLAYBACK_WINDOW_SECONDS,
+  REWARD_SECONDS,
   UNCONFIRMED_EXPOSURE_LIMIT
 } from "@microfocus/contracts";
 import {
@@ -27,7 +29,7 @@ describe("playback reservations", () => {
         userId: "user",
         deviceId: "device",
         dramaId: "drama",
-        allocatableSeconds: 600
+        allocatableSeconds: REWARD_SECONDS
       })
     ).rejects.toMatchObject({ code: ERROR_CODES.UNCONFIRMED_EXPOSURE_LIMIT });
   });
@@ -41,8 +43,8 @@ describe("playback reservations", () => {
   it("never auto-debits unconfirmed windows when VOD delivery logs are absent", async () => {
     expect(hasVodPlaybackDeliveryEvidence()).toBe(false);
     expect(unconfirmedAutoSettlement()).toBe("release");
-    expect(allowedDebitSeconds({ requestedSeconds: 5, unconfirmedCount: 1 })).toBe(0);
-    expect(allowedDebitSeconds({ requestedSeconds: 5, unconfirmedCount: 0 })).toBe(5);
+    expect(allowedDebitSeconds({ requestedSeconds: PLAYBACK_WINDOW_SECONDS, unconfirmedCount: 1 })).toBe(0);
+    expect(allowedDebitSeconds({ requestedSeconds: PLAYBACK_WINDOW_SECONDS, unconfirmedCount: 0 })).toBe(PLAYBACK_WINDOW_SECONDS);
   });
 
   it("releases unconfirmed windows and records a recovery event within grace", async () => {
