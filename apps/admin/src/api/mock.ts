@@ -428,7 +428,7 @@ export const mockApi = {
       uploadId: `mock-upload-${crypto.randomUUID()}`,
       expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
       mock: true,
-      fileName: file.name,
+      fileName: file.name.trim(),
       dramaId,
       episodeId,
     } as UploadSignature);

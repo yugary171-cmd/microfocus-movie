@@ -47,10 +47,16 @@ export const REWARD_NONCE_MAX_LENGTH = 128;
 export const ADMIN_LIST_PAGE_SIZE = 50;
 export const ADMIN_LIST_MAX_PAGE = 100;
 export const LIST_QUERY_MAX_LENGTH = 100;
+export const UPLOAD_FILE_NAME_MAX_LENGTH = 255;
 
 /** Trim then cap list/search keywords so clients match server truncation. */
 export function boundListQuery(value: string): string {
   return value.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+}
+
+export function isAllowedUploadFileName(fileName: string): boolean {
+  const name = fileName.trim();
+  return name.length >= 1 && name.length <= UPLOAD_FILE_NAME_MAX_LENGTH && !/[/\\\0]/.test(name);
 }
 
 export const ERROR_CODES = {

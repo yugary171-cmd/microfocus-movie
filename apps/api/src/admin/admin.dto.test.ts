@@ -10,9 +10,10 @@ import {
   DRAMA_TITLE_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
-  EPISODE_DURATION_SECONDS_MAX
+  EPISODE_DURATION_SECONDS_MAX,
+  UPLOAD_FILE_NAME_MAX_LENGTH
 } from "@microfocus/contracts";
-import { AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, OfflineDto, RightsDto } from "./admin.module.js";
+import { AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, OfflineDto, RightsDto, UploadSignDto } from "./admin.module.js";
 
 function validDrama(overrides: Record<string, unknown> = {}) {
   return {
@@ -168,5 +169,34 @@ describe("admin entitlement write input limits", () => {
         plainToInstance(CircuitCollectionDto, { enabled: true, reason: "全站故障熔断" })
       )
     ).toEqual([]);
+  });
+
+  it("rejects oversized or path-like upload file names", async () => {
+    const valid = {
+      dramaId: "drama-1",
+      episodeId: "episode-1",
+      fileName: "episode.mp4",
+      size: 12,
+      contentType: "video/mp4"
+    };
+    expect(await validate(plainToInstance(UploadSignDto, valid))).toEqual([]);
+    expect(
+      (await validate(
+        plainToInstance(UploadSignDto, {
+          ...valid,
+          fileName: `${"a".repeat(UPLOAD_FILE_NAME_MAX_LENGTH + 1)}.mp4`
+        })
+      )).some((error) => error.property === "fileName")
+    ).toBe(true);
+    expect(
+      (await validate(plainToInstance(UploadSignDto, { ...valid, fileName: "../secret.mp4" }))).some(
+        (error) => error.property === "fileName"
+      )
+    ).toBe(true);
+    expect(
+      (await validate(plainToInstance(UploadSignDto, { ...valid, fileName: "folder\\clip.mp4" }))).some(
+        (error) => error.property === "fileName"
+      )
+    ).toBe(true);
   });
 });

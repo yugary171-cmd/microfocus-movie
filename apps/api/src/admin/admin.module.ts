@@ -36,6 +36,7 @@ import {
   RIGHTS_DOCUMENT_MAX_LENGTH,
   RIGHTS_HOLDER_MAX_LENGTH,
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
+  UPLOAD_FILE_NAME_MAX_LENGTH,
   type CreateEntitlementAdjustmentRequest,
   type ReplayCallbackEventRequest,
   type ReissueDeletionQueryTokenRequest,
@@ -187,10 +188,10 @@ class MediaReviewDto {
   @IsString() @Length(6, 500) notes!: string;
 }
 
-class UploadSignDto {
+export class UploadSignDto {
   @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) dramaId!: string;
   @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) episodeId!: string;
-  @IsString() @Length(1, 255) @Matches(/^[^/\\\0]+$/) fileName!: string;
+  @IsString() @Length(1, UPLOAD_FILE_NAME_MAX_LENGTH) @Matches(/^[^/\\\0]+$/) fileName!: string;
   @IsInt() @Min(1) @Max(5 * 1024 * 1024 * 1024) size!: number;
   @IsIn(["video/mp4", "video/quicktime", "video/webm", "application/octet-stream"])
   contentType!: string;

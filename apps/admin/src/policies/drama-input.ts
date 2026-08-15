@@ -11,8 +11,18 @@ import {
   RIGHTS_DOCUMENT_MAX_LENGTH,
   RIGHTS_HOLDER_MAX_LENGTH,
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
+  UPLOAD_FILE_NAME_MAX_LENGTH,
+  isAllowedUploadFileName,
 } from "@microfocus/contracts";
 import type { DramaInput } from "@/types/admin";
+
+export function uploadFileNameError(fileName: string): string {
+  if (isAllowedUploadFileName(fileName)) return "";
+  const name = fileName.trim();
+  if (!name) return "文件名不能为空";
+  if (/[/\\\0]/.test(name)) return "文件名不能包含路径分隔符";
+  return `文件名不能超过 ${UPLOAD_FILE_NAME_MAX_LENGTH} 个字符`;
+}
 
 export function dramaDraftError(input: DramaInput): string {
   if (input.title.length > DRAMA_TITLE_MAX_LENGTH) {

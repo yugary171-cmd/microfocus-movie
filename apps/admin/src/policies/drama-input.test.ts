@@ -4,9 +4,10 @@ import {
   DRAMA_TITLE_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
   MediaStatus,
+  UPLOAD_FILE_NAME_MAX_LENGTH,
 } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
-import { dramaDraftError } from "./drama-input";
+import { dramaDraftError, uploadFileNameError } from "./drama-input";
 import type { DramaInput } from "@/types/admin";
 
 function draft(overrides: Partial<DramaInput> = {}): DramaInput {
@@ -82,5 +83,19 @@ describe("dramaDraftError", () => {
         }),
       ),
     ).toContain("集数不能超过");
+  });
+});
+
+describe("uploadFileNameError", () => {
+  it("accepts a bounded basename", () => {
+    expect(uploadFileNameError("episode.mp4")).toBe("");
+    expect(uploadFileNameError("  clip.mov  ")).toBe("");
+  });
+
+  it("rejects empty, path-like, and oversized names", () => {
+    expect(uploadFileNameError("   ")).toContain("不能为空");
+    expect(uploadFileNameError("../x.mp4")).toContain("路径分隔符");
+    expect(uploadFileNameError("dir\\clip.mp4")).toContain("路径分隔符");
+    expect(uploadFileNameError("a".repeat(UPLOAD_FILE_NAME_MAX_LENGTH + 1))).toContain("不能超过");
   });
 });

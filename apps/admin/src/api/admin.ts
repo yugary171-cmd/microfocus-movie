@@ -17,6 +17,7 @@ import type {
 } from "@/types/admin";
 import { apiBaseUrl, getSessionToken, isMockMode, request } from "./client";
 import { mockApi } from "./mock";
+import { uploadFileNameError } from "@/policies/drama-input";
 import {
   normalizeAdminSession,
   normalizeAuditList,
@@ -227,6 +228,9 @@ export const adminApi = {
     file: File,
     onProgress: (value: number) => void,
   ): Promise<void> {
+    const fileNameError = uploadFileNameError(file.name);
+    if (fileNameError) throw new Error(fileNameError);
+    const fileName = file.name.trim();
     const signature = isMockMode
       ? await mockApi.signUpload(file, dramaId, episodeId)
       : normalizeUploadSignature(
@@ -235,7 +239,7 @@ export const adminApi = {
             body: json({
               dramaId,
               episodeId,
-              fileName: file.name,
+              fileName,
               size: file.size,
               contentType: file.type || "application/octet-stream",
             }),

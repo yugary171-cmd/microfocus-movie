@@ -1,4 +1,4 @@
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, UPLOAD_FILE_NAME_MAX_LENGTH } from "@microfocus/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function success(data: unknown): Response {
@@ -211,5 +211,17 @@ describe("live admin API adapter", () => {
       size: 5,
       contentType: "video/mp4",
     });
+  });
+
+  it("does not request an upload signature for an oversized file name", async () => {
+    const { adminApi } = await import("./admin");
+    const file = new File(["video"], `${"a".repeat(UPLOAD_FILE_NAME_MAX_LENGTH + 1)}.mp4`, {
+      type: "video/mp4",
+    });
+
+    await expect(adminApi.uploadEpisode("drama-1", "episode-1", file, vi.fn())).rejects.toThrow(
+      "文件名不能超过",
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
