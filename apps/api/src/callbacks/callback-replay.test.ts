@@ -1,4 +1,4 @@
-import { ADMIN_REASON_MAX_LENGTH, CallbackEventStatus, ERROR_CODES } from "@microfocus/contracts";
+import { ADMIN_REASON_MAX_LENGTH, CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ERROR_CODES } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../common/app-error.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
@@ -26,7 +26,7 @@ describe("callback replay", () => {
       callbackEvent: {
         findUnique: vi.fn().mockResolvedValue({
           status: CallbackEventStatus.PROCESSING,
-          attempts: 5
+          attempts: CALLBACK_MAX_ATTEMPTS
         })
       },
       $transaction: vi.fn()
@@ -45,7 +45,7 @@ describe("callback replay", () => {
     expect(result).toEqual({
       eventId: "event-1",
       status: CallbackEventStatus.PROCESSING,
-      attempts: 5,
+      attempts: CALLBACK_MAX_ATTEMPTS,
       replayed: true,
       executed: false
     });
@@ -59,7 +59,7 @@ describe("callback replay", () => {
         findUnique: vi.fn().mockResolvedValue({
           id: "event-1",
           status: CallbackEventStatus.DEAD_LETTER,
-          attempts: 5,
+          attempts: CALLBACK_MAX_ATTEMPTS,
           processedAt: null
         }),
         updateMany: vi.fn().mockResolvedValue({ count: 1 })
@@ -74,7 +74,7 @@ describe("callback replay", () => {
         findUnique: vi.fn().mockResolvedValue({
           id: "event-1",
           status: CallbackEventStatus.PROCESSING,
-          attempts: 5,
+          attempts: CALLBACK_MAX_ATTEMPTS,
           payloadCiphertext: null,
           payloadSchema: null,
           payloadRetainUntil: null
@@ -147,7 +147,7 @@ describe("callback replay", () => {
         findUnique: vi.fn().mockResolvedValue({
           id: "event-1",
           status: CallbackEventStatus.DEAD_LETTER,
-          attempts: 5,
+          attempts: CALLBACK_MAX_ATTEMPTS,
           processedAt: null
         }),
         updateMany: vi.fn().mockResolvedValue({ count: 1 })
@@ -162,7 +162,7 @@ describe("callback replay", () => {
         findUnique: vi.fn().mockResolvedValue({
           id: "event-1",
           status: CallbackEventStatus.PROCESSING,
-          attempts: 5,
+          attempts: CALLBACK_MAX_ATTEMPTS,
           payloadCiphertext: null,
           payloadSchema: null,
           payloadRetainUntil: null

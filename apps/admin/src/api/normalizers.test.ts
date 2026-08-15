@@ -1,4 +1,4 @@
-import { AdminRole, DramaStatus, MediaStatus, RIGHTS_MATERIAL_DIGEST_LENGTH } from "@microfocus/contracts";
+import { AdminRole, CALLBACK_MAX_ATTEMPTS, DramaStatus, MediaStatus, RIGHTS_MATERIAL_DIGEST_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
 import {
   normalizeAdminSession,
@@ -159,7 +159,7 @@ describe("admin API normalizers", () => {
           provider: "VOD",
           eventType: "MEDIA_UPDATED",
           status: "DEAD_LETTER",
-          attempts: 5,
+          attempts: CALLBACK_MAX_ATTEMPTS,
           receivedAt: "2026-08-14T10:00:00.000Z",
           payloadAvailable: true,
           replayable: true,

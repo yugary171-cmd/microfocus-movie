@@ -1,4 +1,4 @@
-import { ADMIN_LIST_PAGE_SIZE, CallbackEventStatus, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, CALLBACK_MAX_ATTEMPTS, CallbackEventStatus, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   listAdminCallbackEvents,
@@ -28,7 +28,7 @@ describe("admin callback event list", () => {
         provider: "VOD",
         eventType: "MEDIA_UPDATED",
         status: CallbackEventStatus.DEAD_LETTER,
-        attempts: 5,
+        attempts: CALLBACK_MAX_ATTEMPTS,
         receivedAt: new Date("2026-08-14T10:00:00.000Z"),
         processedAt: null,
         processingUntil: null,
@@ -52,7 +52,7 @@ describe("admin callback event list", () => {
           provider: "VOD",
           eventType: "MEDIA_UPDATED",
           status: CallbackEventStatus.DEAD_LETTER,
-          attempts: 5,
+          attempts: CALLBACK_MAX_ATTEMPTS,
           receivedAt: now,
           processedAt: null,
           processingUntil: null,
