@@ -35,7 +35,7 @@
       </view>
     </view>
     <view wx:else>
-      <view class="history-tools"><view class="filters"><button wx:for="{{historyFilters}}" wx:key="*this" class="filter {{activeFilter === item ? 'active' : ''}}" data-filter="{{item}}" bindtap="selectFilter">{{item}}</button></view><view class="tool-actions"><button class="filter-trigger {{sheetFilterActive ? 'active' : ''}}" hover-class="none" catchtap="openHistoryFilter">筛选</button><button data-label="编辑" bindtap="showFeature">编辑</button></view></view>
+      <view class="history-tools"><view class="filters"><button wx:for="{{historyFilters}}" wx:key="*this" class="filter {{activeFilter === item ? 'active' : ''}}" data-filter="{{item}}" bindtap="selectFilter">{{item}}</button></view><view class="tool-actions"><view class="filter-trigger {{sheetFilterActive ? 'active' : ''}}" bindtap="openHistoryFilter">筛选</view><view class="edit-trigger" data-label="编辑" bindtap="showFeature">编辑</view></view></view>
       <view wx:if="{{isMock}}" class="mock-label">Mock 观看记录</view>
       <view wx:if="{{historyLoading}}" class="history-state">正在读取观看记录…</view>
       <view wx:elif="{{historyError}}" class="history-state" role="alert">{{historyError}}</view>
@@ -45,8 +45,7 @@
     </view>
   </view>
 
-  <root-portal wx:if="{{filterOpen}}">
-  <view class="filter-root" catchtouchmove="preventMove">
+  <view wx:if="{{filterOpen}}" class="filter-root" catchtouchmove="preventMove">
     <view class="filter-mask" bindtap="closeHistoryFilter" />
     <view class="filter-panel">
       <view class="filter-header">
@@ -78,5 +77,4 @@
       </view>
     </view>
   </view>
-  </root-portal>
 </view>

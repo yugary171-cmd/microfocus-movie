@@ -68,7 +68,6 @@ const activeFilter = ref<HistoryCompletionFilter>("全部");
 const historyItems = ref<HistoryCardView[]>(isMock ? HISTORY_ITEMS : []);
 const inboxItems = INBOX_ITEMS;
 const filterOpen = ref(false);
-const filterClosingLocked = ref(false);
 const appliedSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
 const draftSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
 const formatOptions = HISTORY_FORMAT_OPTIONS;
@@ -127,15 +126,10 @@ function selectCompletionFilter(item: string) {
 
 function openHistoryFilter() {
   draftSheetFilter.value = cloneHistorySheetFilter(appliedSheetFilter.value);
-  filterClosingLocked.value = true;
   filterOpen.value = true;
-  setTimeout(() => {
-    filterClosingLocked.value = false;
-  }, 320);
 }
 
 function closeHistoryFilter() {
-  if (filterClosingLocked.value) return;
   filterOpen.value = false;
   draftSheetFilter.value = cloneHistorySheetFilter(appliedSheetFilter.value);
 }
@@ -263,7 +257,7 @@ async function openHistory(id: string) {
 
     <view class="history-panel">
       <view class="history-tabs">
-        <button
+        <view
           v-for="item in historyTabs"
           :key="item"
           class="history-tab"
@@ -271,15 +265,15 @@ async function openHistory(id: string) {
           @tap="selectLibraryTab(item)"
         >
           {{ item }}
-        </button>
-        <button
+        </view>
+        <view
           v-if="activeHistoryTab !== INBOX_TAB"
           class="history-search"
           aria-label="搜索历史"
           @tap="showFeature('历史搜索')"
         >
           ⌕
-        </button>
+        </view>
       </view>
       <view v-if="activeHistoryTab === INBOX_TAB" class="inbox-list" aria-label="消息分类">
         <view v-if="isMock" class="mock-label">体验占位，不接消息接口</view>
@@ -300,7 +294,7 @@ async function openHistory(id: string) {
       <view v-else>
         <view class="history-tools">
           <view class="filters">
-            <button
+            <view
               v-for="item in historyFilters"
               :key="item"
               class="filter"
@@ -308,18 +302,11 @@ async function openHistory(id: string) {
               @tap="selectCompletionFilter(item)"
             >
               {{ item }}
-            </button>
+            </view>
           </view>
           <view class="tool-actions">
-            <button
-              class="filter-trigger"
-              :class="{ active: sheetFilterActive }"
-              hover-class="none"
-              @tap.stop="openHistoryFilter"
-            >
-              筛选
-            </button>
-            <button @tap="showFeature('编辑')">编辑</button>
+            <view class="filter-trigger" :class="{ active: sheetFilterActive }" hover-class="none" @tap="openHistoryFilter">筛选</view>
+            <view class="edit-trigger" hover-class="none" @tap="showFeature('编辑')">编辑</view>
           </view>
         </view>
         <view v-if="isMock" class="mock-label">Mock 观看记录</view>
@@ -345,91 +332,157 @@ async function openHistory(id: string) {
         </view>
       </view>
     </view>
-
-    <root-portal v-if="filterOpen">
-      <view class="filter-root" @touchmove.stop.prevent>
-        <view class="filter-mask" @tap="closeHistoryFilter" />
-        <view class="filter-panel">
-        <view class="filter-header">
-          <button class="filter-close" aria-label="关闭筛选" @tap="closeHistoryFilter">∨</button>
-          <view class="filter-title">筛选</view>
-          <view class="filter-header-spacer" />
-        </view>
-        <view class="filter-section">
-          <view class="filter-section-title">体裁</view>
-          <view class="filter-chips">
-            <button
-              v-for="item in formatOptions"
-              :key="item.id"
-              class="filter-chip"
-              :class="{ active: draftSheetFilter.format === item.id }"
-              @tap="selectDraftFormat(item.id)"
-            >
-              {{ item.label }}
-            </button>
-          </view>
-        </view>
-        <view class="filter-section">
-          <view class="filter-section-title">已播放时长</view>
-          <view class="filter-chips">
-            <button
-              v-for="item in durationOptions"
-              :key="item.id"
-              class="filter-chip"
-              :class="{ active: draftSheetFilter.duration === item.id }"
-              @tap="selectDraftDuration(item.id)"
-            >
-              {{ item.label }}
-            </button>
-          </view>
-        </view>
-        <view class="filter-section">
-          <view class="filter-section-title">时间</view>
-          <view class="filter-chips">
-            <button
-              v-for="item in timeOptions"
-              :key="item.id"
-              class="filter-chip"
-              :class="{ active: draftSheetFilter.time === item.id }"
-              @tap="selectDraftTime(item.id)"
-            >
-              {{ item.label }}
-            </button>
-          </view>
-        </view>
-        <view class="filter-footer">
-          <button class="filter-clear" @tap="clearDraftHistoryFilter">清空</button>
-          <button class="filter-confirm" @tap="confirmHistoryFilter">确定</button>
-        </view>
-      </view>
-      </view>
-    </root-portal>
   </view>
+
+  <view v-if="filterOpen" class="filter-mask" @tap="closeHistoryFilter">
+    <view class="filter-panel" @tap.stop>
+      <view class="filter-header">
+        <view class="filter-close" aria-label="关闭筛选" @tap.stop="closeHistoryFilter">∨</view>
+        <view class="filter-title">筛选</view>
+        <view class="filter-header-spacer" />
+      </view>
+      <view class="filter-section">
+        <view class="filter-section-title">体裁</view>
+        <view class="filter-chips">
+          <view
+            v-for="item in formatOptions"
+            :key="item.id"
+            class="filter-chip"
+            :class="{ active: draftSheetFilter.format === item.id }"
+            @tap.stop="selectDraftFormat(item.id)"
+          >
+            {{ item.label }}
+          </view>
+        </view>
+      </view>
+      <view class="filter-section">
+        <view class="filter-section-title">已播放时长</view>
+        <view class="filter-chips">
+          <view
+            v-for="item in durationOptions"
+            :key="item.id"
+            class="filter-chip"
+            :class="{ active: draftSheetFilter.duration === item.id }"
+            @tap.stop="selectDraftDuration(item.id)"
+          >
+            {{ item.label }}
+          </view>
+        </view>
+      </view>
+      <view class="filter-section">
+        <view class="filter-section-title">时间</view>
+        <view class="filter-chips">
+          <view
+            v-for="item in timeOptions"
+            :key="item.id"
+            class="filter-chip"
+            :class="{ active: draftSheetFilter.time === item.id }"
+            @tap.stop="selectDraftTime(item.id)"
+          >
+            {{ item.label }}
+          </view>
+        </view>
+      </view>
+      <view class="filter-footer">
+        <view class="filter-clear" @tap.stop="clearDraftHistoryFilter">清空</view>
+        <view class="filter-confirm" @tap.stop="confirmHistoryFilter">确定</view>
+      </view>
+    </view>
+  </view>
+</template>
 
 <style>
 page {
   background: #f7f7f8;
   color: #16161a;
 }
-.filter-root {
-  position: fixed;
-  z-index: 1000;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
 .filter-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.55);
+}
+.filter-panel {
   position: absolute;
-  top: 0;
   right: 0;
   bottom: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.46);
+  padding: 8rpx 34rpx calc(28rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+}
+.filter-header {
+  display: flex;
+  align-items: center;
+  min-height: 88rpx;
+}
+.filter-close,
+.filter-clear {
+  margin: 0;
+  padding: 0;
+  color: #2b2b30;
+  background: transparent;
+}
+.filter-close {
+  width: 72rpx;
+  font-size: 36rpx;
+  line-height: 1;
+}
+.filter-title {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+.filter-header-spacer {
+  width: 72rpx;
+}
+.filter-section {
+  margin-top: 18rpx;
+}
+.filter-section-title {
+  margin-bottom: 18rpx;
+  font-size: 28rpx;
+  font-weight: 750;
+}
+.filter-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16rpx;
+}
+.filter-chip {
+  margin: 0;
+  padding: 18rpx 8rpx;
+  color: #5d5d63;
+  background: #f3f3f5;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  text-align: center;
+}
+.filter-chip.active {
+  color: #f28735;
+  background: #fff1df;
+  font-weight: 750;
+}
+.filter-footer {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-top: 36rpx;
+}
+.filter-clear {
+  font-size: 28rpx;
+}
+.filter-confirm {
+  flex: 1;
+  margin: 0;
+  padding: 22rpx 0;
+  color: #fff;
+  background: #ff7a2f;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 750;
+  text-align: center;
 }
 </style>
 <style scoped src="../../styles/my.scss"></style>

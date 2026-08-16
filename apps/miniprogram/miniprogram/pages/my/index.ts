@@ -76,7 +76,6 @@ Page({
     inboxItems: INBOX_ITEMS,
     avatarSaving: false,
     filterOpen: false,
-    filterClosingLocked: false,
     sheetFilterActive: false,
     appliedSheetFilter: cloneHistorySheetFilter(),
     draftSheetFilter: cloneHistorySheetFilter(),
@@ -145,16 +144,14 @@ Page({
   preventMove() {},
 
   openHistoryFilter() {
-    this.setData({
-      filterOpen: true,
-      filterClosingLocked: true,
-      draftSheetFilter: cloneHistorySheetFilter(this.data.appliedSheetFilter)
-    });
-    setTimeout(() => this.setData({ filterClosingLocked: false }), 320);
+    if (this.data.filterOpen) return;
+    const draftSheetFilter = cloneHistorySheetFilter(this.data.appliedSheetFilter);
+    setTimeout(() => {
+      this.setData({ filterOpen: true, draftSheetFilter });
+    }, 50);
   },
 
   closeHistoryFilter() {
-    if (this.data.filterClosingLocked) return;
     this.setData({
       filterOpen: false,
       draftSheetFilter: cloneHistorySheetFilter(this.data.appliedSheetFilter)
