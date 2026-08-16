@@ -9,6 +9,7 @@
     "pages/profile/signature",
     "pages/search/index",
     "pages/category/index",
+    "pages/ranking/index",
     "pages/drama/index",
     "pages/player/index",
     "pages/entitlements/index",

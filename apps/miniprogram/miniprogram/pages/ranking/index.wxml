@@ -1,0 +1,16 @@
+<view class="ranking-page">
+  <view class="ranking-hero"><view class="hero-title">✿ 推荐榜 ✿</view><view class="hero-subtitle">今日更新 · 基于观看、互动以及个人兴趣排序</view></view>
+  <view class="ranking-panel">
+    <scroll-view class="ranking-tabs" scroll-x enable-flex>
+      <button wx:for="{{tabs}}" wx:key="*this" class="ranking-tab {{activeTab === item ? 'active' : ''}}" data-tab="{{item}}" bindtap="selectTab">{{item}}</button>
+    </scroll-view>
+    <view class="ranking-tools">
+      <scroll-view class="ranking-types" scroll-x enable-flex>
+        <button wx:for="{{rankingTypes}}" wx:key="*this" class="ranking-type {{activeRanking === item ? 'active' : ''}}" data-type="{{item}}" bindtap="selectRanking">{{item}}</button>
+      </scroll-view>
+      <button class="ranking-filter" bindtap="openDrawer">分类⌄</button>
+    </view>
+    <view class="ranking-state">榜单内容将在连接数据后展示</view>
+  </view>
+  <view wx:if="{{drawerOpen}}" class="drawer-mask" bindtap="closeDrawer"><view class="drawer" catchtap="noop"><view class="drawer-title">榜单分类</view><button wx:for="{{rankingTypes}}" wx:key="*this" class="drawer-option {{activeRanking === item ? 'active' : ''}}" data-type="{{item}}" bindtap="selectRanking">{{item}}</button></view></view>
+</view>
