@@ -7,7 +7,25 @@
 }
 .search-row { display: flex; gap: 14rpx; align-items: center; }
 .search-field { display: flex; flex: 1; gap: 12rpx; align-items: center; height: 76rpx; padding: 0 20rpx; background: #fff; border-radius: 18rpx; box-shadow: 0 6rpx 20rpx rgba(37, 33, 39, .06); }
-.search-icon { color: #97979d; font-size: 44rpx; line-height: 1; transform: rotate(-18deg); }
+.magnifier {
+  position: relative;
+  width: 20rpx;
+  height: 20rpx;
+  flex: none;
+  border: 3rpx solid #8e9098;
+  border-radius: 50%;
+}
+.magnifier::after {
+  position: absolute;
+  right: -8rpx;
+  bottom: -5rpx;
+  width: 9rpx;
+  height: 3rpx;
+  background: #8e9098;
+  border-radius: 99rpx;
+  content: "";
+  transform: rotate(45deg);
+}
 .search-field input { flex: 1; min-width: 0; color: #222228; font-size: 27rpx; }
 .search-placeholder { color: #a6a6ad; }
 .recognize {
@@ -23,10 +41,10 @@
 .channels-inner { display: flex; gap: 24rpx; }
 .channel { width: auto; min-width: auto; padding: 0; margin: 0; color: #8a8a90; background: transparent; font-size: 29rpx; line-height: 54rpx; }
 .channel.active { color: #18181b; font-size: 36rpx; font-weight: 800; }
-.quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; }
+.quick-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; margin-bottom: 14rpx; }
 .quick-action { display: flex; gap: 9rpx; align-items: center; justify-content: center; height: 66rpx; margin: 0; padding: 0; color: #29282d; background: #fff; border-radius: 14rpx; font-size: 25rpx; font-weight: 650; box-shadow: 0 4rpx 14rpx rgba(37, 33, 39, .04); }
 .quick-icon { display: grid; width: 34rpx; height: 34rpx; place-items: center; color: #fff; border-radius: 10rpx; font-size: 20rpx; font-weight: 800; }
-.quick-purple { background: linear-gradient(135deg, #8d68fb, #a48bf9); }.quick-orange { background: linear-gradient(135deg, #ff6b30, #ff9e42); }.quick-cyan { background: linear-gradient(135deg, #00b9c5, #36d2d4); }.quick-gold { background: linear-gradient(135deg, #ffad36, #ffcf5a); }
+.quick-purple { background: linear-gradient(135deg, #8d68fb, #a48bf9); }.quick-orange { background: linear-gradient(135deg, #ff6b30, #ff9e42); }
 .mock-note { margin: 20rpx 4rpx 12rpx; color: #b8753e; font-size: 20rpx; }
 .feed-state {
   margin: 24rpx 4rpx;
@@ -77,3 +95,24 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sub-filter-row { display: flex; align-items: center; gap: 12rpx; margin: 4rpx 22rpx 18rpx; }
+.sub-filters { flex: 1; min-width: 0; white-space: nowrap; }
+.sub-filters-inner { display: inline-flex; gap: 14rpx; }
+.sub-filter, .filter-entry { flex: none; margin: 0; padding: 14rpx 22rpx; color: #26262a; background: #f1f1f3; border: 0; border-radius: 18rpx; font-size: 25rpx; line-height: 1.1; }
+.sub-filter.selected { color: #f07b29; background: #fff0df; }
+.filter-entry { display: flex; align-items: center; justify-content: center; width: 38rpx; min-width: 38rpx; height: 54rpx; padding: 0; color: #111; background: transparent; border-radius: 0; font-size: 32rpx; }
+.filter-entry.selected { color: #fff; background: #ff7a2f; border-radius: 50%; }
+.drawer-mask { position: fixed; z-index: 20; inset: 0; background: rgba(0,0,0,.45); }
+.filter-drawer { position: absolute; inset: 20% 0 0; display: flex; flex-direction: column; background: #fff; border-radius: 28rpx 28rpx 0 0; }
+.drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 22rpx 32rpx; font-size: 34rpx; font-weight: 800; }
+.drawer-close, .drawer-spacer { width: 60rpx; text-align: center; }
+.drawer-content { flex: 1; padding: 0 32rpx; box-sizing: border-box; }
+.drawer-section { margin: 22rpx 0 32rpx; }
+.drawer-title { display: block; margin-bottom: 18rpx; font-size: 29rpx; font-weight: 750; }
+.drawer-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14rpx; }
+.drawer-option { margin: 0; padding: 18rpx 8rpx; color: #4f4f55; background: #f5f5f6; border: 0; border-radius: 14rpx; font-size: 24rpx; }
+.drawer-option.selected { color: #f07b29; background: #fff0df; }
+.drawer-footer { display: flex; gap: 24rpx; padding: 22rpx 32rpx calc(22rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -4rpx 16rpx rgba(0,0,0,.06); }
+.drawer-clear, .drawer-confirm { flex: 1; margin: 0; padding: 20rpx; border: 0; border-radius: 16rpx; font-size: 28rpx; }
+.drawer-clear { color: #888; background: #f5f5f5; }
+.drawer-confirm { color: #fff; background: #ff7a2f; }

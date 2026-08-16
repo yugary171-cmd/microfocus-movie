@@ -10,7 +10,8 @@
     "setting": {
       "urlCheck": false,
       "useLanDebug": true,
-      "es6": false,
+      "es6": true,
+      "enhance": false,
       "minified": true
     },
     "usingComponents": true

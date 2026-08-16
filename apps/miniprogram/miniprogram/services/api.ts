@@ -204,12 +204,12 @@ const realApi: ClientApi = {
   authAnonymous: (input) =>
     request<AnonymousSessionResponse>(API_ROUTES.auth.anonymous, "POST", input, undefined, undefined, false),
   getCatalog: () => request(API_ROUTES.catalog),
-  search: async (q, category, page) => {
+  search: async (q, category, page, filters) => {
     const result = await request<SearchResponse | SearchResponse["items"]>(
       API_ROUTES.search,
       "GET",
       undefined,
-      { q, category, page }
+      { q, category, page, subject: filters?.subject || "", setting: filters?.setting || "", background: filters?.background || "", ...(filters?.tags ? { tags: filters.tags.join(",") } : {}) }
     );
     return Array.isArray(result)
       ? { items: result, page, hasMore: false }

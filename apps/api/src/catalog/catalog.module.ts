@@ -6,6 +6,7 @@ import {
   SEARCH_MAX_PAGE,
   SEARCH_PAGE_SIZE,
   type CatalogResponse,
+  type DramaSearchFilters,
   type DramaCard,
   type DramaDetail
 } from "@microfocus/contracts";
@@ -17,6 +18,11 @@ import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../secur
 
 const CATALOG_FEATURED_LIMIT = 8;
 const CATALOG_SHELF_LIMIT = 20;
+const FILTER_OPTIONS = {
+  subjects: ["现代", "女性成长", "脑洞", "奇幻", "玄幻", "古言", "战神", "宫斗", "仙侠", "权谋", "悬疑", "喜剧", "青春"],
+  settings: ["打脸虐渣", "大男主", "大女主", "马甲", "重生", "穿越", "系统", "先婚后爱", "家长里短", "破镜重圆", "神豪", "豪门", "强者回归", "异能"],
+  backgrounds: ["现代", "都市", "古代", "乡村", "年代", "架空", "职场", "民国", "校园", "宫廷"]
+} satisfies CatalogResponse["filterOptions"];
 
 const catalogCardInclude = {
   _count: { select: { episodes: true } },
@@ -51,7 +57,8 @@ export class CatalogController {
       featured: rankedCards.slice(0, CATALOG_FEATURED_LIMIT),
       latest: latestCards,
       popular: rankedCards,
-      categories: [...new Set([...rankedCards, ...latestCards].map((card) => card.category))]
+      categories: [...new Set([...rankedCards, ...latestCards].map((card) => card.category))],
+      filterOptions: FILTER_OPTIONS
     };
   }
 
@@ -60,7 +67,11 @@ export class CatalogController {
     @Req() request: SocketRequest,
     @Query("q") query = "",
     @Query("category") category = "",
-    @Query("page") pageValue = "1"
+    @Query("page") pageValue = "1",
+    @Query("subject") subject = "",
+    @Query("setting") setting = "",
+    @Query("background") background = "",
+    @Query("tags") tags = ""
   ): Promise<{
     items: DramaCard[];
     page: number;
@@ -76,7 +87,13 @@ export class CatalogController {
     if (page > SEARCH_MAX_PAGE) {
       return { items: [], page, pageSize, total: 0, totalPages: 0 };
     }
-    const where = publicSearchWhere(q, normalizedCategory);
+    const filters: DramaSearchFilters = {
+      subject: boundListQuery(subject),
+      setting: boundListQuery(setting),
+      background: boundListQuery(background),
+      tags: tags.split(",").map((tag) => boundListQuery(tag)).filter(Boolean)
+    };
+    const where = publicSearchWhere(q, normalizedCategory, filters);
     const [dramas, total] = await this.prisma.$transaction([
       this.prisma.drama.findMany({
         where,
@@ -133,14 +150,18 @@ export class CatalogController {
   }
 }
 
-export function publicSearchWhere(q: string, category: string) {
+export function publicSearchWhere(q: string, category: string, filters: DramaSearchFilters = {}) {
+  const selectedTags = [filters.subject, filters.setting, filters.background, ...(filters.tags ?? [])].filter(
+    (value): value is string => Boolean(value)
+  );
   return {
     status: "PUBLISHED" as const,
     rightsRecords: {
       some: { status: "ACTIVE" as const, validUntil: { gt: new Date() } }
     },
     ...(category ? { category } : {}),
-    ...(q ? { OR: [{ title: { contains: q } }, { summary: { contains: q } }] } : {})
+    ...(q ? { OR: [{ title: { contains: q } }, { summary: { contains: q } }] } : {}),
+    ...(selectedTags.length ? { AND: selectedTags.map((tag) => ({ tagsJson: { array_contains: tag } })) } : {})
   };
 }
 

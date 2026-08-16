@@ -17,6 +17,20 @@ const loading = ref(true);
 const loadingMore = ref(false);
 const searched = ref(false);
 const error = ref("");
+const filtersExpanded = ref(true);
+const filterSections = [
+  { key: "format", label: "全部体裁", options: ["全部体裁", "真人剧", "漫剧", "AI 剧"] },
+  { key: "subject", label: "全部主题", options: ["全部主题", "现代", "女性成长", "脑洞", "奇幻", "玄幻", "古言", "战神", "宫斗"] },
+  { key: "setting", label: "全部设定", options: ["全部设定", "打脸虐渣", "大男主", "大女主", "马甲", "重生", "穿越", "系统"] },
+  { key: "background", label: "全部背景", options: ["全部背景", "现代", "都市", "古代", "乡村", "年代", "架空", "职场"] },
+  { key: "recommendation", label: "全部推荐", options: ["全部推荐", "最新上架", "最高热度", "最高收藏"] },
+  { key: "audience", label: "全部受众", options: ["全部受众", "男频", "女频"] },
+  { key: "time", label: "全部时间", options: ["全部时间", "7天内上新", "14天内上新", "30天内上新", "90天内上新"] }
+] as const;
+const selectedFilters = ref<Record<string, string>>({
+  format: "全部体裁", subject: "全部主题", setting: "全部设定", background: "全部背景",
+  recommendation: "全部推荐", audience: "全部受众", time: "全部时间"
+});
 
 async function search(reset: boolean) {
   if (loadingMore.value) return;
@@ -29,10 +43,19 @@ async function search(reset: boolean) {
     error.value = "";
   }
   try {
+    const subject = selectedFilters.value.subject || "";
+    const setting = selectedFilters.value.setting || "";
+    const background = selectedFilters.value.background || "";
+    const format = selectedFilters.value.format || "全部体裁";
     const response = await getApi().search(
       boundListQuery(query.value),
-      category.value === "全部" ? "" : boundListQuery(category.value),
-      nextPage
+      format === "全部体裁" ? "" : boundListQuery(format),
+      nextPage,
+      {
+        subject: subject === "全部主题" ? "" : subject,
+        setting: setting === "全部设定" ? "" : setting,
+        background: background === "全部背景" ? "" : background
+      }
     );
     results.value = reset ? response.items : [...results.value, ...response.items];
     page.value = response.page || nextPage;
@@ -77,15 +100,23 @@ function selectCategory(value: string) {
   void search(true);
 }
 
+function selectFilter(key: string, value: string) {
+  selectedFilters.value = { ...selectedFilters.value, [key]: value };
+  if (key === "format") category.value = value === "全部体裁" ? "全部" : value;
+  void search(true);
+}
+
 function loadMore() {
   if (hasMore.value) void search(false);
 }
+
+function goBack() { uni.navigateBack(); }
 </script>
 
 <template>
   <view class="page">
     <internal-banner :visible="isMock" />
-    <view class="page-title">找你想看的</view>
+    <view class="category-header"><view class="back" @tap="goBack">‹</view><view class="page-title">筛选</view></view>
     <view class="search-box">
       <input
         class="search-input"
@@ -99,18 +130,15 @@ function loadMore() {
       />
       <button class="search-button" :loading="loading" aria-label="提交搜索" @tap="search(true)">搜索</button>
     </view>
-    <scroll-view scroll-x enable-flex class="filters" aria-label="短剧分类">
-      <button
-        v-for="item in categories"
-        :key="item"
-        class="filter"
-        :class="{ active: category === item }"
-        :aria-pressed="category === item"
-        @tap="selectCategory(item)"
-      >
-        {{ item }}
-      </button>
-    </scroll-view>
+    <view class="filter-panel">
+      <view v-for="section in filterSections" :key="section.key" class="filter-row">
+        <button class="filter-label">{{ selectedFilters[section.key] }}</button>
+        <scroll-view v-if="filtersExpanded" class="filter-values" scroll-x enable-flex>
+          <button v-for="option in section.options" :key="option" class="filter-value" :class="{ active: selectedFilters[section.key] === option }" @tap="selectFilter(section.key, option)">{{ option }}</button>
+        </scroll-view>
+      </view>
+      <button class="collapse-button" @tap="filtersExpanded = !filtersExpanded">{{ filtersExpanded ? "收起⌃" : "展开⌄" }}</button>
+    </view>
 
     <view v-if="loading" class="state-card" role="status">正在搜索…</view>
     <view v-else-if="error" class="state-card" role="alert">

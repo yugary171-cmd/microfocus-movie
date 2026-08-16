@@ -2,6 +2,7 @@ import type {
   AnonymousSessionResponse,
   AuthenticatedUser,
   CatalogResponse,
+  DramaSearchFilters,
   CompleteRewardChallengeRequest,
   CreateAnonymousSessionRequest,
   CreateDeletionRequest,
@@ -37,7 +38,7 @@ export interface ClientApi {
   authWechat(code: string): Promise<AuthSession>;
   authAnonymous(input: CreateAnonymousSessionRequest): Promise<AnonymousSessionResponse>;
   getCatalog(): Promise<CatalogResponse>;
-  search(query: string, category: string, page: number): Promise<SearchResponse>;
+  search(query: string, category: string, page: number, filters?: DramaSearchFilters): Promise<SearchResponse>;
   getDrama(id: string): Promise<import("@microfocus/contracts").DramaDetail>;
   getHistory(): Promise<WatchHistoryItem[]>;
   deleteHistory(input: DeleteWatchHistoryRequest): Promise<DeleteWatchHistoryResponse>;

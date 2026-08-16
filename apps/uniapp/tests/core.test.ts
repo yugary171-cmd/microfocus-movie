@@ -689,6 +689,13 @@ describe("home channels", () => {
     expect(searchCategoryParam("推荐")).toBe("");
     expect(searchCategoryParam("战神")).toBe("战神");
   });
+
+  it("loads mock catalog without throwing on channel lists", async () => {
+    const { mockApi } = await import("../src/mocks/data");
+    await expect(mockApi.getCatalog()).resolves.toMatchObject({
+      categories: expect.arrayContaining(["推荐", "战神", "兵王"])
+    });
+  });
 });
 
 describe("search discovery", () => {

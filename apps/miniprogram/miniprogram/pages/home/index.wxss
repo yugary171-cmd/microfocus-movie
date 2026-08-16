@@ -3,7 +3,8 @@ page { background: #f7f7f8; }
 .home-page { min-height: 100vh; padding: 22rpx 20rpx 38rpx; box-sizing: border-box; color: #19191d; }
 .search-row { display: flex; gap: 14rpx; align-items: center; }
 .search-field { display: flex; flex: 1; gap: 12rpx; align-items: center; height: 76rpx; padding: 0 20rpx; background: #fff; border-radius: 18rpx; box-shadow: 0 6rpx 20rpx rgba(37, 33, 39, .06); }
-.search-icon { color: #97979d; font-size: 44rpx; line-height: 1; transform: rotate(-18deg); }
+.magnifier { position: relative; width: 20rpx; height: 20rpx; flex: none; border: 3rpx solid #8e9098; border-radius: 50%; }
+.magnifier::after { position: absolute; right: -8rpx; bottom: -5rpx; width: 9rpx; height: 3rpx; background: #8e9098; border-radius: 99rpx; content: ""; transform: rotate(45deg); }
 .search-field input { flex: 1; min-width: 0; color: #222228; font-size: 27rpx; }
 .search-placeholder { color: #a6a6ad; }
 .recognize { margin: 0; padding: 0 10rpx; color: #7a7a80; background: transparent; font-size: 25rpx; }

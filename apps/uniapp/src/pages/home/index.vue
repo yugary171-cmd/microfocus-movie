@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { DramaCard } from "@microfocus/contracts";
+import type { DramaCard, HomeFilterOptions } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
-import { ref } from "vue";
-import { HOME_RECOMMEND_CHANNEL } from "../../constants/runtime";
+import { computed, ref } from "vue";
+import { HOME_PRIMARY_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../../constants/runtime";
 import { getApi, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { buildHomeChannels, searchCategoryParam } from "../../utils/home-channels";
@@ -31,17 +31,23 @@ function toHomeDrama(card: DramaCard, index: number): HomeDrama {
 const isMock = isMockMode();
 const categories = ref<string[]>(buildHomeChannels([]));
 const activeCategory = ref(HOME_RECOMMEND_CHANNEL);
+const filterOptions = ref<HomeFilterOptions>({ subjects: [], settings: [], backgrounds: [] });
+const selectedTags = ref<string[]>([]);
+const draftDrawer = ref({ subject: "", setting: "", background: "" });
+const appliedDrawer = ref({ subject: "", setting: "", background: "" });
+const drawerOpen = ref(false);
+const subTags = ref<string[]>([]);
+const drawerSections = computed(() => [
+  { key: "subject" as const, title: "全部主题", values: filterOptions.value.subjects },
+  { key: "setting" as const, title: "全部设定", values: filterOptions.value.settings },
+  { key: "background" as const, title: "全部背景", values: filterOptions.value.backgrounds }
+]);
 const dramas = ref<HomeDrama[]>([]);
 const page = ref(1);
 const hasMore = ref(false);
 const loading = ref(true);
 const loadingMore = ref(false);
 const error = ref("");
-const quickActions = [
-  { icon: "筛", label: "筛选", tone: "purple" },
-  { icon: "热", label: "排行榜", tone: "orange" },
-  { icon: "播", label: "新剧", tone: "cyan" }
-];
 
 async function loadFeed(reset: boolean) {
   if (loadingMore.value) return;
@@ -57,7 +63,8 @@ async function loadFeed(reset: boolean) {
     const response = await getApi().search(
       "",
       searchCategoryParam(activeCategory.value),
-      nextPage
+      nextPage,
+      { tags: selectedTags.value, ...appliedDrawer.value }
     );
     const mapped = (Array.isArray(response.items) ? response.items : []).map((item, index) =>
       toHomeDrama(item, (reset ? 0 : dramas.value.length) + index)
@@ -79,6 +86,8 @@ onLoad(() => {
     try {
       const catalog = await getApi().getCatalog();
       categories.value = buildHomeChannels(catalog.categories);
+      filterOptions.value = catalog.filterOptions || { subjects: [], settings: [], backgrounds: [] };
+      subTags.value = filterOptions.value.subjects;
     } catch {
       categories.value = buildHomeChannels([]);
     }
@@ -94,14 +103,52 @@ function openSearch() {
   uni.navigateTo({ url: "/pages/search/index" });
 }
 
+function openFilterPage() {
+  uni.navigateTo({ url: "/pages/category/index" });
+}
+
+function openRankingPage() {
+  uni.navigateTo({ url: "/pages/ranking/index" });
+}
+
 function selectCategory(category: string) {
   if (!category || category === activeCategory.value) return;
   activeCategory.value = category;
+  selectedTags.value = [];
+  appliedDrawer.value = { subject: "", setting: "", background: "" };
+  draftDrawer.value = { subject: "", setting: "", background: "" };
+  subTags.value = category === HOME_RECOMMEND_CHANNEL ? [] : filterOptions.value.subjects;
   void loadFeed(true);
 }
 
-function showAction(label: string) {
-  uni.showToast({ title: `${label}功能即将开放`, icon: "none" });
+function toggleTag(tag: string) {
+  selectedTags.value = selectedTags.value.includes(tag)
+    ? selectedTags.value.filter((item) => item !== tag)
+    : [...selectedTags.value, tag];
+  void loadFeed(true);
+}
+
+function openDrawer() {
+  draftDrawer.value = { ...appliedDrawer.value };
+  drawerOpen.value = true;
+}
+
+function clearDrawer() {
+  selectedTags.value = [];
+  draftDrawer.value = { subject: "", setting: "", background: "" };
+}
+
+function confirmDrawer() {
+  selectedTags.value = [];
+  appliedDrawer.value = { ...draftDrawer.value };
+  drawerOpen.value = false;
+  void loadFeed(true);
+}
+
+function closeDrawer() { drawerOpen.value = false; }
+
+function selectDrawerOption(key: "subject" | "setting" | "background", value: string) {
+  draftDrawer.value = { ...draftDrawer.value, [key]: draftDrawer.value[key] === value ? "" : value };
 }
 
 function openDrama(id: string) {
@@ -114,7 +161,7 @@ function openDrama(id: string) {
   <view class="home-page">
     <view class="search-row">
       <view class="search-field" @tap="openSearch">
-        <text class="search-icon">⌕</text>
+        <view class="magnifier"></view>
         <text class="search-placeholder" aria-label="搜索短剧">搜剧名、演员、剧情</text>
       </view>
     </view>
@@ -122,7 +169,7 @@ function openDrama(id: string) {
     <scroll-view class="channels" scroll-x enable-flex aria-label="短剧分类">
       <view class="channels-inner">
         <button
-          v-for="channel in categories"
+          v-for="channel in HOME_PRIMARY_CHANNELS"
           :key="channel"
           class="channel"
           :class="{ active: activeCategory === channel }"
@@ -133,17 +180,18 @@ function openDrama(id: string) {
       </view>
     </scroll-view>
 
-    <view class="quick-actions" aria-label="快捷入口">
-      <button
-        v-for="action in quickActions"
-        :key="action.label"
-        class="quick-action"
-        :aria-label="action.label"
-        @tap="showAction(action.label)"
-      >
-        <view class="quick-icon" :class="`quick-${action.tone}`">{{ action.icon }}</view>
-        <text>{{ action.label }}</text>
-      </button>
+    <view v-if="activeCategory === HOME_RECOMMEND_CHANNEL" class="quick-actions" aria-label="首页工具">
+      <button class="quick-action" @tap="openFilterPage"><view class="quick-icon quick-purple">筛</view><text>筛选</text></button>
+      <button class="quick-action" @tap="openRankingPage"><view class="quick-icon quick-orange">热</view><text>排行榜</text></button>
+    </view>
+
+    <view v-if="activeCategory !== HOME_RECOMMEND_CHANNEL" class="sub-filter-row">
+      <scroll-view class="sub-filters" scroll-x enable-flex aria-label="细分标签">
+        <view class="sub-filters-inner">
+          <button v-for="tag in subTags" :key="tag" class="sub-filter" :class="{ selected: selectedTags.includes(tag) }" @tap="toggleTag(tag)">{{ tag }}</button>
+        </view>
+      </scroll-view>
+      <button class="filter-entry" :class="{ selected: selectedTags.length }" @tap="openDrawer">{{ selectedTags.length || "⌄" }}</button>
     </view>
 
     <view v-if="isMock" class="mock-note">内部体验 · 分类与剧集分页来自 Mock 数据</view>
@@ -172,6 +220,19 @@ function openDrama(id: string) {
     <view v-if="loadingMore" class="feed-state">正在加载更多…</view>
     <view v-else-if="hasMore" class="feed-state">上滑加载更多</view>
     <view v-else-if="dramas.length" class="feed-state">已经到底了</view>
+
+    <view v-if="drawerOpen" class="drawer-mask" @tap="closeDrawer">
+      <view class="filter-drawer" @tap.stop>
+        <view class="drawer-header"><view class="drawer-close" @tap="closeDrawer">⌄</view><text>筛选</text><view class="drawer-spacer" /></view>
+        <scroll-view class="drawer-content" scroll-y>
+          <view v-for="section in drawerSections" :key="section.key" class="drawer-section">
+            <text class="drawer-title">{{ section.title }}</text>
+            <view class="drawer-options"><button v-for="value in section.values" :key="value" class="drawer-option" :class="{ selected: draftDrawer[section.key] === value }" @tap="selectDrawerOption(section.key, value)">{{ value }}</button></view>
+          </view>
+        </scroll-view>
+        <view class="drawer-footer"><button class="drawer-clear" @tap="clearDrawer">清空</button><button class="drawer-confirm" @tap="confirmDrawer">确定</button></view>
+      </view>
+    </view>
   </view>
 </template>
 

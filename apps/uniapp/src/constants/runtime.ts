@@ -1,5 +1,6 @@
 /** Uni-app watch client values that are not shared through contracts. */
 export const HOME_RECOMMEND_CHANNEL = "推荐";
+export const HOME_PRIMARY_CHANNELS = ["推荐", "真人剧", "漫剧", "AI 剧"] as const;
 
 export const HOME_DRAMA_CHANNELS = [
   "战神",

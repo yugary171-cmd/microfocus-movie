@@ -426,6 +426,20 @@ export interface CatalogResponse {
   latest: DramaCard[];
   popular: DramaCard[];
   categories: string[];
+  filterOptions: HomeFilterOptions;
+}
+
+export interface HomeFilterOptions {
+  subjects: string[];
+  settings: string[];
+  backgrounds: string[];
+}
+
+export interface DramaSearchFilters {
+  subject?: string;
+  setting?: string;
+  background?: string;
+  tags?: string[];
 }
 
 export interface EntitlementGrantView {

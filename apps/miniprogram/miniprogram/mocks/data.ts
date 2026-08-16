@@ -92,7 +92,12 @@ const catalog: CatalogResponse = {
   featured: cards.slice(0, 2),
   latest: [...cards].reverse(),
   popular: cards,
-  categories: ["全部", "都市", "甜宠", "年代"]
+  categories: ["全部", "都市", "甜宠", "年代"],
+  filterOptions: {
+    subjects: ["现代", "女性成长", "脑洞", "奇幻", "古言", "悬疑", "喜剧"],
+    settings: ["大男主", "大女主", "重生", "穿越", "先婚后爱", "破镜重圆", "神豪"],
+    backgrounds: ["现代", "都市", "古代", "年代", "职场", "校园"]
+  }
 };
 
 const entitlement: EntitlementSummary = {
@@ -137,7 +142,7 @@ export const mockApi: ClientApi = {
       tokenKind: "viewer" as const
     }),
   getCatalog: () => delay(catalog),
-  search: (query, category, page): Promise<SearchResponse> => {
+  search: (query, category, page, filters): Promise<SearchResponse> => {
     const normalized = query.trim().toLowerCase();
     const filtered = cards.filter((item) => {
       const categoryMatch = !category || category === "全部" || item.category === category;
@@ -145,7 +150,9 @@ export const mockApi: ClientApi = {
         !normalized ||
         item.title.toLowerCase().includes(normalized) ||
         item.tags.some((tag) => tag.toLowerCase().includes(normalized));
-      return categoryMatch && queryMatch;
+      const selected = [filters?.subject, filters?.setting, filters?.background, ...(filters?.tags ?? [])].filter(Boolean);
+      const filterMatch = selected.every((tag) => item.tags.includes(tag as string) || item.category === tag);
+      return categoryMatch && queryMatch && filterMatch;
     });
     return delay({ items: page === 1 ? filtered : [], page, hasMore: false });
   },

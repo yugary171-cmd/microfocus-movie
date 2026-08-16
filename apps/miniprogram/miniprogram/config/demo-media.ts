@@ -29,8 +29,8 @@ export function demoVideoUrls(origin: string | undefined) {
   };
 }
 
-export function pickDemoVideoUrl(urls: readonly string[], seed: string, fallback = ""): string {
-  if (!urls.length) return fallback;
+export function pickDemoVideoUrl(urls: readonly string[] | undefined, seed: string, fallback = ""): string {
+  if (!Array.isArray(urls) || urls.length === 0) return fallback;
   let hash = 0;
   for (let index = 0; index < seed.length; index += 1) {
     hash = (hash + seed.charCodeAt(index) * (index + 1)) % 2_147_483_647;

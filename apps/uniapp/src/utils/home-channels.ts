@@ -2,10 +2,13 @@ import type { DramaCard } from "@microfocus/contracts";
 import {
   HOME_DRAMA_CHANNELS,
   HOME_EXCLUDED_CHANNELS,
+  HOME_PRIMARY_CHANNELS,
   HOME_RECOMMEND_CHANNEL
 } from "../constants/runtime";
 
-const EXCLUDED = new Set<string>(HOME_EXCLUDED_CHANNELS);
+const EXCLUDED = new Set<string>(
+  Array.isArray(HOME_EXCLUDED_CHANNELS) ? HOME_EXCLUDED_CHANNELS : []
+);
 
 export function isRecommendChannel(name: string): boolean {
   return name === HOME_RECOMMEND_CHANNEL || name === "全部" || name === "";
@@ -25,9 +28,10 @@ export function buildHomeChannels(fromApi: readonly string[] | null | undefined)
         name !== HOME_RECOMMEND_CHANNEL &&
         name !== "全部" &&
         !EXCLUDED.has(name) &&
-        !(HOME_DRAMA_CHANNELS as readonly string[]).includes(name)
+        !(Array.isArray(HOME_DRAMA_CHANNELS) && (HOME_DRAMA_CHANNELS as readonly string[]).includes(name))
     );
-  return [HOME_RECOMMEND_CHANNEL, ...HOME_DRAMA_CHANNELS, ...extras];
+  const dramaChannels = Array.isArray(HOME_DRAMA_CHANNELS) ? Array.from(HOME_DRAMA_CHANNELS) : [];
+  return Array.from(HOME_PRIMARY_CHANNELS).concat(dramaChannels, extras);
 }
 
 export function searchCategoryParam(channel: string): string {

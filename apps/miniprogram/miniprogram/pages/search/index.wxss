@@ -7,7 +7,9 @@ page {
 .search-page {
   min-height: 100vh;
   box-sizing: border-box;
-  padding: calc(20rpx + env(safe-area-inset-top)) 30rpx calc(44rpx + env(safe-area-inset-bottom));
+  padding-right: 30rpx;
+  padding-bottom: calc(44rpx + env(safe-area-inset-bottom));
+  padding-left: 30rpx;
   background: #fff;
 }
 
@@ -82,6 +84,19 @@ page {
   color: #a6a7ac;
 }
 
+.clear-input {
+  margin: 0;
+  width: 34rpx;
+  height: 34rpx;
+  flex: none;
+  padding: 0;
+  color: #92939a;
+  background: transparent;
+  font-size: 40rpx;
+  line-height: 28rpx;
+  text-align: center;
+}
+
 .submit-button {
   padding: 0;
   color: #4b56e9;
@@ -105,10 +120,55 @@ page {
 }
 
 .guess-heading,
-.result-heading {
+.result-heading,
+.section-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.history-section {
+  margin-top: 28rpx;
+}
+
+.history-clear {
+  margin: 0;
+  padding: 0 8rpx;
+  color: #999aa1;
+  background: transparent;
+  font-size: 24rpx;
+}
+
+.history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.history-item {
+  display: flex;
+  max-width: 100%;
+  gap: 8rpx;
+  align-items: center;
+  padding: 10rpx 14rpx;
+  color: #4b4c54;
+  background: #f5f5f7;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+}
+
+.history-text {
+  overflow: hidden;
+  max-width: 260rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-remove {
+  color: #a0a1a8;
+  font-size: 30rpx;
+  line-height: 22rpx;
 }
 
 .refresh,

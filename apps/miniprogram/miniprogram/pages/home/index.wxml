@@ -1,7 +1,7 @@
 <view class="home-page">
   <view class="search-row">
     <view class="search-field" bindtap="openSearch" role="button" aria-label="搜索短剧">
-      <text class="search-icon">⌕</text>
+      <view class="magnifier"></view>
       <text class="search-placeholder">搜剧名、演员、剧情</text>
     </view>
     <button class="recognize" bindtap="showAction" data-label="识别" aria-label="识别图片中的剧">▣ 识别</button>
