@@ -22,7 +22,8 @@ async function load(reset = true) {
   else loadingMore.value = true;
   try {
     const result = await getApi().search("", activeTab.value === "全部" ? "" : activeTab.value, next);
-    items.value = reset ? result.items : [...items.value, ...result.items];
+    const nextItems = Array.isArray(result.items) ? result.items : [];
+    items.value = reset ? nextItems : items.value.concat(nextItems);
     page.value = result.page || next;
     hasMore.value = Boolean(result.hasMore);
   } finally {
@@ -71,8 +72,10 @@ onReachBottom(() => { if (hasMore.value) void load(false); });
   </view>
 </template>
 
-<style scoped>
+<style>
 page { background: #effcf9; }
+</style>
+<style scoped>
 .ranking-page { min-height: 100vh; color: #17171b; background: #effcf9; }
 .ranking-hero { padding: calc(30rpx + env(safe-area-inset-top)) 36rpx 34rpx; background: linear-gradient(135deg, #52dcb0, #c3f5cf); }
 .back { font-size: 70rpx; line-height: 60rpx; }
