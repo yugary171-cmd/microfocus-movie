@@ -1,3 +1,4 @@
+import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import {
   applyLocalWechatProfile,
   ensureSession,
@@ -8,8 +9,8 @@ import {
 } from "../../services/api";
 import { isWechatProfileAuthorizationDenied, wechatAdapter } from "../../services/wechat-adapter";
 import { toFriendlyErrorMessage } from "../../utils/errors";
+import { getMockFavoriteCards, getMockHistoryCards, getMockLikeCards } from "../../mocks/history-state";
 import {
-  createMockHistoryCards,
   playerUrlFromHistory,
   toHistoryCardViews,
   type HistoryCardView
@@ -30,20 +31,60 @@ import {
   type HistorySheetFilter,
   type HistoryTimeId
 } from "../../utils/history-filter";
-import { INBOX_ITEMS, isLibraryTab, LIBRARY_TABS } from "../../utils/inbox-view";
+import {
+  FAVORITE_TAB,
+  HISTORY_TAB,
+  INBOX_ITEMS,
+  isFormatLibraryTab,
+  isLibraryTab,
+  LIBRARY_EDIT_COPY,
+  LIBRARY_TABS,
+  LIKE_TAB,
+  parseLibraryGridTab
+} from "../../utils/inbox-view";
 
-const HISTORY_ITEMS: HistoryCardView[] = createMockHistoryCards();
+function isHistoryFormatId(value: string): value is HistoryFormatId {
+  return HISTORY_FORMAT_OPTIONS.some((item) => item.id === value);
+}
 
 type UserView = { displayName: string; microfocusId: string; initial: string; avatarUrl: string };
 
-function visibleHistoryState(
-  items: HistoryCardView[],
-  completion: string,
-  sheet: HistorySheetFilter
+function sourceItemsForTab(
+  tab: string,
+  historyItems: HistoryCardView[],
+  favoriteItems: HistoryCardView[],
+  likeItems: HistoryCardView[]
 ) {
+  if (tab === FAVORITE_TAB) return favoriteItems;
+  if (tab === LIKE_TAB) return likeItems;
+  return historyItems;
+}
+
+function visibleHistoryState(
+  tab: string,
+  historyItems: HistoryCardView[],
+  favoriteItems: HistoryCardView[],
+  likeItems: HistoryCardView[],
+  completion: string,
+  format: HistoryFormatId,
+  sheet: HistorySheetFilter,
+  query = ""
+) {
+  const isFormatTab = isFormatLibraryTab(tab);
+  const copy = LIBRARY_EDIT_COPY[isFormatTab ? parseLibraryGridTab(tab) : HISTORY_TAB];
+  const source = sourceItemsForTab(tab, historyItems, favoriteItems, likeItems);
   const safeCompletion: HistoryCompletionFilter = isHistoryCompletionFilter(completion) ? completion : "全部";
   return {
-    visibleHistoryItems: filterHistoryItems(items, { completion: safeCompletion, sheet }),
+    isFormatTab,
+    searchPlaceholder: copy.search,
+    mockLabel: copy.mockLabel,
+    emptyLabel: copy.empty,
+    sourceEmpty: source.length === 0,
+    visibleHistoryItems: filterHistoryItems(source, {
+      completion: isFormatTab ? "全部" : safeCompletion,
+      sheet: isFormatTab ? { format, duration: "all", time: "all" } : sheet,
+      query
+    }),
     sheetFilterActive: !isDefaultHistorySheetFilter(sheet)
   };
 }
@@ -71,8 +112,16 @@ Page({
     historyTabs: [...LIBRARY_TABS],
     historyFilters: [...HISTORY_COMPLETION_FILTERS],
     activeFilter: "全部" as HistoryCompletionFilter,
-    historyItems: (isMockMode() ? HISTORY_ITEMS : []) as HistoryCardView[],
-    visibleHistoryItems: (isMockMode() ? HISTORY_ITEMS : []) as HistoryCardView[],
+    historyItems: (isMockMode() ? getMockHistoryCards() : []) as HistoryCardView[],
+    favoriteItems: (isMockMode() ? getMockFavoriteCards() : []) as HistoryCardView[],
+    likeItems: (isMockMode() ? getMockLikeCards() : []) as HistoryCardView[],
+    visibleHistoryItems: (isMockMode() ? getMockHistoryCards() : []) as HistoryCardView[],
+    isFormatTab: false,
+    activeFormat: "all" as HistoryFormatId,
+    searchPlaceholder: LIBRARY_EDIT_COPY[HISTORY_TAB].search,
+    mockLabel: LIBRARY_EDIT_COPY[HISTORY_TAB].mockLabel,
+    emptyLabel: LIBRARY_EDIT_COPY[HISTORY_TAB].empty,
+    sourceEmpty: !isMockMode(),
     inboxItems: INBOX_ITEMS,
     avatarSaving: false,
     filterOpen: false,
@@ -81,13 +130,38 @@ Page({
     draftSheetFilter: cloneHistorySheetFilter(),
     formatOptions: HISTORY_FORMAT_OPTIONS,
     durationOptions: HISTORY_DURATION_OPTIONS,
-    timeOptions: HISTORY_TIME_OPTIONS
+    timeOptions: HISTORY_TIME_OPTIONS,
+    historySearchOpen: false,
+    historyQuery: "",
+    queryMaxLength: LIST_QUERY_MAX_LENGTH
   },
 
   onShow() {
     const user = toUserView(getStoredSession());
+    if (this.data.isMock) {
+      const historyItems = getMockHistoryCards();
+      const favoriteItems = getMockFavoriteCards();
+      const likeItems = getMockLikeCards();
+      this.setData({
+        user,
+        historyItems,
+        favoriteItems,
+        likeItems,
+        ...visibleHistoryState(
+          this.data.activeHistoryTab,
+          historyItems,
+          favoriteItems,
+          likeItems,
+          this.data.activeFilter,
+          this.data.activeFormat,
+          this.data.appliedSheetFilter,
+          this.data.historyQuery
+        )
+      });
+      return;
+    }
     this.setData({ user });
-    if (user && !this.data.isMock) void this.loadLiveHistory();
+    if (user) void this.loadLiveHistory();
   },
 
   async login() {
@@ -112,8 +186,23 @@ Page({
   },
 
   selectHistoryTab(event: WechatMiniprogram.TouchEvent) {
-    const tab = String(event.currentTarget.dataset.tab || "历史");
-    this.setData({ activeHistoryTab: isLibraryTab(tab) ? tab : "历史" });
+    const tab = String(event.currentTarget.dataset.tab || HISTORY_TAB);
+    const activeHistoryTab = isLibraryTab(tab) ? tab : HISTORY_TAB;
+    this.setData({
+      activeHistoryTab,
+      historySearchOpen: false,
+      historyQuery: "",
+      ...visibleHistoryState(
+        activeHistoryTab,
+        this.data.historyItems,
+        this.data.favoriteItems,
+        this.data.likeItems,
+        this.data.activeFilter,
+        this.data.activeFormat,
+        this.data.appliedSheetFilter,
+        ""
+      )
+    });
   },
 
   async loadLiveHistory() {
@@ -123,7 +212,16 @@ Page({
       const historyItems = toHistoryCardViews(history);
       this.setData({
         historyItems,
-        ...visibleHistoryState(historyItems, this.data.activeFilter, this.data.appliedSheetFilter)
+        ...visibleHistoryState(
+          this.data.activeHistoryTab,
+          historyItems,
+          this.data.favoriteItems,
+          this.data.likeItems,
+          this.data.activeFilter,
+          this.data.activeFormat,
+          this.data.appliedSheetFilter,
+          this.data.historyQuery
+        )
       });
     } catch (error) {
       this.setData({ historyError: toFriendlyErrorMessage(error) });
@@ -137,7 +235,16 @@ Page({
     const activeFilter = isHistoryCompletionFilter(next) ? next : "全部";
     this.setData({
       activeFilter,
-      ...visibleHistoryState(this.data.historyItems, activeFilter, this.data.appliedSheetFilter)
+      ...visibleHistoryState(
+        this.data.activeHistoryTab,
+        this.data.historyItems,
+        this.data.favoriteItems,
+        this.data.likeItems,
+        activeFilter,
+        this.data.activeFormat,
+        this.data.appliedSheetFilter,
+        this.data.historyQuery
+      )
     });
   },
 
@@ -182,17 +289,83 @@ Page({
     this.setData({
       appliedSheetFilter,
       filterOpen: false,
-      ...visibleHistoryState(this.data.historyItems, this.data.activeFilter, appliedSheetFilter)
+      ...visibleHistoryState(
+        this.data.activeHistoryTab,
+        this.data.historyItems,
+        this.data.favoriteItems,
+        this.data.likeItems,
+        this.data.activeFilter,
+        this.data.activeFormat,
+        appliedSheetFilter,
+        this.data.historyQuery
+      )
     });
   },
 
-  showFeature(event: WechatMiniprogram.TouchEvent) {
-    const label = String(event.currentTarget.dataset.label || "功能");
-    wx.showToast({ title: `${label}为体验数据`, icon: "none" });
+  openHistorySearch() {
+    this.setData({ historySearchOpen: true });
+  },
+
+  closeHistorySearch() {
+    this.setData({
+      historySearchOpen: false,
+      historyQuery: "",
+      ...visibleHistoryState(
+        this.data.activeHistoryTab,
+        this.data.historyItems,
+        this.data.favoriteItems,
+        this.data.likeItems,
+        this.data.activeFilter,
+        this.data.activeFormat,
+        this.data.appliedSheetFilter,
+        ""
+      )
+    });
+  },
+
+  onHistoryQuery(event: { detail?: { value?: string } }) {
+    const historyQuery = String(event.detail?.value || "");
+    this.setData({
+      historyQuery,
+      ...visibleHistoryState(
+        this.data.activeHistoryTab,
+        this.data.historyItems,
+        this.data.favoriteItems,
+        this.data.likeItems,
+        this.data.activeFilter,
+        this.data.activeFormat,
+        this.data.appliedSheetFilter,
+        historyQuery
+      )
+    });
   },
 
   openProfile() {
     wx.navigateTo({ url: "/pages/profile/edit" });
+  },
+
+  selectFormatFilter(event: WechatMiniprogram.TouchEvent) {
+    const next = String(event.currentTarget.dataset.id || "all");
+    const activeFormat = isHistoryFormatId(next) ? next : "all";
+    this.setData({
+      activeFormat,
+      ...visibleHistoryState(
+        this.data.activeHistoryTab,
+        this.data.historyItems,
+        this.data.favoriteItems,
+        this.data.likeItems,
+        this.data.activeFilter,
+        activeFormat,
+        this.data.appliedSheetFilter,
+        this.data.historyQuery
+      )
+    });
+  },
+
+  openHistoryEdit() {
+    wx.navigateTo({
+      url: `/pages/history/edit?tab=${encodeURIComponent(this.data.activeHistoryTab)}`
+    });
   },
 
   async onChooseAvatar(event: { detail?: { avatarUrl?: string } }) {
@@ -211,7 +384,12 @@ Page({
 
   async openHistory(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || "");
-    const item = this.data.historyItems.find((entry) => entry.id === id);
+    const item = sourceItemsForTab(
+      this.data.activeHistoryTab,
+      this.data.historyItems,
+      this.data.favoriteItems,
+      this.data.likeItems
+    ).find((entry) => entry.id === id);
     if (!item) return;
     if (this.data.isMock || !item.dramaId) {
       wx.switchTab({ url: "/pages/theater/index" });

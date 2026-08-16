@@ -1,0 +1,227 @@
+page {
+  background: #fff;
+  color: #17171b;
+}
+
+.history-edit {
+  min-height: 100vh;
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.edit-nav {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 28rpx;
+  padding-bottom: 18rpx;
+  padding-left: 28rpx;
+  background: #fff;
+}
+
+.nav-action,
+.nav-done {
+  min-width: 88rpx;
+  color: #17171b;
+  font-size: 30rpx;
+  line-height: 1.2;
+}
+
+.nav-done {
+  text-align: right;
+}
+
+.nav-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.nav-count {
+  margin-top: 6rpx;
+  color: #9b9ba0;
+  font-size: 22rpx;
+}
+
+.edit-state {
+  padding: 80rpx 32rpx;
+  color: #99999f;
+  font-size: 26rpx;
+  text-align: center;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28rpx 16rpx;
+  padding: 12rpx 28rpx 24rpx;
+}
+
+.history-item {
+  min-width: 0;
+}
+
+.history-poster {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: 236rpx;
+  padding: 16rpx;
+  overflow: hidden;
+  color: #fff;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  box-shadow: inset 0 -70rpx 60rpx rgba(0, 0, 0, 0.18);
+}
+
+.history-poster::after {
+  position: absolute;
+  top: -40rpx;
+  right: -36rpx;
+  width: 150rpx;
+  height: 150rpx;
+  border: 18rpx solid rgba(255, 255, 255, 0.17);
+  border-radius: 50%;
+  content: "";
+}
+
+.poster-rose { background: linear-gradient(155deg, #2b1f27, #c66d7c 54%, #4d1c32); }
+.poster-blue { background: linear-gradient(155deg, #2a354e, #8a9dc8 53%, #e4a580); }
+.poster-ink { background: linear-gradient(155deg, #d9dad5, #7a7b89 55%, #292831); }
+.poster-gold { background: linear-gradient(155deg, #2c2422, #bd8950 52%, #f4d492); }
+.poster-wine { background: linear-gradient(155deg, #5f2424, #cf8258 54%, #331d2a); }
+.poster-night { background: linear-gradient(155deg, #151d29, #42384d 55%, #b85a50); }
+
+.poster-tag {
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  z-index: 1;
+  padding: 5rpx 8rpx;
+  background: rgba(15, 15, 17, 0.48);
+  border-radius: 8rpx;
+  font-size: 17rpx;
+}
+
+.select-mark {
+  position: absolute;
+  right: 10rpx;
+  bottom: 10rpx;
+  z-index: 2;
+  width: 36rpx;
+  height: 36rpx;
+  border: 3rpx solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.select-mark.on {
+  background: #ff7a1a;
+  border-color: #ff7a1a;
+}
+
+.select-mark.on::after {
+  position: absolute;
+  top: 6rpx;
+  left: 11rpx;
+  width: 8rpx;
+  height: 14rpx;
+  border: solid #fff;
+  border-width: 0 3rpx 3rpx 0;
+  transform: rotate(45deg);
+  content: "";
+}
+
+.drama-name {
+  overflow: hidden;
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.episode {
+  margin-top: 6rpx;
+  color: #9b9ba0;
+  font-size: 20rpx;
+}
+
+.delete-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 12;
+  display: flex;
+  justify-content: center;
+  padding: 18rpx 0 calc(18rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1rpx solid #f2f2f4;
+}
+
+.delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  color: #e4543c;
+  font-size: 30rpx;
+  font-weight: 650;
+}
+
+.delete-btn.disabled {
+  color: #d0d0d4;
+  pointer-events: none;
+}
+
+.confirm-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.confirm-dialog {
+  width: 560rpx;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 24rpx;
+}
+
+.confirm-text {
+  padding: 64rpx 40rpx 48rpx;
+  font-size: 32rpx;
+  text-align: center;
+}
+
+.confirm-actions {
+  display: flex;
+  border-top: 1rpx solid #ececec;
+}
+
+.confirm-actions view {
+  flex: 1;
+  padding: 28rpx 0;
+  font-size: 32rpx;
+  text-align: center;
+}
+
+.confirm-actions .danger {
+  color: #ff7a1a;
+  font-weight: 650;
+  border-left: 1rpx solid #ececec;
+}

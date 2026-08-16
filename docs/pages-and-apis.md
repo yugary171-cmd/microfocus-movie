@@ -75,7 +75,8 @@ flowchart LR
 | 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、简介、目录、免费/锁定状态和播放入口；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益 |
 | 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复 | 播放、奖励、权益及进度接口 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |
-| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（先拉起微信头像昵称授权）、点击头像更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；「消息」Tab 仅展示本地分类列表，不跳转、不接消息 API | `POST /v1/auth/wechat`、`GET /v1/me/history`、`GET/PATCH /v1/me/profile` |
+| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（先拉起微信头像昵称授权）、点击头像更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 仅 Mock 本地列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑操作与历史相同但不接社交 API，Live 下为空；「消息」Tab 仅展示本地分类列表，不跳转、不接消息 API | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile` |
+| 全部历史 | `apps/uniapp/src/pages/history/edit.vue` | 多选观看历史、收藏或点赞；未选中时删除禁用，选中后高亮；历史确认删除后调用删除接口；收藏/点赞仅改 Mock 内存列表 | 历史：`GET /v1/me/history`、`DELETE /v1/me/history`；收藏/点赞无 API |
 | 法律与隐私 | `apps/uniapp/src/pages/legal/index.vue` | 用户协议、隐私指引、广告权益、注销、投诉说明和广告未到账核验包 | 静态内容或受控内容服务；不得依赖 Mock 文案发布 |
 
 播放器调用（`pages/player` + `services/reward.ts` + `services/playback-controller.ts`）：
@@ -94,7 +95,7 @@ flowchart LR
 | 评论底栏 | `apps/uniapp/src/components/comment-sheet/index.vue` | 仅本地交互展示；MVP 不定义评论、点赞或回复接口 |
 | 福利 | `apps/uniapp/src/pages/welfare/index.vue` | 签到、邀请和增长活动属于 Later，不得接入正式权益账本 |
 | 个人信息编辑 | `apps/uniapp/src/pages/profile/edit.vue` | 登录后读取并修改头像、昵称、签名和性别；微焦号只读展示用户 ID。无头像挂件和背景图 | `GET/PATCH /v1/me/profile` |
-| 收藏/点赞/预约/商城/消息 | `apps/uniapp/src/pages/my/index.vue` | 属于社交、会员、支付或运营扩展，不进入 MVP API。「消息」Tab 只展示系统通知、粉丝消息、评论消息、我的评论、赞的本地占位列表 |
+| 收藏/点赞/预约/商城/消息 | `apps/uniapp/src/pages/my/index.vue` | 属于社交、会员、支付或运营扩展，不进入 MVP API。收藏/点赞仅 Mock 本地样例，Live 为空；「消息」Tab 只展示系统通知、粉丝消息、评论消息、我的评论、赞的本地占位列表 |
 
 不得仅为对齐外部产品界面而新增页面。若未来将剧场定义为正式推荐流，必须复用同一套租约、权益和心跳契约，不能使用 Demo URL 旁路播放；该变化需要独立产品决策。
 
@@ -189,7 +190,8 @@ flowchart LR
 | `GET /v1/catalog` | 公开、按连接 IP 限频 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容；`latest` 按发布时间倒序，不从推荐榜重排 |
 | `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page`；`q` 与 `category` 最长 100（`LIST_QUERY_MAX_LENGTH` / `boundListQuery`），观看端搜索框 maxlength 与之共用 | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
 | `GET /v1/dramas/:dramaId` | 公开、按连接 IP 限频 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算 |
-| `GET /v1/me/history` | 用户 JWT；按认证用户限频 | 无 | 观看历史，按最近更新时间排序 |
+| `GET /v1/me/history` | 用户 JWT；按认证用户限频 | 无 | 观看历史，按最近更新时间排序，最多 `HISTORY_LIST_LIMIT`（50）条 |
+| `DELETE /v1/me/history` | 用户 JWT；按认证用户限频 | `dramaIds` 1–`HISTORY_DELETE_MAX_IDS`（50）个，每项 1–`ENTITY_ID_MAX_LENGTH`；服务端去重后只删当前用户的 `WatchProgress`；不存在的 id 不报错 | `{ deletedDramaIds }`，幂等 |
 | `GET /v1/me/profile` | 用户 JWT；按认证用户限频 | 无 | 当前用户资料：`displayName`、`avatarUrl`、`signature`、`gender`；微焦号为用户 ID，不作为可写字段 |
 | `PATCH /v1/me/profile` | 用户 JWT；按认证用户限频 | 至少一项：`displayName` 1–10 字（`DISPLAY_NAME_MIN_LENGTH`/`MAX`）、`signature` 最长 100（`SIGNATURE_MAX_LENGTH`）、`gender` 为 `male`/`female`/`unset`、`avatarUrl` 最长 2048（与 `COVER_URL_MAX_LENGTH` 共用）或 `null` 清空。匿名 viewer 不可访问 | 更新后的资料；不修改用户 ID |
 | `PUT /v1/me/progress` | 用户 JWT；按认证用户限频 | `dramaId/episodeId` 限长；`mediaPositionSeconds` 不超过 3600 | 幂等保存有效进度；不得写未发布内容 |

@@ -12,7 +12,8 @@
     "pages/drama/index",
     "pages/player/index",
     "pages/entitlements/index",
-    "pages/legal/index"
+    "pages/legal/index",
+    "pages/history/edit"
   ],
   "window": {
     "navigationBarTitleText": "微焦短剧",

@@ -36,7 +36,6 @@ export function getEnvVersion(): EnvVersion {
     }
     return "develop";
   }
-  if (typeof import.meta !== "undefined" && import.meta.env?.DEV) return "develop";
   if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") return "develop";
   return "release";
 }

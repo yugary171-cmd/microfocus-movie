@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
+import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import {
   isWechatProfileAuthorizationDenied,
   obtainWechatUserProfile,
@@ -16,11 +17,8 @@ import {
 } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { resolveHistoryPlayerUrl } from "../../utils/history-navigation";
-import {
-  createMockHistoryCards,
-  toHistoryCardViews,
-  type HistoryCardView
-} from "../../utils/history-view";
+import { getMockFavoriteCards, getMockHistoryCards, getMockLikeCards } from "../../mocks/history-state";
+import { toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
 import {
   cloneHistorySheetFilter,
   DEFAULT_HISTORY_SHEET_FILTER,
@@ -37,9 +35,16 @@ import {
   type HistorySheetFilter,
   type HistoryTimeId
 } from "../../utils/history-filter";
-import { INBOX_ITEMS, INBOX_TAB, LIBRARY_TABS } from "../../utils/inbox-view";
-
-const HISTORY_ITEMS: HistoryCardView[] = createMockHistoryCards();
+import {
+  FAVORITE_TAB,
+  INBOX_ITEMS,
+  INBOX_TAB,
+  LIBRARY_EDIT_COPY,
+  LIBRARY_TABS,
+  LIKE_TAB,
+  isFormatLibraryTab,
+  parseLibraryGridTab
+} from "../../utils/inbox-view";
 
 type UserView = { displayName: string; microfocusId: string; initial: string; avatarUrl: string };
 
@@ -65,7 +70,10 @@ const activeHistoryTab = ref<(typeof LIBRARY_TABS)[number]>("历史");
 const historyTabs = LIBRARY_TABS;
 const historyFilters = HISTORY_COMPLETION_FILTERS;
 const activeFilter = ref<HistoryCompletionFilter>("全部");
-const historyItems = ref<HistoryCardView[]>(isMock ? HISTORY_ITEMS : []);
+const activeFormat = ref<HistoryFormatId>("all");
+const historyItems = ref<HistoryCardView[]>(isMock ? getMockHistoryCards() : []);
+const favoriteItems = ref<HistoryCardView[]>(isMock ? getMockFavoriteCards() : []);
+const likeItems = ref<HistoryCardView[]>(isMock ? getMockLikeCards() : []);
 const inboxItems = INBOX_ITEMS;
 const filterOpen = ref(false);
 const appliedSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
@@ -73,11 +81,24 @@ const draftSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
 const formatOptions = HISTORY_FORMAT_OPTIONS;
 const durationOptions = HISTORY_DURATION_OPTIONS;
 const timeOptions = HISTORY_TIME_OPTIONS;
+const historySearchOpen = ref(false);
+const historyQuery = ref("");
+const queryMaxLength = LIST_QUERY_MAX_LENGTH;
 const sheetFilterActive = computed(() => !isDefaultHistorySheetFilter(appliedSheetFilter.value));
+const isFormatTab = computed(() => isFormatLibraryTab(activeHistoryTab.value));
+const sourceItems = computed(() => {
+  if (activeHistoryTab.value === FAVORITE_TAB) return favoriteItems.value;
+  if (activeHistoryTab.value === LIKE_TAB) return likeItems.value;
+  return historyItems.value;
+});
+const libraryCopy = computed(() => LIBRARY_EDIT_COPY[parseLibraryGridTab(activeHistoryTab.value)]);
 const visibleHistoryItems = computed(() =>
-  filterHistoryItems(historyItems.value, {
-    completion: activeFilter.value,
-    sheet: appliedSheetFilter.value
+  filterHistoryItems(sourceItems.value, {
+    completion: isFormatTab.value ? "全部" : activeFilter.value,
+    sheet: isFormatTab.value
+      ? { format: activeFormat.value, duration: "all", time: "all" }
+      : appliedSheetFilter.value,
+    query: historyQuery.value
   })
 );
 
@@ -95,7 +116,11 @@ async function loadLiveHistory() {
 
 onShow(() => {
   user.value = toUserView(getStoredSession());
-  if (user.value && !isMock) void loadLiveHistory();
+  if (isMock) {
+    historyItems.value = getMockHistoryCards();
+    favoriteItems.value = getMockFavoriteCards();
+    likeItems.value = getMockLikeCards();
+  } else if (user.value) void loadLiveHistory();
 });
 
 async function login() {
@@ -122,6 +147,10 @@ async function login() {
 
 function selectCompletionFilter(item: string) {
   if (isHistoryCompletionFilter(item)) activeFilter.value = item;
+}
+
+function selectFormatFilter(id: HistoryFormatId) {
+  activeFormat.value = id;
 }
 
 function openHistoryFilter() {
@@ -155,16 +184,36 @@ function confirmHistoryFilter() {
   filterOpen.value = false;
 }
 
-function showFeature(label: string) {
-  uni.showToast({ title: `${label}为体验数据`, icon: "none" });
+function openHistorySearch() {
+  historySearchOpen.value = true;
+}
+
+function closeHistorySearch() {
+  historySearchOpen.value = false;
+  historyQuery.value = "";
+}
+
+function onHistoryQuery(event: InputEvent) {
+  const raw = (event as { detail?: unknown }).detail;
+  const fromDetail =
+    raw && typeof raw === "object" && "value" in raw ? String((raw as { value?: unknown }).value ?? "") : "";
+  historyQuery.value = fromDetail || String((event.target as HTMLInputElement | null)?.value || "");
 }
 
 function selectLibraryTab(item: (typeof LIBRARY_TABS)[number]) {
   activeHistoryTab.value = item;
+  historySearchOpen.value = false;
+  historyQuery.value = "";
 }
 
 function openProfile() {
   uni.navigateTo({ url: "/pages/profile/edit" });
+}
+
+function openHistoryEdit() {
+  uni.navigateTo({
+    url: `/pages/history/edit?tab=${encodeURIComponent(activeHistoryTab.value)}`
+  });
 }
 
 async function persistAvatar(nextUrl: string) {
@@ -200,7 +249,7 @@ function onAvatarTap() {
 }
 
 async function openHistory(id: string) {
-  const item = historyItems.value.find((entry) => entry.id === id);
+  const item = sourceItems.value.find((entry) => entry.id === id);
   if (!item) return;
   if (isMock || !item.dramaId) {
     uni.switchTab({ url: "/pages/theater/index" });
@@ -269,11 +318,24 @@ async function openHistory(id: string) {
         <view
           v-if="activeHistoryTab !== INBOX_TAB"
           class="history-search"
+          :class="{ active: historySearchOpen }"
           aria-label="搜索历史"
-          @tap="showFeature('历史搜索')"
+          @tap="openHistorySearch"
         >
           ⌕
         </view>
+      </view>
+      <view v-if="historySearchOpen && activeHistoryTab !== INBOX_TAB" class="history-search-bar">
+        <input
+          class="history-search-field"
+          :value="historyQuery"
+          :maxlength="queryMaxLength"
+          :focus="historySearchOpen"
+          confirm-type="search"
+          :placeholder="libraryCopy.search"
+          @input="onHistoryQuery"
+        />
+        <view class="history-search-cancel" hover-class="none" @tap="closeHistorySearch">取消</view>
       </view>
       <view v-if="activeHistoryTab === INBOX_TAB" class="inbox-list" aria-label="消息分类">
         <view v-if="isMock" class="mock-label">体验占位，不接消息接口</view>
@@ -293,7 +355,7 @@ async function openHistory(id: string) {
       </view>
       <view v-else>
         <view class="history-tools">
-          <view class="filters">
+          <view v-if="!isFormatTab" class="filters">
             <view
               v-for="item in historyFilters"
               :key="item"
@@ -304,16 +366,33 @@ async function openHistory(id: string) {
               {{ item }}
             </view>
           </view>
+          <view v-else class="filters">
+            <view
+              v-for="item in formatOptions"
+              :key="item.id"
+              class="filter"
+              :class="{ active: activeFormat === item.id }"
+              @tap="selectFormatFilter(item.id)"
+            >
+              {{ item.label }}
+            </view>
+          </view>
           <view class="tool-actions">
-            <view class="filter-trigger" :class="{ active: sheetFilterActive }" hover-class="none" @tap="openHistoryFilter">筛选</view>
-            <view class="edit-trigger" hover-class="none" @tap="showFeature('编辑')">编辑</view>
+            <view
+              v-if="!isFormatTab"
+              class="filter-trigger"
+              :class="{ active: sheetFilterActive }"
+              hover-class="none"
+              @tap="openHistoryFilter"
+            >筛选</view>
+            <view class="edit-trigger" hover-class="none" @tap="openHistoryEdit">编辑</view>
           </view>
         </view>
-        <view v-if="isMock" class="mock-label">Mock 观看记录</view>
-        <view v-if="historyLoading" class="history-state">正在读取观看记录…</view>
-        <view v-else-if="historyError" class="history-state" role="alert">{{ historyError }}</view>
-        <view v-else-if="!historyItems.length" class="history-state">还没有观看记录</view>
-        <view v-else-if="!visibleHistoryItems.length" class="history-state">没有符合筛选条件的记录</view>
+        <view v-if="isMock" class="mock-label">{{ libraryCopy.mockLabel }}</view>
+        <view v-if="!isFormatTab && historyLoading" class="history-state">{{ libraryCopy.loading }}</view>
+        <view v-else-if="!isFormatTab && historyError" class="history-state" role="alert">{{ historyError }}</view>
+        <view v-else-if="!sourceItems.length" class="history-state">{{ libraryCopy.empty }}</view>
+        <view v-else-if="!visibleHistoryItems.length" class="history-state">{{ historyQuery.trim() ? "没有找到相关记录" : "没有符合筛选条件的记录" }}</view>
         <view v-else class="history-grid">
           <button
             v-for="item in visibleHistoryItems"

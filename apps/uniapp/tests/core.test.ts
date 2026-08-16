@@ -880,6 +880,18 @@ describe("user profile", () => {
   });
 });
 
+describe("platform env", () => {
+  it("exposes getEnvVersion without using import.meta", async () => {
+    const source = await import("node:fs/promises").then((fs) =>
+      fs.readFile(new URL("../src/platform/env.ts", import.meta.url), "utf8")
+    );
+    expect(source.includes("import.meta")).toBe(false);
+    const { getEnvVersion } = await import("../src/platform/env");
+    expect(typeof getEnvVersion).toBe("function");
+    expect(["develop", "trial", "release"]).toContain(getEnvVersion());
+  });
+});
+
 describe("my page inbox", () => {
   it("places messages after likes and keeps five local categories", async () => {
     const { INBOX_ITEMS, INBOX_TAB, LIBRARY_TABS } = await import("../src/utils/inbox-view");
@@ -916,5 +928,48 @@ describe("watch history filters", () => {
     expect(titles("全部", { format: "all", duration: "all", time: "yesterday" })).toEqual(["凤栖今朝"]);
     expect(titles("全部", { format: "all", duration: "all", time: "earlier" })).toEqual(["皇后娘娘来打工"]);
     expect(titles("已看完", { format: "all", duration: "all", time: "all" })).toEqual(["皇后娘娘来打工"]);
+    expect(
+      filterHistoryItems(items, {
+        completion: "全部",
+        sheet: { format: "all", duration: "all", time: "all" },
+        query: "春色"
+      }).map((item) => item.title)
+    ).toEqual(["春色撩撩"]);
+  });
+
+  it("assigns stable mock history drama ids and deletes selected cards from the shared store", async () => {
+    const { createMockHistoryCards } = await import("../src/utils/history-view");
+    const { deleteMockHistory, getMockHistoryCards, resetMockHistoryCards } = await import("../src/mocks/history-state");
+    const cards = createMockHistoryCards();
+    expect(cards.map((item) => item.dramaId)).toEqual(cards.map((item) => item.id));
+    resetMockHistoryCards();
+    expect(deleteMockHistory(["history-1", "history-1", "missing"])).toEqual(["history-1"]);
+    expect(getMockHistoryCards().some((item) => item.dramaId === "history-1")).toBe(false);
+    resetMockHistoryCards();
+  });
+
+  it("keeps favorite and like mock stores independent of history deletes", async () => {
+    const { filterHistoryItems } = await import("../src/utils/history-filter");
+    const {
+      deleteMockLibraryCards,
+      getMockFavoriteCards,
+      getMockLikeCards,
+      resetMockHistoryCards
+    } = await import("../src/mocks/history-state");
+    const { parseLibraryGridTab, LIBRARY_EDIT_COPY } = await import("../src/utils/inbox-view");
+    resetMockHistoryCards();
+    expect(parseLibraryGridTab("收藏")).toBe("收藏");
+    expect(LIBRARY_EDIT_COPY.收藏.search).toBe("搜索收藏");
+    expect(getMockFavoriteCards().map((item) => item.title)).toEqual(["皇后娘娘来打工", "引她入室", "凤栖今朝"]);
+    expect(
+      filterHistoryItems(getMockLikeCards(), {
+        completion: "全部",
+        sheet: { format: "comic", duration: "all", time: "all" }
+      }).map((item) => item.title)
+    ).toEqual(["春色撩撩"]);
+    expect(deleteMockLibraryCards("收藏", ["history-4"])).toEqual(["history-4"]);
+    expect(getMockFavoriteCards().some((item) => item.dramaId === "history-4")).toBe(false);
+    expect(getMockLikeCards().some((item) => item.dramaId === "history-5")).toBe(true);
+    resetMockHistoryCards();
   });
 });

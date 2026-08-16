@@ -20,7 +20,9 @@ import type {
   UpdateUserProfileRequest,
   UpdateWatchProgressRequest,
   WechatLoginResponse,
-  WatchHistoryItem
+  WatchHistoryItem,
+  DeleteWatchHistoryRequest,
+  DeleteWatchHistoryResponse
 } from "@microfocus/contracts";
 
 export type AuthSession = WechatLoginResponse;
@@ -38,6 +40,7 @@ export interface ClientApi {
   search(query: string, category: string, page: number): Promise<SearchResponse>;
   getDrama(id: string): Promise<import("@microfocus/contracts").DramaDetail>;
   getHistory(): Promise<WatchHistoryItem[]>;
+  deleteHistory(input: DeleteWatchHistoryRequest): Promise<DeleteWatchHistoryResponse>;
   getProfile(): Promise<AuthenticatedUser>;
   updateProfile(input: UpdateUserProfileRequest): Promise<AuthenticatedUser>;
   saveProgress(input: UpdateWatchProgressRequest): Promise<void>;

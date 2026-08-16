@@ -2,17 +2,11 @@
 import { boundListQuery, LIST_QUERY_MAX_LENGTH, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import {
-  SEARCH_GUESS_POOL,
-  SEARCH_PLACEHOLDER,
-  SEARCH_SHORTCUTS,
-  type SearchShortcutId
-} from "../../constants/search";
+import { SEARCH_GUESS_POOL, SEARCH_PLACEHOLDER } from "../../constants/search";
 import { getApi } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { pickGuessQueries } from "../../utils/search-discovery";
 
-const shortcuts = SEARCH_SHORTCUTS;
 const query = ref("");
 const guessSeed = ref(Date.now());
 const guesses = computed(() => pickGuessQueries(SEARCH_GUESS_POOL, guessSeed.value, 8));
@@ -23,7 +17,6 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const searched = ref(false);
 const error = ref("");
-const discoveryTitle = ref("");
 
 async function runSearch(reset: boolean) {
   const keyword = boundListQuery(query.value);
@@ -31,7 +24,6 @@ async function runSearch(reset: boolean) {
     uni.showToast({ title: "请输入搜索内容", icon: "none" });
     return;
   }
-  discoveryTitle.value = "";
   await loadKeyword(keyword, reset);
 }
 
@@ -61,23 +53,6 @@ async function loadKeyword(keyword: string, reset: boolean) {
   }
 }
 
-async function loadCatalogList(kind: "rank" | "new") {
-  loading.value = true;
-  error.value = "";
-  searched.value = true;
-  hasMore.value = false;
-  discoveryTitle.value = kind === "rank" ? "排行" : "上新";
-  try {
-    const catalog = await getApi().getCatalog();
-    results.value = kind === "rank" ? catalog.popular || [] : catalog.latest || [];
-  } catch (caught) {
-    error.value = toFriendlyErrorMessage(caught);
-    results.value = [];
-  } finally {
-    loading.value = false;
-  }
-}
-
 onLoad((options) => {
   const initial = options?.q ? boundListQuery(decodeURIComponent(options.q)) : "";
   if (initial) {
@@ -87,7 +62,7 @@ onLoad((options) => {
 });
 
 onReachBottom(() => {
-  if (searched.value && !discoveryTitle.value && hasMore.value && !loading.value) {
+  if (searched.value && hasMore.value && !loading.value) {
     void runSearch(false);
   }
 });
@@ -107,22 +82,6 @@ function chooseSuggestion(value: string) {
 
 function refreshGuesses() {
   guessSeed.value = Date.now();
-}
-
-function handleShortcut(id: SearchShortcutId) {
-  if (id === "rank") {
-    void loadCatalogList("rank");
-    return;
-  }
-  if (id === "new") {
-    void loadCatalogList("new");
-    return;
-  }
-  if (id === "filter") {
-    uni.navigateTo({ url: "/pages/category/index" });
-    return;
-  }
-  uni.showToast({ title: "演员检索本轮不做独立接口，请用剧名搜索", icon: "none" });
 }
 </script>
 
@@ -147,19 +106,6 @@ function handleShortcut(id: SearchShortcutId) {
     </view>
 
     <view v-if="!searched" class="idle">
-      <view class="shortcuts" aria-label="搜索快捷入口">
-        <button
-          v-for="item in shortcuts"
-          :key="item.id"
-          class="shortcut"
-          :aria-label="item.label"
-          @tap="handleShortcut(item.id)"
-        >
-          <view class="shortcut-icon" :class="`tone-${item.tone}`" />
-          <text>{{ item.label }}</text>
-        </button>
-      </view>
-
       <view class="guess-heading">
         <view class="section-title">猜你想搜</view>
         <button class="refresh" aria-label="换一批" @tap="refreshGuesses">↻</button>
@@ -179,11 +125,11 @@ function handleShortcut(id: SearchShortcutId) {
     <view v-if="loading" class="empty-state">正在搜索…</view>
     <view v-else-if="error" class="empty-state" role="alert">{{ error }}</view>
     <view v-else-if="searched && !results.length" class="empty-state">
-      没有找到“{{ discoveryTitle || query }}”相关短剧
+      没有找到“{{ query }}”相关短剧
     </view>
     <view v-else-if="results.length" class="section">
       <view class="result-heading">
-        <view class="section-title">{{ discoveryTitle || "搜索结果" }}</view>
+        <view class="section-title">搜索结果</view>
         <button v-if="searched" class="clear" @tap="searched = false; results = []; error = ''">
           返回发现
         </button>

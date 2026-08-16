@@ -1,30 +1,44 @@
 import { boundListQuery, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+import { getApi } from "../../services/api";
+import { toFriendlyErrorMessage } from "../../utils/errors";
 
-type HotSearch = {
-  rank: number;
-  title: string;
-  tag: string;
-  heat: string;
-};
-
-const HOT_SEARCHES: HotSearch[] = [
-  { rank: 1, title: "她在月光下失忆", tag: "热", heat: "982 万" },
-  { rank: 2, title: "闪婚后，傅总他真香了", tag: "爆", heat: "835 万" },
-  { rank: 3, title: "穿书后我成了团宠", tag: "新", heat: "721 万" },
-  { rank: 4, title: "重回十八岁", tag: "", heat: "609 万" },
-  { rank: 5, title: "向晚而生", tag: "", heat: "548 万" },
-  { rank: 6, title: "听见你的心声", tag: "", heat: "497 万" }
+const GUESS_POOL: string[] = [
+  "都重生了，谁还装富二代啊",
+  "万妖图录传第一季",
+  "我的26岁女房客",
+  "皇后娘娘来打工",
+  "她在月光下失忆",
+  "再考公",
+  "战神归来",
+  "赘婿逆袭",
+  "甜宠日常",
+  "宫斗翻盘",
+  "萌宝来报恩",
+  "神医下山"
 ];
 
-const SUGGESTIONS = ["先婚后爱", "甜宠", "逆袭", "重生", "豪门", "悬疑"];
+function pickGuesses(seed: number): string[] {
+  const offset = Math.abs(seed) % GUESS_POOL.length;
+  return Array.from({ length: 8 }, (_, index) => GUESS_POOL[(offset + index) % GUESS_POOL.length] || "");
+}
 
 Page({
   data: {
     query: "",
     queryMaxLength: LIST_QUERY_MAX_LENGTH,
-    suggestions: SUGGESTIONS,
-    hotSearches: HOT_SEARCHES,
-    visibleHotSearches: HOT_SEARCHES
+    guesses: pickGuesses(Date.now()),
+    results: [] as Array<{ id: string; title: string; category: string; episodeCount: number }>,
+    searched: false,
+    loading: false,
+    error: ""
+  },
+
+  onLoad(options: Record<string, string | undefined>) {
+    const initial = options?.q ? boundListQuery(decodeURIComponent(options.q)) : "";
+    if (initial) {
+      this.setData({ query: initial });
+      void this.runSearch(initial);
+    }
   },
 
   goBack() {
@@ -32,30 +46,46 @@ Page({
   },
 
   onQueryInput(event: WechatMiniprogram.Input) {
-    const query = event.detail.value.slice(0, LIST_QUERY_MAX_LENGTH);
-    this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
+    this.setData({ query: event.detail.value.slice(0, LIST_QUERY_MAX_LENGTH) });
+  },
+
+  async runSearch(input?: string) {
+    const query = boundListQuery(input ?? this.data.query);
+    if (!query) {
+      wx.showToast({ title: "请输入搜索内容", icon: "none" });
+      return;
+    }
+    this.setData({ query, searched: true, loading: true, error: "" });
+    try {
+      const response = await getApi().search(query, "", 1);
+      this.setData({ results: Array.isArray(response.items) ? response.items : [] });
+    } catch (error) {
+      this.setData({ results: [], error: toFriendlyErrorMessage(error) });
+    } finally {
+      this.setData({ loading: false });
+    }
   },
 
   submitSearch() {
-    const query = boundListQuery(this.data.query);
-    this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
-    wx.showToast({ title: query ? `正在搜索“${query}”` : "请输入搜索内容", icon: "none" });
+    void this.runSearch();
   },
 
-  chooseSuggestion(event: WechatMiniprogram.TouchEvent) {
+  chooseGuess(event: WechatMiniprogram.TouchEvent) {
     const query = boundListQuery(String(event.currentTarget.dataset.query || ""));
-    this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
+    this.setData({ query });
+    void this.runSearch(query);
   },
 
-  chooseHotSearch(event: WechatMiniprogram.TouchEvent) {
-    const query = boundListQuery(String(event.currentTarget.dataset.title || ""));
-    this.setData({ query, visibleHotSearches: this.filterHotSearches(query) });
-    wx.showToast({ title: `正在搜索“${query}”`, icon: "none" });
+  refreshGuesses() {
+    this.setData({ guesses: pickGuesses(Date.now()) });
   },
 
-  filterHotSearches(query: string) {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return HOT_SEARCHES;
-    return HOT_SEARCHES.filter((item) => item.title.toLowerCase().includes(keyword));
+  clearSearch() {
+    this.setData({ query: "", results: [], searched: false, error: "" });
+  },
+
+  openDrama(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    if (id) wx.navigateTo({ url: `/pages/drama/index?id=${encodeURIComponent(id)}` });
   }
 });

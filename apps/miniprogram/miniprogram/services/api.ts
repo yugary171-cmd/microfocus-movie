@@ -221,6 +221,7 @@ const realApi: ClientApi = {
   },
   getDrama: (id) => request(encodedRoute(API_ROUTES.drama, id)),
   getHistory: () => request(API_ROUTES.history),
+  deleteHistory: (input) => request(API_ROUTES.history, "DELETE", input),
   getProfile: () => request(API_ROUTES.profile),
   updateProfile: (input) => request(API_ROUTES.profile, "PATCH", input),
   saveProgress: (input) => request<void>(API_ROUTES.progress, "PUT", input),

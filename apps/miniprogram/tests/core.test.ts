@@ -808,5 +808,48 @@ describe("watch history filters", () => {
     expect(titles("全部", { format: "all", duration: "all", time: "yesterday" })).toEqual(["凤栖今朝"]);
     expect(titles("全部", { format: "all", duration: "all", time: "earlier" })).toEqual(["皇后娘娘来打工"]);
     expect(titles("已看完", { format: "all", duration: "all", time: "all" })).toEqual(["皇后娘娘来打工"]);
+    expect(
+      filterHistoryItems(items, {
+        completion: "全部",
+        sheet: { format: "all", duration: "all", time: "all" },
+        query: "春色"
+      }).map((item) => item.title)
+    ).toEqual(["春色撩撩"]);
+  });
+
+  it("assigns stable mock history drama ids and deletes selected cards from the shared store", async () => {
+    const { createMockHistoryCards } = await import("../miniprogram/utils/history-view");
+    const { deleteMockHistory, getMockHistoryCards, resetMockHistoryCards } = await import("../miniprogram/mocks/history-state");
+    const cards = createMockHistoryCards();
+    expect(cards.map((item) => item.dramaId)).toEqual(cards.map((item) => item.id));
+    resetMockHistoryCards();
+    expect(deleteMockHistory(["history-1", "history-1", "missing"])).toEqual(["history-1"]);
+    expect(getMockHistoryCards().some((item) => item.dramaId === "history-1")).toBe(false);
+    resetMockHistoryCards();
+  });
+
+  it("keeps favorite and like mock stores independent of history deletes", async () => {
+    const { filterHistoryItems } = await import("../miniprogram/utils/history-filter");
+    const {
+      deleteMockLibraryCards,
+      getMockFavoriteCards,
+      getMockLikeCards,
+      resetMockHistoryCards
+    } = await import("../miniprogram/mocks/history-state");
+    const { parseLibraryGridTab, LIBRARY_EDIT_COPY } = await import("../miniprogram/utils/inbox-view");
+    resetMockHistoryCards();
+    expect(parseLibraryGridTab("点赞")).toBe("点赞");
+    expect(LIBRARY_EDIT_COPY.点赞.search).toBe("搜索点赞");
+    expect(getMockFavoriteCards().map((item) => item.title)).toEqual(["皇后娘娘来打工", "引她入室", "凤栖今朝"]);
+    expect(
+      filterHistoryItems(getMockLikeCards(), {
+        completion: "全部",
+        sheet: { format: "comic", duration: "all", time: "all" }
+      }).map((item) => item.title)
+    ).toEqual(["春色撩撩"]);
+    expect(deleteMockLibraryCards("收藏", ["history-4"])).toEqual(["history-4"]);
+    expect(getMockFavoriteCards().some((item) => item.dramaId === "history-4")).toBe(false);
+    expect(getMockLikeCards().some((item) => item.dramaId === "history-5")).toBe(true);
+    resetMockHistoryCards();
   });
 });

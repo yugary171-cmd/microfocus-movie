@@ -55,7 +55,7 @@ describe("viewer routes follow contracts", () => {
   });
 
   it("binds viewer search inputs to LIST_QUERY_MAX_LENGTH", () => {
-    for (const page of ["home", "search", "category"]) {
+    for (const page of ["search", "category"]) {
       const source = readFileSync(resolve(here, `../src/pages/${page}/index.vue`), "utf8");
       expect(source).toContain(':maxlength="LIST_QUERY_MAX_LENGTH"');
     }

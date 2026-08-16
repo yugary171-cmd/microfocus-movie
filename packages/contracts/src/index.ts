@@ -20,6 +20,8 @@ export const CALLBACK_LATE_REWARD_WINDOW_SECONDS = 2 * 60 * 60;
 export const CALLBACK_PAYLOAD_RETENTION_SECONDS = 30 * 24 * 60 * 60;
 export const SEARCH_PAGE_SIZE = 20;
 export const SEARCH_MAX_PAGE = 100;
+export const HISTORY_LIST_LIMIT = 50;
+export const HISTORY_DELETE_MAX_IDS = HISTORY_LIST_LIMIT;
 export const DRAMA_TITLE_MAX_LENGTH = 120;
 export const DRAMA_SUMMARY_MAX_LENGTH = 2000;
 export const DRAMA_CATEGORY_MAX_LENGTH = 64;
@@ -102,6 +104,19 @@ export const UPLOAD_FILE_ACCEPT = "video/mp4,video/quicktime,video/webm";
 /** Trim then cap list/search keywords so clients match server truncation. */
 export function boundListQuery(value: string): string {
   return value.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+}
+
+/** Deduplicate trimmed drama ids and drop blank or overlong values. */
+export function uniqueHistoryDramaIds(ids: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const raw of ids) {
+    const id = raw.trim();
+    if (!id || id.length > ENTITY_ID_MAX_LENGTH || seen.has(id)) continue;
+    seen.add(id);
+    unique.push(id);
+  }
+  return unique;
 }
 
 /** Cap circuit actor ids so writes fit CircuitBreaker.updatedBy. */
@@ -670,6 +685,14 @@ export interface WatchHistoryItem {
   episodeNumber: number;
   mediaPositionSeconds: number;
   updatedAt: string;
+}
+
+export interface DeleteWatchHistoryRequest {
+  dramaIds: string[];
+}
+
+export interface DeleteWatchHistoryResponse {
+  deletedDramaIds: string[];
 }
 
 export interface ReleaseGateStatus {

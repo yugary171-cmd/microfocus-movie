@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { boundListQuery, LIST_QUERY_MAX_LENGTH, type DramaCard } from "@microfocus/contracts";
+import type { DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { HOME_RECOMMEND_CHANNEL } from "../../constants/runtime";
@@ -29,7 +29,6 @@ function toHomeDrama(card: DramaCard, index: number): HomeDrama {
 }
 
 const isMock = isMockMode();
-const query = ref("");
 const categories = ref<string[]>(buildHomeChannels([]));
 const activeCategory = ref(HOME_RECOMMEND_CHANNEL);
 const dramas = ref<HomeDrama[]>([]);
@@ -92,10 +91,7 @@ onReachBottom(() => {
 });
 
 function openSearch() {
-  const q = boundListQuery(query.value);
-  uni.navigateTo({
-    url: q ? `/pages/search/index?q=${encodeURIComponent(q)}` : "/pages/search/index"
-  });
+  uni.navigateTo({ url: "/pages/search/index" });
 }
 
 function selectCategory(category: string) {
@@ -119,15 +115,7 @@ function openDrama(id: string) {
     <view class="search-row">
       <view class="search-field" @tap="openSearch">
         <text class="search-icon">⌕</text>
-        <input
-          v-model="query"
-          confirm-type="search"
-          :maxlength="LIST_QUERY_MAX_LENGTH"
-          placeholder="搜剧名、演员、剧情"
-          placeholder-class="search-placeholder"
-          aria-label="搜索短剧"
-          @confirm="openSearch"
-        />
+        <text class="search-placeholder" aria-label="搜索短剧">搜剧名、演员、剧情</text>
       </view>
     </view>
 

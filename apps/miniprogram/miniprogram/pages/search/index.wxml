@@ -8,33 +8,27 @@
     <button class="submit-button" bindtap="submitSearch">搜索</button>
   </view>
 
-  <view class="section">
-    <view class="section-title">功能</view>
-    <view class="chips">
-      <button wx:for="{{suggestions}}" wx:key="*this" class="chip" data-query="{{item}}" bindtap="chooseSuggestion">{{item}}</button>
+  <view wx:if="{{!searched}}" class="section suggestions-section">
+    <view class="guess-heading">
+      <view class="section-title">猜你想搜</view>
+      <button class="refresh" bindtap="refreshGuesses" aria-label="换一批">↻</button>
     </view>
-  </view>
-
-  <view class="section suggestions-section">
-    <view class="section-title">猜你想搜</view>
     <view class="suggestion-row">
-      <view wx:for="{{suggestions}}" wx:key="*this" class="suggestion" data-query="{{item}}" bindtap="chooseSuggestion">{{item}}</view>
+      <button wx:for="{{guesses}}" wx:key="*this" class="suggestion" data-query="{{item}}" bindtap="chooseGuess">{{item}}</button>
     </view>
   </view>
 
-  <view class="section hot-section">
-    <view class="hot-heading">
-      <view class="section-title">热榜</view>
-      <view class="hot-subtitle">大家都在搜</view>
+  <view wx:if="{{loading}}" class="empty-state">正在搜索…</view>
+  <view wx:elif="{{error}}" class="empty-state" role="alert">{{error}}</view>
+  <view wx:elif="{{searched && !results.length}}" class="empty-state">没有找到“{{query}}”相关短剧</view>
+  <view wx:elif="{{results.length}}" class="section results-section">
+    <view class="result-heading">
+      <view class="section-title">搜索结果</view>
+      <button class="clear" bindtap="clearSearch">返回发现</button>
     </view>
-    <view wx:if="{{visibleHotSearches.length}}" class="hot-list">
-      <button wx:for="{{visibleHotSearches}}" wx:key="rank" class="hot-item" data-title="{{item.title}}" bindtap="chooseHotSearch">
-        <view class="rank rank-{{item.rank}}">{{item.rank}}</view>
-        <view class="hot-title">{{item.title}}</view>
-        <view wx:if="{{item.tag}}" class="hot-tag">{{item.tag}}</view>
-        <view class="heat">{{item.heat}}</view>
-      </button>
-    </view>
-    <view wx:else class="empty-state">热榜中没有匹配“{{query}}”的内容</view>
+    <button wx:for="{{results}}" wx:key="id" class="result-item" data-id="{{item.id}}" bindtap="openDrama">
+      <view class="result-title">{{item.title}}</view>
+      <view class="result-meta">{{item.category}} · 全 {{item.episodeCount}} 集</view>
+    </button>
   </view>
 </view>

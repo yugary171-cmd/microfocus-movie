@@ -17,6 +17,7 @@ import { RUNTIME_CONFIG } from "../config/runtime";
 import type { ClientApi, SearchResponse } from "../types/api";
 import { applyProfilePatch } from "../utils/profile";
 import { readMockProfile, requireMockProfile, writeMockProfile } from "./profile-state";
+import { deleteMockHistory, toMockWatchHistoryItems } from "./history-state";
 
 function mockIsFreeEpisodeId(episodeId: string): boolean {
   const matched = /e(\d+)$/.exec(episodeId);
@@ -153,15 +154,8 @@ export const mockApi: ClientApi = {
     if (!drama) throw new Error("未找到这部短剧");
     return delay(drama);
   },
-  getHistory: (): Promise<WatchHistoryItem[]> =>
-    delay([
-      {
-        drama: cards[0]!,
-        episodeNumber: 1,
-        mediaPositionSeconds: 72,
-        updatedAt: new Date().toISOString()
-      }
-    ]),
+  getHistory: (): Promise<WatchHistoryItem[]> => delay(toMockWatchHistoryItems()),
+  deleteHistory: (input) => delay({ deletedDramaIds: deleteMockHistory(input.dramaIds) }),
   getProfile: () => delay({ ...requireMockProfile() }),
   updateProfile: (input) => delay(writeMockProfile(applyProfilePatch(requireMockProfile(), input))),
   saveProgress: () => delay(undefined),

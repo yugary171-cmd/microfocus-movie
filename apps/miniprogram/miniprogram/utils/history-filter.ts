@@ -1,4 +1,5 @@
 import type { HistoryCardView } from "./history-view";
+import { boundListQuery } from "@microfocus/contracts";
 
 export const HISTORY_COMPLETION_FILTERS = ["全部", "已看完", "未看完"] as const;
 export type HistoryCompletionFilter = (typeof HISTORY_COMPLETION_FILTERS)[number];
@@ -101,11 +102,18 @@ function matchesTime(item: HistoryCardView, time: HistoryTimeId, now: Date): boo
   return updated < now.getTime() - 90 * DAY_MS;
 }
 
+function matchesQuery(item: HistoryCardView, query: string): boolean {
+  const keyword = boundListQuery(query).toLowerCase();
+  if (!keyword) return true;
+  return (item.title || "").toLowerCase().includes(keyword);
+}
+
 export function filterHistoryItems(
   items: readonly HistoryCardView[],
   input: {
     completion?: HistoryCompletionFilter;
     sheet?: HistorySheetFilter;
+    query?: string;
     now?: Date;
   } = {}
 ): HistoryCardView[] {
@@ -117,6 +125,7 @@ export function filterHistoryItems(
       matchesCompletion(item, completion) &&
       matchesFormat(item, sheet.format) &&
       matchesDuration(item, sheet.duration) &&
-      matchesTime(item, sheet.time, now)
+      matchesTime(item, sheet.time, now) &&
+      matchesQuery(item, input.query || "")
   );
 }

@@ -1,5 +1,3 @@
-import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
-
 type HomeDrama = {
   id: string;
   title: string;
@@ -21,8 +19,6 @@ const dramas: HomeDrama[] = [
 Page({
   data: {
     isMock: true,
-    query: "",
-    queryMaxLength: LIST_QUERY_MAX_LENGTH,
     activeChannel: "推荐",
     channels: ["推荐", "战神", "赘婿", "甜宠", "重生", "宫斗", "萌宝", "神医", "兵王"],
     quickActions: [
@@ -31,10 +27,6 @@ Page({
       { icon: "播", label: "新剧", tone: "cyan" }
     ],
     dramas
-  },
-
-  onQueryInput(event: WechatMiniprogram.Input) {
-    this.setData({ query: event.detail.value.slice(0, LIST_QUERY_MAX_LENGTH) });
   },
 
   openSearch() {

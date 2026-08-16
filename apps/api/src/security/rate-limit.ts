@@ -17,6 +17,7 @@ export const RATE_LIMITS = {
   playbackClose: { limit: 20, windowMs: 60_000 },
   watchProgress: { limit: 60, windowMs: 60_000 },
   watchHistory: { limit: 30, windowMs: 60_000 },
+  watchHistoryDelete: { limit: 20, windowMs: 60_000 },
   entitlementSummary: { limit: 60, windowMs: 60_000 },
   playbackActive: { limit: 30, windowMs: 60_000 },
   search: { limit: 60, windowMs: 60_000 },

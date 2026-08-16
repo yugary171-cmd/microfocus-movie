@@ -20,7 +20,11 @@
   <view class="history-panel">
     <view class="history-tabs">
       <button wx:for="{{historyTabs}}" wx:key="*this" class="history-tab {{activeHistoryTab === item ? 'active' : ''}}" data-tab="{{item}}" bindtap="selectHistoryTab">{{item}}</button>
-      <button wx:if="{{activeHistoryTab !== '消息'}}" class="history-search" bindtap="showFeature" data-label="历史搜索" aria-label="搜索历史">⌕</button>
+      <view wx:if="{{activeHistoryTab !== '消息'}}" class="history-search {{historySearchOpen ? 'active' : ''}}" bindtap="openHistorySearch" aria-label="搜索历史">⌕</view>
+    </view>
+    <view wx:if="{{historySearchOpen && activeHistoryTab !== '消息'}}" class="history-search-bar">
+      <input class="history-search-field" value="{{historyQuery}}" maxlength="{{queryMaxLength}}" focus="{{historySearchOpen}}" confirm-type="search" placeholder="{{searchPlaceholder}}" bindinput="onHistoryQuery" />
+      <view class="history-search-cancel" bindtap="closeHistorySearch">取消</view>
     </view>
     <view wx:if="{{activeHistoryTab === '消息'}}" class="inbox-list" aria-label="消息分类">
       <view wx:if="{{isMock}}" class="mock-label">体验占位，不接消息接口</view>
@@ -35,12 +39,23 @@
       </view>
     </view>
     <view wx:else>
-      <view class="history-tools"><view class="filters"><button wx:for="{{historyFilters}}" wx:key="*this" class="filter {{activeFilter === item ? 'active' : ''}}" data-filter="{{item}}" bindtap="selectFilter">{{item}}</button></view><view class="tool-actions"><view class="filter-trigger {{sheetFilterActive ? 'active' : ''}}" bindtap="openHistoryFilter">筛选</view><view class="edit-trigger" data-label="编辑" bindtap="showFeature">编辑</view></view></view>
-      <view wx:if="{{isMock}}" class="mock-label">Mock 观看记录</view>
-      <view wx:if="{{historyLoading}}" class="history-state">正在读取观看记录…</view>
-      <view wx:elif="{{historyError}}" class="history-state" role="alert">{{historyError}}</view>
-      <view wx:elif="{{!historyItems.length}}" class="history-state">还没有观看记录</view>
-      <view wx:elif="{{!visibleHistoryItems.length}}" class="history-state">没有符合筛选条件的记录</view>
+      <view class="history-tools">
+        <view wx:if="{{!isFormatTab}}" class="filters">
+          <button wx:for="{{historyFilters}}" wx:key="*this" class="filter {{activeFilter === item ? 'active' : ''}}" data-filter="{{item}}" bindtap="selectFilter">{{item}}</button>
+        </view>
+        <view wx:else class="filters">
+          <button wx:for="{{formatOptions}}" wx:key="id" class="filter {{activeFormat === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="selectFormatFilter">{{item.label}}</button>
+        </view>
+        <view class="tool-actions">
+          <view wx:if="{{!isFormatTab}}" class="filter-trigger {{sheetFilterActive ? 'active' : ''}}" bindtap="openHistoryFilter">筛选</view>
+          <view class="edit-trigger" bindtap="openHistoryEdit">编辑</view>
+        </view>
+      </view>
+      <view wx:if="{{isMock}}" class="mock-label">{{mockLabel}}</view>
+      <view wx:if="{{!isFormatTab && historyLoading}}" class="history-state">正在读取观看记录…</view>
+      <view wx:elif="{{!isFormatTab && historyError}}" class="history-state" role="alert">{{historyError}}</view>
+      <view wx:elif="{{sourceEmpty}}" class="history-state">{{emptyLabel}}</view>
+      <view wx:elif="{{!visibleHistoryItems.length}}" class="history-state">{{historyQuery ? '没有找到相关记录' : '没有符合筛选条件的记录'}}</view>
       <view wx:else class="history-grid"><button wx:for="{{visibleHistoryItems}}" wx:key="id" class="history-item" data-id="{{item.id}}" bindtap="openHistory" aria-label="播放{{item.title}}"><view class="history-poster poster-{{item.tone}}"><text class="poster-tag">{{item.tag}}</text><text class="poster-title">{{item.title}}</text></view><view class="drama-name">{{item.title}}</view><view class="episode">{{item.episode}}</view></button></view>
     </view>
   </view>

@@ -55,7 +55,7 @@ describe("viewer routes follow contracts", () => {
   });
 
   it("binds viewer search inputs to LIST_QUERY_MAX_LENGTH", () => {
-    for (const page of ["home", "search", "category"]) {
+    for (const page of ["search", "category"]) {
       const source = readFileSync(resolve(here, `../miniprogram/pages/${page}/index.wxml`), "utf8");
       expect(source).toContain('maxlength="{{queryMaxLength}}"');
     }

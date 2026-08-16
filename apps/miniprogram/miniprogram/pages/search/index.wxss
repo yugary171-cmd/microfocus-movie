@@ -19,8 +19,10 @@ page {
 
 .back-button,
 .submit-button,
-.chip,
-.hot-item {
+.suggestion,
+.refresh,
+.clear,
+.result-item {
   margin: 0;
 }
 
@@ -98,25 +100,30 @@ page {
   font-weight: 700;
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18rpx;
-  margin-top: 24rpx;
-}
-
-.chip {
-  min-width: 132rpx;
-  padding: 14rpx 24rpx;
-  color: #50515a;
-  background: #f5f5f7;
-  border-radius: 999rpx;
-  font-size: 24rpx;
-  line-height: 1.35;
-}
-
 .suggestions-section {
   margin-top: 56rpx;
+}
+
+.guess-heading,
+.result-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.refresh,
+.clear {
+  padding: 0 8rpx;
+  color: #8b8d96;
+  background: transparent;
+  font-size: 24rpx;
+}
+
+.refresh {
+  width: 56rpx;
+  height: 56rpx;
+  font-size: 32rpx;
+  line-height: 52rpx;
 }
 
 .suggestion-row {
@@ -127,89 +134,44 @@ page {
 }
 
 .suggestion {
+  display: block;
+  width: calc(50% - 15rpx);
+  margin: 0;
+  padding: 18rpx 0;
   color: #64656d;
+  background: transparent;
   font-size: 26rpx;
   line-height: 1.4;
-}
-
-.hot-section {
-  margin-top: 62rpx;
-}
-
-.hot-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.hot-subtitle {
-  color: #a0a1a8;
-  font-size: 23rpx;
-}
-
-.hot-list {
-  margin-top: 20rpx;
-}
-
-.hot-item {
-  display: flex;
-  width: 100%;
-  gap: 18rpx;
-  align-items: center;
-  min-height: 82rpx;
-  padding: 0;
-  color: #1f2024;
-  background: transparent;
   text-align: left;
 }
 
-.rank {
-  width: 28rpx;
-  color: #9b9ca3;
-  font-size: 25rpx;
-  font-style: italic;
-  font-weight: 700;
-  text-align: center;
+.results-section {
+  margin-top: 30rpx;
 }
 
-.rank-1,
-.rank-2,
-.rank-3 {
-  color: #f25b55;
-}
-
-.rank-2 {
-  color: #f4854c;
-}
-
-.rank-3 {
-  color: #e4ad47;
-}
-
-.hot-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
+.result-item {
+  display: block;
+  width: 100%;
+  margin-top: 16rpx;
+  padding: 20rpx;
   color: #28292e;
-  font-size: 27rpx;
+  background: #fafafb;
+  border-radius: 16rpx;
+  text-align: left;
+}
+
+.result-title {
+  overflow: hidden;
+  font-size: 28rpx;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.hot-tag {
-  padding: 2rpx 7rpx;
-  color: #f05252;
-  background: #fff0ef;
-  border-radius: 5rpx;
-  font-size: 18rpx;
-  line-height: 1.25;
-}
-
-.heat {
-  min-width: 68rpx;
-  color: #b4b5bb;
-  font-size: 21rpx;
-  text-align: right;
+.result-meta {
+  margin-top: 8rpx;
+  color: #9b9ca3;
+  font-size: 22rpx;
 }
 
 .empty-state {

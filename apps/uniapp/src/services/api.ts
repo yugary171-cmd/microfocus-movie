@@ -3,12 +3,9 @@ import { RUNTIME_CONFIG } from "../config/runtime";
 import { API_ROUTES, encodedRoute } from "../constants/routes";
 import { mockApi } from "../mocks/data";
 import { syncMockProfile } from "../mocks/profile-state";
-import {
-  getEnvVersion,
-  obtainWechatLoginCode,
-  request as platformRequest,
-  wechatMiniprogramAuthSupported
-} from "../platform";
+import { obtainWechatLoginCode } from "../platform/auth";
+import { getEnvVersion, wechatMiniprogramAuthSupported } from "../platform/env";
+import { request as platformRequest } from "../platform/http";
 import { getStorageSync, removeStorageSync, setStorageSync } from "../platform/storage";
 import type { AuthSession, ClientApi, SearchResponse } from "../types/api";
 import { ApiClientError } from "../utils/errors";
@@ -35,7 +32,9 @@ function resolveHasMore(
 }
 
 export function isMockMode(): boolean {
-  return getEnvVersion() === "develop" && !RUNTIME_CONFIG.apiBaseUrl.trim();
+  if (RUNTIME_CONFIG.apiBaseUrl.trim()) return false;
+  const version = typeof getEnvVersion === "function" ? getEnvVersion() : "develop";
+  return version === "develop";
 }
 
 export function getStoredAccessToken(): string {
@@ -220,6 +219,7 @@ const realApi: ClientApi = {
   },
   getDrama: (id) => request(encodedRoute(API_ROUTES.drama, id)),
   getHistory: () => request(API_ROUTES.history),
+  deleteHistory: (input) => request(API_ROUTES.history, "DELETE", input),
   getProfile: () => request(API_ROUTES.profile),
   updateProfile: (input) => request(API_ROUTES.profile, "PATCH", input),
   saveProgress: (input) => request<void>(API_ROUTES.progress, "PUT", input),

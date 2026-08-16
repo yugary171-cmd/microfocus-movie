@@ -1,0 +1,46 @@
+<view class="history-edit">
+  <view class="edit-nav" style="padding-top: {{navInsetTop}}px">
+    <view class="nav-action" bindtap="selectAll">全选</view>
+    <view class="nav-center">
+      <text class="nav-title">{{title}}</text>
+      <text class="nav-count">已选择 {{selectedCount}} 个</text>
+    </view>
+    <view class="nav-done" bindtap="finish">完成</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="edit-state">{{loadingText}}</view>
+  <view wx:elif="{{error}}" class="edit-state">{{error}}</view>
+  <view wx:elif="{{!items.length}}" class="edit-state">{{empty}}</view>
+  <view wx:else class="history-grid">
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="history-item"
+      data-id="{{item.dramaId || item.id}}"
+      bindtap="toggleItem"
+    >
+      <view class="history-poster poster-{{item.tone}}">
+        <text class="poster-tag">{{item.tag}}</text>
+        <view class="select-mark {{item.selected ? 'on' : ''}}"></view>
+      </view>
+      <view class="drama-name">{{item.title}}</view>
+      <view class="episode">{{item.episode}}</view>
+    </view>
+  </view>
+
+  <view class="delete-bar">
+    <view class="delete-btn {{canDelete ? '' : 'disabled'}}" bindtap="openConfirm">
+      <text>删除</text>
+    </view>
+  </view>
+
+  <view wx:if="{{confirmOpen}}" class="confirm-mask" bindtap="closeConfirm">
+    <view class="confirm-dialog" catchtap="stopTap">
+      <view class="confirm-text">{{confirm}}</view>
+      <view class="confirm-actions">
+        <view bindtap="closeConfirm">取消</view>
+        <view class="danger" bindtap="confirmDelete">删除</view>
+      </view>
+    </view>
+  </view>
+</view>

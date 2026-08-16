@@ -13,7 +13,6 @@
 
 .back-button,
 .submit-button,
-.shortcut,
 .guess,
 .refresh,
 .clear {
@@ -87,35 +86,6 @@
 .idle {
   margin-top: 36rpx;
 }
-
-.shortcuts {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 8rpx;
-}
-
-.shortcut {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 120rpx;
-  padding: 0;
-  color: #2a2b31;
-  background: transparent;
-  font-size: 24rpx;
-}
-
-.shortcut-icon {
-  width: 88rpx;
-  height: 88rpx;
-  margin-bottom: 12rpx;
-  border-radius: 28rpx;
-}
-
-.tone-orange { background: linear-gradient(160deg, #ffb15a, #ff7a3c); }
-.tone-teal { background: linear-gradient(160deg, #5ee0c8, #1aa9a0); }
-.tone-gold { background: linear-gradient(160deg, #ffd56a, #f0b132); }
-.tone-blue { background: linear-gradient(160deg, #8ec8ff, #4d8fe8); }
 
 .guess-heading,
 .result-heading {

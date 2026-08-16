@@ -1,13 +1,28 @@
-import { Body, Controller, Get, Module, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Module, Put, UseGuards } from "@nestjs/common";
 import {
   API_ROUTES,
   ENTITY_ID_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
   ERROR_CODES,
+  HISTORY_DELETE_MAX_IDS,
+  HISTORY_LIST_LIMIT,
+  uniqueHistoryDramaIds,
+  type DeleteWatchHistoryRequest,
+  type DeleteWatchHistoryResponse,
   type UpdateWatchProgressRequest,
   type WatchHistoryItem
 } from "@microfocus/contracts";
-import { IsNumber, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsNumber,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength
+} from "class-validator";
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -35,6 +50,16 @@ export class ProgressDto implements UpdateWatchProgressRequest {
   mediaPositionSeconds!: number;
 }
 
+export class DeleteHistoryDto implements DeleteWatchHistoryRequest {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(HISTORY_DELETE_MAX_IDS)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(ENTITY_ID_MAX_LENGTH, { each: true })
+  dramaIds!: string[];
+}
+
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class HistoryController {
@@ -56,7 +81,7 @@ export class HistoryController {
         }
       },
       orderBy: { updatedAt: "desc" },
-      take: 50
+      take: HISTORY_LIST_LIMIT
     });
     return rows.map((row) => ({
       drama: {
@@ -104,6 +129,32 @@ export class HistoryController {
       }
     });
     return { updatedAt: progress.updatedAt.toISOString() };
+  }
+
+  @Delete(controllerPath(API_ROUTES.history))
+  async deleteHistory(
+    @CurrentPrincipal() principal: Principal,
+    @Body() body: DeleteHistoryDto
+  ): Promise<DeleteWatchHistoryResponse> {
+    const userId = requireUser(principal);
+    await assertNamedRateLimit(this.prisma, "watchHistoryDelete", `user:${userId}`);
+    const dramaIds = uniqueHistoryDramaIds(body.dramaIds);
+    if (!dramaIds.length) {
+      throw Errors.badRequest(ERROR_CODES.INVALID_ENTITY_ID, "dramaIds is required");
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.watchProgress.findMany({
+        where: { userId, dramaId: { in: dramaIds } },
+        select: { dramaId: true }
+      });
+      const deletedDramaIds = existing.map((row) => row.dramaId);
+      if (deletedDramaIds.length) {
+        await tx.watchProgress.deleteMany({
+          where: { userId, dramaId: { in: deletedDramaIds } }
+        });
+      }
+      return { deletedDramaIds };
+    });
   }
 }
 
