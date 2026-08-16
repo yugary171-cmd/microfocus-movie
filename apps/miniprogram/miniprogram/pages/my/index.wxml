@@ -6,10 +6,10 @@
     <button class="login-button" bindtap="login" loading="{{loginLoading}}" disabled="{{loginLoading}}">{{loginLoading ? '微信登录中…' : '立即登录'}}</button>
   </view>
   <view wx:else class="member-profile">
-    <view class="avatar">
+    <button class="avatar" hover-class="none" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar" aria-label="更换头像" disabled="{{avatarSaving}}">
       <image wx:if="{{user.avatarUrl}}" class="avatar-photo" src="{{user.avatarUrl}}" mode="aspectFill" />
       <text wx:else>{{user.initial}}</text>
-    </view>
+    </button>
     <view class="member-copy"><view class="member-name">{{user.displayName}}</view><view class="member-id">{{user.microfocusId}} ⧉</view></view>
     <button class="edit-button" bindtap="openProfile">编辑资料</button>
   </view>
@@ -17,19 +17,66 @@
 
   <view wx:if="{{user}}" class="stats"><view><strong>0</strong><text>关注</text></view><view><strong>0</strong><text>粉丝</text></view><view><strong>0</strong><text>获赞</text></view></view>
 
-  <scroll-view scroll-x enable-flex class="utility-scroll" aria-label="个人功能">
-    <view class="utility-row">
-      <button wx:for="{{utilities}}" wx:key="title" class="utility-card" data-label="{{item.title}}" bindtap="showFeature"><view class="utility-title">{{item.title}}</view><view class="utility-subtitle">{{item.subtitle}}</view></button>
-    </view>
-  </scroll-view>
-
   <view class="history-panel">
-    <view class="history-tabs"><button wx:for="{{historyTabs}}" wx:key="*this" class="history-tab {{activeHistoryTab === item ? 'active' : ''}}" data-tab="{{item}}" bindtap="selectHistoryTab">{{item}}</button><button class="history-search" bindtap="showFeature" data-label="历史搜索" aria-label="搜索历史">⌕</button></view>
-    <view class="history-tools"><view class="filters"><button wx:for="{{historyFilters}}" wx:key="*this" class="filter {{activeFilter === item ? 'active' : ''}}" data-filter="{{item}}" bindtap="selectFilter">{{item}}</button></view><view class="tool-actions"><button data-label="筛选" bindtap="showFeature">筛选</button><button data-label="编辑" bindtap="showFeature">编辑</button></view></view>
-    <view wx:if="{{isMock}}" class="mock-label">Mock 观看记录</view>
-    <view wx:if="{{historyLoading}}" class="history-state">正在读取观看记录…</view>
-    <view wx:elif="{{historyError}}" class="history-state" role="alert">{{historyError}}</view>
-    <view wx:elif="{{!historyItems.length}}" class="history-state">还没有观看记录</view>
-    <view wx:else class="history-grid"><button wx:for="{{historyItems}}" wx:key="id" class="history-item" data-id="{{item.id}}" bindtap="openHistory" aria-label="播放{{item.title}}"><view class="history-poster poster-{{item.tone}}"><text class="poster-tag">{{item.tag}}</text><text class="poster-title">{{item.title}}</text></view><view class="drama-name">{{item.title}}</view><view class="episode">{{item.episode}}</view></button></view>
+    <view class="history-tabs">
+      <button wx:for="{{historyTabs}}" wx:key="*this" class="history-tab {{activeHistoryTab === item ? 'active' : ''}}" data-tab="{{item}}" bindtap="selectHistoryTab">{{item}}</button>
+      <button wx:if="{{activeHistoryTab !== '消息'}}" class="history-search" bindtap="showFeature" data-label="历史搜索" aria-label="搜索历史">⌕</button>
+    </view>
+    <view wx:if="{{activeHistoryTab === '消息'}}" class="inbox-list" aria-label="消息分类">
+      <view wx:if="{{isMock}}" class="mock-label">体验占位，不接消息接口</view>
+      <view wx:for="{{inboxItems}}" wx:key="id" class="inbox-row">
+        <view class="inbox-icon {{item.tone}}">{{item.icon}}</view>
+        <view class="inbox-copy">
+          <view class="inbox-title">{{item.title}}</view>
+          <view class="inbox-preview">{{item.preview}}</view>
+        </view>
+        <text wx:if="{{item.meta}}" class="inbox-meta">{{item.meta}}</text>
+        <text wx:else class="inbox-chevron">›</text>
+      </view>
+    </view>
+    <view wx:else>
+      <view class="history-tools"><view class="filters"><button wx:for="{{historyFilters}}" wx:key="*this" class="filter {{activeFilter === item ? 'active' : ''}}" data-filter="{{item}}" bindtap="selectFilter">{{item}}</button></view><view class="tool-actions"><button class="filter-trigger {{sheetFilterActive ? 'active' : ''}}" hover-class="none" catchtap="openHistoryFilter">筛选</button><button data-label="编辑" bindtap="showFeature">编辑</button></view></view>
+      <view wx:if="{{isMock}}" class="mock-label">Mock 观看记录</view>
+      <view wx:if="{{historyLoading}}" class="history-state">正在读取观看记录…</view>
+      <view wx:elif="{{historyError}}" class="history-state" role="alert">{{historyError}}</view>
+      <view wx:elif="{{!historyItems.length}}" class="history-state">还没有观看记录</view>
+      <view wx:elif="{{!visibleHistoryItems.length}}" class="history-state">没有符合筛选条件的记录</view>
+      <view wx:else class="history-grid"><button wx:for="{{visibleHistoryItems}}" wx:key="id" class="history-item" data-id="{{item.id}}" bindtap="openHistory" aria-label="播放{{item.title}}"><view class="history-poster poster-{{item.tone}}"><text class="poster-tag">{{item.tag}}</text><text class="poster-title">{{item.title}}</text></view><view class="drama-name">{{item.title}}</view><view class="episode">{{item.episode}}</view></button></view>
+    </view>
   </view>
+
+  <root-portal wx:if="{{filterOpen}}">
+  <view class="filter-root" catchtouchmove="preventMove">
+    <view class="filter-mask" bindtap="closeHistoryFilter" />
+    <view class="filter-panel">
+      <view class="filter-header">
+        <button class="filter-close" bindtap="closeHistoryFilter" aria-label="关闭筛选">∨</button>
+        <view class="filter-title">筛选</view>
+        <view class="filter-header-spacer" />
+      </view>
+      <view class="filter-section">
+        <view class="filter-section-title">体裁</view>
+        <view class="filter-chips">
+          <button wx:for="{{formatOptions}}" wx:key="id" class="filter-chip {{draftSheetFilter.format === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="selectDraftFormat">{{item.label}}</button>
+        </view>
+      </view>
+      <view class="filter-section">
+        <view class="filter-section-title">已播放时长</view>
+        <view class="filter-chips">
+          <button wx:for="{{durationOptions}}" wx:key="id" class="filter-chip {{draftSheetFilter.duration === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="selectDraftDuration">{{item.label}}</button>
+        </view>
+      </view>
+      <view class="filter-section">
+        <view class="filter-section-title">时间</view>
+        <view class="filter-chips">
+          <button wx:for="{{timeOptions}}" wx:key="id" class="filter-chip {{draftSheetFilter.time === item.id ? 'active' : ''}}" data-id="{{item.id}}" bindtap="selectDraftTime">{{item.label}}</button>
+        </view>
+      </view>
+      <view class="filter-footer">
+        <button class="filter-clear" bindtap="clearDraftHistoryFilter">清空</button>
+        <button class="filter-confirm" bindtap="confirmHistoryFilter">确定</button>
+      </view>
+    </view>
+  </view>
+  </root-portal>
 </view>

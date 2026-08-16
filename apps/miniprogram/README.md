@@ -4,4 +4,4 @@
 
 微信开发者工具仍可导入本目录做对照验收。第 1 阶段微信端对齐通过后，应停止双轨维护并归档本目录。
 
-本地体验默认使用游客 AppID。仅当运行环境为 `develop` 且 `miniprogram/config/runtime.ts` 的 API 地址为空时启用 mock。
+本地体验默认使用游客 AppID，仅适合开发者工具模拟器和 Mock 联调。iOS/Android 真机自动调试必须在微信开发者工具中配置已备案的小程序真实 AppID；不要把 `touristappid` 当作真机 AppID。仅当运行环境为 `develop` 且 `miniprogram/config/runtime.ts` 的 API 地址为空时启用 mock。

@@ -4,7 +4,7 @@ Vue 3 + uni-app 观看端，第 1 阶段目标是**微信小程序功能对齐**
 
 ## 导入与运行
 
-HBuilderX：打开 `apps/uniapp`，运行到微信开发者工具。游客 AppID 为 `touristappid`。
+HBuilderX：打开 `apps/uniapp`，运行到微信开发者工具。默认生成的 `touristappid` 只适合模拟器和 Mock 联调；iOS/Android 真机自动调试必须在微信开发者工具项目设置或本地私有配置中填写已备案的小程序真实 AppID，不能使用游客 AppID。
 
 CLI（需先在仓库根目录 `npm install`）：
 

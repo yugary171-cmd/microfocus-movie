@@ -3,26 +3,50 @@ import {
   ensureSession,
   getApi,
   getStoredSession,
-  isMockMode
+  isMockMode,
+  saveProfile
 } from "../../services/api";
 import { isWechatProfileAuthorizationDenied, wechatAdapter } from "../../services/wechat-adapter";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import {
+  createMockHistoryCards,
   playerUrlFromHistory,
   toHistoryCardViews,
   type HistoryCardView
 } from "../../utils/history-view";
+import {
+  cloneHistorySheetFilter,
+  DEFAULT_HISTORY_SHEET_FILTER,
+  filterHistoryItems,
+  HISTORY_COMPLETION_FILTERS,
+  HISTORY_DURATION_OPTIONS,
+  HISTORY_FORMAT_OPTIONS,
+  HISTORY_TIME_OPTIONS,
+  isDefaultHistorySheetFilter,
+  isHistoryCompletionFilter,
+  type HistoryCompletionFilter,
+  type HistoryDurationId,
+  type HistoryFormatId,
+  type HistorySheetFilter,
+  type HistoryTimeId
+} from "../../utils/history-filter";
+import { INBOX_ITEMS, isLibraryTab, LIBRARY_TABS } from "../../utils/inbox-view";
 
-const HISTORY_ITEMS: HistoryCardView[] = [
-  { id: "history-1", title: "引她入室", episode: "1 集 / 58 集", tag: "真人剧", tone: "rose", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-2", title: "凤栖今朝", episode: "1 集 / 71 集", tag: "真人剧", tone: "blue", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-3", title: "春色撩撩", episode: "1 集 / 105 集", tag: "漫画", tone: "ink", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-4", title: "皇后娘娘来打工", episode: "1 集 / 80 集", tag: "真人剧", tone: "gold", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-5", title: "请君入我怀", episode: "1 集 / 60 集", tag: "真人剧", tone: "wine", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-6", title: "苏太太高调离婚了", episode: "1 集 / 52 集", tag: "真人剧", tone: "night", dramaId: "", episodeNumber: 1, position: 0 }
-];
+const HISTORY_ITEMS: HistoryCardView[] = createMockHistoryCards();
 
 type UserView = { displayName: string; microfocusId: string; initial: string; avatarUrl: string };
+
+function visibleHistoryState(
+  items: HistoryCardView[],
+  completion: string,
+  sheet: HistorySheetFilter
+) {
+  const safeCompletion: HistoryCompletionFilter = isHistoryCompletionFilter(completion) ? completion : "全部";
+  return {
+    visibleHistoryItems: filterHistoryItems(items, { completion: safeCompletion, sheet }),
+    sheetFilterActive: !isDefaultHistorySheetFilter(sheet)
+  };
+}
 
 function toUserView(session: ReturnType<typeof getStoredSession>): UserView | null {
   if (!session) return null;
@@ -44,14 +68,21 @@ Page({
     historyLoading: false,
     historyError: "",
     activeHistoryTab: "历史",
-    historyTabs: ["历史", "收藏", "点赞"],
-    historyFilters: ["全部", "已看完", "未看完"],
-    activeFilter: "全部",
+    historyTabs: [...LIBRARY_TABS],
+    historyFilters: [...HISTORY_COMPLETION_FILTERS],
+    activeFilter: "全部" as HistoryCompletionFilter,
     historyItems: (isMockMode() ? HISTORY_ITEMS : []) as HistoryCardView[],
-    utilities: [
-      { title: "消息", subtitle: "1 条未读" },
-      { title: "追更", subtitle: "管理追更" }
-    ]
+    visibleHistoryItems: (isMockMode() ? HISTORY_ITEMS : []) as HistoryCardView[],
+    inboxItems: INBOX_ITEMS,
+    avatarSaving: false,
+    filterOpen: false,
+    filterClosingLocked: false,
+    sheetFilterActive: false,
+    appliedSheetFilter: cloneHistorySheetFilter(),
+    draftSheetFilter: cloneHistorySheetFilter(),
+    formatOptions: HISTORY_FORMAT_OPTIONS,
+    durationOptions: HISTORY_DURATION_OPTIONS,
+    timeOptions: HISTORY_TIME_OPTIONS
   },
 
   onShow() {
@@ -82,14 +113,19 @@ Page({
   },
 
   selectHistoryTab(event: WechatMiniprogram.TouchEvent) {
-    this.setData({ activeHistoryTab: String(event.currentTarget.dataset.tab || "历史") });
+    const tab = String(event.currentTarget.dataset.tab || "历史");
+    this.setData({ activeHistoryTab: isLibraryTab(tab) ? tab : "历史" });
   },
 
   async loadLiveHistory() {
     this.setData({ historyLoading: true, historyError: "" });
     try {
       const history = await getApi().getHistory();
-      this.setData({ historyItems: toHistoryCardViews(history) });
+      const historyItems = toHistoryCardViews(history);
+      this.setData({
+        historyItems,
+        ...visibleHistoryState(historyItems, this.data.activeFilter, this.data.appliedSheetFilter)
+      });
     } catch (error) {
       this.setData({ historyError: toFriendlyErrorMessage(error) });
     } finally {
@@ -98,7 +134,59 @@ Page({
   },
 
   selectFilter(event: WechatMiniprogram.TouchEvent) {
-    this.setData({ activeFilter: String(event.currentTarget.dataset.filter || "全部") });
+    const next = String(event.currentTarget.dataset.filter || "全部");
+    const activeFilter = isHistoryCompletionFilter(next) ? next : "全部";
+    this.setData({
+      activeFilter,
+      ...visibleHistoryState(this.data.historyItems, activeFilter, this.data.appliedSheetFilter)
+    });
+  },
+
+  preventMove() {},
+
+  openHistoryFilter() {
+    this.setData({
+      filterOpen: true,
+      filterClosingLocked: true,
+      draftSheetFilter: cloneHistorySheetFilter(this.data.appliedSheetFilter)
+    });
+    setTimeout(() => this.setData({ filterClosingLocked: false }), 320);
+  },
+
+  closeHistoryFilter() {
+    if (this.data.filterClosingLocked) return;
+    this.setData({
+      filterOpen: false,
+      draftSheetFilter: cloneHistorySheetFilter(this.data.appliedSheetFilter)
+    });
+  },
+
+  selectDraftFormat(event: WechatMiniprogram.TouchEvent) {
+    const format = String(event.currentTarget.dataset.id || "all") as HistoryFormatId;
+    this.setData({ draftSheetFilter: { ...this.data.draftSheetFilter, format } });
+  },
+
+  selectDraftDuration(event: WechatMiniprogram.TouchEvent) {
+    const duration = String(event.currentTarget.dataset.id || "all") as HistoryDurationId;
+    this.setData({ draftSheetFilter: { ...this.data.draftSheetFilter, duration } });
+  },
+
+  selectDraftTime(event: WechatMiniprogram.TouchEvent) {
+    const time = String(event.currentTarget.dataset.id || "all") as HistoryTimeId;
+    this.setData({ draftSheetFilter: { ...this.data.draftSheetFilter, time } });
+  },
+
+  clearDraftHistoryFilter() {
+    this.setData({ draftSheetFilter: cloneHistorySheetFilter(DEFAULT_HISTORY_SHEET_FILTER) });
+  },
+
+  confirmHistoryFilter() {
+    const appliedSheetFilter = cloneHistorySheetFilter(this.data.draftSheetFilter);
+    this.setData({
+      appliedSheetFilter,
+      filterOpen: false,
+      ...visibleHistoryState(this.data.historyItems, this.data.activeFilter, appliedSheetFilter)
+    });
   },
 
   showFeature(event: WechatMiniprogram.TouchEvent) {
@@ -108,6 +196,20 @@ Page({
 
   openProfile() {
     wx.navigateTo({ url: "/pages/profile/edit" });
+  },
+
+  async onChooseAvatar(event: { detail?: { avatarUrl?: string } }) {
+    const avatarUrl = String(event.detail?.avatarUrl || "").trim();
+    if (!avatarUrl || this.data.avatarSaving || !this.data.user) return;
+    this.setData({ avatarSaving: true });
+    try {
+      const stored = await saveProfile({ avatarUrl });
+      this.setData({ user: toUserView(stored) ?? { ...this.data.user, avatarUrl: stored?.user.avatarUrl || avatarUrl } });
+    } catch (error) {
+      wx.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
+    } finally {
+      this.setData({ avatarSaving: false });
+    }
   },
 
   async openHistory(event: WechatMiniprogram.TouchEvent) {

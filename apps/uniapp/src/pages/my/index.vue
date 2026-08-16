@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import {
   isWechatProfileAuthorizationDenied,
   obtainWechatUserProfile,
@@ -11,23 +11,35 @@ import {
   ensureSession,
   getApi,
   getStoredSession,
-  isMockMode
+  isMockMode,
+  saveProfile
 } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { resolveHistoryPlayerUrl } from "../../utils/history-navigation";
 import {
+  createMockHistoryCards,
   toHistoryCardViews,
   type HistoryCardView
 } from "../../utils/history-view";
+import {
+  cloneHistorySheetFilter,
+  DEFAULT_HISTORY_SHEET_FILTER,
+  filterHistoryItems,
+  HISTORY_COMPLETION_FILTERS,
+  HISTORY_DURATION_OPTIONS,
+  HISTORY_FORMAT_OPTIONS,
+  HISTORY_TIME_OPTIONS,
+  isDefaultHistorySheetFilter,
+  isHistoryCompletionFilter,
+  type HistoryCompletionFilter,
+  type HistoryDurationId,
+  type HistoryFormatId,
+  type HistorySheetFilter,
+  type HistoryTimeId
+} from "../../utils/history-filter";
+import { INBOX_ITEMS, INBOX_TAB, LIBRARY_TABS } from "../../utils/inbox-view";
 
-const HISTORY_ITEMS: HistoryCardView[] = [
-  { id: "history-1", title: "引她入室", episode: "1 集 / 58 集", tag: "真人剧", tone: "rose", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-2", title: "凤栖今朝", episode: "1 集 / 71 集", tag: "真人剧", tone: "blue", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-3", title: "春色撩撩", episode: "1 集 / 105 集", tag: "漫画", tone: "ink", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-4", title: "皇后娘娘来打工", episode: "1 集 / 80 集", tag: "真人剧", tone: "gold", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-5", title: "请君入我怀", episode: "1 集 / 60 集", tag: "真人剧", tone: "wine", dramaId: "", episodeNumber: 1, position: 0 },
-  { id: "history-6", title: "苏太太高调离婚了", episode: "1 集 / 52 集", tag: "真人剧", tone: "night", dramaId: "", episodeNumber: 1, position: 0 }
-];
+const HISTORY_ITEMS: HistoryCardView[] = createMockHistoryCards();
 
 type UserView = { displayName: string; microfocusId: string; initial: string; avatarUrl: string };
 
@@ -46,17 +58,29 @@ const isMock = isMockMode();
 const user = ref<UserView | null>(null);
 const loginLoading = ref(false);
 const loginError = ref("");
+const avatarSaving = ref(false);
 const historyLoading = ref(false);
 const historyError = ref("");
-const activeHistoryTab = ref("历史");
-const historyTabs = ["历史", "收藏", "点赞"];
-const historyFilters = ["全部", "已看完", "未看完"];
-const activeFilter = ref("全部");
+const activeHistoryTab = ref<(typeof LIBRARY_TABS)[number]>("历史");
+const historyTabs = LIBRARY_TABS;
+const historyFilters = HISTORY_COMPLETION_FILTERS;
+const activeFilter = ref<HistoryCompletionFilter>("全部");
 const historyItems = ref<HistoryCardView[]>(isMock ? HISTORY_ITEMS : []);
-const utilities = [
-  { title: "消息", subtitle: "1 条未读" },
-  { title: "追更", subtitle: "管理追更" }
-];
+const inboxItems = INBOX_ITEMS;
+const filterOpen = ref(false);
+const filterClosingLocked = ref(false);
+const appliedSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
+const draftSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
+const formatOptions = HISTORY_FORMAT_OPTIONS;
+const durationOptions = HISTORY_DURATION_OPTIONS;
+const timeOptions = HISTORY_TIME_OPTIONS;
+const sheetFilterActive = computed(() => !isDefaultHistorySheetFilter(appliedSheetFilter.value));
+const visibleHistoryItems = computed(() =>
+  filterHistoryItems(historyItems.value, {
+    completion: activeFilter.value,
+    sheet: appliedSheetFilter.value
+  })
+);
 
 async function loadLiveHistory() {
   historyLoading.value = true;
@@ -97,12 +121,88 @@ async function login() {
   }
 }
 
+function selectCompletionFilter(item: string) {
+  if (isHistoryCompletionFilter(item)) activeFilter.value = item;
+}
+
+function openHistoryFilter() {
+  draftSheetFilter.value = cloneHistorySheetFilter(appliedSheetFilter.value);
+  filterClosingLocked.value = true;
+  filterOpen.value = true;
+  setTimeout(() => {
+    filterClosingLocked.value = false;
+  }, 320);
+}
+
+function closeHistoryFilter() {
+  if (filterClosingLocked.value) return;
+  filterOpen.value = false;
+  draftSheetFilter.value = cloneHistorySheetFilter(appliedSheetFilter.value);
+}
+
+function selectDraftFormat(id: HistoryFormatId) {
+  draftSheetFilter.value = { ...draftSheetFilter.value, format: id };
+}
+
+function selectDraftDuration(id: HistoryDurationId) {
+  draftSheetFilter.value = { ...draftSheetFilter.value, duration: id };
+}
+
+function selectDraftTime(id: HistoryTimeId) {
+  draftSheetFilter.value = { ...draftSheetFilter.value, time: id };
+}
+
+function clearDraftHistoryFilter() {
+  draftSheetFilter.value = cloneHistorySheetFilter(DEFAULT_HISTORY_SHEET_FILTER);
+}
+
+function confirmHistoryFilter() {
+  appliedSheetFilter.value = cloneHistorySheetFilter(draftSheetFilter.value);
+  filterOpen.value = false;
+}
+
 function showFeature(label: string) {
   uni.showToast({ title: `${label}为体验数据`, icon: "none" });
 }
 
+function selectLibraryTab(item: (typeof LIBRARY_TABS)[number]) {
+  activeHistoryTab.value = item;
+}
+
 function openProfile() {
   uni.navigateTo({ url: "/pages/profile/edit" });
+}
+
+async function persistAvatar(nextUrl: string) {
+  if (!nextUrl || avatarSaving.value || !user.value) return;
+  avatarSaving.value = true;
+  try {
+    const stored = await saveProfile({ avatarUrl: nextUrl });
+    user.value = toUserView(stored) ?? {
+      ...user.value,
+      avatarUrl: stored?.user.avatarUrl || nextUrl
+    };
+  } catch (error) {
+    uni.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
+  } finally {
+    avatarSaving.value = false;
+  }
+}
+
+function onChooseAvatar(event: { detail?: { avatarUrl?: string } }) {
+  const nextUrl = event.detail?.avatarUrl?.trim();
+  if (nextUrl) void persistAvatar(nextUrl);
+}
+
+function onAvatarTap() {
+  if (wechatMiniprogramAuthSupported()) return;
+  uni.chooseImage({
+    count: 1,
+    success: (result) => {
+      const nextUrl = result.tempFilePaths[0];
+      if (nextUrl) void persistAvatar(nextUrl);
+    }
+  });
 }
 
 async function openHistory(id: string) {
@@ -135,10 +235,18 @@ async function openHistory(id: string) {
       </button>
     </view>
     <view v-else class="member-profile">
-      <view class="avatar">
+      <button
+        class="avatar"
+        hover-class="none"
+        open-type="chooseAvatar"
+        aria-label="更换头像"
+        :disabled="avatarSaving"
+        @chooseavatar="onChooseAvatar"
+        @tap="onAvatarTap"
+      >
         <image v-if="user.avatarUrl" class="avatar-photo" :src="user.avatarUrl" mode="aspectFill" />
         <text v-else>{{ user.initial }}</text>
-      </view>
+      </button>
       <view class="member-copy">
         <view class="member-name">{{ user.displayName }}</view>
         <view class="member-id">{{ user.microfocusId }} ⧉</view>
@@ -153,20 +261,6 @@ async function openHistory(id: string) {
       <view><strong>0</strong><text>获赞</text></view>
     </view>
 
-    <scroll-view scroll-x enable-flex class="utility-scroll" aria-label="个人功能">
-      <view class="utility-row">
-        <button
-          v-for="item in utilities"
-          :key="item.title"
-          class="utility-card"
-          @tap="showFeature(item.title)"
-        >
-          <view class="utility-title">{{ item.title }}</view>
-          <view class="utility-subtitle">{{ item.subtitle }}</view>
-        </button>
-      </view>
-    </scroll-view>
-
     <view class="history-panel">
       <view class="history-tabs">
         <button
@@ -174,57 +268,168 @@ async function openHistory(id: string) {
           :key="item"
           class="history-tab"
           :class="{ active: activeHistoryTab === item }"
-          @tap="activeHistoryTab = item"
+          @tap="selectLibraryTab(item)"
         >
           {{ item }}
         </button>
-        <button class="history-search" aria-label="搜索历史" @tap="showFeature('历史搜索')">⌕</button>
-      </view>
-      <view class="history-tools">
-        <view class="filters">
-          <button
-            v-for="item in historyFilters"
-            :key="item"
-            class="filter"
-            :class="{ active: activeFilter === item }"
-            @tap="activeFilter = item"
-          >
-            {{ item }}
-          </button>
-        </view>
-        <view class="tool-actions">
-          <button @tap="showFeature('筛选')">筛选</button>
-          <button @tap="showFeature('编辑')">编辑</button>
-        </view>
-      </view>
-      <view v-if="isMock" class="mock-label">Mock 观看记录</view>
-      <view v-if="historyLoading" class="history-state">正在读取观看记录…</view>
-      <view v-else-if="historyError" class="history-state" role="alert">{{ historyError }}</view>
-      <view v-else-if="!historyItems.length" class="history-state">还没有观看记录</view>
-      <view v-else class="history-grid">
         <button
-          v-for="item in historyItems"
-          :key="item.id"
-          class="history-item"
-          :aria-label="`播放${item.title}`"
-          @tap="openHistory(item.id)"
+          v-if="activeHistoryTab !== INBOX_TAB"
+          class="history-search"
+          aria-label="搜索历史"
+          @tap="showFeature('历史搜索')"
         >
-          <view class="history-poster" :class="`poster-${item.tone}`">
-            <text class="poster-tag">{{ item.tag }}</text>
-            <text class="poster-title">{{ item.title }}</text>
-          </view>
-          <view class="drama-name">{{ item.title }}</view>
-          <view class="episode">{{ item.episode }}</view>
+          ⌕
         </button>
       </view>
+      <view v-if="activeHistoryTab === INBOX_TAB" class="inbox-list" aria-label="消息分类">
+        <view v-if="isMock" class="mock-label">体验占位，不接消息接口</view>
+        <view
+          v-for="item in inboxItems"
+          :key="item.id"
+          class="inbox-row"
+        >
+          <view class="inbox-icon" :class="item.tone">{{ item.icon }}</view>
+          <view class="inbox-copy">
+            <view class="inbox-title">{{ item.title }}</view>
+            <view class="inbox-preview">{{ item.preview }}</view>
+          </view>
+          <text v-if="item.meta" class="inbox-meta">{{ item.meta }}</text>
+          <text v-else class="inbox-chevron">›</text>
+        </view>
+      </view>
+      <view v-else>
+        <view class="history-tools">
+          <view class="filters">
+            <button
+              v-for="item in historyFilters"
+              :key="item"
+              class="filter"
+              :class="{ active: activeFilter === item }"
+              @tap="selectCompletionFilter(item)"
+            >
+              {{ item }}
+            </button>
+          </view>
+          <view class="tool-actions">
+            <button
+              class="filter-trigger"
+              :class="{ active: sheetFilterActive }"
+              hover-class="none"
+              @tap.stop="openHistoryFilter"
+            >
+              筛选
+            </button>
+            <button @tap="showFeature('编辑')">编辑</button>
+          </view>
+        </view>
+        <view v-if="isMock" class="mock-label">Mock 观看记录</view>
+        <view v-if="historyLoading" class="history-state">正在读取观看记录…</view>
+        <view v-else-if="historyError" class="history-state" role="alert">{{ historyError }}</view>
+        <view v-else-if="!historyItems.length" class="history-state">还没有观看记录</view>
+        <view v-else-if="!visibleHistoryItems.length" class="history-state">没有符合筛选条件的记录</view>
+        <view v-else class="history-grid">
+          <button
+            v-for="item in visibleHistoryItems"
+            :key="item.id"
+            class="history-item"
+            :aria-label="`播放${item.title}`"
+            @tap="openHistory(item.id)"
+          >
+            <view class="history-poster" :class="`poster-${item.tone}`">
+              <text class="poster-tag">{{ item.tag }}</text>
+              <text class="poster-title">{{ item.title }}</text>
+            </view>
+            <view class="drama-name">{{ item.title }}</view>
+            <view class="episode">{{ item.episode }}</view>
+          </button>
+        </view>
+      </view>
     </view>
+
+    <root-portal v-if="filterOpen">
+      <view class="filter-root" @touchmove.stop.prevent>
+        <view class="filter-mask" @tap="closeHistoryFilter" />
+        <view class="filter-panel">
+        <view class="filter-header">
+          <button class="filter-close" aria-label="关闭筛选" @tap="closeHistoryFilter">∨</button>
+          <view class="filter-title">筛选</view>
+          <view class="filter-header-spacer" />
+        </view>
+        <view class="filter-section">
+          <view class="filter-section-title">体裁</view>
+          <view class="filter-chips">
+            <button
+              v-for="item in formatOptions"
+              :key="item.id"
+              class="filter-chip"
+              :class="{ active: draftSheetFilter.format === item.id }"
+              @tap="selectDraftFormat(item.id)"
+            >
+              {{ item.label }}
+            </button>
+          </view>
+        </view>
+        <view class="filter-section">
+          <view class="filter-section-title">已播放时长</view>
+          <view class="filter-chips">
+            <button
+              v-for="item in durationOptions"
+              :key="item.id"
+              class="filter-chip"
+              :class="{ active: draftSheetFilter.duration === item.id }"
+              @tap="selectDraftDuration(item.id)"
+            >
+              {{ item.label }}
+            </button>
+          </view>
+        </view>
+        <view class="filter-section">
+          <view class="filter-section-title">时间</view>
+          <view class="filter-chips">
+            <button
+              v-for="item in timeOptions"
+              :key="item.id"
+              class="filter-chip"
+              :class="{ active: draftSheetFilter.time === item.id }"
+              @tap="selectDraftTime(item.id)"
+            >
+              {{ item.label }}
+            </button>
+          </view>
+        </view>
+        <view class="filter-footer">
+          <button class="filter-clear" @tap="clearDraftHistoryFilter">清空</button>
+          <button class="filter-confirm" @tap="confirmHistoryFilter">确定</button>
+        </view>
+      </view>
+      </view>
+    </root-portal>
   </view>
-</template>
 
 <style>
 page {
   background: #f7f7f8;
   color: #16161a;
+}
+.filter-root {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.filter-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.46);
 }
 </style>
 <style scoped src="../../styles/my.scss"></style>

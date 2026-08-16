@@ -771,3 +771,42 @@ describe("user profile", () => {
     });
   });
 });
+
+describe("my page inbox", () => {
+  it("places messages after likes and keeps five local categories", async () => {
+    const { INBOX_ITEMS, INBOX_TAB, LIBRARY_TABS } = await import("../miniprogram/utils/inbox-view");
+    expect([...LIBRARY_TABS]).toEqual(["历史", "收藏", "点赞", INBOX_TAB]);
+    expect(INBOX_ITEMS.map((item) => item.title)).toEqual([
+      "系统通知",
+      "粉丝消息",
+      "评论消息",
+      "我的评论",
+      "赞"
+    ]);
+  });
+});
+
+describe("watch history filters", () => {
+  it("keeps only live-action, comic, and AI format chips", async () => {
+    const { HISTORY_FORMAT_OPTIONS } = await import("../miniprogram/utils/history-filter");
+    expect(HISTORY_FORMAT_OPTIONS.map((item) => item.label)).toEqual(["全部", "真人剧", "漫剧", "AI 剧"]);
+  });
+
+  it("filters mock history by format, duration, time, and completion", async () => {
+    const { createMockHistoryCards } = await import("../miniprogram/utils/history-view");
+    const { filterHistoryItems } = await import("../miniprogram/utils/history-filter");
+    const now = new Date("2026-08-16T12:00:00");
+    const items = createMockHistoryCards(now);
+    const titles = (
+      completion: "全部" | "已看完" | "未看完",
+      sheet: { format: "all" | "live" | "comic" | "ai"; duration: "all" | "gt5s" | "gt1m" | "gt5m" | "gt15m" | "gt30m"; time: "all" | "today" | "yesterday" | "month" | "quarter" | "earlier" }
+    ) => filterHistoryItems(items, { completion, sheet, now }).map((item) => item.title);
+
+    expect(titles("全部", { format: "comic", duration: "all", time: "all" })).toEqual(["春色撩撩"]);
+    expect(titles("全部", { format: "ai", duration: "all", time: "all" })).toEqual(["请君入我怀"]);
+    expect(titles("全部", { format: "all", duration: "gt5m", time: "all" })).toEqual(["春色撩撩", "皇后娘娘来打工"]);
+    expect(titles("全部", { format: "all", duration: "all", time: "yesterday" })).toEqual(["凤栖今朝"]);
+    expect(titles("全部", { format: "all", duration: "all", time: "earlier" })).toEqual(["皇后娘娘来打工"]);
+    expect(titles("已看完", { format: "all", duration: "all", time: "all" })).toEqual(["皇后娘娘来打工"]);
+  });
+});
