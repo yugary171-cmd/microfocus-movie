@@ -51,12 +51,12 @@
 .search-input {
   flex: 1;
   min-width: 0;
-  color: #1f2024;
+  color: #111113;
   font-size: 26rpx;
 }
 
 .search-placeholder {
-  color: #a6a7ac;
+  color: #111113;
 }
 
 .clear-input {
@@ -76,8 +76,9 @@
 
 .submit-button {
   padding: 0 4rpx;
-  color: #4b56e9;
+  color: #111113;
   background: transparent;
+  border: 0;
   font-size: 28rpx;
   font-weight: 650;
 }
@@ -148,17 +149,26 @@
 .refresh,
 .clear {
   padding: 0 8rpx;
-  color: #8b8d96;
+  color: #111113;
   background: transparent;
+  border: 0;
+  box-shadow: none;
   font-size: 24rpx;
+}
+
+.refresh::after,
+.submit-button::after {
+  border: 0;
 }
 
 .refresh {
   width: 56rpx;
   height: 56rpx;
-  font-size: 32rpx;
-  line-height: 52rpx;
+  padding: 0;
+  line-height: 0;
 }
+
+.refresh image { width: 32rpx; height: 32rpx; }
 
 .guess-grid {
   display: grid;

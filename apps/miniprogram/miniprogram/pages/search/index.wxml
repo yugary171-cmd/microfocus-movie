@@ -24,7 +24,7 @@
     </view>
     <view class="guess-heading">
       <view class="section-title">猜你想搜</view>
-      <button class="refresh" bindtap="refreshGuesses" aria-label="换一批"><image src="/assets/icons/weui-arrow-down.svg" mode="aspectFit" aria-hidden="true" /></button>
+      <button class="refresh" bindtap="refreshGuesses" aria-label="换一批"><image src="/assets/icons/weui-refresh.svg" mode="aspectFit" aria-hidden="true" /></button>
     </view>
     <view class="suggestion-row">
       <button wx:for="{{guesses}}" wx:key="*this" class="suggestion" data-query="{{item}}" bindtap="chooseGuess">{{item}}</button>

@@ -26,5 +26,6 @@ export const NAV_ICONS = {
   close: "/static/icons/weui-close.svg",
   arrowRight: "/static/icons/weui-arrow-right.svg",
   arrowDown: "/static/icons/weui-arrow-down.svg",
+  refresh: "/static/icons/weui-refresh.svg",
   filter: "/static/icons/icon-filter.svg"
 } as const;

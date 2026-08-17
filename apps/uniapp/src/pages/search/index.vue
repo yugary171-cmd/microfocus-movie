@@ -260,7 +260,7 @@ function clearHistory() {
       </view>
       <view class="guess-heading">
         <view class="section-title">猜你想搜</view>
-        <button class="refresh" aria-label="换一批" @tap="refreshGuesses"><image :src="NAV_ICONS.arrowDown" mode="aspectFit" aria-hidden="true" /></button>
+        <button class="refresh" aria-label="换一批" @tap="refreshGuesses"><image :src="NAV_ICONS.refresh" mode="aspectFit" aria-hidden="true" /></button>
       </view>
       <view class="guess-grid">
         <button
