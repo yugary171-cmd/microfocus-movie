@@ -11,14 +11,13 @@
       <text wx:else>{{user.initial}}</text>
     </button>
     <view class="member-copy"><view class="member-name">{{user.displayName}}</view><view class="member-id">{{user.microfocusId}} ⧉</view></view>
-    <view class="member-actions">
-      <button class="edit-button" bindtap="openProfile">编辑资料</button>
-      <button class="settings-button" bindtap="openSettings" aria-label="设置">设置</button>
-    </view>
   </view>
   <view wx:if="{{loginError}}" class="login-error" role="alert">{{loginError}}</view>
 
-  <view wx:if="{{user}}" class="stats"><view><strong>{{followingCount}}</strong><text>关注</text></view><view><strong>{{followerCount}}</strong><text>粉丝</text></view><view><strong>{{receivedLikeCount}}</strong><text>获赞</text></view></view>
+  <view wx:if="{{user}}" class="stats-row">
+    <view class="stats"><view><strong>{{followingCount}}</strong><text>关注</text></view><view><strong>{{followerCount}}</strong><text>粉丝</text></view><view><strong>{{receivedLikeCount}}</strong><text>获赞</text></view></view>
+    <button class="settings-button" bindtap="openSettings" aria-label="设置">设置</button>
+  </view>
 
   <view class="history-panel">
     <view class="history-tabs">

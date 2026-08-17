@@ -25,7 +25,7 @@ import {
 import { buildDramaShareCard } from "../miniprogram/utils/drama-share";
 import { buildSupportPacket } from "../miniprogram/utils/support-packet";
 import { sanitizeFunnelProps } from "../miniprogram/services/telemetry";
-import { isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MAX_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate, shouldStartHoldBoost } from "../miniprogram/utils/playback-gesture";
+import { isCurrentTheaterVideoId, isPlaybackTap, PLAYBACK_HOLD_MS, PLAYBACK_TAP_MAX_MS, PLAYBACK_TAP_MOVE_MAX_PX, holdBoostRate, restoreHoldRate, shouldStartHoldBoost, theaterVideoId } from "../miniprogram/utils/playback-gesture";
 import {
   applyProfilePatch,
   boundNickname,
@@ -46,6 +46,14 @@ describe("playback tap gesture", () => {
     expect(shouldStartHoldBoost(true, PLAYBACK_TAP_MOVE_MAX_PX + 1, PLAYBACK_HOLD_MS)).toBe(false);
     expect(holdBoostRate()).toBe(PLAYBACK_RATE_MAX);
     expect(restoreHoldRate(1.5)).toBe(1.5);
+  });
+});
+
+describe("theater video event ownership", () => {
+  it("ignores delayed playback events from a previously active slide", () => {
+    expect(theaterVideoId(2)).toBe("theater-video-2");
+    expect(isCurrentTheaterVideoId("theater-video-2", 2)).toBe(true);
+    expect(isCurrentTheaterVideoId("theater-video-1", 2)).toBe(false);
   });
 });
 

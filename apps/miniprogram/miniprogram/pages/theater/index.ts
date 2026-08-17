@@ -1,5 +1,10 @@
 import { RUNTIME_CONFIG } from "../../config/runtime";
-import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
+import {
+  holdBoostRate,
+  isCurrentTheaterVideoId,
+  restoreHoldRate,
+  theaterVideoId
+} from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 
@@ -133,7 +138,7 @@ const ACTION_LABELS: Record<TheaterAction, string> = {
 const PULL_REFRESH_THRESHOLD = 96;
 
 function videoId(index: number): string {
-  return `theater-video-${index}`;
+  return theaterVideoId(index);
 }
 
 Page({
@@ -151,11 +156,21 @@ Page({
     isLiked: false,
     isPlaying: true,
     holdBoosting: false,
+    currentTime: 0,
+    duration: 0,
     boostRateLabel: `${holdBoostRate()}x`
   },
 
   touchStartY: 0,
   touchStartAt: 0,
+
+  onShow() {
+    wx.hideTabBar({ animation: false });
+  },
+
+  onHide() {
+    wx.showTabBar({ animation: false });
+  },
 
   selectCategory(event: WechatMiniprogram.TouchEvent) {
     const category = String(event.currentTarget.dataset.category || "推荐");
@@ -192,7 +207,9 @@ Page({
       currentVideo: nextVideo,
       isFavorite: false,
       isLiked: false,
-      holdBoosting: false
+      holdBoosting: false,
+      currentTime: 0,
+      duration: 0
     });
     this.applyTheaterRate(1);
   },
@@ -262,7 +279,9 @@ Page({
       currentIndex: nextIndex,
       currentVideo,
       isFavorite: false,
-      isLiked: false
+      isLiked: false,
+      currentTime: 0,
+      duration: 0
     });
     wx.nextTick(() => this.playCurrent());
     if (notice) wx.showToast({ title: notice, icon: "none" });
@@ -280,13 +299,52 @@ Page({
     if (id === videoId(this.data.currentIndex)) this.playCurrent();
   },
 
-  onPlay() {
+  onPlay(event: WechatMiniprogram.VideoPlay) {
+    const id = String(event.currentTarget.id || "");
+    if (!isCurrentTheaterVideoId(id, this.data.currentIndex)) return;
     this.setData({ isPlaying: true });
   },
 
-  onPause() {
+  onPause(event: WechatMiniprogram.VideoPause) {
+    const id = String(event.currentTarget.id || "");
+    if (!isCurrentTheaterVideoId(id, this.data.currentIndex)) return;
     this.endHoldBoost();
     this.setData({ isPlaying: false });
+  },
+
+  onTimeUpdate(event: WechatMiniprogram.VideoTimeUpdate) {
+    const currentId = String(event.currentTarget.id || "");
+    if (currentId !== videoId(this.data.currentIndex)) return;
+    const currentTime = Math.max(0, Number(event.detail.currentTime) || 0);
+    const duration = Math.max(0, Number(event.detail.duration) || this.data.duration);
+    this.setData({ currentTime, duration });
+  },
+
+  onEnded(event: WechatMiniprogram.VideoEnded) {
+    const endedId = String(event.currentTarget.id || "");
+    if (endedId !== videoId(this.data.currentIndex)) return;
+    this.endHoldBoost();
+    if (this.data.currentIndex < VIDEOS.length - 1) {
+      this.changeVideo(this.data.currentIndex + 1);
+      return;
+    }
+    this.setData({ currentTime: this.data.duration, isPlaying: false });
+  },
+
+  onProgressChange(event: WechatMiniprogram.SliderChange) {
+    if (!this.data.duration) return;
+    const next = Math.max(0, Math.min(this.data.duration, Number(event.detail.value) || 0));
+    this.setData({ currentTime: next });
+    this.theaterContext().seek(next);
+  },
+
+  stopProgressGesture() {},
+
+  switchTab(event: WechatMiniprogram.TouchEvent) {
+    const url = String(event.currentTarget.dataset.url || "");
+    if (!url || url === "/pages/theater/index") return;
+    wx.showTabBar({ animation: false });
+    wx.switchTab({ url });
   },
 
   applyTheaterRate(rate: number) {

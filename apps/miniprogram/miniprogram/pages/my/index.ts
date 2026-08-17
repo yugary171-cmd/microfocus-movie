@@ -1,7 +1,6 @@
 import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import {
   applyLocalWechatProfile,
-  clearStoredSession,
   ensureSession,
   getApi,
   getStoredSession,
@@ -370,17 +369,8 @@ Page({
     });
   },
 
-  openProfile() {
-    wx.navigateTo({ url: "/pages/profile/edit" });
-  },
-
   openSettings() {
     wx.navigateTo({ url: "/pages/settings/index" });
-  },
-
-  logout() {
-    clearStoredSession();
-    wx.reLaunch({ url: "/pages/my/index" });
   },
 
   selectFormatFilter(event: WechatMiniprogram.TouchEvent) {

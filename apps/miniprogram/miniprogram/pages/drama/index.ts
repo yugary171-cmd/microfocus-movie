@@ -1,5 +1,5 @@
 import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocus/contracts";
-import { getApi, isMockMode } from "../../services/api";
+import { applyLocalWechatProfile, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
@@ -10,7 +10,11 @@ import {
   type RewardFlowDependencies,
   type RewardResult
 } from "../../services/reward";
-import { wechatAdapter } from "../../services/wechat-adapter";
+import {
+  isWechatProfileAuthorizationDenied,
+  isWechatProfileUnavailable,
+  wechatAdapter
+} from "../../services/wechat-adapter";
 import { canStartEpisode, isFreeEpisode } from "../../utils/episode";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
@@ -40,6 +44,7 @@ Page({
     unlockVisible: false,
     unlockEpisode: null as EpisodeSummary | null,
     rewardLoading: false,
+    loginLoading: false,
     rewardError: "",
     rewardRetryPending: false
   },
@@ -104,12 +109,52 @@ Page({
     });
   },
 
-  selectEpisode(event: WechatMiniprogram.TouchEvent) {
+  async loginForLockedEpisode(): Promise<boolean> {
+    if (this.data.loginLoading) return false;
+    this.setData({ loginLoading: true });
+    try {
+      let profile: Awaited<ReturnType<typeof wechatAdapter.getUserProfile>> | null = null;
+      try {
+        profile = await wechatAdapter.getUserProfile();
+      } catch (error) {
+        if (!this.data.isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
+          throw error;
+        }
+      }
+      const session = await ensureSession();
+      if (profile) applyLocalWechatProfile(profile);
+      await this.loadEntitlement();
+      return Boolean(getStoredSession() ?? session);
+    } catch (error) {
+      if (isWechatProfileAuthorizationDenied(error)) {
+        wx.showToast({ title: "已取消授权", icon: "none" });
+      } else {
+        wx.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
+      }
+      return false;
+    } finally {
+      this.setData({ loginLoading: false });
+    }
+  },
+
+  async selectEpisode(event: WechatMiniprogram.TouchEvent) {
     const episodeId = String(event.currentTarget.dataset.id || "");
     const episode = this.data.drama?.episodes.find((item) => item.id === episodeId);
     if (!episode || !this.data.drama) return;
     const remaining = this.data.entitlement?.remainingSeconds ?? 0;
     if (!canStartEpisode(episode.episodeNumber, remaining)) {
+      if (!getStoredSession()) {
+        trackFunnelEvent("lock_intercept_shown", {
+          dramaId: this.data.drama.id,
+          episodeNumber: episode.episodeNumber
+        });
+        if (!(await this.loginForLockedEpisode())) return;
+        const refreshedRemaining = this.data.entitlement?.remainingSeconds ?? 0;
+        if (canStartEpisode(episode.episodeNumber, refreshedRemaining)) {
+          this.openPlayer(episode);
+          return;
+        }
+      }
       this.setData({ unlockVisible: true, unlockEpisode: episode, rewardError: "" });
       trackFunnelEvent("lock_intercept_shown", {
         dramaId: this.data.drama.id,

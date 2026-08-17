@@ -3,7 +3,14 @@ import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocu
 import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
-import { getApi, isMockMode } from "../../services/api";
+import {
+  isWechatProfileAuthorizationDenied,
+  isWechatProfileUnavailable,
+  obtainWechatUserProfile,
+  wechatMiniprogramAuthSupported,
+  type WechatUserProfile
+} from "../../platform";
+import { applyLocalWechatProfile, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
@@ -42,6 +49,7 @@ const unlockCopy = ref(formatRewardUnlockCopy("", []));
 const unlockVisible = ref(false);
 const unlockEpisode = ref<EpisodeSummary | null>(null);
 const rewardLoading = ref(false);
+const loginLoading = ref(false);
 const rewardError = ref("");
 const rewardRetryPending = ref(false);
 let rewardDependencies: RewardFlowDependencies | null = null;
@@ -96,11 +104,50 @@ function openPlayer(episode: EpisodeSummary) {
   uni.navigateTo({ url: playerUrlFromEpisode(current, episode) });
 }
 
-function selectEpisode(episode: EpisodeSummary) {
+async function loginForLockedEpisode(): Promise<boolean> {
+  if (loginLoading.value) return false;
+  loginLoading.value = true;
+  try {
+    let profile: WechatUserProfile | null = null;
+    if (wechatMiniprogramAuthSupported()) {
+      try {
+        profile = await obtainWechatUserProfile();
+      } catch (error) {
+        if (!isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
+          throw error;
+        }
+      }
+    }
+    const session = await ensureSession();
+    if (profile) applyLocalWechatProfile(profile);
+    await loadEntitlement();
+    return Boolean(getStoredSession() ?? session);
+  } catch (error) {
+    if (isWechatProfileAuthorizationDenied(error)) {
+      uni.showToast({ title: "已取消授权", icon: "none" });
+    } else {
+      uni.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
+    }
+    return false;
+  } finally {
+    loginLoading.value = false;
+  }
+}
+
+async function selectEpisode(episode: EpisodeSummary) {
   const current = drama.value;
   if (!current) return;
   const remaining = entitlement.value?.remainingSeconds ?? 0;
   if (!canStartEpisode(episode.episodeNumber, remaining)) {
+    if (!getStoredSession()) {
+      trackFunnelEvent("lock_intercept_shown", { dramaId: current.id, episodeNumber: episode.episodeNumber });
+      if (!(await loginForLockedEpisode())) return;
+      const refreshedRemaining = entitlement.value?.remainingSeconds ?? 0;
+      if (canStartEpisode(episode.episodeNumber, refreshedRemaining)) {
+        openPlayer(episode);
+        return;
+      }
+    }
     unlockVisible.value = true;
     unlockEpisode.value = episode;
     rewardError.value = "";

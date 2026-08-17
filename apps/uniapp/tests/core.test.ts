@@ -7,13 +7,13 @@ import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ad
 import { ApiClientError, toFriendlyErrorMessage } from "../src/utils/errors";
 import { canStartEpisode, isFreeEpisode } from "../src/utils/episode";
 import { formatApproximateRemainingEpisodes, formatRemainingTime, formatRewardUnlockCopy } from "../src/utils/format";
-import { playerUrlFromHistory, toHistoryCardViews } from "../src/utils/history-view";
+import { playerUrlFromHistory, resolveHistoryPlayerUrl, toHistoryCardViews } from "../src/utils/history-view";
 import { buildDramaShareCard } from "../src/utils/drama-share";
 import { buildSupportPacket } from "../src/utils/support-packet";
 import { sanitizeFunnelProps, trackFunnelEvent, recentFunnelEvents } from "../src/services/telemetry";
-import { resolveHistoryPlayerUrl } from "../src/utils/history-navigation";
 import { paginateItems } from "../src/utils/pagination";
 import { playerUrlFromEpisode } from "../src/utils/player-navigation";
+import { isCurrentTheaterVideoId, theaterVideoId } from "../src/utils/playback-gesture";
 import {
   applyProfilePatch,
   boundNickname,
@@ -21,6 +21,14 @@ import {
   canSaveSignature,
   formatMicrofocusId
 } from "../src/utils/profile";
+
+describe("theater video event ownership", () => {
+  it("ignores delayed playback events from a previously active slide", () => {
+    expect(theaterVideoId(2)).toBe("theater-video-2");
+    expect(isCurrentTheaterVideoId("theater-video-2", 2)).toBe(true);
+    expect(isCurrentTheaterVideoId("theater-video-1", 2)).toBe(false);
+  });
+});
 
 function stubUni(overrides: Record<string, unknown> = {}) {
   const storage = (overrides.storage as Map<string, unknown>) ?? new Map<string, unknown>();

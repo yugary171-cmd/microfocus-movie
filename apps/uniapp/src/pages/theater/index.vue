@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from "vue";
+import { onHide, onShow } from "@dcloudio/uni-app";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
 import { ACTION_ICONS, NAV_ICONS } from "../../constants/icons";
 import { RUNTIME_CONFIG } from "../../config/runtime";
 import { getClientPlatform } from "../../platform/env";
 import { shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
-import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
+import {
+  holdBoostRate,
+  isCurrentTheaterVideoId,
+  restoreHoldRate,
+  theaterVideoId
+} from "../../utils/playback-gesture";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 type TheaterVideo = {
@@ -165,6 +171,9 @@ const videoMarker = computed(
 const playbackError = ref("");
 const isPlaying = ref(true);
 const holdBoosting = ref(false);
+const currentTime = ref(0);
+const duration = ref(0);
+const progressMax = computed(() => Math.max(1, duration.value));
 const gesture = reactive({ startY: 0, startAt: 0 });
 let suppressTap = false;
 const layout = reactive({
@@ -189,10 +198,35 @@ function measureLayout() {
   }
 }
 
+function hideNativeTabBar() {
+  try {
+    uni.hideTabBar({ animation: false });
+  } catch {
+    // H5 does not expose the WeChat tab bar API.
+  }
+}
+
+function showNativeTabBar() {
+  try {
+    uni.showTabBar({ animation: false });
+  } catch {
+    // H5 does not expose the WeChat tab bar API.
+  }
+}
+
+function switchTab(url: string) {
+  if (url === "/pages/theater/index") return;
+  showNativeTabBar();
+  uni.switchTab({ url });
+}
+
 measureLayout();
 onMounted(() => {
   measureLayout();
+  hideNativeTabBar();
 });
+onShow(() => hideNativeTabBar());
+onHide(() => showNativeTabBar());
 
 function selectCategory(category: string) {
   if (!categories.includes(category)) return;
@@ -205,7 +239,7 @@ function openSearch() {
 }
 
 function videoId(index: number): string {
-  return `theater-video-${index}`;
+  return theaterVideoId(index);
 }
 
 function isMountedSlide(index: number): boolean {
@@ -275,6 +309,8 @@ function changeVideo(index: number, notice?: string) {
   isFavorite.value = false;
   isLiked.value = false;
   playbackError.value = "";
+  currentTime.value = 0;
+  duration.value = 0;
   void nextTick(() => playCurrent());
   if (notice) uni.showToast({ title: notice, icon: "none" });
 }
@@ -287,6 +323,8 @@ function onSwiperChange(event: { detail?: { current?: number } }) {
   isFavorite.value = false;
   isLiked.value = false;
   holdBoosting.value = false;
+  currentTime.value = 0;
+  duration.value = 0;
   applyTheaterRate(1);
 }
 
@@ -359,13 +397,47 @@ function handleAction(action: TheaterAction) {
   if (action in ACTION_LABELS) uni.showToast({ title: ACTION_LABELS[action as keyof typeof ACTION_LABELS], icon: "none" });
 }
 
-function onTheaterPause() {
+function onTheaterPlay(index: number) {
+  if (!isCurrentTheaterVideoId(videoId(index), currentIndex.value)) return;
+  isPlaying.value = true;
+}
+
+function onTheaterPause(index: number) {
+  if (!isCurrentTheaterVideoId(videoId(index), currentIndex.value)) return;
   isPlaying.value = false;
   endHoldBoost();
 }
 
 function onSlideReady(index: number) {
   if (index === currentIndex.value) playCurrent();
+}
+
+function onVideoTimeUpdate(index: number, event: Event) {
+  if (index !== currentIndex.value) return;
+  const detail = (event as unknown as { detail?: { currentTime?: number; duration?: number } }).detail;
+  currentTime.value = Math.max(0, Number(detail?.currentTime) || 0);
+  duration.value = Math.max(0, Number(detail?.duration) || duration.value);
+}
+
+function onVideoEnded(index: number) {
+  if (index !== currentIndex.value) return;
+  endHoldBoost();
+  if (index < videos.length - 1) {
+    changeVideo(index + 1);
+    return;
+  }
+  currentTime.value = duration.value;
+  isPlaying.value = false;
+}
+
+function onProgressChange(event: Event) {
+  if (!duration.value) return;
+  const next = Math.max(
+    0,
+    Math.min(duration.value, Number((event as unknown as { detail?: { value?: number } }).detail?.value) || 0)
+  );
+  currentTime.value = next;
+  theaterContext().seek(next);
 }
 
 function onVideoError() {
@@ -407,7 +479,6 @@ function prevSimple() {
             class="theater-video"
             :src="item.url"
             :autoplay="index === currentIndex"
-            loop
             :muted="H5_SIMPLIFIED"
             :obey-mute-switch="false"
             :controls="false"
@@ -415,9 +486,11 @@ function prevSimple() {
             :enable-progress-gesture="false"
             object-fit="cover"
             :aria-label="item.dramaTitle"
-            @play="isPlaying = true"
-            @pause="onTheaterPause"
+            @play="onTheaterPlay(index)"
+            @pause="onTheaterPause(index)"
             @loadedmetadata="onSlideReady(index)"
+            @timeupdate="onVideoTimeUpdate(index, $event)"
+            @ended="onVideoEnded(index)"
             @error="onVideoError"
           />
           <view class="video-shade" />
@@ -433,8 +506,23 @@ function prevSimple() {
         </view>
       </swiper-item>
     </swiper>
-      <image v-if="!isPlaying && !playbackError" class="pause-mark" :src="ACTION_ICONS.pause" mode="aspectFit" aria-hidden="true" />
+      <view v-if="!isPlaying && !playbackError" class="play-mark" aria-label="播放当前视频" />
     <view v-else-if="holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
+
+    <view class="theater-progress" @touchstart.stop @touchmove.stop @touchend.stop>
+      <slider
+        :value="currentTime"
+        :max="progressMax"
+        min="0"
+        :disabled="!duration"
+        activeColor="#ff7a18"
+        backgroundColor="rgba(255, 255, 255, .34)"
+        block-color="#fff"
+        block-size="16"
+        aria-label="视频播放进度"
+        @change="onProgressChange"
+      />
+    </view>
 
     <view
       class="refresh-panel"
@@ -508,6 +596,12 @@ function prevSimple() {
       :drama-title="currentVideo.dramaTitle"
       @close="commentsOpen = false"
     />
+
+    <view class="theater-tabbar" role="navigation" aria-label="底部菜单">
+      <button class="theater-tab" @tap="switchTab('/pages/home/index')">首页</button>
+      <button class="theater-tab active" aria-current="page" @tap="switchTab('/pages/theater/index')">剧场</button>
+      <button class="theater-tab" @tap="switchTab('/pages/my/index')">我的</button>
+    </view>
   </view>
 </template>
 

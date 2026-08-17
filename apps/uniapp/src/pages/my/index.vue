@@ -12,7 +12,6 @@ import {
 } from "../../platform";
 import {
   applyLocalWechatProfile,
-  clearStoredSession,
   ensureSession,
   getApi,
   getStoredSession,
@@ -20,11 +19,10 @@ import {
   saveProfile
 } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { resolveHistoryPlayerUrl } from "../../utils/history-navigation";
 import { getMockHistoryCards } from "../../mocks/history-state";
 import { loadFavoriteCards, loadLikedDramaCards } from "../../services/library";
 import { loadInboxItems } from "../../services/inbox";
-import { toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
+import { resolveHistoryPlayerUrl, toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
 import {
   cloneHistorySheetFilter,
   DEFAULT_HISTORY_SHEET_FILTER,
@@ -241,17 +239,8 @@ function selectLibraryTab(item: (typeof LIBRARY_TABS)[number]) {
   historyQuery.value = "";
 }
 
-function openProfile() {
-  uni.navigateTo({ url: "/pages/profile/edit" });
-}
-
 function openSettings() {
   uni.navigateTo({ url: "/pages/settings/index" });
-}
-
-function logout() {
-  clearStoredSession();
-  uni.reLaunch({ url: "/pages/my/index" });
 }
 
 function openHistoryEdit() {
@@ -338,17 +327,16 @@ async function openHistory(id: string) {
         <view class="member-name">{{ user.displayName }}</view>
         <view class="member-id">{{ user.microfocusId }} ⧉</view>
       </view>
-      <view class="member-actions">
-        <button class="edit-button" @tap="openProfile">编辑资料</button>
-        <button class="settings-button" aria-label="设置" @tap="openSettings">设置</button>
-      </view>
     </view>
     <view v-if="loginError" class="login-error" role="alert">{{ loginError }}</view>
 
-    <view v-if="user" class="stats">
-      <view><strong>{{ followingCount }}</strong><text>关注</text></view>
-      <view><strong>{{ followerCount }}</strong><text>粉丝</text></view>
-      <view><strong>{{ receivedLikeCount }}</strong><text>获赞</text></view>
+    <view v-if="user" class="stats-row">
+      <view class="stats">
+        <view><strong>{{ followingCount }}</strong><text>关注</text></view>
+        <view><strong>{{ followerCount }}</strong><text>粉丝</text></view>
+        <view><strong>{{ receivedLikeCount }}</strong><text>获赞</text></view>
+      </view>
+      <button class="settings-button" aria-label="设置" @tap="openSettings">设置</button>
     </view>
 
     <view class="history-panel">
@@ -521,6 +509,7 @@ async function openHistory(id: string) {
 page {
   background: #f7f7f8;
   color: #16161a;
+  overflow-x: hidden;
 }
 .filter-mask {
   position: fixed;

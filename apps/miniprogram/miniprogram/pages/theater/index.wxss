@@ -16,6 +16,9 @@ page {
 }
 
 .theater-page {
+  --theater-tabbar-height: 66rpx;
+  --theater-progress-height: 36rpx;
+  --theater-bottom-gap: 12rpx;
   position: relative;
   overflow: hidden;
   background: #08080a;
@@ -34,7 +37,7 @@ page {
   z-index: 2;
 }
 
-.pause-mark,
+.play-mark,
 .boost-mark {
   position: absolute;
   z-index: 3;
@@ -43,15 +46,14 @@ page {
   pointer-events: none;
 }
 
-.pause-mark {
-  width: 96rpx;
-  height: 96rpx;
-  margin: -48rpx 0 0 -48rpx;
-  color: #fff;
-  background: rgba(8, 8, 10, 0.45);
-  border-radius: 50%;
-  padding: 22rpx;
-  box-sizing: border-box;
+.play-mark {
+  width: 0;
+  height: 0;
+  margin: -42rpx 0 0 -25rpx;
+  border-top: 42rpx solid transparent;
+  border-bottom: 42rpx solid transparent;
+  border-left: 58rpx solid #fff;
+  filter: drop-shadow(0 4rpx 10rpx rgba(0, 0, 0, .28));
 }
 
 .boost-mark {
@@ -89,6 +91,56 @@ page {
 .refresh-spinner.spinning { animation: refresh-spin .75s linear infinite; }
 
 @keyframes refresh-spin { to { transform: rotate(360deg); } }
+
+.theater-progress {
+  position: fixed;
+  z-index: 9;
+  right: 20rpx;
+  bottom: calc(var(--theater-tabbar-height) + var(--theater-bottom-gap) + env(safe-area-inset-bottom));
+  left: 20rpx;
+  height: var(--theater-progress-height);
+  padding: 0;
+}
+
+.theater-progress slider {
+  width: 100%;
+  height: 36rpx;
+  margin: 0;
+}
+
+.theater-tabbar {
+  position: fixed;
+  z-index: 12;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-around;
+  height: calc(var(--theater-tabbar-height) + env(safe-area-inset-bottom));
+  padding: 0 28rpx env(safe-area-inset-bottom);
+  box-sizing: border-box;
+  color: #a5a5aa;
+  background: #fff;
+}
+
+.theater-tab {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 22rpx;
+  line-height: 66rpx;
+}
+
+.theater-tab.active {
+  color: #17171b;
+  font-weight: 650;
+}
 
 .theater-video {
   z-index: 0;
@@ -178,7 +230,7 @@ page {
   position: absolute;
   z-index: 4;
   right: 26rpx;
-  bottom: calc(38rpx + env(safe-area-inset-bottom));
+  bottom: calc(var(--theater-tabbar-height) + var(--theater-bottom-gap) + var(--theater-progress-height) + 24rpx + env(safe-area-inset-bottom));
   left: 28rpx;
   display: flex;
   gap: 22rpx;

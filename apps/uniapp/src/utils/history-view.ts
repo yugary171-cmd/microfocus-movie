@@ -1,4 +1,4 @@
-import type { DramaLibraryItem, WatchHistoryItem } from "@microfocus/contracts";
+import type { DramaDetail, DramaLibraryItem, WatchHistoryItem } from "@microfocus/contracts";
 import { formatPosition } from "./format";
 
 export type HistoryCardView = {
@@ -178,4 +178,14 @@ export function playerUrlFromHistory(
   episodeId: string
 ): string {
   return `/pages/player/index?dramaId=${encodeURIComponent(item.dramaId)}&episodeId=${encodeURIComponent(episodeId)}&title=${encodeURIComponent(item.title)}&episodeNumber=${item.episodeNumber}&position=${item.position}`;
+}
+
+export async function resolveHistoryPlayerUrl(
+  item: HistoryCardView,
+  getDrama: (id: string) => Promise<DramaDetail>
+): Promise<string> {
+  const drama = await getDrama(item.dramaId);
+  const episode = drama.episodes.find((entry) => entry.episodeNumber === item.episodeNumber);
+  if (!episode) throw new Error("该观看记录对应的剧集已不存在");
+  return playerUrlFromHistory(item, episode.id);
 }

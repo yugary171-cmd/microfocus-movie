@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { clearStoredSession } from "../../services/api";
 
+function openProfile() {
+  uni.navigateTo({ url: "/pages/profile/edit" });
+}
+
 function showFeedback() {
   uni.navigateTo({ url: "/pages/feedback/index" });
 }
@@ -14,6 +18,10 @@ function logout() {
 <template>
   <view class="settings-page">
     <view class="settings-group">
+      <button class="settings-item" @tap="openProfile">
+        <text class="settings-item-label">编辑资料</text>
+        <image src="/static/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
+      </button>
       <button class="settings-item" @tap="showFeedback">
         <text class="settings-item-label">用户反馈</text>
         <image src="/static/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />

@@ -95,7 +95,7 @@ flowchart LR
 | 剧场 | `apps/uniapp/src/pages/theater/index.vue` | 可用于 Demo 视觉验证；接入正式媒体时必须复用租约、权益和心跳，不得旁路播放 |
 | 评论底栏 | `apps/uniapp/src/components/comment-sheet/index.vue` | 播放页传入 `dramaId` 时走剧评列表/发评/赞/回复；剧场无真实剧 ID，仍本地交互 |
 | 福利 | `apps/uniapp/src/pages/welfare/index.vue` | 签到、邀请和增长活动属于 Later，不得接入正式权益账本 |
-| 个人信息编辑 | `apps/uniapp/src/pages/profile/edit.vue` | 登录后读取并修改头像、昵称、签名和性别；微焦号只读展示用户 ID。无头像挂件和背景图 | `GET/PATCH /v1/me/profile` |
+| 个人信息编辑 | `apps/uniapp/src/pages/profile/edit.vue` | 登录后从设置页进入，读取并修改头像、昵称、签名和性别；微焦号只读展示用户 ID。无头像挂件和背景图 | `GET/PATCH /v1/me/profile` |
 | 收藏/点赞/预约/商城/消息 | `apps/uniapp/src/pages/my/index.vue` | 收藏/点赞已接片库 API；消息 Tab 只展示分类摘要不跳转。预约/商城仍不做。 |
 
 不得仅为对齐外部产品界面而新增页面。若未来将剧场定义为正式推荐流，必须复用同一套租约、权益和心跳契约，不能使用 Demo URL 旁路播放；该变化需要独立产品决策。

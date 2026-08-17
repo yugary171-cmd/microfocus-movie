@@ -4,6 +4,14 @@ export const PLAYBACK_TAP_MOVE_MAX_PX = 16;
 export const PLAYBACK_TAP_MAX_MS = 320;
 export const PLAYBACK_HOLD_MS = 400;
 
+export function theaterVideoId(index: number): string {
+  return `theater-video-${index}`;
+}
+
+export function isCurrentTheaterVideoId(eventId: string, currentIndex: number): boolean {
+  return eventId === theaterVideoId(currentIndex);
+}
+
 export function isPlaybackTap(distanceY: number, elapsedMs: number): boolean {
   const distance = Number(distanceY);
   const elapsed = Number(elapsedMs);

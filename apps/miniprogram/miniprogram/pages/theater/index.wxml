@@ -2,14 +2,18 @@
   <swiper class="theater-swiper" vertical circular="{{false}}" current="{{currentIndex}}" duration="280" bindchange="onSwiperChange" bindanimationfinish="onSwiperFinish" aria-label="{{currentVideo.dramaTitle}}沉浸式短剧播放器">
     <swiper-item wx:for="{{videos}}" wx:key="id" wx:for-index="index">
       <view class="slide">
-        <video wx:if="{{index >= currentIndex - 1 && index <= currentIndex + 1}}" id="theater-video-{{index}}" class="theater-video" src="{{item.url}}" autoplay="{{index === currentIndex}}" loop muted="{{false}}" obey-mute-switch="{{false}}" controls="{{false}}" show-center-play-btn="{{false}}" object-fit="cover" bindplay="onPlay" bindpause="onPause" bindloadedmetadata="onSlideReady" aria-label="{{item.dramaTitle}}" />
+        <video wx:if="{{index >= currentIndex - 1 && index <= currentIndex + 1}}" id="theater-video-{{index}}" class="theater-video" src="{{item.url}}" autoplay="{{index === currentIndex}}" muted="{{false}}" obey-mute-switch="{{false}}" controls="{{false}}" show-center-play-btn="{{false}}" object-fit="cover" bindplay="onPlay" bindpause="onPause" bindloadedmetadata="onSlideReady" bindtimeupdate="onTimeUpdate" bindended="onEnded" aria-label="{{item.dramaTitle}}" />
         <view class="video-shade" />
         <view class="hit-layer" bindtap="togglePlayback" bindlongpress="startHoldBoost" bindtouchstart="onFirstTouchStart" bindtouchmove="onFirstTouchMove" bindtouchend="onSlideTouchEnd" bindtouchcancel="endHoldBoost" />
       </view>
     </swiper-item>
   </swiper>
-  <image wx:if="{{!isPlaying}}" class="pause-mark" src="/assets/icons/icon-pause.svg" mode="aspectFit" aria-hidden="true" />
+  <view wx:if="{{!isPlaying}}" class="play-mark" aria-label="播放当前视频" />
   <view wx:elif="{{holdBoosting}}" class="boost-mark" aria-live="polite">{{boostRateLabel}}</view>
+
+  <view class="theater-progress" catchtouchstart="stopProgressGesture" catchtouchmove="stopProgressGesture" catchtouchend="stopProgressGesture">
+    <slider value="{{currentTime}}" min="0" max="{{duration || 1}}" disabled="{{!duration}}" activeColor="#ff7a18" backgroundColor="rgba(255, 255, 255, .34)" block-color="#fff" block-size="16" bindchange="onProgressChange" aria-label="视频播放进度" />
+  </view>
 
   <view class="refresh-panel {{isPulling || refreshing ? 'visible' : ''}}" style="transform: translateY({{pullDistance}}px)">
     <view class="refresh-spinner {{refreshing ? 'spinning' : ''}}">↻</view>
@@ -39,5 +43,11 @@
       <button class="action" data-action="like" bindtap="handleAction" aria-label="点赞"><image class="action-icon" src="{{isLiked ? '/assets/icons/icon-heart-active.svg' : '/assets/icons/icon-heart.svg'}}" mode="aspectFit" aria-hidden="true" /><view>{{currentVideo.likeCount}}</view></button>
       <button class="action" data-action="share" bindtap="handleAction" aria-label="分享"><image class="action-icon" src="/assets/icons/icon-share.svg" mode="aspectFit" aria-hidden="true" /><view>{{currentVideo.shareCount}}</view></button>
     </view>
+  </view>
+
+  <view class="theater-tabbar" role="navigation" aria-label="底部菜单">
+    <button class="theater-tab" data-url="/pages/home/index" bindtap="switchTab">首页</button>
+    <button class="theater-tab active" aria-current="page">剧场</button>
+    <button class="theater-tab" data-url="/pages/my/index" bindtap="switchTab">我的</button>
   </view>
 </view>
