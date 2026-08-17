@@ -1,4 +1,4 @@
-<view class="my-page">
+  <view class="my-page">
   <view class="ambient" />
 
   <view wx:if="{{!user}}" class="guest-profile">
@@ -11,31 +11,34 @@
       <text wx:else>{{user.initial}}</text>
     </button>
     <view class="member-copy"><view class="member-name">{{user.displayName}}</view><view class="member-id">{{user.microfocusId}} ⧉</view></view>
-    <button class="edit-button" bindtap="openProfile">编辑资料</button>
+    <view class="member-actions">
+      <button class="edit-button" bindtap="openProfile">编辑资料</button>
+      <button class="settings-button" bindtap="openSettings" aria-label="设置">设置</button>
+    </view>
   </view>
   <view wx:if="{{loginError}}" class="login-error" role="alert">{{loginError}}</view>
 
-  <view wx:if="{{user}}" class="stats"><view><strong>0</strong><text>关注</text></view><view><strong>0</strong><text>粉丝</text></view><view><strong>0</strong><text>获赞</text></view></view>
+  <view wx:if="{{user}}" class="stats"><view><strong>{{followingCount}}</strong><text>关注</text></view><view><strong>{{followerCount}}</strong><text>粉丝</text></view><view><strong>{{receivedLikeCount}}</strong><text>获赞</text></view></view>
 
   <view class="history-panel">
     <view class="history-tabs">
       <button wx:for="{{historyTabs}}" wx:key="*this" class="history-tab {{activeHistoryTab === item ? 'active' : ''}}" data-tab="{{item}}" bindtap="selectHistoryTab">{{item}}</button>
-      <view wx:if="{{activeHistoryTab !== '消息'}}" class="history-search {{historySearchOpen ? 'active' : ''}}" bindtap="openHistorySearch" aria-label="搜索历史">⌕</view>
+      <view wx:if="{{activeHistoryTab !== '消息'}}" class="history-search {{historySearchOpen ? 'active' : ''}}" bindtap="openHistorySearch" aria-label="搜索历史"><image src="/assets/icons/weui-search.svg" mode="aspectFit" aria-hidden="true" /></view>
     </view>
     <view wx:if="{{historySearchOpen && activeHistoryTab !== '消息'}}" class="history-search-bar">
       <input class="history-search-field" value="{{historyQuery}}" maxlength="{{queryMaxLength}}" focus="{{historySearchOpen}}" confirm-type="search" placeholder="{{searchPlaceholder}}" bindinput="onHistoryQuery" />
       <view class="history-search-cancel" bindtap="closeHistorySearch">取消</view>
     </view>
     <view wx:if="{{activeHistoryTab === '消息'}}" class="inbox-list" aria-label="消息分类">
-      <view wx:if="{{isMock}}" class="mock-label">体验占位，不接消息接口</view>
+      <view wx:if="{{isMock}}" class="mock-label">{{inboxMockLabel}}</view>
       <view wx:for="{{inboxItems}}" wx:key="id" class="inbox-row">
-        <view class="inbox-icon {{item.tone}}">{{item.icon}}</view>
+        <image class="inbox-icon {{item.tone}}" src="{{item.icon}}" mode="aspectFit" aria-hidden="true" />
         <view class="inbox-copy">
           <view class="inbox-title">{{item.title}}</view>
           <view class="inbox-preview">{{item.preview}}</view>
         </view>
         <text wx:if="{{item.meta}}" class="inbox-meta">{{item.meta}}</text>
-        <text wx:else class="inbox-chevron">›</text>
+        <image wx:else class="inbox-chevron" src="/assets/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
       </view>
     </view>
     <view wx:else>
@@ -52,8 +55,8 @@
         </view>
       </view>
       <view wx:if="{{isMock}}" class="mock-label">{{mockLabel}}</view>
-      <view wx:if="{{!isFormatTab && historyLoading}}" class="history-state">正在读取观看记录…</view>
-      <view wx:elif="{{!isFormatTab && historyError}}" class="history-state" role="alert">{{historyError}}</view>
+      <view wx:if="{{historyLoading}}" class="history-state">正在读取观看记录…</view>
+      <view wx:elif="{{historyError}}" class="history-state" role="alert">{{historyError}}</view>
       <view wx:elif="{{sourceEmpty}}" class="history-state">{{emptyLabel}}</view>
       <view wx:elif="{{!visibleHistoryItems.length}}" class="history-state">{{historyQuery ? '没有找到相关记录' : '没有符合筛选条件的记录'}}</view>
       <view wx:else class="history-grid"><button wx:for="{{visibleHistoryItems}}" wx:key="id" class="history-item" data-id="{{item.id}}" bindtap="openHistory" aria-label="播放{{item.title}}"><view class="history-poster poster-{{item.tone}}"><text class="poster-tag">{{item.tag}}</text><text class="poster-title">{{item.title}}</text></view><view class="drama-name">{{item.title}}</view><view class="episode">{{item.episode}}</view></button></view>
@@ -64,7 +67,7 @@
     <view class="filter-mask" bindtap="closeHistoryFilter" />
     <view class="filter-panel">
       <view class="filter-header">
-        <button class="filter-close" bindtap="closeHistoryFilter" aria-label="关闭筛选">∨</button>
+        <button class="filter-close" bindtap="closeHistoryFilter" aria-label="关闭筛选"><image src="/assets/icons/weui-close.svg" mode="aspectFit" aria-hidden="true" /></button>
         <view class="filter-title">筛选</view>
         <view class="filter-header-spacer" />
       </view>

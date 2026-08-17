@@ -42,8 +42,13 @@
 .close {
   width: 64rpx;
   height: 64rpx;
-  font-size: 36rpx;
-  line-height: 60rpx;
+  font-size: 0;
+  line-height: 1;
+}
+
+.close image {
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .title {
@@ -131,8 +136,8 @@
 }
 
 .heart {
-  font-size: 32rpx;
-  line-height: 1;
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .replies {

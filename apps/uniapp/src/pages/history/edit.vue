@@ -2,11 +2,13 @@
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getApi, getStoredSession, isMockMode } from "../../services/api";
-import { deleteMockLibraryCards, getMockLibraryCards } from "../../mocks/history-state";
+import { loadFavoriteCards, loadLikedDramaCards, removeLibraryItems } from "../../services/library";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
 import {
+  FAVORITE_TAB,
   HISTORY_TAB,
+  LIKE_TAB,
   LIBRARY_EDIT_COPY,
   parseLibraryGridTab,
   type LibraryGridTab
@@ -38,10 +40,12 @@ async function loadItems() {
   loading.value = true;
   error.value = "";
   try {
-    if (libraryTab.value === HISTORY_TAB && !isMock) {
+    if (libraryTab.value === HISTORY_TAB) {
       items.value = toHistoryCardViews(await getApi().getHistory());
-    } else if (libraryTab.value === HISTORY_TAB || isMock) {
-      items.value = getMockLibraryCards(libraryTab.value);
+    } else if (libraryTab.value === FAVORITE_TAB) {
+      items.value = await loadFavoriteCards();
+    } else if (libraryTab.value === LIKE_TAB) {
+      items.value = await loadLikedDramaCards();
     } else {
       items.value = [];
     }
@@ -113,8 +117,8 @@ async function confirmDelete() {
   try {
     if (libraryTab.value === HISTORY_TAB) {
       await getApi().deleteHistory({ dramaIds: [...selectedIds.value] });
-    } else if (isMock) {
-      deleteMockLibraryCards(libraryTab.value, [...selectedIds.value]);
+    } else {
+      await removeLibraryItems(libraryTab.value, [...selectedIds.value]);
     }
     confirmOpen.value = false;
     selectedIds.value = [];

@@ -14,6 +14,7 @@ import { toErrorMessage } from "@/api/client";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import Icon from "@/components/Icon.vue";
 import { formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import type { CircuitBreakerState, CompensationInput, AdjustmentInput, AdminCallbackEvent, CallbackReplayInput, DeletionQueryTokenReissueInput } from "@/types/admin";
@@ -346,7 +347,7 @@ onMounted(load);
             <div><p class="eyebrow">CIRCUIT BREAKER</p><h2 id="breaker-title">全站播放熔断</h2></div>
             <StatusBadge :label="breaker.enabled ? '熔断已开启' : '播放正常'" :tone="breaker.enabled ? 'danger' : 'success'" />
           </div>
-          <div class="breaker-visual"><span aria-hidden="true">{{ breaker.enabled ? "■" : "▶" }}</span><div><strong>{{ breaker.enabled ? "已阻止新播放" : "当前允许播放" }}</strong><small>{{ breaker.enabled ? "请确认事故处置完成后再恢复" : "异常时可立即阻止新的播放租约" }}</small></div></div>
+          <div class="breaker-visual"><span><Icon :name="breaker.enabled ? 'stop' : 'play'" /></span><div><strong>{{ breaker.enabled ? "已阻止新播放" : "当前允许播放" }}</strong><small>{{ breaker.enabled ? "请确认事故处置完成后再恢复" : "异常时可立即阻止新的播放租约" }}</small></div></div>
           <dl>
             <div><dt>最后操作人</dt><dd>{{ breaker.updatedBy || "—" }}</dd></div>
             <div><dt>最后更新时间</dt><dd>{{ formatDateTime(breaker.updatedAt) }}</dd></div>

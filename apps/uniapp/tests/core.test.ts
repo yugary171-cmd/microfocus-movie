@@ -77,6 +77,14 @@ describe("explicit WeChat login", () => {
     vi.unstubAllGlobals();
   });
 
+  it("recognizes the DevTools avatar metadata failure separately from denial", async () => {
+    vi.resetModules();
+    const { isWechatProfileAuthorizationDenied, isWechatProfileUnavailable } = await import("../src/platform/auth");
+    const error = new Error("getUserProfile:fail getUserAvatarInfo fail");
+    expect(isWechatProfileUnavailable(error)).toBe(true);
+    expect(isWechatProfileAuthorizationDenied(error)).toBe(false);
+  });
+
   it("applies the WeChat nickname locally after a Mock session is stored", async () => {
     vi.resetModules();
     stubUni();
@@ -795,8 +803,8 @@ describe("watch client icons", () => {
     );
     expect(ICONFONT_SEARCH_URL).toContain("iconfont.cn/search");
     expect(Object.keys(ICONFONT_QUERIES)).toEqual(["star", "comment", "heart", "share"]);
-    expect(ACTION_ICONS.starGold).toBe("/static/icons/star-gold.png");
-    expect(ACTION_ICONS.comment).toBe("/static/icons/comment.png");
+    expect(ACTION_ICONS.starActive).toBe("/static/icons/icon-star-active.svg");
+    expect(ACTION_ICONS.comment).toBe("/static/icons/icon-comment.svg");
   });
 });
 
@@ -936,6 +944,25 @@ describe("my page inbox", () => {
       "赞"
     ]);
   });
+
+  it("summarizes inbox rows from the latest social items", async () => {
+    const { applyInboxLatest, cloneInboxItems } = await import("../src/utils/inbox-view");
+    const rows = applyInboxLatest(cloneInboxItems(), {
+      fansName: "阿焦",
+      fansAt: "2026-08-17T01:00:00.000Z",
+      commentPreview: "路人：这部好看",
+      commentAt: "2026-08-17T02:00:00.000Z",
+      minePreview: "我刚看完",
+      mineAt: "2026-08-17T03:00:00.000Z",
+      likeName: "小微",
+      likeAt: "2026-08-17T04:00:00.000Z"
+    });
+    expect(rows.find((item) => item.id === "fans")?.preview).toBe("阿焦 关注了你");
+    expect(rows.find((item) => item.id === "comments")?.preview).toBe("路人：这部好看");
+    expect(rows.find((item) => item.id === "mine")?.preview).toBe("我刚看完");
+    expect(rows.find((item) => item.id === "likes")?.preview).toBe("小微 赞了你的评论");
+    expect(rows.find((item) => item.id === "system")?.preview).toContain("隐私政策");
+  });
 });
 
 describe("watch history filters", () => {
@@ -992,6 +1019,7 @@ describe("watch history filters", () => {
     resetMockHistoryCards();
     expect(parseLibraryGridTab("收藏")).toBe("收藏");
     expect(LIBRARY_EDIT_COPY.收藏.search).toBe("搜索收藏");
+    expect(LIBRARY_EDIT_COPY.收藏.mockLabel).toBe("内部体验收藏");
     expect(getMockFavoriteCards().map((item) => item.title)).toEqual(["皇后娘娘来打工", "引她入室", "凤栖今朝"]);
     expect(
       filterHistoryItems(getMockLikeCards(), {
@@ -1002,6 +1030,27 @@ describe("watch history filters", () => {
     expect(deleteMockLibraryCards("收藏", ["history-4"])).toEqual(["history-4"]);
     expect(getMockFavoriteCards().some((item) => item.dramaId === "history-4")).toBe(false);
     expect(getMockLikeCards().some((item) => item.dramaId === "history-5")).toBe(true);
+    resetMockHistoryCards();
+  });
+
+  it("exposes mock favorites through the social client", async () => {
+    const { resetMockHistoryCards, getMockFavoriteCards } = await import("../src/mocks/history-state");
+    const { writeMockProfile } = await import("../src/mocks/profile-state");
+    const { createMockSocialApi } = await import("../src/mocks/social-api");
+    resetMockHistoryCards();
+    writeMockProfile({
+      id: "mock-user",
+      displayName: "体验用户",
+      avatarUrl: null,
+      signature: "",
+      gender: "unset"
+    });
+    const social = createMockSocialApi();
+    const page = await social.getFavorites(1);
+    expect(page.items.map((item) => item.drama.id)).toEqual(getMockFavoriteCards().map((item) => item.dramaId));
+    await social.createDramaComment("drama-inbox", { body: "刚看完" });
+    const mine = await social.getMeComments(1);
+    expect(mine.items[0]?.body).toBe("刚看完");
     resetMockHistoryCards();
   });
 });

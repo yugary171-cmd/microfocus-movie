@@ -1,9 +1,11 @@
 import { getApi, getStoredSession, isMockMode } from "../../services/api";
-import { deleteMockLibraryCards, getMockLibraryCards } from "../../mocks/history-state";
+import { loadFavoriteCards, loadLikedDramaCards, removeLibraryItems } from "../../services/library";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
 import {
+  FAVORITE_TAB,
   HISTORY_TAB,
+  LIKE_TAB,
   LIBRARY_EDIT_COPY,
   parseLibraryGridTab,
   type LibraryGridTab
@@ -76,10 +78,12 @@ Page({
     this.setData({ loading: true, error: "" });
     try {
       let loaded: HistoryCardView[] = [];
-      if (this.data.libraryTab === HISTORY_TAB && !this.data.isMock) {
+      if (this.data.libraryTab === HISTORY_TAB) {
         loaded = toHistoryCardViews(await getApi().getHistory());
-      } else if (this.data.libraryTab === HISTORY_TAB || this.data.isMock) {
-        loaded = getMockLibraryCards(this.data.libraryTab);
+      } else if (this.data.libraryTab === FAVORITE_TAB) {
+        loaded = await loadFavoriteCards();
+      } else if (this.data.libraryTab === LIKE_TAB) {
+        loaded = await loadLikedDramaCards();
       }
       const available = new Set(loaded.map(itemKey).filter(Boolean));
       const selectedIds = (nextSelectedIds ?? this.data.selectedIds).filter((id) => available.has(id));
@@ -140,8 +144,8 @@ Page({
     try {
       if (this.data.libraryTab === HISTORY_TAB) {
         await getApi().deleteHistory({ dramaIds: [...this.data.selectedIds] });
-      } else if (this.data.isMock) {
-        deleteMockLibraryCards(this.data.libraryTab, [...this.data.selectedIds]);
+      } else {
+        await removeLibraryItems(this.data.libraryTab, [...this.data.selectedIds]);
       }
       this.setData({ confirmOpen: false });
       await this.loadItems([]);

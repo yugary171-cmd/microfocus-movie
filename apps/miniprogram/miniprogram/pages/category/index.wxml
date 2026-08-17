@@ -26,7 +26,7 @@
     </view>
     <button class="collapse-button" bindtap="toggleExpanded">
       <text>{{filtersExpanded ? '收起' : '展开'}}</text>
-      <text class="collapse-icon">{{filtersExpanded ? '^' : '⌄'}}</text>
+      <image class="collapse-icon {{filtersExpanded ? 'expanded' : ''}}" src="/assets/icons/weui-arrow-down.svg" mode="aspectFit" aria-hidden="true" />
     </button>
   </view>
   <view wx:if="{{loading}}" class="filter-state">正在加载短剧…</view>
@@ -36,7 +36,7 @@
     <button wx:for="{{results}}" wx:key="id" class="filter-card" data-id="{{item.id}}" bindtap="openDrama">
       <view class="filter-poster">{{item.title[0]}}</view>
       <view class="filter-title">{{item.title}}</view>
-      <view class="filter-meta">♨ {{item.heat}} · {{item.tag}}</view>
+      <view class="filter-meta">热度 {{item.heat}} · {{item.tag}}</view>
     </button>
   </view>
   <view wx:if="{{loadingMore}}" class="filter-state">正在加载更多…</view>

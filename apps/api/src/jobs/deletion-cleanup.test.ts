@@ -6,6 +6,19 @@ import {
   runDeletionCleanupJob
 } from "./deletion-cleanup.js";
 
+function socialDeletes() {
+  return {
+    watchEpisodeProgress: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    userFollow: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    commentLike: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    comment: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    directMessage: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    directConversation: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    dramaFavorite: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    dramaLike: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) }
+  };
+}
+
 describe("deletion cleanup retention gate", () => {
   it("keeps the retention matrix fail-closed", () => {
     expect(RETENTION_MATRIX_APPROVED).toBe(false);
@@ -19,7 +32,8 @@ describe("deletion cleanup retention gate", () => {
       },
       user: { update: vi.fn() },
       watchProgress: { deleteMany: vi.fn() },
-      operationalEvent: { create: vi.fn() }
+      operationalEvent: { create: vi.fn() },
+      ...socialDeletes()
     };
     await expect(cleanupPendingDeletions(prisma)).resolves.toEqual({
       cleaned: 0,
@@ -28,6 +42,7 @@ describe("deletion cleanup retention gate", () => {
     });
     expect(prisma.user.update).not.toHaveBeenCalled();
     expect(prisma.watchProgress.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.userFollow.deleteMany).not.toHaveBeenCalled();
     expect(prisma.deletionRequest.updateMany).not.toHaveBeenCalled();
   });
 
@@ -39,7 +54,8 @@ describe("deletion cleanup retention gate", () => {
       },
       user: { update: vi.fn().mockResolvedValue({}) },
       watchProgress: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
-      operationalEvent: { create: vi.fn() }
+      operationalEvent: { create: vi.fn() },
+      ...socialDeletes()
     };
     const now = new Date("2026-08-15T12:00:00.000Z");
     await expect(cleanupPendingDeletions(prisma, { approved: true, now })).resolves.toEqual({
@@ -54,10 +70,16 @@ describe("deletion cleanup retention gate", () => {
         avatarUrl: null,
         signature: "",
         gender: "unset",
+        followerCount: 0,
+        followingCount: 0,
+        receivedCommentLikeCount: 0,
         openId: "deleted:user-1"
       }
     });
     expect(prisma.watchProgress.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+    expect(prisma.watchEpisodeProgress.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+    expect(prisma.userFollow.deleteMany).toHaveBeenCalled();
+    expect(prisma.comment.deleteMany).toHaveBeenCalled();
   });
 
   it("records a blocked operational event and does not log personal data", async () => {
@@ -72,7 +94,8 @@ describe("deletion cleanup retention gate", () => {
       },
       user: { update: vi.fn() },
       watchProgress: { deleteMany: vi.fn() },
-      operationalEvent: { create: vi.fn().mockResolvedValue({}) }
+      operationalEvent: { create: vi.fn().mockResolvedValue({}) },
+      ...socialDeletes()
     };
     await expect(runDeletionCleanupJob(prisma, { ownerId: "a" })).resolves.toEqual({
       acquired: true,
@@ -103,7 +126,8 @@ describe("deletion cleanup retention gate", () => {
       deletionRequest: { findMany: vi.fn(), updateMany: vi.fn() },
       user: { update: vi.fn() },
       watchProgress: { deleteMany: vi.fn() },
-      operationalEvent: { create: vi.fn() }
+      operationalEvent: { create: vi.fn() },
+      ...socialDeletes()
     };
     await expect(runDeletionCleanupJob(prisma, { ownerId: "b" })).resolves.toEqual({
       acquired: false,

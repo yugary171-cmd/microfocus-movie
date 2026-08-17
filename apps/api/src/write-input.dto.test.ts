@@ -3,12 +3,14 @@ import { validate } from "class-validator";
 import { describe, expect, it } from "vitest";
 import {
   COVER_URL_MAX_LENGTH,
+  COMMENT_BODY_MAX_LENGTH,
   DEVICE_ID_MAX_LENGTH,
   DISPLAY_NAME_MAX_LENGTH,
   EMAIL_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
   HEARTBEAT_SEQ_MAX,
+  MESSAGE_BODY_MAX_LENGTH,
   OTP_MAX_LENGTH,
   OTP_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
@@ -26,6 +28,7 @@ import { ProgressDto } from "./history/history.module.js";
 import { CreateLeaseDto, HeartbeatDto } from "./playback/playback.module.js";
 import { UpdateProfileDto } from "./profile/profile.module.js";
 import { CompleteChallengeDto, CreateChallengeDto } from "./rewards/rewards.module.js";
+import { CreateCommentDto, CreateDirectMessageDto } from "./social/social.dto.js";
 
 async function propertyError(dto: object, property: string): Promise<boolean> {
   const errors = await validate(dto);
@@ -210,5 +213,20 @@ describe("remaining write input limits", () => {
       )
     ).toBe(true);
     expect(await validate(plainToInstance(UpdateProfileDto, { displayName: "新昵称", gender: "unset" }))).toEqual([]);
+  });
+
+  it("rejects oversized comment and message bodies", async () => {
+    expect(
+      await propertyError(
+        plainToInstance(CreateCommentDto, { body: "c".repeat(COMMENT_BODY_MAX_LENGTH + 1) }),
+        "body"
+      )
+    ).toBe(true);
+    expect(
+      await propertyError(
+        plainToInstance(CreateDirectMessageDto, { body: "m".repeat(MESSAGE_BODY_MAX_LENGTH + 1) }),
+        "body"
+      )
+    ).toBe(true);
   });
 });

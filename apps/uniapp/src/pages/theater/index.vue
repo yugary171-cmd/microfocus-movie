@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref } from "vue";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
+import { ACTION_ICONS, NAV_ICONS } from "../../constants/icons";
 import { RUNTIME_CONFIG } from "../../config/runtime";
 import { getClientPlatform } from "../../platform/env";
 import { shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
@@ -432,7 +433,7 @@ function prevSimple() {
         </view>
       </swiper-item>
     </swiper>
-    <view v-if="!isPlaying && !playbackError" class="pause-mark" aria-hidden="true">❚❚</view>
+      <image v-if="!isPlaying && !playbackError" class="pause-mark" :src="ACTION_ICONS.pause" mode="aspectFit" aria-hidden="true" />
     <view v-else-if="holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
 
     <view
@@ -465,7 +466,7 @@ function prevSimple() {
         </button>
       </view>
       <button class="search-button" aria-label="搜索短剧" @tap="openSearch">
-        <view class="search-icon" />
+        <image class="search-icon" :src="NAV_ICONS.search" mode="aspectFit" aria-hidden="true" />
       </button>
     </view>
 
@@ -485,7 +486,7 @@ function prevSimple() {
         <view class="episode-label">{{ currentVideo.episodeLabel }}</view>
         <view class="drama-title">{{ currentVideo.dramaTitle }}</view>
         <view class="description">{{ currentVideo.description }}</view>
-        <view class="full-drama">▣ 观看完整短剧 · 全集更新中 <text>›</text></view>
+        <view class="full-drama"><image :src="ACTION_ICONS.play" mode="aspectFit" aria-hidden="true" />观看完整短剧 · 全集更新中 <image :src="NAV_ICONS.arrowRight" mode="aspectFit" aria-hidden="true" /></view>
       </view>
       <view class="side-actions">
         <PlayerActions

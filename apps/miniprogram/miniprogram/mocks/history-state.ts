@@ -67,6 +67,26 @@ export function deleteMockHistory(dramaIds: string[]): string[] {
   return result.deleted;
 }
 
+export function upsertMockLibraryCard(tab: LibraryGridTab, dramaId: string, title?: string): void {
+  if (tab !== FAVORITE_TAB && tab !== LIKE_TAB) return;
+  const store = tab === FAVORITE_TAB ? favoriteCards : likeCards;
+  if (store.some((card) => (card.dramaId || card.id) === dramaId)) return;
+  const prefix = tab === FAVORITE_TAB ? "fav" : "like";
+  store.unshift({
+    id: `${prefix}-${dramaId}`,
+    title: title?.trim() || dramaId,
+    episode: "未开播",
+    tag: "短剧",
+    formatSource: "短剧",
+    tone: "rose",
+    dramaId,
+    episodeNumber: 1,
+    episodeCount: 0,
+    position: 0,
+    updatedAt: new Date().toISOString()
+  });
+}
+
 export function deleteMockLibraryCards(tab: LibraryGridTab, dramaIds: string[]): string[] {
   if (tab === FAVORITE_TAB) {
     const result = deleteFromStore(favoriteCards, dramaIds);

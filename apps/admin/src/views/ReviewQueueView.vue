@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from "@/components/Icon.vue";
 import { ADMIN_LIST_PAGE_SIZE, AdminRole, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
@@ -130,7 +131,7 @@ onMounted(load);
             <div v-if="item.riskFlags.length" class="risk-flags" role="note">
               <strong>需要关注</strong><ul><li v-for="flag in item.riskFlags" :key="flag">{{ flag }}</li></ul>
             </div>
-            <div v-else class="risk-clear"><span aria-hidden="true">✓</span>未发现自动标记的风险项，仍需人工完整复核。</div>
+            <div v-else class="risk-clear"><Icon name="check" />未发现自动标记的风险项，仍需人工完整复核。</div>
           </div>
           <div class="review-card__actions">
             <template v-if="reviewDecision(item).allowed">

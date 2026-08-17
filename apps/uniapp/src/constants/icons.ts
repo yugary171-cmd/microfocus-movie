@@ -1,4 +1,4 @@
-/** Iconfont is the only icon source for the watch client. Search: https://www.iconfont.cn/search/index?searchType=icon */
+/** Localized WeUI navigation and IconPark business icon assets for the watch client. */
 export const ICONFONT_SEARCH_URL =
   "https://www.iconfont.cn/search/index?searchType=icon&page=1&fromCollection=-1";
 
@@ -10,10 +10,21 @@ export const ICONFONT_QUERIES = {
 } as const;
 
 export const ACTION_ICONS = {
-  starGold: "/static/icons/star-gold.png",
-  starWhite: "/static/icons/star-white.png",
-  comment: "/static/icons/comment.png",
-  heart: "/static/icons/heart.png",
-  heartActive: "/static/icons/heart-active.png",
-  share: "/static/icons/share.png"
+  star: "/static/icons/icon-star.svg",
+  starActive: "/static/icons/icon-star-active.svg",
+  comment: "/static/icons/icon-comment.svg",
+  heart: "/static/icons/icon-heart.svg",
+  heartActive: "/static/icons/icon-heart-active.svg",
+  share: "/static/icons/icon-share.svg",
+  play: "/static/icons/icon-play.svg",
+  pause: "/static/icons/icon-pause.svg",
+  fire: "/static/icons/icon-fire.svg"
+} as const;
+
+export const NAV_ICONS = {
+  search: "/static/icons/weui-search.svg",
+  close: "/static/icons/weui-close.svg",
+  arrowRight: "/static/icons/weui-arrow-right.svg",
+  arrowDown: "/static/icons/weui-arrow-down.svg",
+  filter: "/static/icons/icon-filter.svg"
 } as const;

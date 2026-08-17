@@ -7,6 +7,9 @@ import { EntitlementsController } from "../entitlements/entitlements.module.js";
 import { PlaybackController } from "../playback/playback.module.js";
 import { DeletionController } from "../privacy/privacy.module.js";
 import { ProfileController } from "../profile/profile.module.js";
+import { FollowController } from "../social/social.module.js";
+import { LibraryController } from "../social/library.controller.js";
+import { MessagesController } from "../social/messages.controller.js";
 import { controllerPath } from "./http.js";
 
 function routeOf(handler: object) {
@@ -47,6 +50,22 @@ describe("user-facing Nest routes follow contracts", () => {
     expect(routeOf(ProfileController.prototype.updateProfile)).toEqual({
       path: controllerPath(API_ROUTES.profile),
       method: RequestMethod.PATCH
+    });
+    expect(routeOf(FollowController.prototype.getUser)).toEqual({
+      path: controllerPath(API_ROUTES.user(":userId")),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(FollowController.prototype.follow)).toEqual({
+      path: controllerPath(API_ROUTES.userFollow(":userId")),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(LibraryController.prototype.putFavorite)).toEqual({
+      path: controllerPath(API_ROUTES.meFavorite(":dramaId")),
+      method: RequestMethod.PUT
+    });
+    expect(routeOf(MessagesController.prototype.sendMessage)).toEqual({
+      path: controllerPath(API_ROUTES.meConversationMessages(":conversationId")),
+      method: RequestMethod.POST
     });
   });
 

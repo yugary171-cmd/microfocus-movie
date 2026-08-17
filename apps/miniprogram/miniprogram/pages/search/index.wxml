@@ -1,10 +1,10 @@
 <view class="search-page" style="padding-top: {{navInsetTop}}px">
   <view class="topbar">
-    <button class="back-button" bindtap="goBack" aria-label="返回">‹</button>
+    <button class="back-button" bindtap="goBack" aria-label="返回"><image src="/assets/icons/weui-arrow-right.svg" class="back-icon" mode="aspectFit" aria-hidden="true" /></button>
     <view class="search-box">
-      <view class="magnifier" />
+      <image class="magnifier" src="/assets/icons/weui-search.svg" mode="aspectFit" aria-hidden="true" />
     <input class="search-input" value="{{query}}" maxlength="{{queryMaxLength}}" bindinput="onQueryInput" bindconfirm="submitSearch" confirm-type="search" placeholder="{{searchPlaceholder}}" placeholder-class="search-placeholder" aria-label="搜索短剧、角色、剧情" />
-    <view wx:if="{{query}}" class="clear-input" bindtap="clearSearch" aria-label="清除搜索内容">×</view>
+    <view wx:if="{{query}}" class="clear-input" bindtap="clearSearch" aria-label="清除搜索内容"><image src="/assets/icons/weui-close.svg" mode="aspectFit" aria-hidden="true" /></view>
     </view>
     <button class="submit-button" bindtap="submitSearch">搜索</button>
   </view>
@@ -18,13 +18,13 @@
       <view class="history-list">
         <view wx:for="{{searchHistory}}" wx:key="*this" class="history-item" data-query="{{item}}" bindtap="chooseHistory">
           <text class="history-text">{{item}}</text>
-          <view class="history-remove" data-query="{{item}}" bindtap="removeHistory" aria-label="删除记录">×</view>
+          <view class="history-remove" data-query="{{item}}" bindtap="removeHistory" aria-label="删除记录"><image src="/assets/icons/weui-close.svg" mode="aspectFit" aria-hidden="true" /></view>
         </view>
       </view>
     </view>
     <view class="guess-heading">
       <view class="section-title">猜你想搜</view>
-      <button class="refresh" bindtap="refreshGuesses" aria-label="换一批">↻</button>
+      <button class="refresh" bindtap="refreshGuesses" aria-label="换一批"><image src="/assets/icons/weui-arrow-down.svg" mode="aspectFit" aria-hidden="true" /></button>
     </view>
     <view class="suggestion-row">
       <button wx:for="{{guesses}}" wx:key="*this" class="suggestion" data-query="{{item}}" bindtap="chooseGuess">{{item}}</button>

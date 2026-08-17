@@ -32,7 +32,10 @@ export const RATE_LIMITS = {
   deletionCreate: { limit: 5, windowMs: 10 * 60_000 },
   deletionLookup: { limit: 30, windowMs: 60_000 },
   profileRead: { limit: 30, windowMs: 60_000 },
-  profileWrite: { limit: 20, windowMs: 60_000 }
+  profileWrite: { limit: 20, windowMs: 60_000 },
+  socialRead: { limit: 60, windowMs: 60_000 },
+  socialWrite: { limit: 40, windowMs: 60_000 },
+  socialMessageWrite: { limit: 20, windowMs: 60_000 }
 } as const;
 
 export type RateLimitStore = {

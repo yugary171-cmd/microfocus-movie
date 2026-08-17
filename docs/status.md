@@ -1,6 +1,6 @@
 # 项目状态
 
-- 更新日期：2026-08-16
+- 更新日期：2026-08-17
 - 本文是实现进度的唯一说明；PRD、架构和 API 文档描述目标规则，不代表代码已经具备全部能力
 
 ## 当前目标
@@ -12,7 +12,7 @@
 ## 当前状态
 
 - PRD、架构、页面/API、配置、运维和发布清单已形成目标设计，但部分目标接口、模型和安全控制尚未实现。
-- `packages/contracts` 目前只覆盖现有 `/v1` 子集；[pages-and-apis.md](./pages-and-apis.md) 同时包含后续目标契约，不能据此推断路由已经存在。
+- `packages/contracts` 覆盖已落地的 `/v1` 路径（含社交）；[pages-and-apis.md](./pages-and-apis.md) 仍可能含后续目标，不能只凭文档推断客户端 UI 已接上。
 - API、管理后台、uni-app 和原生过渡小程序已形成首轮内部 Mock 实现。2026-08-14 已将当时工作区收成 Git 快照 `17babc1`（不含 `.env`、本机 Demo origin、微信私有配置和 `旧内容/`）。
 - 当前仅允许 Mock 内部体验；真实外部发布仍受资质、备案、微信类目、广告能力和逐剧内容权利闸门约束。
 - 微信 `code2session` 登录适配已实现；腾讯云 VOD 上传/播放签名和微信激励广告可信服务端验证仍为 fail-closed。发布闸门会返回 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`，生产进程也会拒绝启动，直到企业账号完成真实实现与端到端验收。
@@ -31,7 +31,7 @@
 | 奖励与权益 | challenge、基础回调占用、grant、FEFO debit、24 小时过期；创建 challenge 按认证用户限频（5 分钟 3 次），完成按认证用户限频；`dramaId`/`sessionId`/`nonce` 限长；完成 challenge 的 `Idempotency-Key` 与补偿共用规范化（trim、最长 128），空白或超长在限频前拒绝；权益摘要路径走 `API_ROUTES`，按认证用户限频；人工补偿要求 `Idempotency-Key` 且 `compensationKey` 唯一，秒数 60–86400、原因 6–300 字，管理端表单默认秒数 `REWARD_SECONDS`；ADMIN 纠错与补偿一样在 handler 入口规范化 `Idempotency-Key`，可通过 `FREEZE_REMAINDER` / `RELEASE_FREEZE` / `WRITE_OFF` 追加纠错事实（秒数上限同为 86400，表单默认 `COMPENSATION_SECONDS_MIN`，下限仍为 1）；纠错原因/审批记录写入按 `ADMIN_REASON_MAX_LENGTH` 截断；过期 challenge 可在 2 小时延迟窗内凭 provider `completedAt` 迁为 `COMPLETED_LATE` 并只发唯一 grant；后台任务按 grant/debit/冻结事实重建余额，差异打开 `PROVIDER:LEDGER` | 可信广告验证未接真实平台 |
 | 播放 | 单活租约、短凭证（TTL `PLAYBACK_TOKEN_TTL_SECONDS`；Mock 租约 `playbackTokenExpiresAt` 与 Mock VOD JWT 上限共用）；心跳间隔 `HEARTBEAT_INTERVAL_SECONDS`（服务端签发、观看端回退与 Mock 租约共用）；心跳序列去重、FEFO 扣减、暂停/缓冲不扣费；锁定集 reservation 窗口 `PLAYBACK_WINDOW_SECONDS`（与心跳间隔相同）；未确认暴露上限 `UNCONFIRMED_EXPOSURE_LIMIT`、活动租约查询与宽限恢复；恢复需新的微信 `code`；签发新租约、心跳、续签、恢复、关闭、活动租约查询和进度写入按认证主体限频；租约/心跳/进度的 ID、设备、seq 和媒体位置有长度或数值上限；恢复事件 `deviceId`/`reason` 写入按 `DEVICE_ID_MAX_LENGTH`/`ENTITY_ID_MAX_LENGTH` 截断，宽限计数使用同一截断后的设备 ID；心跳 `playbackRate` 0.75–2（`PLAYBACK_RATE_MIN`/`MAX`），结算与两端播放器倍速按钮共用 `clampPlaybackRate`/`PLAYBACK_RATES`；播放租约路径走 `API_ROUTES`；无真实 VOD 交付日志时 UNCONFIRMED 只释放不扣费，心跳也不会对未确认窗口结算 | 真实 VOD 交付日志仍未接入 |
 | 回调 | VOD/奖励回调入口、生产验签、事件 ID 去重、处理租约、`RETRYABLE_FAILURE`/`DEAD_LETTER` 状态；入口路径走 `API_ROUTES.callbacks`（provider 专用，观看端/管理端客户端不调用）；ADMIN 可通过 `GET /v1/admin/callback-events` 查看积压元数据，并通过 `POST .../replay` 受审计解锁；列表/重放路径走 `API_ROUTES.admin`；重放 handler 入口规范化 `Idempotency-Key`；重放原因/审批记录写入按 `ADMIN_REASON_MAX_LENGTH` 截断；ACK 前持久化 AES-256-GCM 规范化载荷（30 天保留），重放可执行该载荷；保留期后清除密文；死信打开对应 `PROVIDER:VOD`/`PROVIDER:WECHAT` 熔断并计入工作台积压；验签前按连接 IP 限频；回调 `eventId`/`fileId`/`challengeId` 限长；`x-provider-signature` 最长 256；列表 `take` 默认 50、上限 100，过大 `skip` 返回空结果；VOD 回调非法维度回退记为 `REJECTED` 且不改媒体 | 死信不自动打开 GLOBAL 熔断；过期或缺失载荷仍需 provider 再投递 |
-| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话（Mock `expiresAt` 与契约 `ANONYMOUS_VIEWER_TTL_SECONDS` 共用）；登录后播放先查活动租约并可宽限恢复；「我的」登录会先调用微信 `getUserProfile` 拉起头像昵称授权，取消保持游客；「我的」可退出登录（只清本地用户 JWT/会话，不吊销服务端令牌、不注销账号，匿名 viewer 保留以便继续看免费集）；登录后可打开「个人信息编辑」，经 `GET/PATCH /v1/me/profile` 读写头像、昵称、签名和性别（昵称 1–10、签名最长 100），微焦号只读；「我的」页点击头像也可走同一保存路径更换头像；「我的」Tabs 为历史/收藏/点赞/消息，消息 Tab 仅本地分类占位且不跳转，已去掉消息/追更入口卡片；历史「筛选」为底部抽屉，体裁仅真人剧/漫剧/AI 剧，按当前列表的体裁、进度秒数和 `updatedAt` 本地过滤，不新增历史查询 API；收藏/点赞筛选项为全部/真人剧/漫剧/AI 剧，无筛选抽屉；历史「编辑」进入全部历史多选页，未选中时底部删除禁用，选中后高亮，确认后 `DELETE /v1/me/history`（最多 `HISTORY_DELETE_MAX_IDS` 个 `dramaId`，只删当前用户进度，幂等）；收藏/点赞「编辑」与搜索操作同历史，仅改 Mock 内存列表、不接社交 API，Live 下为空；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌，补发 handler 入口规范化 `Idempotency-Key`；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页（`SEARCH_MAX_PAGE`），Mock 搜索每页 `SEARCH_PAGE_SIZE`；管理端剧目/审核队列/审计日志由服务端分页；首页 latest 按发布时间独立查询；观看历史读取/删除按认证用户限频；注销进度查询按连接 IP 限频；剧目详情、权益、播放租约和注销由服务端走 `API_ROUTES`；两套观看端 HTTP 路径同样走契约，路径 ID 会 URL-encode；管理端路径 ID 同样经 `encodedRoute`；观看端奖励完成/注销申请的 `Idempotency-Key` 经 `boundedIdempotencyKey` 限制在 128 以内；管理端登录表单邮箱/密码 min/maxlength 与契约共用；剧目/审计搜索与运营页实体 ID 输入 maxlength 与契约共用；观看端首页/搜索/分类搜索框 maxlength 与 `LIST_QUERY_MAX_LENGTH` 共用，提交前走 `boundListQuery`；免费集数、心跳周期和离线宽限与契约共用 `FREE_EPISODE_COUNT`/`HEARTBEAT_INTERVAL_SECONDS`/`OFFLINE_GRACE_SECONDS`；Mock 租约状态与会话判断共用 `PlaybackLeaseStatus`；激励广告未看完/无填充/加载失败/验证中/确认失败有可区分可重试文案；「我的」可打开客服与投诉、广告未到账协议页并可生成 challengeId 核验包；Live 已发布剧详情可生成微信原生分享卡片，Mock 仍关闭转发菜单且不生成可外传卡片；漏斗事件名走 `FUNNEL_EVENTS`，属性去掉 token/secret/session_key | 完整法定清理尚未实现；剧场/福利/社交占位不接正式账本；漏斗尚未接入外部分析平台 |
+| 客户端 | 管理端和两套观看端的 Mock 主路径、uni-app 平台适配层；Live API URL 注入与外部构建 Demo 媒体扫描；观看端匿名 viewer 会话（Mock `expiresAt` 与契约 `ANONYMOUS_VIEWER_TTL_SECONDS` 共用）；登录后播放先查活动租约并可宽限恢复；「我的」登录会先调用微信 `getUserProfile` 拉起头像昵称授权，取消保持游客；「我的」可退出登录（只清本地用户 JWT/会话，不吊销服务端令牌、不注销账号，匿名 viewer 保留以便继续看免费集）；登录后可打开「个人信息编辑」，经 `GET/PATCH /v1/me/profile` 读写头像、昵称、签名和性别（昵称 1–10、签名最长 100），微焦号只读；「我的」页点击头像也可走同一保存路径更换头像；「我的」Tabs 为历史/收藏/点赞/消息，消息 Tab 登录后拉粉丝/评论收件/我的评论/获赞摘要且不跳转，系统通知仍本地，已去掉消息/追更入口卡片；历史「筛选」为底部抽屉，体裁仅真人剧/漫剧/AI 剧，按当前列表的体裁、进度秒数和 `updatedAt` 本地过滤，不新增历史查询 API；收藏/点赞筛选项为全部/真人剧/漫剧/AI 剧，无筛选抽屉；历史「编辑」进入全部历史多选页，未选中时底部删除禁用，选中后高亮，确认后 `DELETE /v1/me/history`（最多 `HISTORY_DELETE_MAX_IDS` 个 `dramaId`，只删当前用户进度，幂等）；收藏/点赞「编辑」与搜索操作同历史，经 `getApi().social` 读写片库（Mock 写 `history-state`，Live 走 Nest）；播放页登录后可切换收藏/点赞，有 `dramaId` 的评论底栏走剧评 API；剧场评论仍本地；消息 Tab 仍占位；「我的」可申请注销并查询进度；ADMIN 可在客服核验后补发注销查询令牌，补发 handler 入口规范化 `Idempotency-Key`；目录、剧目详情和搜索按连接 IP 限频；搜索最多 100 页（`SEARCH_MAX_PAGE`），Mock 搜索每页 `SEARCH_PAGE_SIZE`；管理端剧目/审核队列/审计日志由服务端分页；首页 latest 按发布时间独立查询；观看历史读取/删除按认证用户限频；注销进度查询按连接 IP 限频；剧目详情、权益、播放租约和注销由服务端走 `API_ROUTES`；两套观看端 HTTP 路径同样走契约，路径 ID 会 URL-encode；管理端路径 ID 同样经 `encodedRoute`；观看端奖励完成/注销申请的 `Idempotency-Key` 经 `boundedIdempotencyKey` 限制在 128 以内；管理端登录表单邮箱/密码 min/maxlength 与契约共用；剧目/审计搜索与运营页实体 ID 输入 maxlength 与契约共用；观看端首页/搜索/分类搜索框 maxlength 与 `LIST_QUERY_MAX_LENGTH` 共用，提交前走 `boundListQuery`；免费集数、心跳周期和离线宽限与契约共用 `FREE_EPISODE_COUNT`/`HEARTBEAT_INTERVAL_SECONDS`/`OFFLINE_GRACE_SECONDS`；Mock 租约状态与会话判断共用 `PlaybackLeaseStatus`；激励广告未看完/无填充/加载失败/验证中/确认失败有可区分可重试文案；「我的」可打开客服与投诉、广告未到账协议页并可生成 challengeId 核验包；Live 已发布剧详情可生成微信原生分享卡片，Mock 仍关闭转发菜单且不生成可外传卡片；漏斗事件名走 `FUNNEL_EVENTS`，属性去掉 token/secret/session_key | 完整法定清理尚未实现；剧场/福利占位不接正式账本；私信会话页、用户墙、关注列表页未接；漏斗尚未接入外部分析平台 |
 | 配置与发布 | 环境 schema、Mock/Live 一致性、生产安全拒启、发布闸门、客户端 Live 构建 URL/Demo 闸门；TOTP 加密密钥双密钥窗口与 `totp:reencrypt` 重加密/回滚；`/health/live` 与 `/health/ready` 分离，关闭时进入排水；HTTP 访问写结构化日志（`requestId` 最长 `REQUEST_ID_MAX_LENGTH`；path/method/actorKind/module/code/actorId 分别最长 `REQUEST_LOG_PATH_MAX_LENGTH`/`REQUEST_LOG_METHOD_MAX_LENGTH`/`REQUEST_LOG_ACTOR_KIND_MAX_LENGTH`/`REQUEST_LOG_LABEL_MAX_LENGTH`；脱敏 actor；不含查询串）；熔断行保存 `updatedBy`（管理员或 `system:*`，最长 `CIRCUIT_UPDATED_BY_MAX_LENGTH`）；自动打开的 provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH`；管理端只读 GET 按认证管理员限频；生产不挂载 OpenAPI/Swagger；JSON/urlencoded 请求体 `JSON_BODY_LIMIT`（64kb） | Live provider 和真实发布证据尚未完成 |
 
 ## 下一步（Now）
@@ -64,6 +64,12 @@
 - 2026-08-16：同步原生小程序筛选页布局：各筛选行支持横向滚动并增加选项间距，隐藏滚动条，展开/收起按钮缩窄至 88rpx。
 
 - 2026-08-16：筛选页各类别行改为固定横向滚动容器，选项增加间距并隐藏滚动条；展开/收起按钮缩窄至 88rpx。仅完成布局调整，待真机视觉复核。
+
+- 2026-08-17：消息 Tab 登录后经 `getApi().social` 拉粉丝、评论收件、我的评论、获赞摘要；仍不跳转、不发私信。系统通知仍本地。未做真机消息页验收。
+
+- 2026-08-17：观看端「我的」收藏/点赞与播放页剧评改接 `getApi().social`；Mock 读写内存片库，剧场评论仍本地。未对真实 MySQL 跑 migrate，未做真机社交页验收。
+
+- 2026-08-17：社交与片库 Prisma 表和 Nest 处理器落地（公开主页、关注、每集看完态与历史 `completed`、收藏/喜欢剧、剧评/墙/评论赞、私信须关注）。注销清理在矩阵批准后删除社交事实。未对真实 MySQL 跑 migrate。
 
 - 2026-08-17：排行榜「分类」改为与首页相同的筛选抽屉（居中「筛选」、左上收起、主题/设定/背景三列网格、清空/确定）。选项来自 catalog `filterOptions`，确定后走现有搜索筛选参数。横向榜单 `scroll-view` 不再盖住分类按钮点击。未做真机抽屉手势验收。
 
@@ -210,3 +216,9 @@
 - 2026-08-13：新建 `apps/uniapp`（Vue 3），用 platform 适配层替换 `wx.*`；微信端继续走 `/v1/auth/wechat` 与激励 `isEnded`；H5/App 明确不复用这两项。原生 `apps/miniprogram` 标为过渡。
 - 2026-08-13：将开发计划从「交付可上线首版」收窄为「内部收口 + 内容/权益验证」。见 `docs/product-plan.md`。
 - 2026-08-12：完成原产品计划并开始首版工程实现。
+- 2026-08-17：观看端首页快捷入口统一为自适应横向彩色卡片，筛选/排行榜/新剧图标与文字同排，文字改为白色；uni-app 与原生小程序均完成微信构建验证。
+- 2026-08-17：微信开发者工具在 Mock 登录中返回 `getUserProfile:fail getUserAvatarInfo fail` 时，uni-app 与原生小程序改用默认 Mock 用户继续登录；用户拒绝授权和 Live 环境仍保持严格失败。
+- 2026-08-17：我的页设置入口改为资料区内的无背景文本按钮；设置页支持用户反馈与实际退出登录；新增反馈页的大文本输入框和提交反馈交互，uni-app 与原生小程序路由同步。
+- 2026-08-17：登录后的“编辑资料/设置”操作组下移避开微信小程序系统菜单；设置页用户反馈移除前置图标，保留右侧导航箭头。
+- 2026-08-17：微信开发者工具白屏因开发快照未注册 `config/demo-media.js`；uni-app 运行时将 Mock 视频 URL 计算内联，生成的 `config/runtime.js` 不再依赖该独立模块，Live 播放边界不变。
+- 2026-08-17：登录后资料区右侧“编辑资料/设置”操作组继续下移，并给统计区增加顶部间距，避免被微信系统菜单遮挡或与统计项重叠。

@@ -3,6 +3,7 @@ import { boundListQuery, LIST_QUERY_MAX_LENGTH, type CatalogResponse, type Drama
 import { onLoad, onReachBottom, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { SEARCH_PLACEHOLDER } from "../../constants/search";
+import { NAV_ICONS } from "../../constants/icons";
 import { getApi } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { pickGuessQueries } from "../../utils/search-discovery";
@@ -225,9 +226,9 @@ function clearHistory() {
 <template>
   <view class="search-page" :style="{ paddingTop: `${navInsetTop}px` }">
     <view class="topbar">
-      <button class="back-button" aria-label="返回" @tap="goBack">‹</button>
+      <button class="back-button" aria-label="返回" @tap="goBack"><image :src="NAV_ICONS.arrowRight" class="back-icon" mode="aspectFit" aria-hidden="true" /></button>
       <view class="search-box">
-        <view class="magnifier" />
+        <image class="magnifier" :src="NAV_ICONS.search" mode="aspectFit" aria-hidden="true" />
         <input
           class="search-input"
           v-model="query"
@@ -239,7 +240,7 @@ function clearHistory() {
           @input="handleInput"
           @confirm="submitSearch"
         />
-        <view v-if="query" class="clear-input" aria-label="清除搜索内容" @tap.stop="clearSearch">×</view>
+        <view v-if="query" class="clear-input" aria-label="清除搜索内容" @tap.stop="clearSearch"><image :src="NAV_ICONS.close" mode="aspectFit" aria-hidden="true" /></view>
       </view>
       <button class="submit-button" :loading="loading" @tap="submitSearch">搜索</button>
     </view>
@@ -253,13 +254,13 @@ function clearHistory() {
         <view class="history-list">
           <view v-for="item in searchHistory" :key="item" class="history-item" @tap="chooseHistory(item)">
             <text class="history-text">{{ item }}</text>
-            <view class="history-remove" aria-label="删除记录" @tap.stop="removeHistory(item)">×</view>
+            <view class="history-remove" aria-label="删除记录" @tap.stop="removeHistory(item)"><image :src="NAV_ICONS.close" mode="aspectFit" aria-hidden="true" /></view>
           </view>
         </view>
       </view>
       <view class="guess-heading">
         <view class="section-title">猜你想搜</view>
-        <button class="refresh" aria-label="换一批" @tap="refreshGuesses">↻</button>
+        <button class="refresh" aria-label="换一批" @tap="refreshGuesses"><image :src="NAV_ICONS.arrowDown" mode="aspectFit" aria-hidden="true" /></button>
       </view>
       <view class="guess-grid">
         <button

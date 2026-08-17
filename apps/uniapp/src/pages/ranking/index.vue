@@ -3,6 +3,7 @@ import type { DramaCard, HomeFilterOptions } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getApi } from "../../services/api";
+import { NAV_ICONS } from "../../constants/icons";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import {
   RANKING_TABS,
@@ -183,7 +184,7 @@ onReachBottom(() => {
         </view>
         <button class="ranking-filter" hover-class="none" @tap.stop="openDrawer">
           <text>分类</text>
-          <view class="chevron-down" />
+          <image class="chevron-down" :src="NAV_ICONS.arrowDown" mode="aspectFit" aria-hidden="true" />
         </button>
       </view>
 
@@ -204,7 +205,7 @@ onReachBottom(() => {
           <view class="rank-copy">
             <view class="rank-head">
               <text class="rank-title">{{ item.title }}</text>
-              <text class="rank-hot">♨ {{ rankingHeatLabel(item.recommendationRank) }}推荐</text>
+              <text class="rank-hot">热度 {{ rankingHeatLabel(item.recommendationRank) }} 推荐</text>
             </view>
             <text class="rank-meta">{{ item.category }} · 全 {{ item.episodeCount }} 集</text>
             <text class="rank-summary">{{ item.summary }}</text>
@@ -218,11 +219,11 @@ onReachBottom(() => {
     <view v-if="drawerOpen" class="drawer-mask" @tap="closeDrawer">
       <view class="filter-drawer" @tap.stop>
         <view class="drawer-header">
-          <view class="drawer-close" @tap="closeDrawer">⌄</view>
+          <button class="drawer-close" aria-label="关闭筛选" @tap="closeDrawer"><image :src="NAV_ICONS.close" mode="aspectFit" aria-hidden="true" /></button>
           <text>筛选</text>
           <view class="drawer-spacer" />
         </view>
-        <scroll-view class="drawer-content" scroll-y>
+        <scroll-view class="drawer-content" scroll-y :show-scrollbar="false">
           <view v-for="section in drawerSections" :key="section.key" class="drawer-section">
             <text class="drawer-title">{{ section.title }}</text>
             <view class="drawer-options">

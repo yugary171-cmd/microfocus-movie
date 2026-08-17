@@ -42,7 +42,7 @@
       aria-label="{{dramaTitle}}第{{episodeNumber}}集播放器"
     />
     <view class="playback-toggle" bindtap="togglePlayback" bindlongpress="startHoldBoost" bindtouchend="endHoldBoost" bindtouchcancel="endHoldBoost" aria-label="暂停、播放或长按加速" />
-    <view wx:if="{{!isPlaying}}" class="pause-mark" aria-hidden="true">❚❚</view>
+    <image wx:if="{{!isPlaying}}" class="pause-mark" src="/assets/icons/icon-pause.svg" mode="aspectFit" aria-hidden="true" />
     <view wx:elif="{{holdBoosting}}" class="boost-mark" aria-live="polite">{{boostRateLabel}}</view>
   </view>
 

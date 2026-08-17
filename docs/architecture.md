@@ -1,7 +1,7 @@
 # 系统架构与业务不变量
 
 - 文档用途：定义稳定系统边界、信任模型、数据一致性和故障策略
-- 更新日期：2026-08-14
+- 更新日期：2026-08-17
 - 本文描述目标架构和必须保持的业务不变量，不代表所有模型与机制已经实现；当前状态统一见 [status.md](./status.md)
 
 本系统采用 **NestJS 模块化单体 API + MySQL + Vue 管理端 + uni-app 微信观看端**。在业务规模和团队边界没有证据支持前，不拆分微服务；模块之间通过显式服务接口和数据库事务协作，不直接复制彼此的业务规则。
@@ -38,6 +38,7 @@ flowchart LR
 - `callbacks`：VOD 与奖励回调的验签、事件幂等、重试占用、死信与重放。
 - `operations`：合规闸门、熔断、审计、健康检查、指标事件和恢复控制。
 - `privacy`：注销申请、可删除数据清理、法定保留记录隔离和处理结果查询。
+- `social`：关注、剧评、用户主页墙、评论赞、私信（须先关注）、收藏与喜欢剧；不进入当前播放主路径。存储约定见 [social-library-model.md](./social-library-model.md)。
 
 模块可以共享 `packages/contracts` 中的稳定类型、枚举和常量，但不得绕过所属模块直接推进业务状态。
 
@@ -74,6 +75,7 @@ flowchart LR
 | 奖励 | RewardChallenge、provider callback event | challenge 一次性；可信验证与幂等约束决定是否发奖 |
 | 权益 | EntitlementGrant、EntitlementDebit/Consumption、EntitlementAdjustment | 发放、消费和纠错事实不可修改；余额可重建且不为负 |
 | 播放 | PlaybackLease、PlaybackReservation、Heartbeat、WatchProgress | 锁定内容单活租约；媒体窗口受服务端预算约束；心跳顺序唯一 |
+| 社交与片库 | UserFollow、Comment（`DRAMA`/`USER`）、CommentLike、DirectConversation、DirectMessage、DramaFavorite、DramaLike、WatchEpisodeProgress | 列表不进 User 行；计数可重建；墙与剧评同表；私信须先关注；整剧看完由每集完成态派生。详见 [social-library-model.md](./social-library-model.md) |
 | 运营 | CircuitBreaker、AuditLog、OperationalEvent | 熔断和管理动作必须记录原因、操作者、时间和对象 |
 
 ## 5. 事务、并发与幂等

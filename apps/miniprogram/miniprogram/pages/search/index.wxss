@@ -39,6 +39,7 @@ page {
   font-weight: 300;
   line-height: 62rpx;
 }
+.back-icon { width: 28rpx; height: 40rpx; transform: rotate(180deg); }
 
 .search-box {
   display: flex;
@@ -52,26 +53,7 @@ page {
   border-radius: 18rpx;
 }
 
-.magnifier {
-  position: relative;
-  width: 20rpx;
-  height: 20rpx;
-  flex: none;
-  border: 3rpx solid #8e9098;
-  border-radius: 50%;
-}
-
-.magnifier::after {
-  position: absolute;
-  right: -8rpx;
-  bottom: -5rpx;
-  width: 9rpx;
-  height: 3rpx;
-  background: #8e9098;
-  border-radius: 99rpx;
-  content: "";
-  transform: rotate(45deg);
-}
+.magnifier { width: 32rpx; height: 32rpx; flex: none; }
 
 .search-input {
   flex: 1;
@@ -92,10 +74,12 @@ page {
   padding: 0;
   color: #92939a;
   background: transparent;
-  font-size: 40rpx;
-  line-height: 28rpx;
+  font-size: 0;
+  line-height: 1;
   text-align: center;
 }
+.clear-input image, .history-remove image, .refresh image { width: 28rpx; height: 28rpx; }
+.history-remove { font-size: 0; }
 
 .submit-button {
   padding: 0;

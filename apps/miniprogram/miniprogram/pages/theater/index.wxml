@@ -8,7 +8,7 @@
       </view>
     </swiper-item>
   </swiper>
-  <view wx:if="{{!isPlaying}}" class="pause-mark" aria-hidden="true">❚❚</view>
+  <image wx:if="{{!isPlaying}}" class="pause-mark" src="/assets/icons/icon-pause.svg" mode="aspectFit" aria-hidden="true" />
   <view wx:elif="{{holdBoosting}}" class="boost-mark" aria-live="polite">{{boostRateLabel}}</view>
 
   <view class="refresh-panel {{isPulling || refreshing ? 'visible' : ''}}" style="transform: translateY({{pullDistance}}px)">
@@ -20,7 +20,7 @@
     <view class="categories" role="tablist" aria-label="短剧分类">
       <button wx:for="{{categories}}" wx:key="*this" class="category {{activeCategory === item ? 'active' : ''}}" data-category="{{item}}" bindtap="selectCategory" role="tab" aria-selected="{{activeCategory === item}}">{{item}}</button>
     </view>
-    <button class="search-button" bindtap="openSearch" aria-label="搜索短剧"><view class="search-icon" /></button>
+    <button class="search-button" bindtap="openSearch" aria-label="搜索短剧"><image class="search-icon" src="/assets/icons/weui-search.svg" mode="aspectFit" aria-hidden="true" /></button>
   </view>
 
   <view class="video-marker">Mock 视频 {{currentIndex + 1}} / {{videos.length}}</view>
@@ -31,13 +31,13 @@
       <view class="episode-label">{{currentVideo.episodeLabel}}</view>
       <view class="drama-title">{{currentVideo.dramaTitle}}</view>
       <view class="description">{{currentVideo.description}}</view>
-      <view class="full-drama">▣ 观看完整短剧 · 全集更新中 <text>›</text></view>
+      <view class="full-drama"><image src="/assets/icons/icon-play.svg" mode="aspectFit" aria-hidden="true" />观看完整短剧 · 全集更新中 <image src="/assets/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" /></view>
     </view>
     <view class="actions" aria-label="短剧互动">
-      <button class="action" data-action="favorite" bindtap="handleAction" aria-label="收藏"><view class="action-icon {{isFavorite ? 'selected' : ''}}">☆</view><view>{{currentVideo.favoriteCount}}</view></button>
-      <button class="action" data-action="comment" bindtap="handleAction" aria-label="评论"><view class="action-icon">◯</view><view>{{currentVideo.commentCount}}</view></button>
-      <button class="action" data-action="like" bindtap="handleAction" aria-label="点赞"><view class="action-icon {{isLiked ? 'selected' : ''}}">♡</view><view>{{currentVideo.likeCount}}</view></button>
-      <button class="action" data-action="share" bindtap="handleAction" aria-label="分享"><view class="action-icon">↗</view><view>{{currentVideo.shareCount}}</view></button>
+      <button class="action" data-action="favorite" bindtap="handleAction" aria-label="收藏"><image class="action-icon" src="/assets/icons/icon-star-active.svg" mode="aspectFit" aria-hidden="true" /><view>{{currentVideo.favoriteCount}}</view></button>
+      <button class="action" data-action="comment" bindtap="handleAction" aria-label="评论"><image class="action-icon" src="/assets/icons/icon-comment.svg" mode="aspectFit" aria-hidden="true" /><view>{{currentVideo.commentCount}}</view></button>
+      <button class="action" data-action="like" bindtap="handleAction" aria-label="点赞"><image class="action-icon" src="{{isLiked ? '/assets/icons/icon-heart-active.svg' : '/assets/icons/icon-heart.svg'}}" mode="aspectFit" aria-hidden="true" /><view>{{currentVideo.likeCount}}</view></button>
+      <button class="action" data-action="share" bindtap="handleAction" aria-label="分享"><image class="action-icon" src="/assets/icons/icon-share.svg" mode="aspectFit" aria-hidden="true" /><view>{{currentVideo.shareCount}}</view></button>
     </view>
   </view>
 </view>

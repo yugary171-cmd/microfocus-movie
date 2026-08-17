@@ -4,6 +4,7 @@ export {
   H5_APP_AUTH_UNSUPPORTED_MESSAGE,
   WECHAT_USER_PROFILE_DESC,
   isWechatProfileAuthorizationDenied,
+  isWechatProfileUnavailable,
   obtainWechatLoginCode,
   obtainWechatUserProfile
 } from "./auth";

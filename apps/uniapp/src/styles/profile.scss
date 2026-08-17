@@ -110,8 +110,9 @@ button::after {
 }
 
 .row-arrow {
+  width: 20rpx;
+  height: 32rpx;
   color: #636366;
-  font-size: 28rpx;
 }
 
 .footnote {
@@ -152,8 +153,9 @@ button::after {
 
 .sheet-close {
   color: #fff;
-  font-size: 36rpx;
+  font-size: 0;
 }
+.sheet-close image { width: 30rpx; height: 30rpx; }
 
 .sheet-title {
   flex: 1;

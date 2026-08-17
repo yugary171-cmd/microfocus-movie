@@ -31,7 +31,7 @@ export const LIBRARY_EDIT_COPY: Record<
     confirm: "确定删除浏览历史吗？",
     loading: "正在读取观看记录…",
     search: "搜索观看记录",
-    mockLabel: "Mock 观看记录"
+    mockLabel: "内部体验观看记录"
   },
   收藏: {
     title: "全部收藏",
@@ -39,7 +39,7 @@ export const LIBRARY_EDIT_COPY: Record<
     confirm: "确定删除收藏吗？",
     loading: "正在读取收藏…",
     search: "搜索收藏",
-    mockLabel: "Mock 收藏，不接收藏接口"
+    mockLabel: "内部体验收藏"
   },
   点赞: {
     title: "全部点赞",
@@ -47,7 +47,7 @@ export const LIBRARY_EDIT_COPY: Record<
     confirm: "确定删除点赞吗？",
     loading: "正在读取点赞…",
     search: "搜索点赞",
-    mockLabel: "Mock 点赞，不接点赞接口"
+    mockLabel: "内部体验点赞"
   }
 };
 
@@ -62,13 +62,67 @@ export type InboxItemView = {
   tone: InboxTone;
 };
 
+export const INBOX_MOCK_LABEL = "内部体验消息摘要";
+
+export function cloneInboxItems(): InboxItemView[] {
+  return INBOX_ITEMS.map((item) => ({ ...item }));
+}
+
+function clipInboxPreview(value: string): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text.length > 36 ? `${text.slice(0, 36)}…` : text;
+}
+
+function inboxMeta(iso: string | undefined): string {
+  return iso ? iso.slice(0, 10) : "";
+}
+
+export function applyInboxLatest(
+  items: InboxItemView[],
+  latest: {
+    fansName?: string;
+    fansAt?: string;
+    commentPreview?: string;
+    commentAt?: string;
+    minePreview?: string;
+    mineAt?: string;
+    likeName?: string;
+    likeAt?: string;
+  }
+): InboxItemView[] {
+  return items.map((item) => {
+    if (item.id === "fans") {
+      return latest.fansName
+        ? { ...item, preview: clipInboxPreview(`${latest.fansName} 关注了你`), meta: inboxMeta(latest.fansAt) }
+        : { ...item, preview: "暂无粉丝消息", meta: "" };
+    }
+    if (item.id === "comments") {
+      return latest.commentPreview
+        ? { ...item, preview: clipInboxPreview(latest.commentPreview), meta: inboxMeta(latest.commentAt) }
+        : { ...item, preview: "暂无评论消息", meta: "" };
+    }
+    if (item.id === "mine") {
+      return latest.minePreview
+        ? { ...item, preview: clipInboxPreview(latest.minePreview), meta: inboxMeta(latest.mineAt) }
+        : { ...item, preview: "暂无我的评论", meta: "" };
+    }
+    if (item.id === "likes") {
+      return latest.likeName
+        ? { ...item, preview: clipInboxPreview(`${latest.likeName} 赞了你的评论`), meta: inboxMeta(latest.likeAt) }
+        : { ...item, preview: "暂无点赞消息", meta: "" };
+    }
+    return { ...item };
+  });
+}
+
 export const INBOX_ITEMS: InboxItemView[] = [
   {
     id: "system",
     title: "系统通知",
     preview: "隐私政策及用户服务协议修订通知",
     meta: "星期一",
-    icon: "通",
+    icon: "/assets/icons/icon-info.svg",
     tone: "system"
   },
   {
@@ -76,7 +130,7 @@ export const INBOX_ITEMS: InboxItemView[] = [
     title: "粉丝消息",
     preview: "暂无粉丝消息",
     meta: "",
-    icon: "粉",
+    icon: "/assets/icons/icon-heart-active.svg",
     tone: "fans"
   },
   {
@@ -84,7 +138,7 @@ export const INBOX_ITEMS: InboxItemView[] = [
     title: "评论消息",
     preview: "暂无评论消息",
     meta: "",
-    icon: "评",
+    icon: "/assets/icons/icon-comment.svg",
     tone: "comments"
   },
   {
@@ -92,7 +146,7 @@ export const INBOX_ITEMS: InboxItemView[] = [
     title: "我的评论",
     preview: "暂无我的评论",
     meta: "",
-    icon: "我",
+    icon: "/assets/icons/icon-home.svg",
     tone: "mine"
   },
   {
@@ -100,7 +154,7 @@ export const INBOX_ITEMS: InboxItemView[] = [
     title: "赞",
     preview: "暂无点赞消息",
     meta: "",
-    icon: "赞",
+    icon: "/assets/icons/icon-heart-active.svg",
     tone: "likes"
   }
 ];

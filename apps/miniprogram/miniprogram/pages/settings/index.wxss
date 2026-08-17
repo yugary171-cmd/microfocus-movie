@@ -1,0 +1,7 @@
+page { background: #f7f7f8; color: #24242a; }
+.settings-page { min-height: 100vh; padding: 24rpx 24rpx calc(44rpx + env(safe-area-inset-bottom)); box-sizing: border-box; background: #f7f7f8; }
+.settings-group { overflow: hidden; background: #fff; border-radius: 20rpx; }
+.settings-item { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0; padding: 30rpx 28rpx; color: #24242a; background: #fff; border-radius: 0; font-size: 29rpx; text-align: left; }
+.settings-item + .settings-item { border-top: 1rpx solid #f0f0f2; }
+.settings-item image { width: 24rpx; height: 32rpx; }.settings-item-label { flex: 1; }
+.settings-item.danger { color: #e45745; }

@@ -128,9 +128,11 @@
 }
 
 .collapse-icon {
-  font-size: 18rpx;
-  line-height: 1;
+  width: 24rpx;
+  height: 12rpx;
+  transition: transform .2s ease;
 }
+.collapse-icon.expanded { transform: rotate(180deg); }
 
 .filter-grid {
   display: grid;

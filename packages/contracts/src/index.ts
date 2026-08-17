@@ -22,6 +22,16 @@ export const SEARCH_PAGE_SIZE = 20;
 export const SEARCH_MAX_PAGE = 100;
 export const HISTORY_LIST_LIMIT = 50;
 export const HISTORY_DELETE_MAX_IDS = HISTORY_LIST_LIMIT;
+export const SOCIAL_LIST_PAGE_SIZE = 20;
+export const SOCIAL_LIST_MAX_PAGE = 100;
+export const COMMENT_BODY_MAX_LENGTH = 500;
+export const MESSAGE_BODY_MAX_LENGTH = 1000;
+/** Seconds from episode end that still count as watched through. v0 default, not a growth lever. */
+export const EPISODE_COMPLETE_TOLERANCE_SECONDS = 3;
+export const COMMENT_TARGET_TYPES = ["DRAMA", "USER"] as const;
+export type CommentTargetType = (typeof COMMENT_TARGET_TYPES)[number];
+export const COMMENT_STATUSES = ["VISIBLE", "HIDDEN", "DELETED"] as const;
+export type CommentStatus = (typeof COMMENT_STATUSES)[number];
 export const DRAMA_TITLE_MAX_LENGTH = 120;
 export const DRAMA_SUMMARY_MAX_LENGTH = 2000;
 export const DRAMA_CATEGORY_MAX_LENGTH = 64;
@@ -104,6 +114,18 @@ export const UPLOAD_FILE_ACCEPT = "video/mp4,video/quicktime,video/webm";
 /** Trim then cap list/search keywords so clients match server truncation. */
 export function boundListQuery(value: string): string {
   return value.trim().slice(0, LIST_QUERY_MAX_LENGTH);
+}
+
+export function boundCommentBody(value: string): string {
+  return value.trim().slice(0, COMMENT_BODY_MAX_LENGTH);
+}
+
+export function boundMessageBody(value: string): string {
+  return value.trim().slice(0, MESSAGE_BODY_MAX_LENGTH);
+}
+
+export function isCommentTargetType(value: unknown): value is CommentTargetType {
+  return value === "DRAMA" || value === "USER";
 }
 
 /** Deduplicate trimmed drama ids and drop blank or overlong values. */
@@ -201,7 +223,8 @@ export const ERROR_CODES = {
   REAUTH_MISMATCH: "REAUTH_MISMATCH",
   DELETION_IDENTITY_MISMATCH: "DELETION_IDENTITY_MISMATCH",
   INVALID_ENTITY_ID: "INVALID_ENTITY_ID",
-  RATE_LIMITED: "RATE_LIMITED"
+  RATE_LIMITED: "RATE_LIMITED",
+  FOLLOW_REQUIRED: "FOLLOW_REQUIRED"
 } as const;
 
 export const API_ROUTES = {
@@ -219,6 +242,29 @@ export const API_ROUTES = {
   deletionRequests: "/v1/me/deletion-requests",
   deletionRequest: (deletionRequestId: string) =>
     `/v1/me/deletion-requests/${deletionRequestId}`,
+  user: (userId: string) => `/v1/users/${userId}`,
+  userFollow: (userId: string) => `/v1/users/${userId}/follow`,
+  userFollowers: (userId: string) => `/v1/users/${userId}/followers`,
+  userFollowing: (userId: string) => `/v1/users/${userId}/following`,
+  userWall: (userId: string) => `/v1/users/${userId}/wall`,
+  meFollowers: "/v1/me/followers",
+  meFollowing: "/v1/me/following",
+  dramaComments: (dramaId: string) => `/v1/dramas/${dramaId}/comments`,
+  comment: (commentId: string) => `/v1/comments/${commentId}`,
+  commentReplies: (commentId: string) => `/v1/comments/${commentId}/replies`,
+  commentLikes: (commentId: string) => `/v1/comments/${commentId}/likes`,
+  meComments: "/v1/me/comments",
+  meCommentInbox: "/v1/me/comment-inbox",
+  meReceivedCommentLikes: "/v1/me/received-comment-likes",
+  meConversations: "/v1/me/conversations",
+  meConversation: (conversationId: string) => `/v1/me/conversations/${conversationId}`,
+  meConversationMessages: (conversationId: string) =>
+    `/v1/me/conversations/${conversationId}/messages`,
+  meConversationRead: (conversationId: string) => `/v1/me/conversations/${conversationId}/read`,
+  meFavorites: "/v1/me/favorites",
+  meFavorite: (dramaId: string) => `/v1/me/favorites/${dramaId}`,
+  meLikedDramas: "/v1/me/liked-dramas",
+  meLikedDrama: (dramaId: string) => `/v1/me/liked-dramas/${dramaId}`,
   rewardChallenges: "/v1/rewards/challenges",
   rewardComplete: (challengeId: string) =>
     `/v1/rewards/challenges/${challengeId}/complete`,
@@ -503,6 +549,84 @@ export interface AuthenticatedUser {
   gender: ProfileGender;
 }
 
+export interface PublicUserProfile extends AuthenticatedUser {
+  followerCount: number;
+  followingCount: number;
+  receivedCommentLikeCount: number;
+  followedByMe: boolean;
+}
+
+export interface FollowUserCard {
+  user: PublicUserProfile;
+  followedAt: string;
+}
+
+export interface CreateCommentRequest {
+  body: string;
+  parentCommentId?: string;
+  episodeId?: string;
+}
+
+export interface CommentView {
+  id: string;
+  author: AuthenticatedUser;
+  targetType: CommentTargetType;
+  dramaId: string | null;
+  targetUserId: string | null;
+  episodeId: string | null;
+  parentCommentId: string | null;
+  replyToUserId: string | null;
+  body: string;
+  likeCount: number;
+  likedByMe: boolean;
+  replyCount: number;
+  status: CommentStatus;
+  createdAt: string;
+}
+
+export interface CommentLikeView {
+  commentId: string;
+  actor: AuthenticatedUser;
+  createdAt: string;
+}
+
+export interface CreateConversationRequest {
+  peerUserId: string;
+}
+
+export interface DirectConversationView {
+  id: string;
+  peer: AuthenticatedUser;
+  lastMessageAt: string | null;
+  unreadCount: number;
+}
+
+export interface DirectMessageView {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface CreateDirectMessageRequest {
+  body: string;
+}
+
+export interface DramaLibraryItem {
+  drama: DramaCard;
+  createdAt: string;
+  resumeEpisodeNumber: number | null;
+  resumePositionSeconds: number | null;
+}
+
+export interface SocialPage<T> {
+  items: T[];
+  page: number;
+  hasMore: boolean;
+}
+
 export interface UpdateUserProfileRequest {
   displayName?: string;
   signature?: string;
@@ -699,6 +823,8 @@ export interface WatchHistoryItem {
   episodeNumber: number;
   mediaPositionSeconds: number;
   updatedAt: string;
+  /** Present after episode-complete facts exist; omit means unknown, not incomplete. */
+  completed?: boolean;
 }
 
 export interface DeleteWatchHistoryRequest {
@@ -737,6 +863,12 @@ export const DATA_RETENTION_CLASSES = [
     examples: "WatchProgress",
     action: "delete_when_approved" as const,
     retainReason: "可删除观看进度；批准前不删除"
+  },
+  {
+    id: "social_library",
+    examples: "UserFollow, Comment, CommentLike, DirectMessage, DramaFavorite, DramaLike, WatchEpisodeProgress",
+    action: "delete_when_approved" as const,
+    retainReason: "社交与片库可删除；批准前不删除"
   },
   {
     id: "entitlement_ledger",

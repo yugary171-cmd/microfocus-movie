@@ -3,8 +3,7 @@ page { background: #f7f7f8; }
 .home-page { min-height: 100vh; padding: 22rpx 20rpx 38rpx; box-sizing: border-box; color: #19191d; }
 .search-row { display: flex; gap: 14rpx; align-items: center; }
 .search-field { display: flex; flex: 1; gap: 12rpx; align-items: center; height: 76rpx; padding: 0 20rpx; background: #fff; border-radius: 18rpx; box-shadow: 0 6rpx 20rpx rgba(37, 33, 39, .06); }
-.magnifier { position: relative; width: 20rpx; height: 20rpx; flex: none; border: 3rpx solid #8e9098; border-radius: 50%; }
-.magnifier::after { position: absolute; right: -8rpx; bottom: -5rpx; width: 9rpx; height: 3rpx; background: #8e9098; border-radius: 99rpx; content: ""; transform: rotate(45deg); }
+.magnifier { width: 32rpx; height: 32rpx; flex: none; }
 .search-field input { flex: 1; min-width: 0; color: #222228; font-size: 27rpx; }
 .search-placeholder { color: #a6a6ad; }
 .recognize { margin: 0; padding: 0 10rpx; color: #7a7a80; background: transparent; font-size: 25rpx; }
@@ -12,9 +11,9 @@ page { background: #f7f7f8; }
 .channels-inner { display: flex; gap: 24rpx; }
 .channel { width: auto; min-width: auto; padding: 0; margin: 0; color: #8a8a90; background: transparent; font-size: 29rpx; line-height: 54rpx; }
 .channel.active { color: #18181b; font-size: 36rpx; font-weight: 800; }
-.quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; }
-.quick-action { display: flex; gap: 9rpx; align-items: center; justify-content: center; height: 66rpx; margin: 0; padding: 0; color: #29282d; background: #fff; border-radius: 14rpx; font-size: 25rpx; font-weight: 650; box-shadow: 0 4rpx 14rpx rgba(37, 33, 39, .04); }
-.quick-icon { display: grid; width: 34rpx; height: 34rpx; place-items: center; color: #fff; border-radius: 10rpx; font-size: 20rpx; font-weight: 800; }
+.quick-actions { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 12rpx; }
+.quick-action { display: flex; flex: 1 1 0; flex-direction: row; align-items: center; justify-content: center; min-width: 0; height: 76rpx; margin: 0; padding: 0 16rpx; overflow: hidden; color: #fff; border: 0; border-radius: 16rpx; font-size: 24rpx; font-weight: 700; line-height: 1; white-space: nowrap; box-shadow: 0 6rpx 16rpx rgba(37, 33, 39, .1); }
+.quick-icon { display: block; flex: none; width: 36rpx; height: 36rpx; margin-right: 8rpx; }
 .quick-purple { background: linear-gradient(135deg, #8d68fb, #a48bf9); }.quick-orange { background: linear-gradient(135deg, #ff6b30, #ff9e42); }.quick-cyan { background: linear-gradient(135deg, #00b9c5, #36d2d4); }.quick-gold { background: linear-gradient(135deg, #ffad36, #ffcf5a); }
 .mock-note { margin: 20rpx 4rpx 12rpx; color: #b8753e; font-size: 20rpx; }
 .drama-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22rpx 16rpx; }
@@ -25,4 +24,4 @@ page { background: #f7f7f8; }
 .hot-badge { position: absolute; top: 0; left: 0; z-index: 1; padding: 8rpx 14rpx; color: #fff; background: linear-gradient(90deg, #fa5b69, #ff9360); border-radius: 0 0 14rpx 0; font-size: 20rpx; font-weight: 750; }
 .poster-copy { position: absolute; right: 18rpx; bottom: 18rpx; left: 18rpx; z-index: 1; display: flex; flex-direction: column; gap: 6rpx; color: #fff; text-shadow: 0 3rpx 10rpx rgba(0,0,0,.4); }
 .poster-title { font-size: 36rpx; font-weight: 850; line-height: 1.05; }.poster-subtitle { color: rgba(255,255,255,.8); font-size: 21rpx; }.heat { margin-top: 16rpx; font-size: 21rpx; font-weight: 700; }
-.drama-title { overflow: hidden; margin: 14rpx 4rpx 7rpx; font-size: 28rpx; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }.ranking { overflow: hidden; margin: 0 4rpx; color: #d2853c; font-size: 20rpx; text-overflow: ellipsis; white-space: nowrap; }
+.drama-title { overflow: hidden; margin: 14rpx 4rpx 7rpx; font-size: 28rpx; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }.ranking { display: flex; align-items: center; gap: 4rpx; overflow: hidden; margin: 0 4rpx; color: #d2853c; font-size: 20rpx; text-overflow: ellipsis; white-space: nowrap; }.ranking image { width: 18rpx; height: 24rpx; }

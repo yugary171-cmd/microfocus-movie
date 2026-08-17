@@ -2,6 +2,7 @@ import { boundedIdempotencyKey, ERROR_CODES, normalizeAuthenticatedUser, type An
 import { RUNTIME_CONFIG } from "../config/runtime";
 import { API_ROUTES, encodedRoute } from "../constants/routes";
 import { mockApi } from "../mocks/data";
+import { createRealSocialApi } from "./social-client";
 import { syncMockProfile } from "../mocks/profile-state";
 import { obtainWechatLoginCode } from "../platform/auth";
 import { getEnvVersion, wechatMiniprogramAuthSupported } from "../platform/env";
@@ -258,7 +259,8 @@ const realApi: ClientApi = {
       undefined,
       { "X-Deletion-Query-Token": queryToken },
       false
-    )
+    ),
+  social: createRealSocialApi(request)
 };
 
 export function getApi(): ClientApi {

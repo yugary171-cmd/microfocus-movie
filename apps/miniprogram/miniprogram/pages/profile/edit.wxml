@@ -5,7 +5,7 @@
         <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" />
         <text wx:else>{{initial}}</text>
       </view>
-      <view class="camera-badge">📷</view>
+      <view class="camera-badge">更换</view>
     </button>
   </view>
 
@@ -13,7 +13,7 @@
     <view class="row" bindtap="openNickname">
       <text class="row-label">昵称</text>
       <text class="row-value">{{displayName}}</text>
-      <text class="row-arrow">›</text>
+      <image class="row-arrow" src="/assets/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
     </view>
     <view class="row">
       <text class="row-label">微焦号</text>
@@ -25,12 +25,12 @@
     <view class="row" bindtap="openSignature">
       <text class="row-label">个人签名</text>
       <text class="row-value {{signature ? '' : 'placeholder'}}">{{signatureText}}</text>
-      <text class="row-arrow">›</text>
+      <image class="row-arrow" src="/assets/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
     </view>
     <view class="row" bindtap="openGender">
       <text class="row-label">性别</text>
       <text class="row-value {{gender === 'unset' ? 'placeholder' : ''}}">{{genderText}}</text>
-      <text class="row-arrow">›</text>
+      <image class="row-arrow" src="/assets/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
     </view>
   </view>
 
@@ -39,7 +39,7 @@
   <view wx:if="{{genderOpen}}" class="sheet-mask" bindtap="closeGender">
     <view class="sheet" catchtap="stopSheet">
       <view class="sheet-head">
-        <button class="sheet-close" hover-class="none" bindtap="closeGender" aria-label="关闭">⌄</button>
+        <button class="sheet-close" hover-class="none" bindtap="closeGender" aria-label="关闭"><image src="/assets/icons/weui-close.svg" mode="aspectFit" aria-hidden="true" /></button>
         <text class="sheet-title">选择性别</text>
         <button class="sheet-save" hover-class="none" bindtap="saveGender">保存</button>
       </view>
@@ -51,7 +51,7 @@
         bindtap="selectGender"
       >
         <text>{{item.label}}</text>
-        <text wx:if="{{genderDraft === item.id}}" class="sheet-check">✓</text>
+        <image wx:if="{{genderDraft === item.id}}" class="sheet-check" src="/assets/icons/icon-check.svg" mode="aspectFit" aria-hidden="true" />
       </view>
     </view>
   </view>

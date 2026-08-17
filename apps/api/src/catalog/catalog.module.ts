@@ -15,6 +15,7 @@ import { requireEntityId } from "../common/entity-id.js";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
+import { catalogCardInclude, toDramaCard } from "./drama-card.js";
 
 const CATALOG_FEATURED_LIMIT = 8;
 const CATALOG_SHELF_LIMIT = 20;
@@ -23,11 +24,6 @@ const FILTER_OPTIONS = {
   settings: ["打脸虐渣", "大男主", "大女主", "马甲", "重生", "穿越", "系统", "先婚后爱", "家长里短", "破镜重圆", "神豪", "豪门", "强者回归", "异能"],
   backgrounds: ["现代", "都市", "古代", "乡村", "年代", "架空", "职场", "民国", "校园", "宫廷"]
 } satisfies CatalogResponse["filterOptions"];
-
-const catalogCardInclude = {
-  _count: { select: { episodes: true } },
-  rightsRecords: { where: { status: "ACTIVE" as const }, orderBy: { version: "desc" as const }, take: 1 }
-};
 
 @Controller()
 export class CatalogController {
@@ -51,8 +47,8 @@ export class CatalogController {
         take: CATALOG_SHELF_LIMIT
       })
     ]);
-    const rankedCards = ranked.map(toCard);
-    const latestCards = latestRows.map(toCard);
+    const rankedCards = ranked.map(toDramaCard);
+    const latestCards = latestRows.map(toDramaCard);
     return {
       featured: rankedCards.slice(0, CATALOG_FEATURED_LIMIT),
       latest: latestCards,
@@ -108,7 +104,7 @@ export class CatalogController {
       this.prisma.drama.count({ where })
     ]);
     return {
-      items: dramas.map(toCard),
+      items: dramas.map(toDramaCard),
       page,
       pageSize,
       total,
@@ -137,7 +133,7 @@ export class CatalogController {
     });
     if (!drama) throw Errors.notFound("Drama");
     return {
-      ...toCard(drama),
+      ...toDramaCard(drama),
       rightsHolder: drama.rightsRecords[0]?.rightsHolder ?? "",
       episodes: drama.episodes.map((episode) => ({
         id: episode.id,
@@ -168,32 +164,6 @@ export function publicSearchWhere(q: string, category: string, filters: DramaSea
 function parsePage(value: string): number {
   const page = Number.parseInt(value, 10);
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
-}
-
-function toCard(drama: {
-  id: string;
-  title: string;
-  summary: string;
-  coverUrl: string;
-  category: string;
-  tagsJson: unknown;
-  recommendationRank: number;
-  rightsRecords: Array<{ licenseNumber: string }>;
-  _count: { episodes: number };
-}): DramaCard {
-  return {
-    id: drama.id,
-    title: drama.title,
-    summary: drama.summary,
-    coverUrl: drama.coverUrl,
-    category: drama.category,
-    tags: Array.isArray(drama.tagsJson)
-      ? drama.tagsJson.filter((tag): tag is string => typeof tag === "string")
-      : [],
-    episodeCount: drama._count.episodes,
-    recommendationRank: drama.recommendationRank,
-    licenseNumber: drama.rightsRecords[0]?.licenseNumber ?? ""
-  };
 }
 
 @Module({ controllers: [CatalogController] })

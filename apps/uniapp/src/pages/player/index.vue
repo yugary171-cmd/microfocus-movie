@@ -4,19 +4,22 @@ import { onHide, onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { computed, nextTick, ref } from "vue";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
+import { ACTION_ICONS } from "../../constants/icons";
 import {
   createVideoContext,
   getNetworkType,
   offNetworkStatusChange,
   onNetworkStatusChange
 } from "../../platform/media";
-import { getApi, isMockMode } from "../../services/api";
+import { getApi, getStoredSession, isMockMode } from "../../services/api";
+import { dramaInLibraryPages, setDramaLibraryFlag } from "../../services/library";
 import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
 import { PlaybackHeartbeatController } from "../../services/playback-controller";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
 import { formatEngagementCount, shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
+import { FAVORITE_TAB, LIKE_TAB } from "../../utils/inbox-view";
 import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
 
 const isMock = isMockMode();
@@ -236,6 +239,7 @@ async function openLease() {
     started.value = true;
     startTimers(created.heartbeatIntervalSeconds || HEARTBEAT_INTERVAL_SECONDS);
     applyLease(created);
+    void hydrateLibraryFlags();
   } catch (caught) {
     error.value = toFriendlyErrorMessage(caught);
     lease.value = null;
@@ -333,16 +337,51 @@ function goBack() {
   uni.navigateBack();
 }
 
-function toggleFavorite() {
-  isFavorite.value = !isFavorite.value;
-  favoriteCount.value += isFavorite.value ? 1 : -1;
-  uni.showToast({ title: isFavorite.value ? "已收藏到我的片单" : "已取消收藏", icon: "none" });
+function requireSocialUser(): boolean {
+  if (isMock || getStoredSession()) return true;
+  uni.showToast({ title: "请先登录后再收藏或点赞", icon: "none" });
+  return false;
 }
 
-function toggleLike() {
-  isLiked.value = !isLiked.value;
-  likeCount.value += isLiked.value ? 1 : -1;
-  uni.showToast({ title: isLiked.value ? "已点赞" : "已取消点赞", icon: "none" });
+async function hydrateLibraryFlags() {
+  if (!dramaId.value || (!isMock && !getStoredSession())) return;
+  try {
+    const social = getApi().social;
+    const [favorited, liked] = await Promise.all([
+      dramaInLibraryPages((page) => social.getFavorites(page), dramaId.value),
+      dramaInLibraryPages((page) => social.getLikedDramas(page), dramaId.value)
+    ]);
+    isFavorite.value = favorited;
+    isLiked.value = liked;
+  } catch {
+    // Keep local flags; missing library rows are treated as not saved.
+  }
+}
+
+async function toggleFavorite() {
+  if (!requireSocialUser() || !dramaId.value) return;
+  const next = !isFavorite.value;
+  try {
+    await setDramaLibraryFlag(FAVORITE_TAB, dramaId.value, next);
+    isFavorite.value = next;
+    favoriteCount.value += next ? 1 : -1;
+    uni.showToast({ title: next ? "已收藏到我的片单" : "已取消收藏", icon: "none" });
+  } catch (caught) {
+    uni.showToast({ title: toFriendlyErrorMessage(caught), icon: "none" });
+  }
+}
+
+async function toggleLike() {
+  if (!requireSocialUser() || !dramaId.value) return;
+  const next = !isLiked.value;
+  try {
+    await setDramaLibraryFlag(LIKE_TAB, dramaId.value, next);
+    isLiked.value = next;
+    likeCount.value += next ? 1 : -1;
+    uni.showToast({ title: next ? "已点赞" : "已取消点赞", icon: "none" });
+  } catch (caught) {
+    uni.showToast({ title: toFriendlyErrorMessage(caught), icon: "none" });
+  }
 }
 
 function shareCurrent() {
@@ -442,7 +481,7 @@ onUnload(() => {
         @touchend="endHoldBoost"
         @touchcancel="endHoldBoost"
       />
-      <view v-if="hasPlaybackUrl && !isPlaying" class="pause-mark" aria-hidden="true">❚❚</view>
+      <image v-if="hasPlaybackUrl && !isPlaying" class="pause-mark" :src="ACTION_ICONS.pause" mode="aspectFit" aria-hidden="true" />
       <view v-else-if="hasPlaybackUrl && holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
       <PlayerActions
         class="stage-actions"
@@ -477,6 +516,8 @@ onUnload(() => {
     <CommentSheet
       :visible="commentsOpen"
       :drama-title="dramaTitle"
+      :drama-id="dramaId"
+      :episode-id="episodeId"
       @close="commentsOpen = false"
     />
   </view>

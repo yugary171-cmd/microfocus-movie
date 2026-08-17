@@ -22,9 +22,9 @@ Page({
     activeChannel: "推荐",
     channels: ["推荐", "战神", "赘婿", "甜宠", "重生", "宫斗", "萌宝", "神医", "兵王"],
     quickActions: [
-      { icon: "筛", label: "筛选", tone: "purple" },
-      { icon: "热", label: "排行榜", tone: "orange" },
-      { icon: "播", label: "新剧", tone: "cyan" }
+      { icon: "/assets/icons/icon-filter.svg", label: "筛选", tone: "purple" },
+      { icon: "/assets/icons/icon-fire.svg", label: "排行榜", tone: "orange" },
+      { icon: "/assets/icons/icon-play-white.svg", label: "新剧", tone: "cyan" }
     ],
     dramas
   },
@@ -45,6 +45,10 @@ Page({
     }
     if (label === "排行榜") {
       wx.navigateTo({ url: "/pages/ranking/index" });
+      return;
+    }
+    if (label === "新剧") {
+      wx.navigateTo({ url: "/pages/search/index" });
       return;
     }
     wx.showToast({ title: `${label}功能为体验数据`, icon: "none" });

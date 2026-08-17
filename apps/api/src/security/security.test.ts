@@ -78,4 +78,17 @@ describe("jwt auth guard", () => {
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     expect(jwt.verifyAsync).not.toHaveBeenCalled();
   });
+
+  it("lets public social reads proceed without an Authorization header", async () => {
+    const jwtAuth = { canActivate: vi.fn() };
+    const { OptionalJwtAuthGuard } = await import("./security.js");
+    const guard = new OptionalJwtAuthGuard(jwtAuth as never);
+    const request = { header: () => undefined };
+    await expect(
+      guard.canActivate({
+        switchToHttp: () => ({ getRequest: () => request })
+      } as never)
+    ).resolves.toBe(true);
+    expect(jwtAuth.canActivate).not.toHaveBeenCalled();
+  });
 });

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from "@/components/Icon.vue";
 import { ADMIN_LIST_PAGE_SIZE, DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { computed, onMounted, ref } from "vue";
 import { adminApi } from "@/api/admin";
@@ -67,7 +68,7 @@ onMounted(load);
   <div>
     <header class="page-header">
       <div><p class="eyebrow">CONTENT LIBRARY</p><h1>剧目管理</h1><p>维护元数据、版权许可、分集媒体与发布状态。</p></div>
-      <RouterLink class="button button--primary" to="/dramas/new">＋ 新建剧目</RouterLink>
+      <RouterLink class="button button--primary" to="/dramas/new"><Icon name="add" />新建剧目</RouterLink>
     </header>
     <section class="panel">
       <form class="toolbar" role="search" @submit.prevent="filter">

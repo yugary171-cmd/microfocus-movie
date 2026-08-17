@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from "./Icon.vue";
 import {
   DRAMA_EPISODE_MAX_COUNT,
   EPISODE_DURATION_SECONDS_MAX,
@@ -117,7 +118,7 @@ function completeMockProcessing(episode: EpisodeRecord): void {
   <section class="panel episode-panel" aria-labelledby="episodes-title">
     <div class="panel__header">
       <div><p class="eyebrow">EPISODES & VOD</p><h2 id="episodes-title">剧集与媒体</h2><p>先获取上传签名，再由浏览器直传 VOD；应用服务不转发视频文件。</p></div>
-      <button v-if="!readonly" class="button button--secondary" type="button" :disabled="modelValue.length >= DRAMA_EPISODE_MAX_COUNT" @click="addEpisode">＋ 添加剧集</button>
+      <button v-if="!readonly" class="button button--secondary" type="button" :disabled="modelValue.length >= DRAMA_EPISODE_MAX_COUNT" @click="addEpisode"><Icon name="add" />添加剧集</button>
     </div>
     <div v-if="adminApi.mode === 'mock'" class="upload-mode" role="status">
       <strong>模拟直传</strong> 进度和处理状态仅用于演示，不代表云端已收到或完成转码。
@@ -126,7 +127,7 @@ function completeMockProcessing(episode: EpisodeRecord): void {
       <strong>真实上传未配置</strong> 腾讯云 VOD 直传 SDK 与 fileId 注册链路尚未接通；本页不会上传文件或显示虚假成功。
     </div>
     <div v-if="sortedEpisodes.length === 0" class="episode-empty" role="status">
-      <span aria-hidden="true">＋</span><strong>尚未添加剧集</strong><small>添加后可填写标题、时长并选择视频文件。</small>
+            <Icon name="add" /><strong>尚未添加剧集</strong><small>添加后可填写标题、时长并选择视频文件。</small>
     </div>
     <div v-else class="episode-list">
       <article v-for="episode in sortedEpisodes" :key="episode.id" class="episode-row">

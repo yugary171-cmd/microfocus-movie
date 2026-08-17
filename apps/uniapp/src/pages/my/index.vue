@@ -2,13 +2,17 @@
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+import { NAV_ICONS } from "../../constants/icons";
 import {
   isWechatProfileAuthorizationDenied,
+  isWechatProfileUnavailable,
   obtainWechatUserProfile,
-  wechatMiniprogramAuthSupported
+  wechatMiniprogramAuthSupported,
+  type WechatUserProfile
 } from "../../platform";
 import {
   applyLocalWechatProfile,
+  clearStoredSession,
   ensureSession,
   getApi,
   getStoredSession,
@@ -17,7 +21,9 @@ import {
 } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { resolveHistoryPlayerUrl } from "../../utils/history-navigation";
-import { getMockFavoriteCards, getMockHistoryCards, getMockLikeCards } from "../../mocks/history-state";
+import { getMockHistoryCards } from "../../mocks/history-state";
+import { loadFavoriteCards, loadLikedDramaCards } from "../../services/library";
+import { loadInboxItems } from "../../services/inbox";
 import { toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
 import {
   cloneHistorySheetFilter,
@@ -37,11 +43,12 @@ import {
 } from "../../utils/history-filter";
 import {
   FAVORITE_TAB,
-  INBOX_ITEMS,
+  INBOX_MOCK_LABEL,
   INBOX_TAB,
   LIBRARY_EDIT_COPY,
   LIBRARY_TABS,
   LIKE_TAB,
+  cloneInboxItems,
   isFormatLibraryTab,
   parseLibraryGridTab
 } from "../../utils/inbox-view";
@@ -72,9 +79,12 @@ const historyFilters = HISTORY_COMPLETION_FILTERS;
 const activeFilter = ref<HistoryCompletionFilter>("全部");
 const activeFormat = ref<HistoryFormatId>("all");
 const historyItems = ref<HistoryCardView[]>(isMock ? getMockHistoryCards() : []);
-const favoriteItems = ref<HistoryCardView[]>(isMock ? getMockFavoriteCards() : []);
-const likeItems = ref<HistoryCardView[]>(isMock ? getMockLikeCards() : []);
-const inboxItems = INBOX_ITEMS;
+const favoriteItems = ref<HistoryCardView[]>([]);
+const likeItems = ref<HistoryCardView[]>([]);
+const followingCount = ref(0);
+const followerCount = ref(0);
+const receivedLikeCount = ref(0);
+const inboxItems = ref(cloneInboxItems());
 const filterOpen = ref(false);
 const appliedSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
 const draftSheetFilter = ref<HistorySheetFilter>(cloneHistorySheetFilter());
@@ -102,11 +112,31 @@ const visibleHistoryItems = computed(() =>
   })
 );
 
-async function loadLiveHistory() {
+async function loadLibrary() {
   historyLoading.value = true;
   historyError.value = "";
   try {
-    historyItems.value = toHistoryCardViews(await getApi().getHistory());
+    const [history, favorites, likes] = await Promise.all([
+      isMock || user.value ? getApi().getHistory() : Promise.resolve([]),
+      isMock || user.value ? loadFavoriteCards() : Promise.resolve([]),
+      isMock || user.value ? loadLikedDramaCards() : Promise.resolve([])
+    ]);
+    historyItems.value = toHistoryCardViews(history);
+    favoriteItems.value = favorites;
+    likeItems.value = likes;
+    const session = getStoredSession();
+    if (session?.user.id) {
+      const [profile, inbox] = await Promise.all([
+        getApi().social.getUser(session.user.id),
+        loadInboxItems()
+      ]);
+      followingCount.value = profile.followingCount;
+      followerCount.value = profile.followerCount;
+      receivedLikeCount.value = profile.receivedCommentLikeCount;
+      inboxItems.value = inbox;
+    } else {
+      inboxItems.value = cloneInboxItems();
+    }
   } catch (error) {
     historyError.value = toFriendlyErrorMessage(error);
   } finally {
@@ -116,23 +146,28 @@ async function loadLiveHistory() {
 
 onShow(() => {
   user.value = toUserView(getStoredSession());
-  if (isMock) {
-    historyItems.value = getMockHistoryCards();
-    favoriteItems.value = getMockFavoriteCards();
-    likeItems.value = getMockLikeCards();
-  } else if (user.value) void loadLiveHistory();
+  if (isMock || user.value) void loadLibrary();
 });
 
 async function login() {
   if (loginLoading.value) return;
   loginError.value = "";
   try {
-    const profile = wechatMiniprogramAuthSupported() ? await obtainWechatUserProfile() : null;
     loginLoading.value = true;
+    let profile: WechatUserProfile | null = null;
+    if (wechatMiniprogramAuthSupported()) {
+      try {
+        profile = await obtainWechatUserProfile();
+      } catch (error) {
+        if (!isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
+          throw error;
+        }
+      }
+    }
     const session = await ensureSession();
     const stored = profile ? applyLocalWechatProfile(profile) : session;
     user.value = toUserView(stored);
-    if (!isMock) await loadLiveHistory();
+    await loadLibrary();
     uni.showToast({ title: "登录成功", icon: "success" });
   } catch (error) {
     if (isWechatProfileAuthorizationDenied(error)) {
@@ -208,6 +243,15 @@ function selectLibraryTab(item: (typeof LIBRARY_TABS)[number]) {
 
 function openProfile() {
   uni.navigateTo({ url: "/pages/profile/edit" });
+}
+
+function openSettings() {
+  uni.navigateTo({ url: "/pages/settings/index" });
+}
+
+function logout() {
+  clearStoredSession();
+  uni.reLaunch({ url: "/pages/my/index" });
 }
 
 function openHistoryEdit() {
@@ -294,14 +338,17 @@ async function openHistory(id: string) {
         <view class="member-name">{{ user.displayName }}</view>
         <view class="member-id">{{ user.microfocusId }} ⧉</view>
       </view>
-      <button class="edit-button" @tap="openProfile">编辑资料</button>
+      <view class="member-actions">
+        <button class="edit-button" @tap="openProfile">编辑资料</button>
+        <button class="settings-button" aria-label="设置" @tap="openSettings">设置</button>
+      </view>
     </view>
     <view v-if="loginError" class="login-error" role="alert">{{ loginError }}</view>
 
     <view v-if="user" class="stats">
-      <view><strong>0</strong><text>关注</text></view>
-      <view><strong>0</strong><text>粉丝</text></view>
-      <view><strong>0</strong><text>获赞</text></view>
+      <view><strong>{{ followingCount }}</strong><text>关注</text></view>
+      <view><strong>{{ followerCount }}</strong><text>粉丝</text></view>
+      <view><strong>{{ receivedLikeCount }}</strong><text>获赞</text></view>
     </view>
 
     <view class="history-panel">
@@ -322,7 +369,7 @@ async function openHistory(id: string) {
           aria-label="搜索历史"
           @tap="openHistorySearch"
         >
-          ⌕
+          <image :src="NAV_ICONS.search" mode="aspectFit" aria-hidden="true" />
         </view>
       </view>
       <view v-if="historySearchOpen && activeHistoryTab !== INBOX_TAB" class="history-search-bar">
@@ -338,7 +385,7 @@ async function openHistory(id: string) {
         <view class="history-search-cancel" hover-class="none" @tap="closeHistorySearch">取消</view>
       </view>
       <view v-if="activeHistoryTab === INBOX_TAB" class="inbox-list" aria-label="消息分类">
-        <view v-if="isMock" class="mock-label">体验占位，不接消息接口</view>
+        <view v-if="isMock" class="mock-label">{{ INBOX_MOCK_LABEL }}</view>
         <view
           v-for="item in inboxItems"
           :key="item.id"
@@ -350,7 +397,7 @@ async function openHistory(id: string) {
             <view class="inbox-preview">{{ item.preview }}</view>
           </view>
           <text v-if="item.meta" class="inbox-meta">{{ item.meta }}</text>
-          <text v-else class="inbox-chevron">›</text>
+          <image v-else class="inbox-chevron" :src="NAV_ICONS.arrowRight" mode="aspectFit" aria-hidden="true" />
         </view>
       </view>
       <view v-else>
@@ -389,8 +436,8 @@ async function openHistory(id: string) {
           </view>
         </view>
         <view v-if="isMock" class="mock-label">{{ libraryCopy.mockLabel }}</view>
-        <view v-if="!isFormatTab && historyLoading" class="history-state">{{ libraryCopy.loading }}</view>
-        <view v-else-if="!isFormatTab && historyError" class="history-state" role="alert">{{ historyError }}</view>
+        <view v-if="historyLoading" class="history-state">{{ libraryCopy.loading }}</view>
+        <view v-else-if="historyError" class="history-state" role="alert">{{ historyError }}</view>
         <view v-else-if="!sourceItems.length" class="history-state">{{ libraryCopy.empty }}</view>
         <view v-else-if="!visibleHistoryItems.length" class="history-state">{{ historyQuery.trim() ? "没有找到相关记录" : "没有符合筛选条件的记录" }}</view>
         <view v-else class="history-grid">
@@ -416,7 +463,7 @@ async function openHistory(id: string) {
   <view v-if="filterOpen" class="filter-mask" @tap="closeHistoryFilter">
     <view class="filter-panel" @tap.stop>
       <view class="filter-header">
-        <view class="filter-close" aria-label="关闭筛选" @tap.stop="closeHistoryFilter">∨</view>
+        <button class="filter-close" aria-label="关闭筛选" @tap.stop="closeHistoryFilter"><image :src="NAV_ICONS.close" mode="aspectFit" aria-hidden="true" /></button>
         <view class="filter-title">筛选</view>
         <view class="filter-header-spacer" />
       </view>

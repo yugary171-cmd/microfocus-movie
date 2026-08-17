@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ADMIN_REASON_MAX_LENGTH, ADMIN_REASON_MIN_LENGTH } from "@microfocus/contracts";
 import { computed, nextTick, ref, watch } from "vue";
+import Icon from "./Icon.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -66,7 +67,7 @@ function confirm(): void {
         :aria-labelledby="`${title}-dialog-title`"
         :aria-describedby="`${title}-dialog-description`"
       >
-        <div class="dialog__icon" :class="`dialog__icon--${tone}`" aria-hidden="true">{{ tone === "danger" ? "!" : "?" }}</div>
+        <div class="dialog__icon" :class="`dialog__icon--${tone}`"><Icon :name="tone === 'danger' ? 'warning' : 'help'" /></div>
         <h2 :id="`${title}-dialog-title`">{{ title }}</h2>
         <p :id="`${title}-dialog-description`">{{ message }}</p>
         <label v-if="requireReason" class="field">

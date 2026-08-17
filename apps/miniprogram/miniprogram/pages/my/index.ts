@@ -1,15 +1,23 @@
 import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import {
   applyLocalWechatProfile,
+  clearStoredSession,
   ensureSession,
   getApi,
   getStoredSession,
   isMockMode,
   saveProfile
 } from "../../services/api";
-import { isWechatProfileAuthorizationDenied, wechatAdapter } from "../../services/wechat-adapter";
+import {
+  isWechatProfileAuthorizationDenied,
+  isWechatProfileUnavailable,
+  wechatAdapter,
+  type WechatUserProfile
+} from "../../services/wechat-adapter";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import { getMockFavoriteCards, getMockHistoryCards, getMockLikeCards } from "../../mocks/history-state";
+import { getMockHistoryCards } from "../../mocks/history-state";
+import { loadFavoriteCards, loadLikedDramaCards } from "../../services/library";
+import { loadInboxItems } from "../../services/inbox";
 import {
   playerUrlFromHistory,
   toHistoryCardViews,
@@ -34,7 +42,8 @@ import {
 import {
   FAVORITE_TAB,
   HISTORY_TAB,
-  INBOX_ITEMS,
+  INBOX_MOCK_LABEL,
+  cloneInboxItems,
   isFormatLibraryTab,
   isLibraryTab,
   LIBRARY_EDIT_COPY,
@@ -113,8 +122,8 @@ Page({
     historyFilters: [...HISTORY_COMPLETION_FILTERS],
     activeFilter: "全部" as HistoryCompletionFilter,
     historyItems: (isMockMode() ? getMockHistoryCards() : []) as HistoryCardView[],
-    favoriteItems: (isMockMode() ? getMockFavoriteCards() : []) as HistoryCardView[],
-    likeItems: (isMockMode() ? getMockLikeCards() : []) as HistoryCardView[],
+    favoriteItems: [] as HistoryCardView[],
+    likeItems: [] as HistoryCardView[],
     visibleHistoryItems: (isMockMode() ? getMockHistoryCards() : []) as HistoryCardView[],
     isFormatTab: false,
     activeFormat: "all" as HistoryFormatId,
@@ -122,7 +131,8 @@ Page({
     mockLabel: LIBRARY_EDIT_COPY[HISTORY_TAB].mockLabel,
     emptyLabel: LIBRARY_EDIT_COPY[HISTORY_TAB].empty,
     sourceEmpty: !isMockMode(),
-    inboxItems: INBOX_ITEMS,
+    inboxItems: cloneInboxItems(),
+    inboxMockLabel: INBOX_MOCK_LABEL,
     avatarSaving: false,
     filterOpen: false,
     sheetFilterActive: false,
@@ -133,46 +143,34 @@ Page({
     timeOptions: HISTORY_TIME_OPTIONS,
     historySearchOpen: false,
     historyQuery: "",
-    queryMaxLength: LIST_QUERY_MAX_LENGTH
+    queryMaxLength: LIST_QUERY_MAX_LENGTH,
+    followingCount: 0,
+    followerCount: 0,
+    receivedLikeCount: 0
   },
 
   onShow() {
     const user = toUserView(getStoredSession());
-    if (this.data.isMock) {
-      const historyItems = getMockHistoryCards();
-      const favoriteItems = getMockFavoriteCards();
-      const likeItems = getMockLikeCards();
-      this.setData({
-        user,
-        historyItems,
-        favoriteItems,
-        likeItems,
-        ...visibleHistoryState(
-          this.data.activeHistoryTab,
-          historyItems,
-          favoriteItems,
-          likeItems,
-          this.data.activeFilter,
-          this.data.activeFormat,
-          this.data.appliedSheetFilter,
-          this.data.historyQuery
-        )
-      });
-      return;
-    }
     this.setData({ user });
-    if (user) void this.loadLiveHistory();
+    if (this.data.isMock || user) void this.loadLibrary();
   },
 
   async login() {
     if (this.data.loginLoading) return;
     this.setData({ loginError: "" });
     try {
-      const profile = await wechatAdapter.getUserProfile();
       this.setData({ loginLoading: true });
+      let profile: WechatUserProfile | null = null;
+      try {
+        profile = await wechatAdapter.getUserProfile();
+      } catch (error) {
+        if (!this.data.isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
+          throw error;
+        }
+      }
       await ensureSession();
-      this.setData({ user: toUserView(applyLocalWechatProfile(profile)) });
-      if (!this.data.isMock) await this.loadLiveHistory();
+      this.setData({ user: toUserView(profile ? applyLocalWechatProfile(profile) : getStoredSession()) });
+      await this.loadLibrary();
       wx.showToast({ title: "登录成功", icon: "success" });
     } catch (error) {
       if (isWechatProfileAuthorizationDenied(error)) {
@@ -206,17 +204,49 @@ Page({
   },
 
   async loadLiveHistory() {
+    return this.loadLibrary(true);
+  },
+
+  async loadLibrary(forceLive = false) {
     this.setData({ historyLoading: true, historyError: "" });
     try {
-      const history = await getApi().getHistory();
+      const canLoad = forceLive || this.data.isMock || Boolean(this.data.user);
+      const [history, favoriteItems, likeItems] = canLoad
+        ? await Promise.all([
+            getApi().getHistory(),
+            loadFavoriteCards(),
+            loadLikedDramaCards()
+          ])
+        : [[], [], []];
       const historyItems = toHistoryCardViews(history);
+      let followingCount = 0;
+      let followerCount = 0;
+      let receivedLikeCount = 0;
+      let inboxItems = cloneInboxItems();
+      const session = getStoredSession();
+      if (session?.user.id) {
+        const [profile, inbox] = await Promise.all([
+          getApi().social.getUser(session.user.id),
+          loadInboxItems()
+        ]);
+        followingCount = profile.followingCount;
+        followerCount = profile.followerCount;
+        receivedLikeCount = profile.receivedCommentLikeCount;
+        inboxItems = inbox;
+      }
       this.setData({
         historyItems,
+        favoriteItems,
+        likeItems,
+        inboxItems,
+        followingCount,
+        followerCount,
+        receivedLikeCount,
         ...visibleHistoryState(
           this.data.activeHistoryTab,
           historyItems,
-          this.data.favoriteItems,
-          this.data.likeItems,
+          favoriteItems,
+          likeItems,
           this.data.activeFilter,
           this.data.activeFormat,
           this.data.appliedSheetFilter,
@@ -342,6 +372,15 @@ Page({
 
   openProfile() {
     wx.navigateTo({ url: "/pages/profile/edit" });
+  },
+
+  openSettings() {
+    wx.navigateTo({ url: "/pages/settings/index" });
+  },
+
+  logout() {
+    clearStoredSession();
+    wx.reLaunch({ url: "/pages/my/index" });
   },
 
   selectFormatFilter(event: WechatMiniprogram.TouchEvent) {

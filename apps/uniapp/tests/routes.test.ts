@@ -35,6 +35,11 @@ describe("viewer routes follow contracts", () => {
     expect(encodedRoute(API_ROUTES.deletionRequest, id)).toBe(
       `/v1/me/deletion-requests/${encoded}`
     );
+    expect(encodedRoute(API_ROUTES.user, id)).toBe(`/v1/users/${encoded}`);
+    expect(encodedRoute(API_ROUTES.userFollow, id)).toBe(`/v1/users/${encoded}/follow`);
+    expect(encodedRoute(API_ROUTES.dramaComments, id)).toBe(`/v1/dramas/${encoded}/comments`);
+    expect(API_ROUTES.meFavorites).toBe("/v1/me/favorites");
+    expect(API_ROUTES.meConversations).toBe("/v1/me/conversations");
   });
 
   it("keeps viewer Idempotency-Key headers within the shared max length", () => {
@@ -72,5 +77,15 @@ describe("viewer routes follow contracts", () => {
     expect(source).toContain("全部背景");
     expect(source).toContain("class=\"filter-drawer\"");
     expect(source).not.toContain("榜单分类");
+  });
+
+  it("loads favorites and player comments through the social client", () => {
+    const myPage = readFileSync(resolve(here, "../src/pages/my/index.vue"), "utf8");
+    const library = readFileSync(resolve(here, "../src/services/library.ts"), "utf8");
+    const comments = readFileSync(resolve(here, "../src/components/comment-sheet/index.vue"), "utf8");
+    expect(myPage).toContain("loadFavoriteCards");
+    expect(myPage).toContain("loadInboxItems");
+    expect(library).toContain("getApi().social.getFavorites");
+    expect(comments).toContain("getDramaComments");
   });
 });

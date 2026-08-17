@@ -16,6 +16,16 @@ export function isWechatProfileAuthorizationDenied(error: unknown): boolean {
   return /getUserProfile:fail.*(auth deny|cancel)/i.test(message);
 }
 
+/**
+ * WeChat DevTools can fail while reading avatar metadata even though the user
+ * did not deny the profile prompt. Mock mode can continue with its fallback
+ * profile; live mode must still surface the failure.
+ */
+export function isWechatProfileUnavailable(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return /getUserProfile:fail.*getUserAvatarInfo fail/i.test(message);
+}
+
 function profileFromUserInfo(userInfo: { nickName?: string; avatarUrl?: string } | undefined): WechatUserProfile {
   const displayName = typeof userInfo?.nickName === "string" ? userInfo.nickName.trim().slice(0, 32) : "";
   const avatarUrl =

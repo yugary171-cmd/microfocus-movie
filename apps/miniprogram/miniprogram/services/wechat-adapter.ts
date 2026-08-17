@@ -31,6 +31,12 @@ export function isWechatProfileAuthorizationDenied(error: unknown): boolean {
   return /getUserProfile:fail.*(auth deny|cancel)/i.test(message);
 }
 
+/** Mock mode may use the fallback profile when DevTools cannot read avatar metadata. */
+export function isWechatProfileUnavailable(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return /getUserProfile:fail.*getUserAvatarInfo fail/i.test(message);
+}
+
 export const wechatAdapter: WechatAdapter = {
   login: () =>
     new Promise((resolve, reject) => {

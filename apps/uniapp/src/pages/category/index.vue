@@ -3,6 +3,7 @@ import { SEARCH_PAGE_SIZE, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getApi } from "../../services/api";
+import { NAV_ICONS } from "../../constants/icons";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import {
   DEFAULT_DISCOVER_FILTERS,
@@ -127,7 +128,7 @@ onReachBottom(() => {
       </view>
       <button class="collapse-button" @tap="filtersExpanded = !filtersExpanded">
         <text>{{ filtersExpanded ? "收起" : "展开" }}</text>
-        <text class="collapse-icon">{{ filtersExpanded ? "^" : "⌄" }}</text>
+      <image class="collapse-icon" :class="{ expanded: filtersExpanded }" :src="NAV_ICONS.arrowDown" mode="aspectFit" aria-hidden="true" />
       </button>
     </view>
 
@@ -143,7 +144,7 @@ onReachBottom(() => {
       >
         <view class="filter-poster">{{ item.title.slice(0, 1) }}</view>
         <view class="filter-title">{{ item.title }}</view>
-        <view class="filter-meta">♨ {{ rankingHeatLabel(item.recommendationRank) }} · {{ item.tags[0] || item.category }}</view>
+        <view class="filter-meta">热度 {{ rankingHeatLabel(item.recommendationRank) }} · {{ item.tags[0] || item.category }}</view>
       </button>
     </view>
     <view v-if="loadingMore" class="filter-state">正在加载更多…</view>

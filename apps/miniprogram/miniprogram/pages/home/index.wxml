@@ -1,10 +1,10 @@
 <view class="home-page">
   <view class="search-row">
     <view class="search-field" bindtap="openSearch" role="button" aria-label="搜索短剧">
-      <view class="magnifier"></view>
+      <image class="magnifier" src="/assets/icons/weui-search.svg" mode="aspectFit" aria-hidden="true" />
       <text class="search-placeholder">搜剧名、演员、剧情</text>
     </view>
-    <button class="recognize" bindtap="showAction" data-label="识别" aria-label="识别图片中的剧">▣ 识别</button>
+      <button class="recognize" bindtap="showAction" data-label="识别" aria-label="识别图片中的剧">识别</button>
   </view>
 
   <scroll-view class="channels" scroll-x enable-flex aria-label="内容频道">
@@ -15,7 +15,7 @@
 
   <view class="quick-actions">
     <button wx:for="{{quickActions}}" wx:key="label" class="quick-action" data-label="{{item.label}}" bindtap="showAction">
-      <text class="quick-icon quick-{{item.tone}}">{{item.icon}}</text>
+      <image class="quick-icon quick-{{item.tone}}" src="{{item.icon}}" mode="aspectFit" aria-hidden="true" />
       <text>{{item.label}}</text>
     </button>
   </view>
@@ -28,11 +28,11 @@
         <view class="poster-copy">
           <text class="poster-title">{{item.title}}</text>
           <text class="poster-subtitle">{{item.subtitle}}</text>
-          <text class="heat">♨ {{item.heat}}</text>
+          <text class="heat">热度 {{item.heat}}</text>
         </view>
       </view>
       <view class="drama-title">{{item.title}}</view>
-      <view class="ranking">{{item.ranking}} ›</view>
+      <view class="ranking">{{item.ranking}} <image src="/assets/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" /></view>
     </button>
   </view>
 </view>

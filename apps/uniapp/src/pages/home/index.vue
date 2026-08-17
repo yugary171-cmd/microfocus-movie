@@ -3,6 +3,7 @@ import type { DramaCard, HomeFilterOptions } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { HOME_PRIMARY_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../../constants/runtime";
+import { NAV_ICONS } from "../../constants/icons";
 import { getApi, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { buildHomeChannels, searchCategoryParam } from "../../utils/home-channels";
@@ -111,6 +112,10 @@ function openRankingPage() {
   uni.navigateTo({ url: "/pages/ranking/index" });
 }
 
+function openNewDrama() {
+  uni.navigateTo({ url: "/pages/search/index" });
+}
+
 function selectCategory(category: string) {
   if (!category || category === activeCategory.value) return;
   activeCategory.value = category;
@@ -161,7 +166,7 @@ function openDrama(id: string) {
   <view class="home-page">
     <view class="search-row">
       <view class="search-field" @tap="openSearch">
-        <view class="magnifier"></view>
+        <image class="magnifier" :src="NAV_ICONS.search" mode="aspectFit" aria-hidden="true" />
         <text class="search-placeholder" aria-label="搜索短剧">搜剧名、演员、剧情</text>
       </view>
     </view>
@@ -181,8 +186,9 @@ function openDrama(id: string) {
     </scroll-view>
 
     <view v-if="activeCategory === HOME_RECOMMEND_CHANNEL" class="quick-actions" aria-label="首页工具">
-      <button class="quick-action" @tap="openFilterPage"><view class="quick-icon quick-purple">筛</view><text>筛选</text></button>
-      <button class="quick-action" @tap="openRankingPage"><view class="quick-icon quick-orange">热</view><text>排行榜</text></button>
+      <button class="quick-action quick-purple" @tap="openFilterPage"><image class="quick-icon" :src="NAV_ICONS.filter" mode="aspectFit" aria-hidden="true" /><text>筛选</text></button>
+      <button class="quick-action quick-orange" @tap="openRankingPage"><image class="quick-icon" src="/static/icons/icon-fire.svg" mode="aspectFit" aria-hidden="true" /><text>排行榜</text></button>
+      <button class="quick-action quick-cyan" @tap="openNewDrama"><image class="quick-icon" src="/static/icons/icon-play-white.svg" mode="aspectFit" aria-hidden="true" /><text>新剧</text></button>
     </view>
 
     <view v-if="activeCategory !== HOME_RECOMMEND_CHANNEL" class="sub-filter-row">
@@ -191,7 +197,10 @@ function openDrama(id: string) {
           <button v-for="tag in subTags" :key="tag" class="sub-filter" :class="{ selected: selectedTags.includes(tag) }" @tap="toggleTag(tag)">{{ tag }}</button>
         </view>
       </scroll-view>
-      <button class="filter-entry" :class="{ selected: selectedTags.length }" @tap="openDrawer">{{ selectedTags.length || "⌄" }}</button>
+      <button class="filter-entry" :class="{ selected: selectedTags.length }" @tap="openDrawer">
+        <text v-if="selectedTags.length">{{ selectedTags.length }}</text>
+        <image v-else :src="NAV_ICONS.arrowDown" mode="aspectFit" aria-hidden="true" />
+      </button>
     </view>
 
     <view v-if="isMock" class="mock-note">内部体验 · 分类与剧集分页来自 Mock 数据</view>
@@ -214,7 +223,7 @@ function openDrama(id: string) {
           </view>
         </view>
         <view class="drama-title">{{ item.title }}</view>
-        <view class="ranking">{{ item.ranking }} ›</view>
+        <view class="ranking">{{ item.ranking }} <image :src="NAV_ICONS.arrowRight" mode="aspectFit" aria-hidden="true" /></view>
       </button>
     </view>
     <view v-if="loadingMore" class="feed-state">正在加载更多…</view>
@@ -223,8 +232,8 @@ function openDrama(id: string) {
 
     <view v-if="drawerOpen" class="drawer-mask" @tap="closeDrawer">
       <view class="filter-drawer" @tap.stop>
-        <view class="drawer-header"><view class="drawer-close" @tap="closeDrawer">⌄</view><text>筛选</text><view class="drawer-spacer" /></view>
-        <scroll-view class="drawer-content" scroll-y>
+        <view class="drawer-header"><button class="drawer-close" aria-label="关闭筛选" @tap="closeDrawer"><image :src="NAV_ICONS.close" mode="aspectFit" aria-hidden="true" /></button><text>筛选</text><view class="drawer-spacer" /></view>
+        <scroll-view class="drawer-content" scroll-y :show-scrollbar="false">
           <view v-for="section in drawerSections" :key="section.key" class="drawer-section">
             <text class="drawer-title">{{ section.title }}</text>
             <view class="drawer-options"><button v-for="value in section.values" :key="value" class="drawer-option" :class="{ selected: draftDrawer[section.key] === value }" @tap="selectDrawerOption(section.key, value)">{{ value }}</button></view>

@@ -68,6 +68,9 @@ describe("delete watch history", () => {
       findMany: vi.fn().mockResolvedValue([{ dramaId: "drama-1" }]),
       deleteMany: vi.fn().mockResolvedValue({ count: 1 })
     };
+    const watchEpisodeProgress = {
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 })
+    };
     const prisma = {
       rateLimitBucket: {
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -76,8 +79,10 @@ describe("delete watch history", () => {
         deleteMany: vi.fn()
       },
       watchProgress,
-      $transaction: async (fn: (client: { watchProgress: typeof watchProgress }) => Promise<unknown>) =>
-        fn({ watchProgress })
+      watchEpisodeProgress,
+      $transaction: async (
+        fn: (client: { watchProgress: typeof watchProgress; watchEpisodeProgress: typeof watchEpisodeProgress }) => Promise<unknown>
+      ) => fn({ watchProgress, watchEpisodeProgress })
     };
     const controller = new HistoryController(prisma as never);
     await expect(
@@ -90,6 +95,9 @@ describe("delete watch history", () => {
       select: { dramaId: true }
     });
     expect(watchProgress.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", dramaId: { in: ["drama-1"] } }
+    });
+    expect(watchEpisodeProgress.deleteMany).toHaveBeenCalledWith({
       where: { userId: "user-1", dramaId: { in: ["drama-1"] } }
     });
   });

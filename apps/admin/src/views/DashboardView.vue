@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from "@/components/Icon.vue";
 import { DramaStatus } from "@microfocus/contracts";
 import { onMounted, ref } from "vue";
 import { adminApi } from "@/api/admin";
@@ -53,7 +54,7 @@ function ledgerAgeLabel(value: string | null): string {
   <div>
     <header class="page-header">
       <div><p class="eyebrow">OVERVIEW</p><h1>工作台</h1><p>先看风险，再处理内容。所有指标均标注来源状态。</p></div>
-      <RouterLink class="button button--primary" to="/dramas/new">＋ 新建剧目</RouterLink>
+      <RouterLink class="button button--primary" to="/dramas/new"><Icon name="add" />新建剧目</RouterLink>
     </header>
     <PageState v-if="loading" type="loading" message="正在汇总合规、内容与运营数据…" />
     <PageState v-else-if="error" type="error" :message="error" @retry="load" />

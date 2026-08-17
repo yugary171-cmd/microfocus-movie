@@ -4,6 +4,8 @@
     "pages/theater/index",
     "pages/welfare/index",
     "pages/my/index",
+    "pages/settings/index",
+    "pages/feedback/index",
     "pages/profile/edit",
     "pages/profile/nickname",
     "pages/profile/signature",

@@ -18,6 +18,7 @@ import type { ClientApi, SearchResponse } from "../types/api";
 import { applyProfilePatch } from "../utils/profile";
 import { readMockProfile, requireMockProfile, writeMockProfile } from "./profile-state";
 import { deleteMockHistory, toMockWatchHistoryItems } from "./history-state";
+import { createMockSocialApi } from "./social-api";
 
 function mockIsFreeEpisodeId(episodeId: string): boolean {
   const matched = /e(\d+)$/.exec(episodeId);
@@ -227,5 +228,6 @@ export const mockApi: ClientApi = {
       processedAt: null,
       tokenExpiresAt: new Date(Date.now() + DELETION_QUERY_TOKEN_TTL_SECONDS * 1000).toISOString(),
       reason: null
-    })
+    }),
+  social: createMockSocialApi()
 };

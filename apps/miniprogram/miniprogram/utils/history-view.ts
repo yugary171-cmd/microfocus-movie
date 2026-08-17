@@ -1,4 +1,4 @@
-import type { WatchHistoryItem } from "@microfocus/contracts";
+import type { DramaLibraryItem, WatchHistoryItem } from "@microfocus/contracts";
 import { formatPosition } from "./format";
 
 export type HistoryCardView = {
@@ -125,6 +125,52 @@ export function toHistoryCardViews(history: WatchHistoryItem[]): HistoryCardView
       updatedAt: item.updatedAt || ""
     };
   });
+}
+
+export function toLibraryCardViews(items: DramaLibraryItem[]): HistoryCardView[] {
+  return (Array.isArray(items) ? items : []).flatMap((item, index) => {
+    const drama = item?.drama;
+    if (!drama?.id) return [];
+    const tags = Array.isArray(drama.tags) ? drama.tags : [];
+    const formatSource = [drama.category, ...tags].filter(Boolean).join(" ");
+    const episodeNumber = item.resumeEpisodeNumber ?? 1;
+    const position = Math.max(0, item.resumePositionSeconds ?? 0);
+    return [{
+      id: drama.id,
+      title: drama.title || "短剧",
+      episode:
+        item.resumeEpisodeNumber != null
+          ? `第 ${episodeNumber} 集 · ${formatPosition(position)}`
+          : `共 ${Math.max(0, drama.episodeCount || 0)} 集`,
+      tag: drama.category || "短剧",
+      formatSource,
+      tone: TONES[index % TONES.length] || "rose",
+      dramaId: drama.id,
+      episodeNumber,
+      episodeCount: Math.max(0, drama.episodeCount || 0),
+      position,
+      updatedAt: item.createdAt || ""
+    }];
+  });
+}
+
+export function historyCardToLibraryItem(card: HistoryCardView): DramaLibraryItem {
+  return {
+    drama: {
+      id: card.dramaId || card.id,
+      title: card.title,
+      summary: "",
+      coverUrl: "",
+      category: card.tag,
+      tags: card.formatSource ? card.formatSource.split(/\s+/).filter(Boolean) : [card.tag],
+      episodeCount: card.episodeCount,
+      recommendationRank: 0,
+      licenseNumber: ""
+    },
+    createdAt: card.updatedAt,
+    resumeEpisodeNumber: card.episodeNumber,
+    resumePositionSeconds: card.position
+  };
 }
 
 export function playerUrlFromHistory(

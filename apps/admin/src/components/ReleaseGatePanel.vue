@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ReleaseGateStatus } from "@microfocus/contracts";
 import StatusBadge from "./StatusBadge.vue";
+import Icon from "./Icon.vue";
 
 defineProps<{ gate: ReleaseGateStatus }>();
 
@@ -27,7 +28,7 @@ const checks: Array<{ key: keyof ReleaseGateStatus; label: string; help: string 
     <ul class="gate-checks">
       <li v-for="check in checks" :key="check.key">
         <span class="gate-checks__mark" :class="{ 'is-ready': Boolean(gate[check.key]) }" aria-hidden="true">
-          {{ gate[check.key] ? "✓" : "×" }}
+          <Icon :name="gate[check.key] ? 'check' : 'close'" />
         </span>
         <span><strong>{{ check.label }}</strong><small>{{ check.help }}</small></span>
       </li>

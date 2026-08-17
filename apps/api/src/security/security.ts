@@ -62,6 +62,18 @@ export class JwtAuthGuard implements CanActivate {
   }
 }
 
+@Injectable()
+export class OptionalJwtAuthGuard implements CanActivate {
+  constructor(private readonly jwtAuth: JwtAuthGuard) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const authorization = request.header("authorization");
+    if (!authorization) return true;
+    return this.jwtAuth.canActivate(context);
+  }
+}
+
 const ROLES = Symbol("roles");
 export const Roles = (...roles: AdminRole[]) => SetMetadata(ROLES, roles);
 
@@ -88,6 +100,12 @@ export const CurrentPrincipal = createParamDecorator(
     const principal = context.switchToHttp().getRequest<AuthenticatedRequest>().principal;
     if (!principal) throw Errors.unauthorized();
     return principal;
+  }
+);
+
+export const OptionalPrincipal = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): Principal | undefined => {
+    return context.switchToHttp().getRequest<AuthenticatedRequest>().principal;
   }
 );
 

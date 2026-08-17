@@ -5,6 +5,7 @@ import { navigationItems } from "@/config/navigation";
 import { roleLabels } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import ModeBanner from "@/components/ModeBanner.vue";
+import Icon from "@/components/Icon.vue";
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -46,14 +47,14 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
           :class="{ 'router-link-active': item.to === '/' ? route.path === '/' : route.path.startsWith(item.to) }"
           @click="menuOpen = false"
         >
-          <span class="nav-item__icon" aria-hidden="true">{{ item.icon }}</span>
+          <span class="nav-item__icon"><Icon :name="item.icon" /></span>
           <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
         </RouterLink>
       </nav>
       <div v-if="auth.user" class="sidebar-user">
         <span class="avatar" aria-hidden="true">{{ auth.user.name.slice(0, 1) }}</span>
         <span><strong>{{ auth.user.name }}</strong><small>{{ roleLabels[auth.user.role] }}</small></span>
-        <button class="icon-button" type="button" aria-label="退出登录" title="退出登录" @click="logout">↗</button>
+        <button class="icon-button" type="button" aria-label="退出登录" title="退出登录" @click="logout"><Icon name="logout" /></button>
       </div>
     </aside>
     <button
@@ -65,7 +66,7 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
     />
     <div class="app-main">
       <header class="topbar">
-        <button class="icon-button mobile-menu-button" type="button" :aria-expanded="menuOpen" aria-label="打开导航" @click="menuOpen = !menuOpen">☰</button>
+        <button class="icon-button mobile-menu-button" type="button" :aria-expanded="menuOpen" aria-label="打开导航" @click="menuOpen = !menuOpen"><Icon name="menu" /></button>
         <div><strong>内容安全与运营中心</strong><small>全流程可审计 · 操作按角色授权</small></div>
         <span class="environment-pill"><span aria-hidden="true" />{{ auth.user ? roleLabels[auth.user.role] : "未登录" }}</span>
       </header>

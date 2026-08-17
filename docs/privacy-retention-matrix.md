@@ -8,7 +8,8 @@
 | 数据类 | 例子 | 批准前 | 批准后 |
 | --- | --- | --- | --- |
 | 用户资料 | displayName、avatarUrl、signature、gender、openId | 只撤权 | 匿名化为 `已注销用户` / `deleted:{userId}`；签名清空、性别 `unset` |
-| 观看进度 | WatchProgress | 不删除 | 删除 |
+| 观看进度 | WatchProgress 续播游标；WatchEpisodeProgress 每集完成态 | 不删除 | 删除 |
+| 社交与片库 | 关注、评论、评论赞、私信、收藏剧、喜欢剧 | 不删除 | 删除或匿名化可见内容；不保留可指向真人的名单与正文 |
 | 权益账本 | grant / debit / adjustment | 保留 | 保留 |
 | 广告挑战 | RewardChallenge | 保留 | 保留（补偿核验） |
 | 播放租约 | PlaybackLease | 保留 | 保留 |

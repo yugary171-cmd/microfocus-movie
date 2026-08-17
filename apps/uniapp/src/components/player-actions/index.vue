@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ACTION_ICONS } from "../../constants/icons";
+
 defineProps<{
   favorited?: boolean;
   liked?: boolean;
@@ -27,11 +29,11 @@ const emit = defineEmits<{
       hover-class="none"
       @tap="emit('favorite')"
     >
-      <view class="glyph glyph-star" :class="{ active: favorited }" aria-hidden="true">★</view>
+      <image class="glyph" :src="favorited ? ACTION_ICONS.starActive : ACTION_ICONS.star" mode="aspectFit" aria-hidden="true" />
       <view class="label">{{ favoriteLabel }}</view>
     </view>
     <view class="action" role="button" aria-label="评论" hover-class="none" @tap="emit('comment')">
-      <view class="glyph glyph-comment" aria-hidden="true"><view class="comment-dots">•••</view></view>
+      <image class="glyph" :src="ACTION_ICONS.comment" mode="aspectFit" aria-hidden="true" />
       <view class="label">{{ commentLabel }}</view>
     </view>
     <view
@@ -43,11 +45,11 @@ const emit = defineEmits<{
       hover-class="none"
       @tap="emit('like')"
     >
-      <view class="glyph glyph-heart" :class="{ active: liked }" aria-hidden="true">♥</view>
+      <image class="glyph" :src="liked ? ACTION_ICONS.heartActive : ACTION_ICONS.heart" mode="aspectFit" aria-hidden="true" />
       <view class="label">{{ likeLabel }}</view>
     </view>
     <view class="action" role="button" aria-label="分享" hover-class="none" @tap="emit('share')">
-      <view class="glyph glyph-share" aria-hidden="true">➤</view>
+      <image class="glyph" :src="ACTION_ICONS.share" mode="aspectFit" aria-hidden="true" />
       <view class="label">{{ shareLabel || "分享" }}</view>
     </view>
   </view>

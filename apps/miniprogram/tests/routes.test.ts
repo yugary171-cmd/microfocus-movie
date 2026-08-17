@@ -35,6 +35,8 @@ describe("viewer routes follow contracts", () => {
     expect(encodedRoute(API_ROUTES.deletionRequest, id)).toBe(
       `/v1/me/deletion-requests/${encoded}`
     );
+    expect(encodedRoute(API_ROUTES.userFollow, id)).toBe(`/v1/users/${encoded}/follow`);
+    expect(API_ROUTES.meLikedDramas).toBe("/v1/me/liked-dramas");
   });
 
   it("keeps viewer Idempotency-Key headers within the shared max length", () => {
@@ -57,5 +59,13 @@ describe("viewer routes follow contracts", () => {
   it("binds viewer search inputs to LIST_QUERY_MAX_LENGTH", () => {
     const source = readFileSync(resolve(here, "../miniprogram/pages/search/index.wxml"), "utf8");
     expect(source).toContain('maxlength="{{queryMaxLength}}"');
+  });
+
+  it("loads favorites through the social client", () => {
+    const myPage = readFileSync(resolve(here, "../miniprogram/pages/my/index.ts"), "utf8");
+    const library = readFileSync(resolve(here, "../miniprogram/services/library.ts"), "utf8");
+    expect(myPage).toContain("loadFavoriteCards");
+    expect(myPage).toContain("loadInboxItems");
+    expect(library).toContain("getApi().social.getFavorites");
   });
 });

@@ -1,7 +1,7 @@
 # 页面与 API 契约说明
 
 - 文档用途：定义页面职责、接口语义、权限边界和验收关系
-- 更新日期：2026-08-14
+- 更新日期：2026-08-17
 - 本文定义目标契约，可能包含尚未进入 `packages/contracts` 或代码的接口；本文**不记录任务进度、完成比例或待办事项**，工程状态统一见 [status.md](./status.md)
 - 产品范围见 [product-plan.md](./product-plan.md)，详细需求见 [PRD](./prd-microfocus-movie-internal-validation.md)，技术不变量见 [architecture.md](./architecture.md)
 
@@ -74,10 +74,10 @@ flowchart LR
 | 筛选 | `apps/uniapp/src/pages/category/index.vue` | 首页筛选页：体裁/主题/设定/背景走搜索筛选参数；推荐/受众/时间仅本地 UI，收起后隐藏后三栏；结果三列网格，每页 `SEARCH_PAGE_SIZE` | `GET /v1/search`（无独立筛选 API） |
 | 排行榜 | `apps/uniapp/src/pages/ranking/index.vue` | 首页排行榜页：顶部分类全部/真人剧/漫剧/AI 剧，无演员；标签为推荐榜/热播榜/热搜榜/收藏榜；「分类」打开与首页相同的筛选抽屉（主题/设定/背景，catalog `filterOptions`）；同一搜索列表本地排序，无独立榜单 API | `GET /v1/catalog`、`GET /v1/search` |
 | 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、简介、目录、免费/锁定状态和播放入口；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益 |
-| 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复 | 播放、奖励、权益及进度接口 |
+| 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复；登录后可读收藏/点赞态并切换；评论底栏有 `dramaId` 时走剧评 API | 播放、奖励、权益、进度及 `GET/PUT/DELETE /v1/me/favorites`、`GET/PUT/DELETE /v1/me/liked-dramas`、剧评读写 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |
-| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（先拉起微信头像昵称授权）、点击头像更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 仅 Mock 本地列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑操作与历史相同但不接社交 API，Live 下为空；「消息」Tab 仅展示本地分类列表，不跳转、不接消息 API | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile` |
-| 全部历史 | `apps/uniapp/src/pages/history/edit.vue` | 多选观看历史、收藏或点赞；未选中时删除禁用，选中后高亮；历史确认删除后调用删除接口；收藏/点赞仅改 Mock 内存列表 | 历史：`GET /v1/me/history`、`DELETE /v1/me/history`；收藏/点赞无 API |
+| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（先拉起微信头像昵称授权）、点击头像更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 经 `getApi().social` 拉列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑与历史相同；Mock 读写内存片库，Live 走 Nest（需已 migrate）；「消息」Tab 登录后拉粉丝/评论收件/我的评论/获赞摘要，不跳转、不接私信写接口，系统通知仍本地 | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile`、`GET /v1/me/favorites`、`GET /v1/me/liked-dramas`、`GET /v1/users/:userId`、`GET /v1/me/followers`、`GET /v1/me/comment-inbox`、`GET /v1/me/comments`、`GET /v1/me/received-comment-likes` |
+| 全部历史 | `apps/uniapp/src/pages/history/edit.vue` | 多选观看历史、收藏或点赞；未选中时删除禁用，选中后高亮；历史确认删除后调用删除接口；收藏/点赞确认后走 `DELETE /v1/me/favorites/:dramaId` 或 `DELETE /v1/me/liked-dramas/:dramaId` | 历史：`GET /v1/me/history`、`DELETE /v1/me/history`；收藏/点赞：`GET/DELETE /v1/me/favorites`、`GET/DELETE /v1/me/liked-dramas` |
 | 法律与隐私 | `apps/uniapp/src/pages/legal/index.vue` | 用户协议、隐私指引、广告权益、注销、投诉说明和广告未到账核验包 | 静态内容或受控内容服务；不得依赖 Mock 文案发布 |
 
 播放器调用（`pages/player` + `services/reward.ts` + `services/playback-controller.ts`）：
@@ -93,10 +93,10 @@ flowchart LR
 | 页面/交互 | 源码 | 产品边界 |
 | --- | --- | --- |
 | 剧场 | `apps/uniapp/src/pages/theater/index.vue` | 可用于 Demo 视觉验证；接入正式媒体时必须复用租约、权益和心跳，不得旁路播放 |
-| 评论底栏 | `apps/uniapp/src/components/comment-sheet/index.vue` | 仅本地交互展示；MVP 不定义评论、点赞或回复接口 |
+| 评论底栏 | `apps/uniapp/src/components/comment-sheet/index.vue` | 播放页传入 `dramaId` 时走剧评列表/发评/赞/回复；剧场无真实剧 ID，仍本地交互 |
 | 福利 | `apps/uniapp/src/pages/welfare/index.vue` | 签到、邀请和增长活动属于 Later，不得接入正式权益账本 |
 | 个人信息编辑 | `apps/uniapp/src/pages/profile/edit.vue` | 登录后读取并修改头像、昵称、签名和性别；微焦号只读展示用户 ID。无头像挂件和背景图 | `GET/PATCH /v1/me/profile` |
-| 收藏/点赞/预约/商城/消息 | `apps/uniapp/src/pages/my/index.vue` | 属于社交、会员、支付或运营扩展，不进入 MVP API。收藏/点赞仅 Mock 本地样例，Live 为空；「消息」Tab 只展示系统通知、粉丝消息、评论消息、我的评论、赞的本地占位列表 |
+| 收藏/点赞/预约/商城/消息 | `apps/uniapp/src/pages/my/index.vue` | 收藏/点赞已接片库 API；消息 Tab 只展示分类摘要不跳转。预约/商城仍不做。 |
 
 不得仅为对齐外部产品界面而新增页面。若未来将剧场定义为正式推荐流，必须复用同一套租约、权益和心跳契约，不能使用 Demo URL 旁路播放；该变化需要独立产品决策。
 
@@ -293,6 +293,8 @@ flowchart LR
 
 ## 九、范围外能力
 
-Later / 明确不做：推荐个性化、跨剧通用额度、会员去广告、支付、增长活动、社交/弹幕、管理端小程序、Android 客户端。
+Later / 明确不做：推荐个性化、跨剧通用额度、会员去广告、支付、增长活动、弹幕、管理端小程序、Android 客户端。
 
-不要新开：收藏、点赞、签到、邀请、商城、H5 微信登录。H5/App 若以后要登录，需独立身份，不走 `/v1/auth/wechat`。
+关注、评论（剧评与用户主页墙）、私信、收藏剧、喜欢剧、每集看完态的路径已写入 `packages/contracts` 的 `API_ROUTES`，Nest 处理器与 Prisma 表已实现。观看端「我的」收藏/点赞、消息摘要与播放页剧评已走 `getApi().social`；私信会话页、用户墙、剧场评论仍占位或本地。内部验证不得把 Mock 片库写成 Live 数据。私信写路径：发送方必须已关注接收方，否则 `FOLLOW_REQUIRED`。
+
+不要新开：签到、邀请、商城、H5 微信登录。H5/App 若以后要登录，需独立身份，不走 `/v1/auth/wechat`。

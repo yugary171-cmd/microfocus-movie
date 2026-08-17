@@ -185,9 +185,8 @@ page {
   height: 12rpx;
   margin-top: -6rpx;
   margin-left: 8rpx;
-  border-right: 3rpx solid #222;
-  border-bottom: 3rpx solid #222;
-  transform: rotate(45deg);
+  border: 0;
+  transform: none;
 }
 
 .ranking-list {
@@ -329,12 +328,20 @@ page {
   width: 60rpx;
   text-align: center;
 }
+.drawer-close { display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: 0; background: transparent; }
+.drawer-close image { width: 30rpx; height: 30rpx; }
 
 .drawer-content {
   flex: 1;
   height: 0;
   padding: 0 32rpx;
   box-sizing: border-box;
+}
+
+.drawer-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .drawer-section {

@@ -4,32 +4,32 @@ export interface NavigationItem {
   to: string;
   label: string;
   description: string;
-  icon: string;
+  icon: "home" | "grid" | "check" | "settings" | "clock";
   roles?: AdminRole[];
 }
 
 export const navigationItems: NavigationItem[] = [
-  { to: "/", label: "工作台", description: "合规与内容状态", icon: "⌂" },
-  { to: "/dramas", label: "剧目管理", description: "元数据、版权与媒体", icon: "▤" },
+  { to: "/", label: "工作台", description: "合规与内容状态", icon: "home" },
+  { to: "/dramas", label: "剧目管理", description: "元数据、版权与媒体", icon: "grid" },
   {
     to: "/reviews",
     label: "审核队列",
     description: "待审内容与结论",
-    icon: "✓",
+    icon: "check",
     roles: [AdminRole.REVIEWER],
   },
   {
     to: "/operations",
     label: "运营控制",
     description: "熔断、补偿、纠错、死信重放与注销令牌补发",
-    icon: "⚙",
+    icon: "settings",
     roles: [AdminRole.ADMIN],
   },
   {
     to: "/audit",
     label: "审计日志",
     description: "关键操作留痕",
-    icon: "◷",
+    icon: "clock",
     roles: [AdminRole.ADMIN],
   },
 ];

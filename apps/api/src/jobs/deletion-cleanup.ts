@@ -17,16 +17,79 @@ export type DeletionCleanupStore = JobLeaseStore & {
   watchProgress: {
     deleteMany(args: unknown): Promise<{ count: number }>;
   };
+  watchEpisodeProgress: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
+  userFollow: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
+  commentLike: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
+  comment: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
+  directMessage: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
+  directConversation: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
+  dramaFavorite: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
+  dramaLike: {
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
   operationalEvent: {
     create(args: unknown): Promise<unknown>;
   };
 };
 
 export async function anonymizeDeletableUserData(
-  prisma: Pick<DeletionCleanupStore, "user" | "watchProgress" | "deletionRequest">,
+  prisma: Pick<
+    DeletionCleanupStore,
+    | "user"
+    | "watchProgress"
+    | "watchEpisodeProgress"
+    | "userFollow"
+    | "commentLike"
+    | "comment"
+    | "directMessage"
+    | "directConversation"
+    | "dramaFavorite"
+    | "dramaLike"
+    | "deletionRequest"
+  >,
   userId: string,
   now = new Date()
 ): Promise<void> {
+  await prisma.commentLike.deleteMany({
+    where: {
+      OR: [{ userId }, { comment: { authorUserId: userId } }, { comment: { targetUserId: userId } }]
+    }
+  });
+  await prisma.comment.deleteMany({
+    where: { OR: [{ authorUserId: userId }, { targetUserId: userId }] }
+  });
+  await prisma.directMessage.deleteMany({
+    where: {
+      OR: [
+        { senderId: userId },
+        { conversation: { OR: [{ userLowId: userId }, { userHighId: userId }] } }
+      ]
+    }
+  });
+  await prisma.directConversation.deleteMany({
+    where: { OR: [{ userLowId: userId }, { userHighId: userId }] }
+  });
+  await prisma.userFollow.deleteMany({
+    where: { OR: [{ followerId: userId }, { followeeId: userId }] }
+  });
+  await prisma.dramaFavorite.deleteMany({ where: { userId } });
+  await prisma.dramaLike.deleteMany({ where: { userId } });
+  await prisma.watchEpisodeProgress.deleteMany({ where: { userId } });
+  await prisma.watchProgress.deleteMany({ where: { userId } });
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -34,10 +97,12 @@ export async function anonymizeDeletableUserData(
       avatarUrl: null,
       signature: "",
       gender: "unset",
+      followerCount: 0,
+      followingCount: 0,
+      receivedCommentLikeCount: 0,
       openId: `deleted:${userId}`
     }
   });
-  await prisma.watchProgress.deleteMany({ where: { userId } });
   await prisma.deletionRequest.updateMany({
     where: { userId, status: { in: ["PENDING", "PROCESSING"] } },
     data: { status: "COMPLETED", processedAt: now }

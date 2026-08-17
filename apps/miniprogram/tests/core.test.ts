@@ -125,6 +125,16 @@ describe("explicit WeChat login", () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it("recognizes the DevTools avatar metadata failure separately from denial", async () => {
+    vi.resetModules();
+    const { isWechatProfileAuthorizationDenied, isWechatProfileUnavailable } = await import(
+      "../miniprogram/services/wechat-adapter"
+    );
+    const error = new Error("getUserProfile:fail getUserAvatarInfo fail");
+    expect(isWechatProfileUnavailable(error)).toBe(true);
+    expect(isWechatProfileAuthorizationDenied(error)).toBe(false);
+  });
 });
 
 describe("live watch-history navigation", () => {
@@ -160,42 +170,75 @@ describe("live watch-history navigation", () => {
     ]);
     const navigateTo = vi.fn();
     let pageDefinition: Record<string, unknown> | undefined;
-    const request = vi.fn((options: { success: (response: unknown) => void }) => {
-      const response = request.mock.calls.length === 1
-        ? {
-            statusCode: 200,
-            data: {
-              data: [{
-                drama: {
-                  id: "live-drama",
-                  title: "真实播放记录",
-                  summary: "",
-                  coverUrl: "",
-                  category: "都市",
-                  tags: [],
-                  episodeCount: 12,
-                  recommendationRank: 1
-                },
-                episodeNumber: 3,
-                mediaPositionSeconds: 86,
-                updatedAt: "2026-08-13T00:00:00.000Z"
-              }],
-              requestId: "history-request"
+    const request = vi.fn((options: { url?: string; success: (response: unknown) => void }) => {
+      const url = options.url || "";
+      const historyPayload = {
+        statusCode: 200,
+        data: {
+          data: [{
+            drama: {
+              id: "live-drama",
+              title: "真实播放记录",
+              summary: "",
+              coverUrl: "",
+              category: "都市",
+              tags: [],
+              episodeCount: 12,
+              recommendationRank: 1
             },
-            header: {}
-          }
-        : {
-            statusCode: 200,
-            data: {
-              data: {
-                id: "live-drama",
-                title: "真实播放记录",
-                episodes: [{ id: "episode-3", episodeNumber: 3 }]
-              },
-              requestId: "drama-request"
-            },
-            header: {}
-          };
+            episodeNumber: 3,
+            mediaPositionSeconds: 86,
+            updatedAt: "2026-08-13T00:00:00.000Z"
+          }],
+          requestId: "history-request"
+        },
+        header: {}
+      };
+      const dramaPayload = {
+        statusCode: 200,
+        data: {
+          data: {
+            id: "live-drama",
+            title: "真实播放记录",
+            episodes: [{ id: "episode-3", episodeNumber: 3 }]
+          },
+          requestId: "drama-request"
+        },
+        header: {}
+      };
+      const emptyPage = {
+        statusCode: 200,
+        data: {
+          data: { items: [], page: 1, hasMore: false },
+          requestId: "social-request"
+        },
+        header: {}
+      };
+      const userPayload = {
+        statusCode: 200,
+        data: {
+          data: {
+            id: "live-user",
+            displayName: "真实用户",
+            avatarUrl: null,
+            signature: "",
+            gender: "unset",
+            followerCount: 0,
+            followingCount: 0,
+            receivedCommentLikeCount: 0,
+            followedByMe: false
+          },
+          requestId: "user-request"
+        },
+        header: {}
+      };
+      const response = url.includes("/v1/me/history")
+        ? historyPayload
+        : url.includes("/v1/dramas/")
+          ? dramaPayload
+          : url.includes("/v1/users/")
+            ? userPayload
+            : emptyPage;
       options.success(response);
     });
     vi.stubEnv("MICROFOCUS_TEST_API_BASE_URL", "https://api.test");
@@ -227,25 +270,33 @@ describe("live watch-history navigation", () => {
     expect(pageDefinition).toBeDefined();
     const page = pageDefinition as {
       data: Record<string, unknown>;
-      loadLiveHistory(): Promise<void>;
+      loadLibrary(): Promise<void>;
       openHistory(event: WechatMiniprogram.TouchEvent): Promise<void>;
     };
     const instance = {
-      data: structuredClone(page.data),
+      data: {
+        ...structuredClone(page.data),
+        user: {
+          displayName: "真实用户",
+          microfocusId: "微焦号 · LIVE-USER",
+          initial: "真",
+          avatarUrl: ""
+        }
+      },
       setData(update: Record<string, unknown>) {
         Object.assign(this.data, update);
       },
-      loadLiveHistory: page.loadLiveHistory,
+      loadLibrary: page.loadLibrary,
       openHistory: page.openHistory
     };
 
-    await instance.loadLiveHistory();
-    expect(request).toHaveBeenCalledOnce();
+    await instance.loadLibrary();
+    expect(request.mock.calls.some((call) => String(call[0]?.url || "").includes("/v1/me/history"))).toBe(true);
     const historyItems = instance.data.historyItems as Array<{ id: string; position: number }>;
     expect(historyItems).toMatchObject([{ id: "live-drama-3", position: 86 }]);
 
     await instance.openHistory({ currentTarget: { dataset: { id: "live-drama-3" } } } as never);
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls.some((call) => String(call[0]?.url || "").includes("/v1/dramas/"))).toBe(true);
     expect(navigateTo).toHaveBeenCalledWith(expect.objectContaining({
       url: expect.stringContaining("episodeId=episode-3")
     }));
@@ -784,6 +835,25 @@ describe("my page inbox", () => {
       "赞"
     ]);
   });
+
+  it("summarizes inbox rows from the latest social items", async () => {
+    const { applyInboxLatest, cloneInboxItems } = await import("../miniprogram/utils/inbox-view");
+    const rows = applyInboxLatest(cloneInboxItems(), {
+      fansName: "阿焦",
+      fansAt: "2026-08-17T01:00:00.000Z",
+      commentPreview: "路人：这部好看",
+      commentAt: "2026-08-17T02:00:00.000Z",
+      minePreview: "我刚看完",
+      mineAt: "2026-08-17T03:00:00.000Z",
+      likeName: "小微",
+      likeAt: "2026-08-17T04:00:00.000Z"
+    });
+    expect(rows.find((item) => item.id === "fans")?.preview).toBe("阿焦 关注了你");
+    expect(rows.find((item) => item.id === "comments")?.preview).toBe("路人：这部好看");
+    expect(rows.find((item) => item.id === "mine")?.preview).toBe("我刚看完");
+    expect(rows.find((item) => item.id === "likes")?.preview).toBe("小微 赞了你的评论");
+    expect(rows.find((item) => item.id === "system")?.preview).toContain("隐私政策");
+  });
 });
 
 describe("watch history filters", () => {
@@ -840,6 +910,7 @@ describe("watch history filters", () => {
     resetMockHistoryCards();
     expect(parseLibraryGridTab("点赞")).toBe("点赞");
     expect(LIBRARY_EDIT_COPY.点赞.search).toBe("搜索点赞");
+    expect(LIBRARY_EDIT_COPY.收藏.mockLabel).toBe("内部体验收藏");
     expect(getMockFavoriteCards().map((item) => item.title)).toEqual(["皇后娘娘来打工", "引她入室", "凤栖今朝"]);
     expect(
       filterHistoryItems(getMockLikeCards(), {
@@ -850,6 +921,27 @@ describe("watch history filters", () => {
     expect(deleteMockLibraryCards("收藏", ["history-4"])).toEqual(["history-4"]);
     expect(getMockFavoriteCards().some((item) => item.dramaId === "history-4")).toBe(false);
     expect(getMockLikeCards().some((item) => item.dramaId === "history-5")).toBe(true);
+    resetMockHistoryCards();
+  });
+
+  it("exposes mock favorites through the social client", async () => {
+    const { resetMockHistoryCards, getMockFavoriteCards } = await import("../miniprogram/mocks/history-state");
+    const { writeMockProfile } = await import("../miniprogram/mocks/profile-state");
+    const { createMockSocialApi } = await import("../miniprogram/mocks/social-api");
+    resetMockHistoryCards();
+    writeMockProfile({
+      id: "mock-user",
+      displayName: "体验用户",
+      avatarUrl: null,
+      signature: "",
+      gender: "unset"
+    });
+    const social = createMockSocialApi();
+    const page = await social.getFavorites(1);
+    expect(page.items.map((item) => item.drama.id)).toEqual(getMockFavoriteCards().map((item) => item.dramaId));
+    await social.createDramaComment("drama-inbox", { body: "刚看完" });
+    const mine = await social.getMeComments(1);
+    expect(mine.items[0]?.body).toBe("刚看完");
     resetMockHistoryCards();
   });
 });

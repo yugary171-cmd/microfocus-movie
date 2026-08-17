@@ -127,7 +127,7 @@ async function saveGender() {
           <image v-if="avatarUrl" :src="avatarUrl" mode="aspectFill" />
           <text v-else>{{ initial }}</text>
         </view>
-        <view class="camera-badge">📷</view>
+        <view class="camera-badge">更换</view>
       </button>
     </view>
 
@@ -135,7 +135,7 @@ async function saveGender() {
       <view class="row" @tap="openNickname">
         <text class="row-label">昵称</text>
         <text class="row-value">{{ displayName }}</text>
-        <text class="row-arrow">›</text>
+        <image class="row-arrow" src="/static/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
       </view>
       <view class="row">
         <text class="row-label">微焦号</text>
@@ -147,12 +147,12 @@ async function saveGender() {
       <view class="row" @tap="openSignature">
         <text class="row-label">个人签名</text>
         <text class="row-value" :class="{ placeholder: !signature.trim() }">{{ signatureText }}</text>
-        <text class="row-arrow">›</text>
+        <image class="row-arrow" src="/static/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
       </view>
       <view class="row" @tap="openGender">
         <text class="row-label">性别</text>
         <text class="row-value" :class="{ placeholder: gender === 'unset' }">{{ genderText }}</text>
-        <text class="row-arrow">›</text>
+        <image class="row-arrow" src="/static/icons/weui-arrow-right.svg" mode="aspectFit" aria-hidden="true" />
       </view>
     </view>
 
@@ -161,7 +161,7 @@ async function saveGender() {
     <view v-if="genderOpen" class="sheet-mask" @tap="closeGender">
       <view class="sheet" @tap.stop>
         <view class="sheet-head">
-          <button class="sheet-close" hover-class="none" aria-label="关闭" @tap="closeGender">⌄</button>
+          <button class="sheet-close" hover-class="none" aria-label="关闭" @tap="closeGender"><image src="/static/icons/weui-close.svg" mode="aspectFit" aria-hidden="true" /></button>
           <text class="sheet-title">选择性别</text>
           <button class="sheet-save" hover-class="none" :disabled="saving" @tap="saveGender">保存</button>
         </view>
@@ -173,7 +173,7 @@ async function saveGender() {
           @tap="genderDraft = option.id"
         >
           <text>{{ option.label }}</text>
-          <text v-if="genderDraft === option.id" class="sheet-check">✓</text>
+        <image v-if="genderDraft === option.id" class="sheet-check" src="/static/icons/weui-check.svg" mode="aspectFit" aria-hidden="true" />
         </view>
       </view>
     </view>

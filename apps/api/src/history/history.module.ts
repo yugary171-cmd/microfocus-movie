@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Module, Put, UseGuards } from "@nestjs/c
 import {
   API_ROUTES,
   ENTITY_ID_MAX_LENGTH,
+  EPISODE_COMPLETE_TOLERANCE_SECONDS,
   EPISODE_DURATION_SECONDS_MAX,
   ERROR_CODES,
   HISTORY_DELETE_MAX_IDS,
@@ -83,6 +84,18 @@ export class HistoryController {
       orderBy: { updatedAt: "desc" },
       take: HISTORY_LIST_LIMIT
     });
+    const dramaIds = rows.map((row) => row.dramaId);
+    const completedByDrama = new Map<string, number>();
+    if (dramaIds.length) {
+      const completed = await this.prisma.watchEpisodeProgress.groupBy({
+        by: ["dramaId"],
+        where: { userId, dramaId: { in: dramaIds }, completedAt: { not: null } },
+        _count: { _all: true }
+      });
+      for (const row of completed) {
+        completedByDrama.set(row.dramaId, row._count._all);
+      }
+    }
     return rows.map((row) => ({
       drama: {
         id: row.drama.id,
@@ -99,7 +112,8 @@ export class HistoryController {
       },
       episodeNumber: row.episode.episodeNumber,
       mediaPositionSeconds: Number(row.mediaPositionSeconds),
-      updatedAt: row.updatedAt.toISOString()
+      updatedAt: row.updatedAt.toISOString(),
+      completed: isDramaCompleted(row.drama._count.episodes, completedByDrama.get(row.dramaId) ?? 0)
     }));
   }
 
@@ -115,18 +129,43 @@ export class HistoryController {
       throw Errors.notFound("Episode");
     }
     const bounded = Math.min(body.mediaPositionSeconds, episode.durationSeconds);
-    const progress = await this.prisma.watchProgress.upsert({
-      where: { userId_dramaId: { userId, dramaId: body.dramaId } },
-      create: {
-        userId,
-        dramaId: body.dramaId,
-        episodeId: body.episodeId,
-        mediaPositionSeconds: bounded
-      },
-      update: {
-        episodeId: body.episodeId,
-        mediaPositionSeconds: bounded
-      }
+    const now = new Date();
+    const watchedThrough = isEpisodeWatchedThrough(bounded, episode.durationSeconds);
+    const progress = await this.prisma.$transaction(async (tx) => {
+      const cursor = await tx.watchProgress.upsert({
+        where: { userId_dramaId: { userId, dramaId: body.dramaId } },
+        create: {
+          userId,
+          dramaId: body.dramaId,
+          episodeId: body.episodeId,
+          mediaPositionSeconds: bounded
+        },
+        update: {
+          episodeId: body.episodeId,
+          mediaPositionSeconds: bounded
+        }
+      });
+      const existing = await tx.watchEpisodeProgress.findUnique({
+        where: { userId_episodeId: { userId, episodeId: body.episodeId } },
+        select: { completedAt: true }
+      });
+      const completedAt = existing?.completedAt ?? (watchedThrough ? now : null);
+      await tx.watchEpisodeProgress.upsert({
+        where: { userId_episodeId: { userId, episodeId: body.episodeId } },
+        create: {
+          userId,
+          dramaId: body.dramaId,
+          episodeId: body.episodeId,
+          mediaPositionSeconds: bounded,
+          completedAt
+        },
+        update: {
+          dramaId: body.dramaId,
+          mediaPositionSeconds: bounded,
+          ...(existing?.completedAt ? {} : { completedAt })
+        }
+      });
+      return cursor;
     });
     return { updatedAt: progress.updatedAt.toISOString() };
   }
@@ -152,6 +191,9 @@ export class HistoryController {
         await tx.watchProgress.deleteMany({
           where: { userId, dramaId: { in: deletedDramaIds } }
         });
+        await tx.watchEpisodeProgress.deleteMany({
+          where: { userId, dramaId: { in: deletedDramaIds } }
+        });
       }
       return { deletedDramaIds };
     });
@@ -163,6 +205,14 @@ export function requireUser(principal: Principal): string {
     throw Errors.forbidden(ERROR_CODES.USER_TOKEN_REQUIRED, "A user token is required");
   }
   return principal.sub;
+}
+
+export function isEpisodeWatchedThrough(positionSeconds: number, durationSeconds: number): boolean {
+  return positionSeconds + EPISODE_COMPLETE_TOLERANCE_SECONDS >= durationSeconds;
+}
+
+export function isDramaCompleted(episodeCount: number, completedEpisodeCount: number): boolean {
+  return episodeCount > 0 && completedEpisodeCount >= episodeCount;
 }
 
 @Module({ controllers: [HistoryController] })

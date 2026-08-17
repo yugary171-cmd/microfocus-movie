@@ -25,6 +25,7 @@ import type {
   DeleteWatchHistoryRequest,
   DeleteWatchHistoryResponse
 } from "@microfocus/contracts";
+import type { SocialClientApi } from "./social-api";
 
 export type AuthSession = WechatLoginResponse;
 
@@ -65,4 +66,5 @@ export interface ClientApi {
   closePlaybackLease(leaseId: string): Promise<void>;
   createDeletionRequest(input: CreateDeletionRequest): Promise<CreateDeletionRequestResponse>;
   getDeletionRequest(deletionRequestId: string, queryToken: string): Promise<DeletionRequestView>;
+  social: SocialClientApi;
 }

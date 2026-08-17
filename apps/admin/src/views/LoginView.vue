@@ -6,6 +6,7 @@ import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import { roleLabels } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
+import Icon from "@/components/Icon.vue";
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -61,9 +62,9 @@ async function submit(): Promise<void> {
         <p>连接内容生产、版权资料、媒体审核和运营安全控制的轻量工作台。</p>
       </div>
       <ul class="login-features">
-        <li><span aria-hidden="true">✓</span>基于角色的操作边界</li>
-        <li><span aria-hidden="true">✓</span>发布前合规闸门</li>
-        <li><span aria-hidden="true">✓</span>关键操作审计留痕</li>
+        <li><Icon name="check" />基于角色的操作边界</li>
+        <li><Icon name="check" />发布前合规闸门</li>
+        <li><Icon name="check" />关键操作审计留痕</li>
       </ul>
     </section>
     <section class="login-card" aria-label="登录表单">
