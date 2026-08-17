@@ -4,7 +4,7 @@ import {
   cloneLocalComments,
   countLocalComments,
   type LocalComment
-} from "../../mocks/comments";
+} from "./comments";
 
 const props = defineProps<{
   visible?: boolean;

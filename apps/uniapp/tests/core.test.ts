@@ -689,7 +689,32 @@ describe("home channels", () => {
     expect(searchCategoryParam("推荐")).toBe("");
     expect(searchCategoryParam("战神")).toBe("战神");
   });
+});
 
+describe("discover filters and ranking", () => {
+  it("collapses recommendation audience and time rows and keeps four ranking types", async () => {
+    const { RANKING_TABS, RANKING_TYPES, visibleDiscoverSections } = await import("../src/utils/discover");
+    expect(visibleDiscoverSections(true).map((item) => item.all)).toEqual([
+      "全部体裁",
+      "全部主题",
+      "全部设定",
+      "全部背景",
+      "全部推荐",
+      "全部受众",
+      "全部时间"
+    ]);
+    expect(visibleDiscoverSections(false).map((item) => item.all)).toEqual([
+      "全部体裁",
+      "全部主题",
+      "全部设定",
+      "全部背景"
+    ]);
+    expect([...RANKING_TABS]).toEqual(["全部", "真人剧", "漫剧", "AI 剧"]);
+    expect([...RANKING_TYPES]).toEqual(["推荐榜", "热播榜", "热搜榜", "收藏榜"]);
+  });
+});
+
+describe("home catalog fixture", () => {
   it("loads mock catalog without throwing on channel lists", async () => {
     const { mockApi } = await import("../src/mocks/data");
     await expect(mockApi.getCatalog()).resolves.toMatchObject({

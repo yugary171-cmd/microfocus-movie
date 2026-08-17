@@ -69,9 +69,10 @@ flowchart LR
 
 | 页面 | 源码 | 职责 | 对接接口 |
 | --- | --- | --- | --- |
-| 首页 | `apps/uniapp/src/pages/home/index.vue` | 分栏、分类入口和剧目发现 | `GET /v1/catalog`、`GET /v1/search` |
+| 首页 | `apps/uniapp/src/pages/home/index.vue` | 分栏、分类入口和剧目发现；快捷入口进入筛选页与排行榜页 | `GET /v1/catalog`、`GET /v1/search` |
 | 搜索 | `apps/uniapp/src/pages/search/index.vue` | 按剧名、简介和分类检索；展示推荐搜索与空状态 | `GET /v1/search`、`GET /v1/catalog` |
-| 分类 | `apps/uniapp/src/pages/category/index.vue` | 按分类浏览公开剧目 | `GET /v1/search?category=...` |
+| 筛选 | `apps/uniapp/src/pages/category/index.vue` | 首页筛选页：体裁/主题/设定/背景走搜索筛选参数；推荐/受众/时间仅本地 UI，收起后隐藏后三栏；结果三列网格，每页 `SEARCH_PAGE_SIZE` | `GET /v1/search`（无独立筛选 API） |
+| 排行榜 | `apps/uniapp/src/pages/ranking/index.vue` | 首页排行榜页：顶部分类全部/真人剧/漫剧/AI 剧，无演员；标签为推荐榜/热播榜/热搜榜/收藏榜；「分类」打开与首页相同的筛选抽屉（主题/设定/背景，catalog `filterOptions`）；同一搜索列表本地排序，无独立榜单 API | `GET /v1/catalog`、`GET /v1/search` |
 | 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、简介、目录、免费/锁定状态和播放入口；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益 |
 | 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复 | 播放、奖励、权益及进度接口 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |

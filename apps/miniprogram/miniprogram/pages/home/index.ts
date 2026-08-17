@@ -39,6 +39,14 @@ Page({
 
   showAction(event: WechatMiniprogram.TouchEvent) {
     const label = String(event.currentTarget.dataset.label || "功能");
+    if (label === "筛选") {
+      wx.navigateTo({ url: "/pages/category/index" });
+      return;
+    }
+    if (label === "排行榜") {
+      wx.navigateTo({ url: "/pages/ranking/index" });
+      return;
+    }
     wx.showToast({ title: `${label}功能为体验数据`, icon: "none" });
   },
 

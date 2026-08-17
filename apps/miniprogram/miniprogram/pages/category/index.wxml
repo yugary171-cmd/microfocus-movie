@@ -1,26 +1,45 @@
-<view class="page">
-  <internal-banner visible="{{isMock}}" />
-  <view class="page-title">找你想看的</view>
-  <view class="search-box">
-    <input class="search-input" value="{{query}}" maxlength="{{queryMaxLength}}" bindinput="onQueryInput" bindconfirm="onSearchConfirm" confirm-type="search" placeholder="搜索剧名或标签" placeholder-class="search-placeholder" aria-label="搜索剧名或标签" />
-    <button class="search-button" bindtap="onSearchConfirm" loading="{{loading}}" aria-label="提交搜索">搜索</button>
+<view class="filter-page">
+  <view class="filter-header" style="padding-top: {{navInsetTop}}px;">
+    <view class="back" bindtap="goBack">‹</view>
+    <view class="page-title">筛选</view>
   </view>
-  <scroll-view scroll-x enable-flex class="filters" aria-label="短剧分类">
-    <button wx:for="{{categories}}" wx:key="*this" class="filter {{category === item ? 'active' : ''}}" data-category="{{item}}" bindtap="selectCategory" aria-pressed="{{category === item}}">{{item}}</button>
-  </scroll-view>
-
-  <view wx:if="{{loading}}" class="state-card" role="status">正在搜索…</view>
-  <view wx:elif="{{error}}" class="state-card" role="alert">
-    <view class="state-title">搜索失败</view>
-    <view>{{error}}</view>
-    <button class="secondary-button retry" bindtap="onSearchConfirm">重试</button>
+  <view class="filter-panel">
+    <view
+      wx:for="{{visibleSections}}"
+      wx:key="key"
+      class="filter-row"
+    >
+      <button class="filter-all {{selectedFilters[item.key] === item.all ? 'active' : ''}}" data-key="{{item.key}}" data-value="{{item.all}}" bindtap="selectFilter">{{item.all}}</button>
+      <scroll-view class="filter-options-row" scroll-x show-scrollbar="{{false}}">
+        <view class="filter-row-inner">
+          <button
+            wx:for="{{item.choices}}"
+            wx:for-item="option"
+            wx:key="*this"
+            class="filter-chip {{selectedFilters[item.key] === option ? 'active' : ''}}"
+            data-key="{{item.key}}"
+            data-value="{{option}}"
+            bindtap="selectFilter"
+          >{{option}}</button>
+        </view>
+      </scroll-view>
+    </view>
+    <button class="collapse-button" bindtap="toggleExpanded">
+      <text>{{filtersExpanded ? '收起' : '展开'}}</text>
+      <text class="collapse-icon">{{filtersExpanded ? '^' : '⌄'}}</text>
+    </button>
   </view>
-  <view wx:elif="{{searched && !results.length}}" class="state-card">
-    <view class="state-title">没有找到相关短剧</view>
-    <view>换个关键词或分类试试。</view>
+  <view wx:if="{{loading}}" class="filter-state">正在加载短剧…</view>
+  <view wx:elif="{{error}}" class="filter-state">{{error}}</view>
+  <view wx:elif="{{!results.length}}" class="filter-state">没有符合筛选条件的短剧</view>
+  <view wx:else class="filter-grid">
+    <button wx:for="{{results}}" wx:key="id" class="filter-card" data-id="{{item.id}}" bindtap="openDrama">
+      <view class="filter-poster">{{item.title[0]}}</view>
+      <view class="filter-title">{{item.title}}</view>
+      <view class="filter-meta">♨ {{item.heat}} · {{item.tag}}</view>
+    </button>
   </view>
-  <view wx:else class="results">
-    <drama-card wx:for="{{results}}" wx:key="id" drama="{{item}}" compact="{{true}}" />
-    <button wx:if="{{hasMore}}" class="secondary-button load-more" bindtap="loadMore" loading="{{loadingMore}}">加载更多</button>
-  </view>
+  <view wx:if="{{loadingMore}}" class="filter-state">正在加载更多…</view>
+  <view wx:elif="{{hasMore}}" class="filter-state">上滑加载更多</view>
+  <view wx:elif="{{results.length >= pageSize}}" class="filter-state">已经到底了</view>
 </view>

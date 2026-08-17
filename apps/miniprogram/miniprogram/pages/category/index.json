@@ -1,7 +1,6 @@
 {
-  "navigationBarTitleText": "分类搜索",
-  "usingComponents": {
-    "drama-card": "/components/drama-card/index",
-    "internal-banner": "/components/internal-banner/index"
-  }
+  "navigationStyle": "custom",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#ffffff",
+  "onReachBottomDistance": 80
 }

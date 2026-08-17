@@ -1,83 +1,119 @@
-import { boundListQuery, LIST_QUERY_MAX_LENGTH, type DramaCard } from "@microfocus/contracts";
-import { getApi, isMockMode } from "../../services/api";
+import { SEARCH_PAGE_SIZE, type DramaCard } from "@microfocus/contracts";
+import { getApi } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
+import {
+  DEFAULT_DISCOVER_FILTERS,
+  rankingHeatLabel,
+  sortDiscoverItems,
+  visibleDiscoverSections,
+  type DiscoverFilterKey
+} from "../../utils/discover";
+
+function withView(items: DramaCard[], recommendation: string) {
+  return sortDiscoverItems(items, recommendation).map((item) => ({
+    ...item,
+    heat: rankingHeatLabel(item.recommendationRank),
+    tag: item.tags[0] || item.category
+  }));
+}
+
+function measureNavInsetTop(): number {
+  try {
+    const info = wx.getSystemInfoSync();
+    const statusBar = Number(info.statusBarHeight) || 20;
+    const menu = wx.getMenuButtonBoundingClientRect();
+    const menuBottom = Number(menu?.bottom);
+    return (Number.isFinite(menuBottom) && menuBottom > 0 ? menuBottom : statusBar + 32) + 8;
+  } catch {
+    return 52;
+  }
+}
 
 Page({
   data: {
-    isMock: isMockMode(),
-    query: "",
-    queryMaxLength: LIST_QUERY_MAX_LENGTH,
-    category: "全部",
-    categories: ["全部"] as string[],
-    results: [] as DramaCard[],
+    items: [] as DramaCard[],
+    results: [] as ReturnType<typeof withView>,
     page: 1,
     hasMore: false,
     loading: true,
     loadingMore: false,
-    searched: false,
-    error: ""
+    error: "",
+    filtersExpanded: true,
+    selectedFilters: { ...DEFAULT_DISCOVER_FILTERS },
+    visibleSections: visibleDiscoverSections(true),
+    pageSize: SEARCH_PAGE_SIZE,
+    navInsetTop: 52
   },
 
   onLoad() {
-    void this.loadCategoriesAndSearch();
-  },
-
-  onShow() {
-    const pending = wx.getStorageSync<string>("microfocus.pending-category");
-    if (pending) {
-      wx.removeStorageSync("microfocus.pending-category");
-      this.setData({ category: pending });
-      void this.search(true);
-    }
-  },
-
-  async loadCategoriesAndSearch() {
-    try {
-      const catalog = await getApi().getCatalog();
-      this.setData({ categories: catalog.categories.includes("全部") ? catalog.categories : ["全部", ...catalog.categories] });
-    } catch {
-      // Search still works when category suggestions fail.
-    }
-    await this.search(true);
-  },
-
-  onQueryInput(event: WechatMiniprogram.Input) {
-    this.setData({ query: event.detail.value.slice(0, LIST_QUERY_MAX_LENGTH) });
-  },
-
-  onSearchConfirm() {
+    this.setData({ navInsetTop: measureNavInsetTop() });
     void this.search(true);
   },
 
-  selectCategory(event: WechatMiniprogram.TouchEvent) {
-    this.setData({ category: String(event.currentTarget.dataset.category || "全部") });
+  onReachBottom() {
+    if (this.data.hasMore && !this.data.loading) void this.search(false);
+  },
+
+  selectFilter(event: WechatMiniprogram.TouchEvent) {
+    const key = String(event.currentTarget.dataset.key || "") as DiscoverFilterKey;
+    const value = String(event.currentTarget.dataset.value || "");
+    if (!key || !value) return;
+    this.setData({
+      selectedFilters: { ...this.data.selectedFilters, [key]: value }
+    });
     void this.search(true);
+  },
+
+  toggleExpanded() {
+    const filtersExpanded = !this.data.filtersExpanded;
+    this.setData({
+      filtersExpanded,
+      visibleSections: visibleDiscoverSections(filtersExpanded)
+    });
   },
 
   async search(reset: boolean) {
     if (this.data.loadingMore) return;
     const page = reset ? 1 : this.data.page + 1;
-    this.setData(reset ? { loading: true, error: "" } : { loadingMore: true, error: "" });
+    this.setData(reset ? { loading: true, error: "" } : { loadingMore: true });
     try {
+      const format = this.data.selectedFilters.format;
       const response = await getApi().search(
-        boundListQuery(this.data.query),
-        this.data.category === "全部" ? "" : boundListQuery(this.data.category),
-        page
+        "",
+        format === "全部体裁" ? "" : format,
+        page,
+        {
+          subject: this.data.selectedFilters.subject === "全部主题" ? "" : this.data.selectedFilters.subject,
+          setting: this.data.selectedFilters.setting === "全部设定" ? "" : this.data.selectedFilters.setting,
+          background: this.data.selectedFilters.background === "全部背景" ? "" : this.data.selectedFilters.background
+        }
       );
+      const nextItems = Array.isArray(response.items) ? response.items : [];
+      const items = reset ? nextItems : this.data.items.concat(nextItems);
       this.setData({
-        results: reset ? response.items : [...this.data.results, ...response.items],
+        items,
+        results: withView(items, this.data.selectedFilters.recommendation),
         page: response.page || page,
-        hasMore: Boolean(response.hasMore),
-        searched: true
+        hasMore: Boolean(response.hasMore)
       });
     } catch (error) {
-      this.setData({ error: toFriendlyErrorMessage(error), searched: true });
+      this.setData({
+        error: toFriendlyErrorMessage(error),
+        items: reset ? [] : this.data.items,
+        results: reset ? [] : this.data.results
+      });
     } finally {
       this.setData({ loading: false, loadingMore: false });
     }
   },
 
-  loadMore() {
-    if (this.data.hasMore) void this.search(false);
+  openDrama(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || "");
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/drama/index?id=${encodeURIComponent(id)}` });
+  },
+
+  goBack() {
+    wx.navigateBack();
   }
 });

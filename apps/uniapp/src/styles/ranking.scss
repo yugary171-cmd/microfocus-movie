@@ -1,8 +1,3 @@
-page {
-  background: #cfe98a;
-  color: #17171b;
-}
-
 .ranking-page {
   min-height: 100vh;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
@@ -74,15 +69,13 @@ page {
 }
 
 .ranking-tabs,
-.ranking-types,
-.rank-drawer-scroller {
+.ranking-types {
   width: 100%;
   white-space: nowrap;
 }
 
 .ranking-tabs::-webkit-scrollbar,
-.ranking-types::-webkit-scrollbar,
-.rank-drawer-scroller::-webkit-scrollbar {
+.ranking-types::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

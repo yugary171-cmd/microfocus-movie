@@ -1,16 +1,90 @@
 <view class="ranking-page">
-  <view class="ranking-hero"><view class="hero-title">✿ 推荐榜 ✿</view><view class="hero-subtitle">今日更新 · 基于观看、互动以及个人兴趣排序</view></view>
-  <view class="ranking-panel">
-    <scroll-view class="ranking-tabs" scroll-x enable-flex>
-      <button wx:for="{{tabs}}" wx:key="*this" class="ranking-tab {{activeTab === item ? 'active' : ''}}" data-tab="{{item}}" bindtap="selectTab">{{item}}</button>
+  <view class="ranking-hero" style="padding-top: {{navInsetTop}}px;">
+    <view class="hero-deco"></view>
+    <view class="hero-bar"><view class="back" bindtap="goBack">‹</view></view>
+    <view class="hero-title">《微焦{{activeRanking}}》</view>
+    <view class="hero-subtitle">{{updatedCopy}}</view>
+  </view>
+  <view class="ranking-body">
+    <scroll-view class="ranking-tabs" scroll-x show-scrollbar="{{false}}">
+      <view class="ranking-tabs-inner">
+        <view
+          wx:for="{{tabs}}"
+          wx:key="*this"
+          class="ranking-tab {{activeTab === item ? 'active' : ''}}"
+          data-tab="{{item}}"
+          bindtap="selectTab"
+        >{{item}}</view>
+      </view>
     </scroll-view>
     <view class="ranking-tools">
-      <scroll-view class="ranking-types" scroll-x enable-flex>
-        <button wx:for="{{rankingTypes}}" wx:key="*this" class="ranking-type {{activeRanking === item ? 'active' : ''}}" data-type="{{item}}" bindtap="selectRanking">{{item}}</button>
-      </scroll-view>
-      <button class="ranking-filter" bindtap="openDrawer">分类⌄</button>
+      <view class="ranking-types-wrap">
+        <scroll-view class="ranking-types" scroll-x show-scrollbar="{{false}}">
+          <view class="ranking-types-inner">
+            <view
+              wx:for="{{rankingTypes}}"
+              wx:key="*this"
+              class="ranking-type {{activeRanking === item ? 'active' : ''}}"
+              data-type="{{item}}"
+              bindtap="selectRanking"
+            >{{item}}</view>
+          </view>
+        </scroll-view>
+      </view>
+      <button class="ranking-filter" hover-class="none" catchtap="openDrawer">
+        <text>分类</text>
+        <view class="chevron-down"></view>
+      </button>
     </view>
-    <view class="ranking-state">榜单内容将在连接数据后展示</view>
+    <view wx:if="{{loading}}" class="ranking-state">正在加载榜单…</view>
+    <view wx:elif="{{error}}" class="ranking-state">{{error}}</view>
+    <view wx:elif="{{!views.length}}" class="ranking-state">暂无榜单内容</view>
+    <view wx:else class="ranking-list">
+      <view wx:for="{{views}}" wx:key="id" class="ranking-item" data-id="{{item.id}}" bindtap="openDrama">
+        <view class="rank-poster">
+          <view class="rank-badge {{item.rankClass}}">{{item.rankLabel}}</view>
+          <text>{{item.initial}}</text>
+        </view>
+        <view class="rank-copy">
+          <view class="rank-head">
+            <text class="rank-title">{{item.title}}</text>
+            <text class="rank-hot">♨ {{item.heat}}推荐</text>
+          </view>
+          <text class="rank-meta">{{item.category}} · 全 {{item.episodeCount}} 集</text>
+          <text class="rank-summary">{{item.summary}}</text>
+        </view>
+      </view>
+      <view wx:if="{{loadingMore}}" class="ranking-state">正在加载更多…</view>
+      <view wx:elif="{{hasMore}}" class="ranking-state">上滑加载更多</view>
+    </view>
   </view>
-  <view wx:if="{{drawerOpen}}" class="drawer-mask" bindtap="closeDrawer"><view class="drawer" catchtap="noop"><view class="drawer-title">榜单分类</view><button wx:for="{{rankingTypes}}" wx:key="*this" class="drawer-option {{activeRanking === item ? 'active' : ''}}" data-type="{{item}}" bindtap="selectRanking">{{item}}</button></view></view>
+  <view wx:if="{{drawerOpen}}" class="drawer-mask" bindtap="closeDrawer">
+    <view class="filter-drawer" catchtap="noop">
+      <view class="drawer-header">
+        <view class="drawer-close" catchtap="closeDrawer">⌄</view>
+        <text>筛选</text>
+        <view class="drawer-spacer"></view>
+      </view>
+      <scroll-view class="drawer-content" scroll-y>
+        <view wx:for="{{drawerSections}}" wx:key="key" class="drawer-section">
+          <text class="drawer-title">{{item.title}}</text>
+          <view class="drawer-options">
+            <view
+              wx:for="{{item.values}}"
+              wx:for-item="option"
+              wx:key="value"
+              class="drawer-option {{option.selected ? 'selected' : ''}}"
+              data-key="{{item.key}}"
+              data-value="{{option.value}}"
+              bindtap="selectDrawerOption"
+            >{{option.value}}</view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="drawer-footer">
+        <view class="drawer-clear" bindtap="clearDrawer">清空</view>
+        <view class="drawer-confirm" bindtap="confirmDrawer">确定</view>
+      </view>
+    </view>
+  </view>
 </view>

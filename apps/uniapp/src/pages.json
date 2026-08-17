@@ -17,13 +17,13 @@
     { "path": "pages/profile/nickname", "style": { "navigationStyle": "custom", "navigationBarTextStyle": "white", "backgroundColor": "#000000" } },
     { "path": "pages/profile/signature", "style": { "navigationStyle": "custom", "navigationBarTextStyle": "white", "backgroundColor": "#000000" } },
     { "path": "pages/search/index", "style": { "navigationBarTitleText": "搜索", "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#ffffff", "onReachBottomDistance": 80 } },
-    { "path": "pages/category/index", "style": { "navigationBarTitleText": "分类" } },
+    { "path": "pages/category/index", "style": { "navigationBarTitleText": "筛选", "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#ffffff", "onReachBottomDistance": 80 } },
     { "path": "pages/drama/index", "style": { "navigationBarTitleText": "短剧详情" } },
     { "path": "pages/player/index", "style": { "navigationBarTitleText": "播放", "navigationStyle": "custom", "backgroundColor": "#050506" } },
     { "path": "pages/entitlements/index", "style": { "navigationBarTitleText": "权益明细", "enablePullDownRefresh": true } },
     { "path": "pages/legal/index", "style": { "navigationBarTitleText": "协议" } },
     { "path": "pages/history/edit", "style": { "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#ffffff" } },
-    { "path": "pages/ranking/index", "style": { "navigationBarTitleText": "排行榜", "navigationStyle": "custom", "backgroundColor": "#effcf9" } }
+    { "path": "pages/ranking/index", "style": { "navigationBarTitleText": "排行榜", "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#cfe98a", "onReachBottomDistance": 80 } }
   ],
   "globalStyle": {
     "navigationBarTitleText": "微焦短剧",

@@ -55,9 +55,22 @@ describe("viewer routes follow contracts", () => {
   });
 
   it("binds viewer search inputs to LIST_QUERY_MAX_LENGTH", () => {
-    for (const page of ["search", "category"]) {
-      const source = readFileSync(resolve(here, `../src/pages/${page}/index.vue`), "utf8");
-      expect(source).toContain(':maxlength="LIST_QUERY_MAX_LENGTH"');
-    }
+    const source = readFileSync(resolve(here, "../src/pages/search/index.vue"), "utf8");
+    expect(source).toContain(':maxlength="LIST_QUERY_MAX_LENGTH"');
+  });
+
+  it("loads comment mock data from the comment-sheet folder", () => {
+    const source = readFileSync(resolve(here, "../src/components/comment-sheet/index.vue"), "utf8");
+    expect(source).toContain('from "./comments"');
+    expect(source).not.toContain("../../mocks/comments");
+  });
+
+  it("opens the home-style filter drawer from ranking category", () => {
+    const source = readFileSync(resolve(here, "../src/pages/ranking/index.vue"), "utf8");
+    expect(source).toContain("全部主题");
+    expect(source).toContain("全部设定");
+    expect(source).toContain("全部背景");
+    expect(source).toContain("class=\"filter-drawer\"");
+    expect(source).not.toContain("榜单分类");
   });
 });
