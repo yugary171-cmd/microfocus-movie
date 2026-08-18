@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from "vue";
-import { onHide, onShow } from "@dcloudio/uni-app";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
 import { ACTION_ICONS, NAV_ICONS } from "../../constants/icons";
@@ -198,35 +197,10 @@ function measureLayout() {
   }
 }
 
-function hideNativeTabBar() {
-  try {
-    uni.hideTabBar({ animation: false });
-  } catch {
-    // H5 does not expose the WeChat tab bar API.
-  }
-}
-
-function showNativeTabBar() {
-  try {
-    uni.showTabBar({ animation: false });
-  } catch {
-    // H5 does not expose the WeChat tab bar API.
-  }
-}
-
-function switchTab(url: string) {
-  if (url === "/pages/theater/index") return;
-  showNativeTabBar();
-  uni.switchTab({ url });
-}
-
 measureLayout();
 onMounted(() => {
   measureLayout();
-  hideNativeTabBar();
 });
-onShow(() => hideNativeTabBar());
-onHide(() => showNativeTabBar());
 
 function selectCategory(category: string) {
   if (!categories.includes(category)) return;
@@ -597,11 +571,6 @@ function prevSimple() {
       @close="commentsOpen = false"
     />
 
-    <view class="theater-tabbar" role="navigation" aria-label="底部菜单">
-      <button class="theater-tab" @tap="switchTab('/pages/home/index')">首页</button>
-      <button class="theater-tab active" aria-current="page" @tap="switchTab('/pages/theater/index')">剧场</button>
-      <button class="theater-tab" @tap="switchTab('/pages/my/index')">我的</button>
-    </view>
   </view>
 </template>
 

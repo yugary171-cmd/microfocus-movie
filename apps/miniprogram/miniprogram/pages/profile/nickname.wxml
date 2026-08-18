@@ -5,7 +5,7 @@
     <button class="editor-save {{canSave ? '' : 'disabled'}}" hover-class="none" bindtap="save">保存</button>
   </view>
   <view class="field">
-    <input value="{{nickname}}" maxlength="{{maxLength}}" placeholder="请输入昵称" bindinput="onInput" />
+    <input value="{{nickname}}" type="nickname" maxlength="{{maxLength}}" placeholder="请输入昵称" bindinput="onInput" />
     <view class="field-meta">
       <button wx:if="{{nickname}}" class="clear" hover-class="none" bindtap="clear" aria-label="清空"><image src="/assets/icons/weui-close.svg" mode="aspectFit" aria-hidden="true" /></button>
       <text>{{count}}/{{maxLength}}</text>

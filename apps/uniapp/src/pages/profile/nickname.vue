@@ -52,7 +52,7 @@ async function save() {
       <button class="editor-save" :class="{ disabled: !canSave }" hover-class="none" @tap="save">保存</button>
     </view>
     <view class="field">
-      <input v-model="nickname" :maxlength="NICKNAME_MAX_LENGTH" placeholder="请输入昵称" />
+      <input v-model="nickname" type="nickname" :maxlength="NICKNAME_MAX_LENGTH" placeholder="请输入昵称" />
       <view class="field-meta">
       <button v-if="nickname" class="clear" hover-class="none" aria-label="清空" @tap="clear"><image src="/static/icons/weui-close.svg" mode="aspectFit" aria-hidden="true" /></button>
         <text>{{ count }}/{{ NICKNAME_MAX_LENGTH }}</text>

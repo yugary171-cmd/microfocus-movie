@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { CommentView } from "@microfocus/contracts";
-import { ACTION_ICONS, NAV_ICONS } from "../../constants/icons";
+import { ACTION_ICONS } from "../../constants/icons";
 import { getApi } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import {
@@ -171,10 +171,6 @@ function startReply(item: SheetComment) {
   draft.value = `@${item.author} `;
 }
 
-function notifyUnsupported() {
-  uni.showToast({ title: "配图暂不支持", icon: "none" });
-}
-
 async function submit() {
   const text = draft.value.trim();
   if (!text) {
@@ -233,7 +229,7 @@ async function submit() {
     <view class="mask" @tap="closeSheet" />
     <view class="panel">
       <view class="header">
-        <button class="close" aria-label="收起评论" @tap="closeSheet"><image :src="NAV_ICONS.close" mode="aspectFit" aria-hidden="true" /></button>
+        <button class="close" aria-label="收起评论" @tap="closeSheet"><view class="down-arrow" aria-hidden="true" /></button>
         <view class="title">{{ totalCount }}条评论</view>
         <view class="header-spacer" />
       </view>
@@ -301,7 +297,6 @@ async function submit() {
           :aria-label="replyTo ? `回复 ${replyTo}` : '发表评论'"
           @confirm="submit"
         />
-        <button class="tool" aria-label="配图暂不支持" @tap="notifyUnsupported"><image :src="ACTION_ICONS.comment" mode="aspectFit" aria-hidden="true" /></button>
         <button class="send" @tap="submit">发送</button>
       </view>
     </view>

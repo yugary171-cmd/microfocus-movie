@@ -3,15 +3,8 @@ import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { NAV_ICONS } from "../../constants/icons";
+import { wechatMiniprogramAuthSupported } from "../../platform";
 import {
-  isWechatProfileAuthorizationDenied,
-  isWechatProfileUnavailable,
-  obtainWechatUserProfile,
-  wechatMiniprogramAuthSupported,
-  type WechatUserProfile
-} from "../../platform";
-import {
-  applyLocalWechatProfile,
   ensureSession,
   getApi,
   getStoredSession,
@@ -152,26 +145,11 @@ async function login() {
   loginError.value = "";
   try {
     loginLoading.value = true;
-    let profile: WechatUserProfile | null = null;
-    if (wechatMiniprogramAuthSupported()) {
-      try {
-        profile = await obtainWechatUserProfile();
-      } catch (error) {
-        if (!isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
-          throw error;
-        }
-      }
-    }
     const session = await ensureSession();
-    const stored = profile ? applyLocalWechatProfile(profile) : session;
-    user.value = toUserView(stored);
+    user.value = toUserView(session);
     await loadLibrary();
     uni.showToast({ title: "登录成功", icon: "success" });
   } catch (error) {
-    if (isWechatProfileAuthorizationDenied(error)) {
-      uni.showToast({ title: "已取消授权", icon: "none" });
-      return;
-    }
     loginError.value = toFriendlyErrorMessage(error);
   } finally {
     loginLoading.value = false;

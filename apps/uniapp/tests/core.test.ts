@@ -58,39 +58,18 @@ function stubUni(overrides: Record<string, unknown> = {}) {
 describe("explicit WeChat login", () => {
   it("obtains a fresh WeChat code and persists the resulting Mock session", async () => {
     vi.resetModules();
-    stubUni();
+    const { uniMock } = stubUni();
     const { ensureSession, getStoredSession, clearStoredSession } = await import("../src/services/api");
     const session = await ensureSession();
     expect(session).toMatchObject({
       accessToken: "internal-mock-session-fresh-wechat",
       user: { id: "internal-user-fresh-wechat", displayName: "内部体验用户" }
     });
+    expect(uniMock.getUserProfile).not.toHaveBeenCalled();
     expect(getStoredSession()).toMatchObject({ accessToken: "internal-mock-session-fresh-wechat" });
     clearStoredSession();
     expect(getStoredSession()).toBeNull();
     vi.unstubAllGlobals();
-  });
-
-  it("treats WeChat nickname authorization cancel as a denied profile", async () => {
-    vi.resetModules();
-    stubUni({
-      getUserProfile: (options: { fail: (error: { errMsg: string }) => void }) => {
-        options.fail({ errMsg: "getUserProfile:fail auth deny" });
-      }
-    });
-    const { isWechatProfileAuthorizationDenied, obtainWechatUserProfile } = await import("../src/platform/auth");
-    await expect(obtainWechatUserProfile()).rejects.toSatisfy((error: unknown) =>
-      isWechatProfileAuthorizationDenied(error)
-    );
-    vi.unstubAllGlobals();
-  });
-
-  it("recognizes the DevTools avatar metadata failure separately from denial", async () => {
-    vi.resetModules();
-    const { isWechatProfileAuthorizationDenied, isWechatProfileUnavailable } = await import("../src/platform/auth");
-    const error = new Error("getUserProfile:fail getUserAvatarInfo fail");
-    expect(isWechatProfileUnavailable(error)).toBe(true);
-    expect(isWechatProfileAuthorizationDenied(error)).toBe(false);
   });
 
   it("applies the WeChat nickname locally after a Mock session is stored", async () => {

@@ -2,13 +2,8 @@ export { createRewardedVideoAd, unsupportedRewardedAdMessage } from "./ads";
 export type { RewardedAdCloseResult, RewardedAdHandle } from "./ads";
 export {
   H5_APP_AUTH_UNSUPPORTED_MESSAGE,
-  WECHAT_USER_PROFILE_DESC,
-  isWechatProfileAuthorizationDenied,
-  isWechatProfileUnavailable,
-  obtainWechatLoginCode,
-  obtainWechatUserProfile
+  obtainWechatLoginCode
 } from "./auth";
-export type { WechatUserProfile } from "./auth";
 export {
   getClientPlatform,
   getEnvVersion,

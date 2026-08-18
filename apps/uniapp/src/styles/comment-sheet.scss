@@ -42,13 +42,18 @@
 .close {
   width: 64rpx;
   height: 64rpx;
+  color: #f4f4f6;
   font-size: 0;
   line-height: 1;
 }
 
-.close image {
-  width: 32rpx;
-  height: 32rpx;
+.down-arrow {
+  width: 18rpx;
+  height: 18rpx;
+  margin: 0 auto;
+  border-right: 3rpx solid currentColor;
+  border-bottom: 3rpx solid currentColor;
+  transform: translateY(22rpx) rotate(45deg);
 }
 
 .title {
@@ -65,6 +70,7 @@
 .list {
   flex: 1;
   min-height: 0;
+  box-sizing: border-box;
   padding: 0 28rpx 16rpx;
 }
 
@@ -127,6 +133,7 @@
   flex-direction: column;
   align-items: center;
   width: 72rpx;
+  margin-right: 12rpx;
   flex: none;
   color: #b0b3bb;
 }
@@ -167,22 +174,21 @@
   color: #7d8088;
 }
 
-.tool,
 .send {
-  width: 56rpx;
-  height: 56rpx;
-  color: #c5c7ce;
-  font-size: 28rpx;
-  line-height: 56rpx;
+  width: 112rpx;
+  height: 72rpx;
+  padding: 0;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ffb86b 0%, #ffdc8b 100%);
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  font-weight: 650;
+  line-height: 72rpx;
   text-align: center;
 }
 
-.send {
-  width: auto;
-  padding: 0 8rpx;
-  color: #ffcf5a;
-  font-size: 26rpx;
-  font-weight: 650;
+.send::after {
+  border: none;
 }
 
 .empty {

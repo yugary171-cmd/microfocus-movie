@@ -1,5 +1,4 @@
 .theater-page {
-  --theater-tabbar-height: 66rpx;
   --theater-progress-height: 36rpx;
   --theater-bottom-gap: 12rpx;
   position: relative;
@@ -121,10 +120,10 @@
 @keyframes refresh-spin { to { transform: rotate(360deg); } }
 
 .theater-progress {
-  position: fixed;
+  position: absolute;
   z-index: 9;
   right: 20rpx;
-  bottom: calc(var(--theater-tabbar-height) + var(--theater-bottom-gap) + env(safe-area-inset-bottom));
+  bottom: var(--theater-bottom-gap);
   left: 20rpx;
   height: var(--theater-progress-height);
   padding: 0;
@@ -134,40 +133,6 @@
   width: 100%;
   height: 36rpx;
   margin: 0;
-}
-
-.theater-tabbar {
-  position: fixed;
-  z-index: 12;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: space-around;
-  height: calc(var(--theater-tabbar-height) + env(safe-area-inset-bottom));
-  padding: 0 28rpx env(safe-area-inset-bottom);
-  box-sizing: border-box;
-  color: #a5a5aa;
-  background: #fff;
-}
-
-.theater-tab {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  color: inherit;
-  background: transparent;
-  font-size: 22rpx;
-  line-height: 66rpx;
-}
-
-.theater-tab.active {
-  color: #17171b;
-  font-weight: 650;
 }
 
 .theater-video {
@@ -259,7 +224,7 @@
   position: absolute;
   z-index: 8;
   right: 12rpx;
-  bottom: calc(var(--theater-tabbar-height) + var(--theater-bottom-gap) + var(--theater-progress-height) + 24rpx + env(safe-area-inset-bottom));
+  bottom: calc(var(--theater-bottom-gap) + var(--theater-progress-height) + 24rpx);
   left: 28rpx;
   display: flex;
   gap: 12rpx;

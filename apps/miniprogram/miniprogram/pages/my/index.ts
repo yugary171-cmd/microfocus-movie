@@ -1,18 +1,11 @@
 import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import {
-  applyLocalWechatProfile,
   ensureSession,
   getApi,
   getStoredSession,
   isMockMode,
   saveProfile
 } from "../../services/api";
-import {
-  isWechatProfileAuthorizationDenied,
-  isWechatProfileUnavailable,
-  wechatAdapter,
-  type WechatUserProfile
-} from "../../services/wechat-adapter";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { getMockHistoryCards } from "../../mocks/history-state";
 import { loadFavoriteCards, loadLikedDramaCards } from "../../services/library";
@@ -159,23 +152,11 @@ Page({
     this.setData({ loginError: "" });
     try {
       this.setData({ loginLoading: true });
-      let profile: WechatUserProfile | null = null;
-      try {
-        profile = await wechatAdapter.getUserProfile();
-      } catch (error) {
-        if (!this.data.isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
-          throw error;
-        }
-      }
-      await ensureSession();
-      this.setData({ user: toUserView(profile ? applyLocalWechatProfile(profile) : getStoredSession()) });
+      const session = await ensureSession();
+      this.setData({ user: toUserView(session) });
       await this.loadLibrary();
       wx.showToast({ title: "登录成功", icon: "success" });
     } catch (error) {
-      if (isWechatProfileAuthorizationDenied(error)) {
-        wx.showToast({ title: "已取消授权", icon: "none" });
-        return;
-      }
       this.setData({ loginError: toFriendlyErrorMessage(error) });
     } finally {
       this.setData({ loginLoading: false });

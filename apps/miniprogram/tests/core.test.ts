@@ -84,6 +84,7 @@ describe("explicit WeChat login", () => {
     const session = await ensureSession();
 
     expect(login).toHaveBeenCalledOnce();
+    expect(getUserProfile).not.toHaveBeenCalled();
     expect(session).toMatchObject({
       accessToken: "internal-mock-session-fresh-wechat",
       user: { id: "internal-user-fresh-wechat", displayName: "内部体验用户" }
@@ -118,31 +119,6 @@ describe("explicit WeChat login", () => {
     vi.unstubAllGlobals();
   });
 
-  it("treats WeChat nickname authorization cancel as a denied profile", async () => {
-    vi.resetModules();
-    vi.stubGlobal("wx", {
-      getUserProfile: (options: { fail: (error: { errMsg: string }) => void }) => {
-        options.fail({ errMsg: "getUserProfile:fail auth deny" });
-      }
-    });
-    const { isWechatProfileAuthorizationDenied, wechatAdapter } = await import(
-      "../miniprogram/services/wechat-adapter"
-    );
-    await expect(wechatAdapter.getUserProfile()).rejects.toSatisfy((error: unknown) =>
-      isWechatProfileAuthorizationDenied(error)
-    );
-    vi.unstubAllGlobals();
-  });
-
-  it("recognizes the DevTools avatar metadata failure separately from denial", async () => {
-    vi.resetModules();
-    const { isWechatProfileAuthorizationDenied, isWechatProfileUnavailable } = await import(
-      "../miniprogram/services/wechat-adapter"
-    );
-    const error = new Error("getUserProfile:fail getUserAvatarInfo fail");
-    expect(isWechatProfileUnavailable(error)).toBe(true);
-    expect(isWechatProfileAuthorizationDenied(error)).toBe(false);
-  });
 });
 
 describe("live watch-history navigation", () => {

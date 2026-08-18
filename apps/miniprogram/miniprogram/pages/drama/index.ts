@@ -1,5 +1,5 @@
 import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocus/contracts";
-import { applyLocalWechatProfile, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
@@ -10,11 +10,7 @@ import {
   type RewardFlowDependencies,
   type RewardResult
 } from "../../services/reward";
-import {
-  isWechatProfileAuthorizationDenied,
-  isWechatProfileUnavailable,
-  wechatAdapter
-} from "../../services/wechat-adapter";
+import { wechatAdapter } from "../../services/wechat-adapter";
 import { canStartEpisode, isFreeEpisode } from "../../utils/episode";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
@@ -113,24 +109,11 @@ Page({
     if (this.data.loginLoading) return false;
     this.setData({ loginLoading: true });
     try {
-      let profile: Awaited<ReturnType<typeof wechatAdapter.getUserProfile>> | null = null;
-      try {
-        profile = await wechatAdapter.getUserProfile();
-      } catch (error) {
-        if (!this.data.isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
-          throw error;
-        }
-      }
       const session = await ensureSession();
-      if (profile) applyLocalWechatProfile(profile);
       await this.loadEntitlement();
       return Boolean(getStoredSession() ?? session);
     } catch (error) {
-      if (isWechatProfileAuthorizationDenied(error)) {
-        wx.showToast({ title: "已取消授权", icon: "none" });
-      } else {
-        wx.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
-      }
+      wx.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
       return false;
     } finally {
       this.setData({ loginLoading: false });

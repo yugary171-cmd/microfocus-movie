@@ -172,6 +172,9 @@ page {
 }
 
 .refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 56rpx;
   height: 56rpx;
   padding: 0;

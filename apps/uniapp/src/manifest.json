@@ -1,31 +1,40 @@
 {
-  "name": "微焦短剧",
-  "appid": "",
-  "description": "免费短剧观看端",
-  "versionName": "0.1.0",
-  "versionCode": "100",
-  "transformPx": false,
-  "mp-weixin": {
-    "appid": "touristappid",
-    "setting": {
-      "urlCheck": false,
-      "useLanDebug": true,
-      "es6": true,
-      "enhance": false,
-      "minified": true
+    "name" : "微焦短剧",
+    "appid" : "",
+    "vueVersion" : "3",
+    "description" : "免费短剧观看端",
+    "versionName" : "0.1.0",
+    "versionCode" : "100",
+    "transformPx" : false,
+    "mp-weixin" : {
+        "appid" : "wx76396b6d61ff6a3b",
+        "setting" : {
+            "urlCheck" : false,
+            "useLanDebug" : true,
+            "es6" : true,
+            "enhance" : false,
+            "minified" : true,
+            "postcss" : true
+        },
+        "usingComponents" : true
     },
-    "usingComponents": true
-  },
-  "h5": {
-    "title": "微焦短剧",
-    "router": { "mode": "hash" }
-  },
-  "app-plus": {
-    "splashscreen": { "alwaysShowBeforeRender": true, "waiting": true },
-    "modules": {},
-    "distribute": {
-      "android": { "permissions": [] },
-      "ios": {}
+    "h5" : {
+        "title" : "微焦短剧",
+        "router" : {
+            "mode" : "hash"
+        }
+    },
+    "app-plus" : {
+        "splashscreen" : {
+            "alwaysShowBeforeRender" : true,
+            "waiting" : true
+        },
+        "modules" : {},
+        "distribute" : {
+            "android" : {
+                "permissions" : []
+            },
+            "ios" : {}
+        }
     }
-  }
 }

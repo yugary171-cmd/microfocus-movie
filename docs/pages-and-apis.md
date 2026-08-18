@@ -76,7 +76,7 @@ flowchart LR
 | 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、简介、目录、免费/锁定状态和播放入口；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益 |
 | 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复；登录后可读收藏/点赞态并切换；评论底栏有 `dramaId` 时走剧评 API | 播放、奖励、权益、进度及 `GET/PUT/DELETE /v1/me/favorites`、`GET/PUT/DELETE /v1/me/liked-dramas`、剧评读写 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |
-| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（先拉起微信头像昵称授权）、点击头像更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 经 `getApi().social` 拉列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑与历史相同；Mock 读写内存片库，Live 走 Nest（需已 migrate）；「消息」Tab 登录后拉粉丝/评论收件/我的评论/获赞摘要，不跳转、不接私信写接口，系统通知仍本地 | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile`、`GET /v1/me/favorites`、`GET /v1/me/liked-dramas`、`GET /v1/users/:userId`、`GET /v1/me/followers`、`GET /v1/me/comment-inbox`、`GET /v1/me/comments`、`GET /v1/me/received-comment-likes` |
+| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（微信 `uni.login` 换取登录 code，不依赖已废弃的 `getUserProfile` 授权窗）、点击头像通过 `chooseAvatar` 更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 经 `getApi().social` 拉列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑与历史相同；Mock 读写内存片库，Live 走 Nest（需已 migrate）；「消息」Tab 登录后拉粉丝/评论收件/我的评论/获赞摘要，不跳转、不接私信写接口，系统通知仍本地 | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile`、`GET /v1/me/favorites`、`GET /v1/me/liked-dramas`、`GET /v1/users/:userId`、`GET /v1/me/followers`、`GET /v1/me/comment-inbox`、`GET /v1/me/comments`、`GET /v1/me/received-comment-likes` |
 | 全部历史 | `apps/uniapp/src/pages/history/edit.vue` | 多选观看历史、收藏或点赞；未选中时删除禁用，选中后高亮；历史确认删除后调用删除接口；收藏/点赞确认后走 `DELETE /v1/me/favorites/:dramaId` 或 `DELETE /v1/me/liked-dramas/:dramaId` | 历史：`GET /v1/me/history`、`DELETE /v1/me/history`；收藏/点赞：`GET/DELETE /v1/me/favorites`、`GET/DELETE /v1/me/liked-dramas` |
 | 法律与隐私 | `apps/uniapp/src/pages/legal/index.vue` | 用户协议、隐私指引、广告权益、注销、投诉说明和广告未到账核验包 | 静态内容或受控内容服务；不得依赖 Mock 文案发布 |
 
@@ -187,7 +187,7 @@ flowchart LR
 | 方法与路径 | 认证 | 关键请求 | 关键响应/语义 |
 | --- | --- | --- | --- |
 | `POST /v1/auth/anonymous` | 公开、按连接 IP 限频（新建会话）；刷新已有 device/session 不占桶 | `deviceId/sessionId`，各最长 128 | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
-| `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` 最长 256 | 用户 JWT；H5/App 不得复用。观看端在点登录时先调微信 `getUserProfile` 拉起头像昵称授权，取消则不换会话；昵称仅本地展示，不写入该接口 |
+| `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` 最长 256 | 用户 JWT；H5/App 不得复用。微信端点登录时调用 `uni.login` 获取一次性 code，再由服务端完成 `code2session`；不依赖已废弃的 `getUserProfile` 原生授权窗。头像通过 `chooseAvatar`，昵称通过资料编辑页的 `type="nickname"` 输入能力填写 |
 | `GET /v1/catalog` | 公开、按连接 IP 限频 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容；`latest` 按发布时间倒序，不从推荐榜重排 |
 | `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page`；`q` 与 `category` 最长 100（`LIST_QUERY_MAX_LENGTH` / `boundListQuery`），观看端搜索框 maxlength 与之共用 | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
 | `GET /v1/dramas/:dramaId` | 公开、按连接 IP 限频 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算 |

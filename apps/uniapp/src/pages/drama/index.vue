@@ -3,14 +3,7 @@ import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocu
 import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
-import {
-  isWechatProfileAuthorizationDenied,
-  isWechatProfileUnavailable,
-  obtainWechatUserProfile,
-  wechatMiniprogramAuthSupported,
-  type WechatUserProfile
-} from "../../platform";
-import { applyLocalWechatProfile, ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
@@ -108,26 +101,11 @@ async function loginForLockedEpisode(): Promise<boolean> {
   if (loginLoading.value) return false;
   loginLoading.value = true;
   try {
-    let profile: WechatUserProfile | null = null;
-    if (wechatMiniprogramAuthSupported()) {
-      try {
-        profile = await obtainWechatUserProfile();
-      } catch (error) {
-        if (!isMock || isWechatProfileAuthorizationDenied(error) || !isWechatProfileUnavailable(error)) {
-          throw error;
-        }
-      }
-    }
     const session = await ensureSession();
-    if (profile) applyLocalWechatProfile(profile);
     await loadEntitlement();
     return Boolean(getStoredSession() ?? session);
   } catch (error) {
-    if (isWechatProfileAuthorizationDenied(error)) {
-      uni.showToast({ title: "已取消授权", icon: "none" });
-    } else {
-      uni.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
-    }
+    uni.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
     return false;
   } finally {
     loginLoading.value = false;

@@ -80,7 +80,7 @@
   background: transparent;
   border: 0;
   font-size: 28rpx;
-  font-weight: 650;
+  font-weight: 300;
 }
 
 .idle {
@@ -146,6 +146,10 @@
   font-weight: 700;
 }
 
+.guess-heading .section-title {
+  margin: 0;
+}
+
 .refresh,
 .clear {
   padding: 0 8rpx;
@@ -162,6 +166,9 @@
 }
 
 .refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 56rpx;
   height: 56rpx;
   padding: 0;
