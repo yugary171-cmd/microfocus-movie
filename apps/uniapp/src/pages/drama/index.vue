@@ -3,6 +3,7 @@ import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocu
 import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
 import { nextTick, ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
+import RewardUnlockSheet from "../../components/reward-unlock-sheet/index.vue";
 import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { dramaInLibraryPages, setDramaLibraryFlag } from "../../services/library";
 import { trackFunnelEvent } from "../../services/telemetry";
@@ -334,20 +335,16 @@ onShareAppMessage(() => {
     <text>{{ isFavorite ? "已收藏" : "收藏" }}</text>
   </view>
 
-  <view v-if="unlockVisible" class="overlay" @tap="closeUnlock">
-    <view class="dialog" role="dialog" aria-modal="true" aria-label="观看广告解锁" @tap.stop>
-      <view class="dialog-title">观看广告，获得本剧时长</view>
-      <view class="dialog-copy">
-        第 {{ unlockEpisode?.episodeNumber }} 集需要当前短剧观看时长。{{ unlockCopy }}请主动点击下方按钮。
-      </view>
-      <view class="safety-note">广告完成回调并非绝对安全证明，最终发放结果以服务端校验为准。</view>
-      <view v-if="rewardError" class="reward-error" role="alert">{{ rewardError }}</view>
-      <button class="primary-button" :loading="rewardLoading" :disabled="rewardLoading" @tap="watchRewardAd">
-        {{ rewardRetryPending ? "重试确认奖励" : "主动观看激励广告" }}
-      </button>
-      <button class="secondary-button cancel" :disabled="rewardLoading" @tap="closeUnlock">暂不观看</button>
-    </view>
-  </view>
+  <RewardUnlockSheet
+    :visible="unlockVisible"
+    :episode-number="unlockEpisode?.episodeNumber || 0"
+    :unlock-copy="unlockCopy"
+    :loading="rewardLoading"
+    :retry-pending="rewardRetryPending"
+    :error="rewardError"
+    @close="closeUnlock"
+    @confirm="watchRewardAd"
+  />
 </template>
 
 <style scoped src="../../styles/drama.scss"></style>

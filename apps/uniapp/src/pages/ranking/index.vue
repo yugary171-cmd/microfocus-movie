@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import { getApi } from "../../services/api";
 import { NAV_ICONS } from "../../constants/icons";
 import { toFriendlyErrorMessage } from "../../utils/errors";
+import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
 import {
   RANKING_TABS,
   RANKING_TYPES,
@@ -30,6 +31,7 @@ const loadingMore = ref(false);
 const error = ref("");
 const updatedCopy = rankingUpdatedCopy();
 const navInsetTop = ref(52);
+const openingDramaId = ref("");
 const rankedItems = computed(() => sortRankingItems(items.value, activeRanking.value));
 const drawerSections = computed(() => [
   { key: "subject" as const, title: "全部主题", values: Array.isArray(filterOptions.value.subjects) ? filterOptions.value.subjects : [] },
@@ -115,8 +117,16 @@ function selectDrawerOption(key: "subject" | "setting" | "background", value: st
   draftDrawer.value = { ...draftDrawer.value, [key]: draftDrawer.value[key] === value ? "" : value };
 }
 
-function openDrama(id: string) {
-  uni.navigateTo({ url: `/pages/drama/index?id=${encodeURIComponent(id)}` });
+async function openDrama(id: string) {
+  if (!id || openingDramaId.value) return;
+  openingDramaId.value = id;
+  try {
+    uni.navigateTo({ url: await resolveDirectPlaybackUrl(id) });
+  } catch (caught) {
+    uni.showToast({ title: toFriendlyErrorMessage(caught), icon: "none" });
+  } finally {
+    openingDramaId.value = "";
+  }
 }
 
 function goBack() {

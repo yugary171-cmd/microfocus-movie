@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { PlaybackHeartbeatResponse, RewardChallengeView } from "@microfocus/contracts";
+import type { DramaDetail, PlaybackHeartbeatResponse, RewardChallengeView } from "@microfocus/contracts";
 import { FREE_EPISODE_COUNT, OFFLINE_GRACE_SECONDS, PLAYBACK_RATE_MAX, PLAYBACK_RATE_MIN, REWARD_SECONDS } from "@microfocus/contracts";
 import { PlaybackHeartbeatController } from "../src/services/playback-controller";
 import { retryRewardConfirmation, runRewardFlow, describeRewardResult } from "../src/services/reward";
@@ -13,6 +13,7 @@ import { buildSupportPacket } from "../src/utils/support-packet";
 import { sanitizeFunnelProps, trackFunnelEvent, recentFunnelEvents } from "../src/services/telemetry";
 import { paginateItems } from "../src/utils/pagination";
 import { playerUrlFromEpisode } from "../src/utils/player-navigation";
+import { chooseResumeEpisode } from "../src/utils/direct-playback";
 import { isCurrentTheaterVideoId, theaterVideoId } from "../src/utils/playback-gesture";
 import {
   applyProfilePatch,
@@ -146,6 +147,44 @@ describe("H5 and App auth/ads boundaries", () => {
 });
 
 describe("live watch-history navigation", () => {
+  const drama: DramaDetail = {
+    id: "direct-drama",
+    title: "直达播放",
+    summary: "",
+    coverUrl: "",
+    category: "都市",
+    tags: [],
+    episodeCount: 3,
+    recommendationRank: 1,
+    licenseNumber: "",
+    rightsHolder: "",
+    episodes: [
+      { id: "episode-1", episodeNumber: 1, title: "第一集", durationSeconds: 120, isFree: true },
+      { id: "episode-2", episodeNumber: 2, title: "第二集", durationSeconds: 120, isFree: true },
+      { id: "episode-3", episodeNumber: 3, title: "第三集", durationSeconds: 120, isFree: false }
+    ]
+  };
+
+  it("resumes the matching episode and position from history", () => {
+    const result = chooseResumeEpisode(drama, [{
+      drama,
+      episodeNumber: 2,
+      mediaPositionSeconds: 86,
+      updatedAt: "2026-08-18T00:00:00.000Z"
+    }]);
+    expect(result).toEqual({ episode: drama.episodes[1], position: 86 });
+  });
+
+  it("falls back to episode one when history is missing or stale", () => {
+    expect(chooseResumeEpisode(drama, undefined)).toEqual({ episode: drama.episodes[0], position: 0 });
+    expect(chooseResumeEpisode(drama, [{
+      drama,
+      episodeNumber: 99,
+      mediaPositionSeconds: 86,
+      updatedAt: "2026-08-18T00:00:00.000Z"
+    }])).toEqual({ episode: drama.episodes[0], position: 0 });
+  });
+
   it("maps real API history and preserves the resume position in the player route", () => {
     const cards = toHistoryCardViews([
       {

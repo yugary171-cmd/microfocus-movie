@@ -6,6 +6,7 @@ import { HOME_PRIMARY_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../../constants/r
 import { NAV_ICONS } from "../../constants/icons";
 import { getApi, isMockMode } from "../../services/api";
 import { toFriendlyErrorMessage } from "../../utils/errors";
+import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
 import { buildHomeChannels, searchCategoryParam } from "../../utils/home-channels";
 
 type PosterTone = "mist" | "rose" | "gold" | "jade" | "violet" | "night";
@@ -50,6 +51,7 @@ const loading = ref(true);
 const loadingMore = ref(false);
 const error = ref("");
 const navInsetTop = ref(52);
+const openingDramaId = ref("");
 
 function measureNavInset() {
   try {
@@ -172,9 +174,16 @@ function selectDrawerOption(key: "subject" | "setting" | "background", value: st
   draftDrawer.value = { ...draftDrawer.value, [key]: draftDrawer.value[key] === value ? "" : value };
 }
 
-function openDrama(id: string) {
-  if (!id) return;
-  uni.navigateTo({ url: `/pages/drama/index?id=${encodeURIComponent(id)}` });
+async function openDrama(id: string) {
+  if (!id || openingDramaId.value) return;
+  openingDramaId.value = id;
+  try {
+    uni.navigateTo({ url: await resolveDirectPlaybackUrl(id) });
+  } catch (caught) {
+    uni.showToast({ title: toFriendlyErrorMessage(caught), icon: "none" });
+  } finally {
+    openingDramaId.value = "";
+  }
 }
 </script>
 

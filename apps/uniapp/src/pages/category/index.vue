@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import { getApi } from "../../services/api";
 import { NAV_ICONS } from "../../constants/icons";
 import { toFriendlyErrorMessage } from "../../utils/errors";
+import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
 import {
   DEFAULT_DISCOVER_FILTERS,
   rankingHeatLabel,
@@ -23,6 +24,7 @@ const filtersExpanded = ref(true);
 const selectedFilters = ref({ ...DEFAULT_DISCOVER_FILTERS });
 const visibleSections = computed(() => visibleDiscoverSections(filtersExpanded.value));
 const navInsetTop = ref(52);
+const openingDramaId = ref("");
 
 function measureNavInset() {
   try {
@@ -79,9 +81,16 @@ function selectFilter(key: DiscoverFilterKey, value: string) {
   void search(true);
 }
 
-function openDrama(id: string) {
-  if (!id) return;
-  uni.navigateTo({ url: `/pages/drama/index?id=${encodeURIComponent(id)}` });
+async function openDrama(id: string) {
+  if (!id || openingDramaId.value) return;
+  openingDramaId.value = id;
+  try {
+    uni.navigateTo({ url: await resolveDirectPlaybackUrl(id) });
+  } catch (caught) {
+    uni.showToast({ title: toFriendlyErrorMessage(caught), icon: "none" });
+  } finally {
+    openingDramaId.value = "";
+  }
 }
 
 function goBack() {

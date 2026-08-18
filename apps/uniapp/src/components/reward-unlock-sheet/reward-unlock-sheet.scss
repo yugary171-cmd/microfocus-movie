@@ -1,0 +1,57 @@
+.unlock-overlay {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 30rpx;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.unlock-dialog {
+  width: 100%;
+  padding: 38rpx 30rpx calc(30rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: #fff;
+  border-radius: 28rpx;
+  color: #17171b;
+}
+
+.unlock-title {
+  font-size: 34rpx;
+  font-weight: 750;
+}
+
+.unlock-copy,
+.unlock-note {
+  margin-top: 18rpx;
+  color: #5c5d64;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.unlock-note {
+  color: #9b6b29;
+  font-size: 22rpx;
+}
+
+.unlock-error {
+  margin-top: 18rpx;
+  padding: 14rpx 18rpx;
+  color: #b62d36;
+  background: #fff0f1;
+  border-radius: 12rpx;
+  font-size: 23rpx;
+  line-height: 1.45;
+}
+
+.unlock-dialog .primary-button {
+  width: 100%;
+  margin-top: 26rpx;
+}
+
+.unlock-cancel {
+  width: 100%;
+  margin-top: 14rpx;
+}
