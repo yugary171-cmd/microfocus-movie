@@ -2,6 +2,39 @@
   padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
+.detail-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64rpx;
+  box-sizing: content-box;
+  background: #0b0c0f;
+}
+
+.detail-back {
+  position: absolute;
+  left: 0;
+  width: 64rpx;
+  color: #f7f7f8;
+  font-size: 64rpx;
+  font-weight: 300;
+  line-height: 1;
+  text-align: left;
+}
+
+.detail-nav-title {
+  display: block;
+  max-width: calc(100% - 192rpx);
+  overflow: hidden;
+  color: #f7f7f8;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .overview {
   display: flex;
   gap: 28rpx;
@@ -78,6 +111,17 @@
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.summary-measure {
+  position: fixed;
+  left: -10000rpx;
+  width: calc(100vw - 56rpx);
+  visibility: hidden;
+  color: transparent;
+  font-size: 28rpx;
+  line-height: 1.6;
+  white-space: normal;
 }
 
 .summary-toggle {

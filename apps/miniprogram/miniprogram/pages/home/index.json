@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "微焦短剧",
+  "navigationStyle": "custom",
   "navigationBarBackgroundColor": "#ffffff",
   "navigationBarTextStyle": "black",
   "backgroundColor": "#f7f7f8"

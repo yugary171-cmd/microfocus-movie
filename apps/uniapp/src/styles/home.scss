@@ -1,10 +1,12 @@
 .home-page {
   min-height: 100%;
-  padding: 22rpx 20rpx calc(48rpx + env(safe-area-inset-bottom));
+  padding: 0 20rpx calc(48rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   color: #19191d;
   background: #f7f7f8;
 }
+.home-header { display: flex; align-items: center; justify-content: center; min-height: 64rpx; box-sizing: content-box; }
+.home-title { color: #19191d; font-size: 34rpx; font-weight: 500; line-height: 1.2; }
 .search-row { display: flex; gap: 14rpx; align-items: center; }
 .search-field { display: flex; flex: 1; gap: 12rpx; align-items: center; height: 76rpx; padding: 0 20rpx; background: #fff; border-radius: 18rpx; box-shadow: 0 6rpx 20rpx rgba(37, 33, 39, .06); }
 .magnifier { width: 32rpx; height: 32rpx; flex: none; }

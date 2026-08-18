@@ -1,4 +1,8 @@
 <view class="page">
+  <view class="detail-nav" style="padding-top: {{navInsetTop}}px">
+    <view class="detail-back" role="button" aria-label="返回" bindtap="goBack">‹</view>
+    <text class="detail-nav-title">{{drama ? drama.title : '短剧详情'}}</text>
+  </view>
   <internal-banner visible="{{isMock}}" />
   <view wx:if="{{loading}}" class="state-card" role="status">正在加载详情…</view>
   <view wx:elif="{{error}}" class="state-card" role="alert">
@@ -19,7 +23,8 @@
     <view class="summary-section">
       <view class="section-title">剧情简介</view>
       <view class="summary-copy {{summaryExpanded ? '' : 'collapsed'}}">{{drama.summary || '暂无剧情简介'}}</view>
-      <text class="summary-toggle" role="button" bindtap="toggleSummary">{{summaryExpanded ? '收起' : '展开'}}</text>
+      <view class="summary-measure">{{drama.summary || '暂无剧情简介'}}</view>
+      <text wx:if="{{summaryOverflow}}" class="summary-toggle" role="button" bindtap="toggleSummary">{{summaryExpanded ? '收起' : '展开'}}</text>
     </view>
   </block>
 </view>

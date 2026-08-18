@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocus/contracts";
 import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
 import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
 import { dramaInLibraryPages, setDramaLibraryFlag } from "../../services/library";
@@ -28,7 +28,9 @@ const id = ref("");
 const loading = ref(true);
 const error = ref("");
 const drama = ref<DramaDetail | null>(null);
+const navInsetTop = ref(52);
 const summaryExpanded = ref(false);
+const summaryOverflow = ref(false);
 const isFavorite = ref(false);
 const favoriteLoading = ref(false);
 const entitlement = ref<EntitlementSummary | null>(null);
@@ -41,6 +43,20 @@ const rewardError = ref("");
 const rewardRetryPending = ref(false);
 let rewardDependencies: RewardFlowDependencies | null = null;
 let pendingRewardConfirmation: PendingRewardConfirmation | null = null;
+
+function measureNavInset() {
+  try {
+    const info = uni.getSystemInfoSync();
+    const statusBar = Number(info.statusBarHeight) || 20;
+    const menu = typeof uni.getMenuButtonBoundingClientRect === "function"
+      ? uni.getMenuButtonBoundingClientRect()
+      : null;
+    const menuBottom = Number(menu?.bottom);
+    navInsetTop.value = (Number.isFinite(menuBottom) && menuBottom > 0 ? menuBottom : statusBar + 32) + 8;
+  } catch {
+    navInsetTop.value = 52;
+  }
+}
 
 function applyEntitlement(summary: EntitlementSummary | null) {
   entitlement.value = summary;
@@ -60,6 +76,7 @@ async function loadDetail() {
   loading.value = true;
   error.value = "";
   summaryExpanded.value = false;
+  summaryOverflow.value = false;
   try {
     const [detail, summary] = await Promise.all([
       getApi().getDrama(id.value),
@@ -67,6 +84,8 @@ async function loadDetail() {
     ]);
     drama.value = detail;
     applyEntitlement(summary);
+    await nextTick();
+    measureSummaryOverflow();
     void hydrateFavoriteState();
     trackFunnelEvent("drama_detail_view", { dramaId: detail.id });
     uni.setNavigationBarTitle({ title: detail.title || "短剧详情" });
@@ -87,6 +106,25 @@ async function loadDetail() {
 
 function toggleSummary() {
   summaryExpanded.value = !summaryExpanded.value;
+}
+
+function goBack() {
+  uni.navigateBack();
+}
+
+function measureSummaryOverflow() {
+  uni
+    .createSelectorQuery()
+    .select(".summary-measure")
+    .boundingClientRect((rect) => {
+      const windowWidth = uni.getSystemInfoSync().windowWidth;
+      const lineHeight = (28 * 1.6 * windowWidth) / 750;
+      const node = Array.isArray(rect) ? rect[0] : rect;
+      summaryOverflow.value = Boolean(
+        node && typeof node.height === "number" && node.height > lineHeight * 2 + 1
+      );
+    })
+    .exec();
 }
 
 async function hydrateFavoriteState() {
@@ -213,6 +251,7 @@ async function watchRewardAd() {
 }
 
 onLoad((options) => {
+  measureNavInset();
   id.value = options?.id ? decodeURIComponent(options.id) : "";
   if (!id.value) {
     loading.value = false;
@@ -240,6 +279,10 @@ onShareAppMessage(() => {
 
 <template>
   <view class="page">
+    <view class="detail-nav" :style="{ paddingTop: `${navInsetTop}px` }">
+      <view class="detail-back" role="button" aria-label="返回" @tap="goBack">‹</view>
+      <text class="detail-nav-title">{{ drama?.title || "短剧详情" }}</text>
+    </view>
     <internal-banner :visible="isMock" />
     <view v-if="loading" class="state-card" role="status">正在加载详情…</view>
     <view v-else-if="error" class="state-card" role="alert">
@@ -270,7 +313,8 @@ onShareAppMessage(() => {
         <view class="summary-copy" :class="{ collapsed: !summaryExpanded }">
           {{ drama.summary || "暂无剧情简介" }}
         </view>
-        <text class="summary-toggle" role="button" @tap="toggleSummary">
+        <view class="summary-measure">{{ drama.summary || "暂无剧情简介" }}</view>
+        <text v-if="summaryOverflow" class="summary-toggle" role="button" @tap="toggleSummary">
           {{ summaryExpanded ? "收起" : "展开" }}
         </text>
       </view>

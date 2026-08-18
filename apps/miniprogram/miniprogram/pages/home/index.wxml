@@ -1,4 +1,7 @@
 <view class="home-page">
+  <view class="home-header" style="padding-top: {{navInsetTop}}px;">
+    <view class="home-title">首页</view>
+  </view>
   <view class="search-row">
     <view class="search-field" bindtap="openSearch" role="button" aria-label="搜索短剧">
       <image class="magnifier" src="/assets/icons/weui-search.svg" mode="aspectFit" aria-hidden="true" />

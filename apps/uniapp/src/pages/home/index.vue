@@ -49,6 +49,21 @@ const hasMore = ref(false);
 const loading = ref(true);
 const loadingMore = ref(false);
 const error = ref("");
+const navInsetTop = ref(52);
+
+function measureNavInset() {
+  try {
+    const info = uni.getSystemInfoSync();
+    const statusBar = Number(info.statusBarHeight) || 20;
+    const menu = typeof uni.getMenuButtonBoundingClientRect === "function"
+      ? uni.getMenuButtonBoundingClientRect()
+      : null;
+    const menuBottom = Number(menu?.bottom);
+    navInsetTop.value = (Number.isFinite(menuBottom) && menuBottom > 0 ? menuBottom : statusBar + 32) + 8;
+  } catch {
+    navInsetTop.value = 52;
+  }
+}
 
 async function loadFeed(reset: boolean) {
   if (loadingMore.value) return;
@@ -83,6 +98,7 @@ async function loadFeed(reset: boolean) {
 }
 
 onLoad(() => {
+  measureNavInset();
   void (async () => {
     try {
       const catalog = await getApi().getCatalog();
@@ -164,6 +180,9 @@ function openDrama(id: string) {
 
 <template>
   <view class="home-page">
+    <view class="home-header" :style="{ paddingTop: `${navInsetTop}px` }">
+      <text class="home-title">首页</text>
+    </view>
     <view class="search-row">
       <view class="search-field" @tap="openSearch">
         <image class="magnifier" :src="NAV_ICONS.search" mode="aspectFit" aria-hidden="true" />

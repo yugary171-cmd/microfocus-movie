@@ -19,6 +19,18 @@ import { episodeDurationsFromDrama, formatRewardUnlockCopy } from "../../utils/f
 import { buildDramaShareCard } from "../../utils/drama-share";
 import { FAVORITE_TAB } from "../../utils/inbox-view";
 
+function measureNavInsetTop(): number {
+  try {
+    const info = wx.getSystemInfoSync();
+    const statusBar = Number(info.statusBarHeight) || 20;
+    const menu = wx.getMenuButtonBoundingClientRect();
+    const menuBottom = Number(menu?.bottom);
+    return (Number.isFinite(menuBottom) && menuBottom > 0 ? menuBottom : statusBar + 32) + 8;
+  } catch {
+    return 52;
+  }
+}
+
 Page({
   data: {
     id: "",
@@ -26,7 +38,9 @@ Page({
     loading: true,
     error: "",
     drama: null as DramaDetail | null,
+    navInsetTop: 52,
     summaryExpanded: false,
+    summaryOverflow: false,
     isFavorite: false,
     favoriteLoading: false,
     entitlement: null as EntitlementSummary | null,
@@ -44,7 +58,7 @@ Page({
 
   onLoad(options: Record<string, string | undefined>) {
     const id = options.id ? decodeURIComponent(options.id) : "";
-    this.setData({ id });
+    this.setData({ id, navInsetTop: measureNavInsetTop() });
     if (!id) {
       this.setData({ loading: false, error: "缺少短剧编号" });
       return;
@@ -59,14 +73,19 @@ Page({
     }
   },
 
+  goBack() {
+    wx.navigateBack({ delta: 1 });
+  },
+
   async loadDetail() {
-    this.setData({ loading: true, error: "", summaryExpanded: false });
+    this.setData({ loading: true, error: "", summaryExpanded: false, summaryOverflow: false });
     try {
       const [drama, entitlement] = await Promise.all([
         getApi().getDrama(this.data.id),
         getApi().getEntitlement(this.data.id).catch(() => null)
       ]);
       this.setData({ drama });
+      wx.nextTick(() => this.measureSummaryOverflow());
       this.applyEntitlement(entitlement);
       void this.hydrateFavoriteState();
       trackFunnelEvent("drama_detail_view", { dramaId: drama.id });
@@ -87,6 +106,17 @@ Page({
 
   toggleSummary() {
     this.setData({ summaryExpanded: !this.data.summaryExpanded });
+  },
+
+  measureSummaryOverflow() {
+    wx.createSelectorQuery()
+      .select(".summary-measure")
+      .boundingClientRect((rect) => {
+        const windowWidth = wx.getSystemInfoSync().windowWidth;
+        const lineHeight = (28 * 1.6 * windowWidth) / 750;
+        this.setData({ summaryOverflow: Boolean(rect && rect.height > lineHeight * 2 + 1) });
+      })
+      .exec();
   },
 
   async hydrateFavoriteState() {

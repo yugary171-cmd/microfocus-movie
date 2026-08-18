@@ -16,8 +16,21 @@ const dramas: HomeDrama[] = [
   { id: "mock-secret", title: "她的秘密花园", subtitle: "逆袭 · 全 52 集", heat: "3511 万热度", ranking: "好评榜 No.6", tone: "night" }
 ];
 
+function measureNavInsetTop(): number {
+  try {
+    const info = wx.getSystemInfoSync();
+    const statusBar = Number(info.statusBarHeight) || 20;
+    const menu = wx.getMenuButtonBoundingClientRect();
+    const menuBottom = Number(menu?.bottom);
+    return (Number.isFinite(menuBottom) && menuBottom > 0 ? menuBottom : statusBar + 32) + 8;
+  } catch {
+    return 52;
+  }
+}
+
 Page({
   data: {
+    navInsetTop: 52,
     isMock: true,
     activeChannel: "推荐",
     channels: ["推荐", "战神", "赘婿", "甜宠", "重生", "宫斗", "萌宝", "神医", "兵王"],
@@ -27,6 +40,10 @@ Page({
       { icon: "/assets/icons/icon-play-white.svg", label: "新剧", tone: "cyan" }
     ],
     dramas
+  },
+
+  onLoad() {
+    this.setData({ navInsetTop: measureNavInsetTop() });
   },
 
   openSearch() {
