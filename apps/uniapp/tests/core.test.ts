@@ -6,6 +6,7 @@ import { retryRewardConfirmation, runRewardFlow, describeRewardResult } from "..
 import type { RewardedAdCloseResult, RewardedAdHandle } from "../src/platform/ads";
 import { ApiClientError, toFriendlyErrorMessage } from "../src/utils/errors";
 import { canStartEpisode, isFreeEpisode } from "../src/utils/episode";
+import { getAdjacentEpisode } from "../src/utils/episode-feed";
 import { formatApproximateRemainingEpisodes, formatRemainingTime, formatRewardUnlockCopy } from "../src/utils/format";
 import { playerUrlFromHistory, resolveHistoryPlayerUrl, toHistoryCardViews } from "../src/utils/history-view";
 import { buildDramaShareCard } from "../src/utils/drama-share";
@@ -343,6 +344,20 @@ describe("episode access", () => {
   it("requires current-drama balance for locked episodes", () => {
     expect(canStartEpisode(FREE_EPISODE_COUNT + 1, 0)).toBe(false);
     expect(canStartEpisode(FREE_EPISODE_COUNT + 1, 1)).toBe(true);
+  });
+});
+
+describe("vertical episode feed", () => {
+  const episodes = [{ id: "episode-1" }, { id: "episode-2" }, { id: "episode-3" }];
+
+  it("moves to the next episode and stops at the last episode", () => {
+    expect(getAdjacentEpisode(episodes, "episode-1", 1)).toEqual(episodes[1]);
+    expect(getAdjacentEpisode(episodes, "episode-3", 1)).toBeUndefined();
+  });
+
+  it("moves back to the previous episode and stops at the first episode", () => {
+    expect(getAdjacentEpisode(episodes, "episode-3", -1)).toEqual(episodes[1]);
+    expect(getAdjacentEpisode(episodes, "episode-1", -1)).toBeUndefined();
   });
 });
 

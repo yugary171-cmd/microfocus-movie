@@ -29,6 +29,7 @@ import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
 import { canStartEpisode } from "../../utils/episode";
+import { getAdjacentEpisode } from "../../utils/episode-feed";
 import { formatEngagementCount, shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
 import { FAVORITE_TAB, LIKE_TAB } from "../../utils/inbox-view";
 import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
@@ -58,6 +59,10 @@ const holdBoosting = ref(false);
 const speedDrawerOpen = ref(false);
 const episodeDrawerOpen = ref(false);
 const activeEpisodeRange = ref(0);
+const feedIntoView = ref("");
+const feedViewportHeight = ref(0);
+const feedScrollSettling = ref(false);
+const episodeTransitioning = ref(false);
 const unlockVisible = ref(false);
 const unlockEpisode = ref<EpisodeSummary | null>(null);
 const entitlement = ref<{ remainingSeconds?: number | null } | null>(null);
@@ -120,6 +125,31 @@ const episodeRanges = computed(() => {
   }
   return ranges;
 });
+
+const feedEpisodes = computed(() => (Array.isArray(drama.value?.episodes) ? drama.value.episodes : []));
+
+function episodeViewId(id: string): string {
+  return `episode-feed-${id}`;
+}
+
+function measureFeedViewport() {
+  uni.createSelectorQuery()
+    .select(".episode-feed")
+    .boundingClientRect((rect) => {
+      const node = Array.isArray(rect) ? rect[0] : rect;
+      const height = Number(node?.height);
+      if (Number.isFinite(height) && height > 0) feedViewportHeight.value = height;
+    })
+    .exec();
+}
+
+function focusEpisodeInFeed(id: string) {
+  feedScrollSettling.value = true;
+  feedIntoView.value = episodeViewId(id);
+  setTimeout(() => {
+    feedScrollSettling.value = false;
+  }, 260);
+}
 
 function clearTimers() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -287,6 +317,7 @@ async function openLease() {
       getApi().getDrama(dramaId.value).catch(() => null)
     ]);
     drama.value = detail;
+    feedIntoView.value = episodeViewId(episodeId.value);
     episodeDurations = episodeDurationsFromDrama(detail);
     unlockCopy.value = detail?.title ? `${detail.title}当前可用观看时长。` : "";
     if (!pageVisible) {
@@ -299,6 +330,7 @@ async function openLease() {
     started.value = true;
     startTimers(created.heartbeatIntervalSeconds || HEARTBEAT_INTERVAL_SECONDS);
     applyLease(created);
+    void nextTick(() => measureFeedViewport());
     void hydrateLibraryFlags();
     void loadEntitlement();
   } catch (caught) {
@@ -387,24 +419,47 @@ async function startEpisode(episode: EpisodeSummary) {
   error.value = "";
   notice.value = "";
   closeDrawers();
+  focusEpisodeInFeed(episode.id);
   await openLease();
 }
 
-async function selectEpisode(episode: EpisodeSummary) {
-  if (!drama.value || !episode) return;
-  const remaining = entitlement.value?.remainingSeconds ?? 0;
-  if (!canStartEpisode(episode.episodeNumber, remaining)) {
-    if (!getStoredSession() && !(await loginForLockedEpisode())) return;
-    const refreshedRemaining = entitlement.value?.remainingSeconds ?? 0;
-    if (!canStartEpisode(episode.episodeNumber, refreshedRemaining)) {
-      unlockEpisode.value = episode;
-      unlockVisible.value = true;
-      rewardError.value = "";
-      closeDrawers();
-      return;
+async function requestEpisodePlayback(episode: EpisodeSummary) {
+  if (episodeTransitioning.value || !episode || episode.id === episodeId.value) return;
+  episodeTransitioning.value = true;
+  try {
+    if (!drama.value || !episode) return;
+    const remaining = entitlement.value?.remainingSeconds ?? 0;
+    if (!canStartEpisode(episode.episodeNumber, remaining)) {
+      if (!getStoredSession() && !(await loginForLockedEpisode())) return;
+      const refreshedRemaining = entitlement.value?.remainingSeconds ?? 0;
+      if (!canStartEpisode(episode.episodeNumber, refreshedRemaining)) {
+        unlockEpisode.value = episode;
+        unlockVisible.value = true;
+        rewardError.value = "";
+        closeDrawers();
+        focusEpisodeInFeed(episodeId.value);
+        return;
+      }
     }
+    await startEpisode(episode);
+  } finally {
+    episodeTransitioning.value = false;
   }
-  await startEpisode(episode);
+}
+
+async function selectEpisode(episode: EpisodeSummary) {
+  await requestEpisodePlayback(episode);
+}
+
+async function onEpisodeFeedScroll(event: Event) {
+  if (feedScrollSettling.value || episodeTransitioning.value) return;
+  const detail = (event as unknown as { detail?: { scrollTop?: number } }).detail;
+  const scrollTop = Number(detail?.scrollTop);
+  const height = feedViewportHeight.value;
+  if (!Number.isFinite(scrollTop) || height <= 0) return;
+  const target = feedEpisodes.value[Math.round(scrollTop / height)];
+  if (!target || target.id === episodeId.value) return;
+  await requestEpisodePlayback(target);
 }
 
 function closeUnlock() {
@@ -475,6 +530,8 @@ function onEnded() {
   isPlaying.value = false;
   endHoldBoost();
   void persistProgress();
+  const nextEpisode = getAdjacentEpisode(feedEpisodes.value, episodeId.value, 1);
+  if (nextEpisode) void requestEpisodePlayback(nextEpisode);
 }
 
 function onTimeUpdate(event: Event) {
@@ -679,28 +736,47 @@ onUnload(() => {
         <view class="state-title">尚未配置可播放视频</view>
         <view>服务端已返回播放授权，但没有视频地址。请先配置真实 VOD 播放地址。</view>
       </view>
-      <video
+      <scroll-view
         v-else
-        id="player"
-        class="video"
-        :src="playbackUrl"
-        autoplay
-        :muted="false"
-        :obey-mute-switch="false"
-        :controls="false"
-        :show-center-play-btn="false"
-        enable-progress-gesture
-        :custom-cache="false"
-        object-fit="contain"
-        :aria-label="`${dramaTitle}第${episodeNumber}集播放器`"
-        @play="onPlay"
-        @pause="onPause"
-        @waiting="onWaiting"
-        @ended="onEnded"
-        @timeupdate="onTimeUpdate"
-        @error="onVideoError"
-        @loadedmetadata="onVideoReady"
-      />
+        class="episode-feed"
+        scroll-y
+        enhanced
+        :scroll-into-view="feedIntoView"
+        :scroll-with-animation="true"
+        :show-scrollbar="false"
+        aria-label="暂停、播放或长按加速"
+        @scroll="onEpisodeFeedScroll"
+        @tap="togglePlayback"
+        @longpress="startHoldBoost"
+        @touchend="endHoldBoost"
+        @touchcancel="endHoldBoost"
+      >
+        <view v-for="episode in feedEpisodes" :id="episodeViewId(episode.id)" :key="episode.id" class="episode-page">
+          <video
+            v-if="episode.id === episodeId"
+            id="player"
+            class="video"
+            :src="playbackUrl"
+            autoplay
+            :muted="false"
+            :obey-mute-switch="false"
+            :controls="false"
+            :show-center-play-btn="false"
+            enable-progress-gesture
+            :custom-cache="false"
+            object-fit="contain"
+            :aria-label="`${dramaTitle}第${episodeNumber}集播放器`"
+            @play="onPlay"
+            @pause="onPause"
+            @waiting="onWaiting"
+            @ended="onEnded"
+            @timeupdate="onTimeUpdate"
+            @error="onVideoError"
+            @loadedmetadata="onVideoReady"
+          />
+          <view v-else class="episode-placeholder" aria-hidden="true">第{{ episode.episodeNumber }}集</view>
+        </view>
+      </scroll-view>
       <view v-if="hasPlaybackUrl" class="immersive-topbar" :style="{ paddingTop: `${statusBarInset}px` }">
         <view class="topbar-back" role="button" aria-label="返回" @tap="goBack">‹</view>
         <view class="topbar-episode">第{{ episodeNumber }}集</view>
@@ -709,16 +785,6 @@ onUnload(() => {
           <text>倍速</text>
         </view>
       </view>
-      <view
-        v-if="hasPlaybackUrl"
-        class="playback-toggle"
-        role="button"
-        aria-label="暂停、播放或长按加速"
-        @tap="togglePlayback"
-        @longpress="startHoldBoost"
-        @touchend="endHoldBoost"
-        @touchcancel="endHoldBoost"
-      />
       <view v-if="hasPlaybackUrl && !isPlaying" class="play-mark" aria-hidden="true"><view class="play-triangle" /></view>
       <view v-else-if="hasPlaybackUrl && holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
       <PlayerActions
