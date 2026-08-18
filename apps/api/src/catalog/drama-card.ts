@@ -13,6 +13,7 @@ export function toDramaCard(drama: {
   category: string;
   tagsJson: unknown;
   recommendationRank: number;
+  publishedAt: Date | null;
   rightsRecords: Array<{ licenseNumber: string }>;
   _count: { episodes: number };
 }): DramaCard {
@@ -27,6 +28,7 @@ export function toDramaCard(drama: {
       : [],
     episodeCount: drama._count.episodes,
     recommendationRank: drama.recommendationRank,
-    licenseNumber: drama.rightsRecords[0]?.licenseNumber ?? ""
+    licenseNumber: drama.rightsRecords[0]?.licenseNumber ?? "",
+    publishedAt: drama.publishedAt?.toISOString() ?? null
   };
 }

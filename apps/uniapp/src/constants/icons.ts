@@ -18,7 +18,9 @@ export const ACTION_ICONS = {
   share: "/static/icons/icon-share.svg",
   play: "/static/icons/icon-play.svg",
   pause: "/static/icons/icon-pause.svg",
-  fire: "/static/icons/icon-fire.svg"
+  fire: "/static/icons/icon-fire.svg",
+  fullscreen: "/static/icons/icon-full-screen.svg",
+  fullscreenExit: "/static/icons/icon-off-screen.svg"
 } as const;
 
 export const NAV_ICONS = {

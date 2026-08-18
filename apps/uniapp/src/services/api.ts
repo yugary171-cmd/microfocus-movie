@@ -208,7 +208,7 @@ const realApi: ClientApi = {
       API_ROUTES.search,
       "GET",
       undefined,
-      { q, category, page, subject: filters?.subject || "", setting: filters?.setting || "", background: filters?.background || "", ...(filters?.tags ? { tags: filters.tags.join(",") } : {}) }
+      { q, category, page, subject: filters?.subject || "", setting: filters?.setting || "", background: filters?.background || "", ...(filters?.tags ? { tags: filters.tags.join(",") } : {}), ...(filters?.publishedAfter ? { publishedAfter: filters.publishedAfter } : {}) }
     );
     return Array.isArray(result)
       ? { items: result, page, hasMore: false }

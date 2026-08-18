@@ -131,7 +131,7 @@ function openRankingPage() {
 }
 
 function openNewDrama() {
-  uni.navigateTo({ url: "/pages/search/index" });
+  uni.navigateTo({ url: "/pages/new-drama/index" });
 }
 
 function selectCategory(category: string) {

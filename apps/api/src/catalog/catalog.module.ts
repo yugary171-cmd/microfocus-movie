@@ -67,7 +67,8 @@ export class CatalogController {
     @Query("subject") subject = "",
     @Query("setting") setting = "",
     @Query("background") background = "",
-    @Query("tags") tags = ""
+    @Query("tags") tags = "",
+    @Query("publishedAfter") publishedAfter = ""
   ): Promise<{
     items: DramaCard[];
     page: number;
@@ -83,11 +84,13 @@ export class CatalogController {
     if (page > SEARCH_MAX_PAGE) {
       return { items: [], page, pageSize, total: 0, totalPages: 0 };
     }
+    const boundedPublishedAfter = validPublishedAfter(publishedAfter);
     const filters: DramaSearchFilters = {
       subject: boundListQuery(subject),
       setting: boundListQuery(setting),
       background: boundListQuery(background),
-      tags: tags.split(",").map((tag) => boundListQuery(tag)).filter(Boolean)
+      tags: tags.split(",").map((tag) => boundListQuery(tag)).filter(Boolean),
+      ...(boundedPublishedAfter ? { publishedAfter: boundedPublishedAfter } : {})
     };
     const where = publicSearchWhere(q, normalizedCategory, filters);
     const [dramas, total] = await this.prisma.$transaction([
@@ -157,8 +160,14 @@ export function publicSearchWhere(q: string, category: string, filters: DramaSea
     },
     ...(category ? { category } : {}),
     ...(q ? { OR: [{ title: { contains: q } }, { summary: { contains: q } }] } : {}),
-    ...(selectedTags.length ? { AND: selectedTags.map((tag) => ({ tagsJson: { array_contains: tag } })) } : {})
+    ...(selectedTags.length ? { AND: selectedTags.map((tag) => ({ tagsJson: { array_contains: tag } })) } : {}),
+    ...(filters.publishedAfter ? { publishedAt: { gte: new Date(filters.publishedAfter) } } : {})
   };
+}
+
+function validPublishedAfter(value: string): string | undefined {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
 }
 
 function parsePage(value: string): number {

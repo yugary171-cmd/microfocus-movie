@@ -452,6 +452,7 @@ export interface DramaCard {
   episodeCount: number;
   recommendationRank: number;
   licenseNumber: string;
+  publishedAt?: string | null;
 }
 
 export interface EpisodeSummary {
@@ -486,6 +487,7 @@ export interface DramaSearchFilters {
   setting?: string;
   background?: string;
   tags?: string[];
+  publishedAfter?: string;
 }
 
 export interface EntitlementGrantView {

@@ -145,7 +145,12 @@ const fillerDramas: DramaDetail[] = fillerCategories.flatMap((category, category
 
 const dramas: DramaDetail[] = seedDramas.concat(extraSeedDramas, fillerDramas);
 
-const cards = dramas.map(({ rightsHolder: _rightsHolder, episodes: _episodes, ...card }) => card);
+const cards = dramas.map(({ rightsHolder: _rightsHolder, episodes: _episodes, ...card }, index) => ({
+  ...card,
+  tags: [...card.tags, index % 2 === 0 ? "男频" : "女频"],
+  // Keep enough deterministic recent Mock content to exercise the first 20 and the next page.
+  publishedAt: new Date(Date.now() - Math.min(index, 27) * 18 * 60 * 60 * 1000).toISOString()
+}));
 
 const catalog: CatalogResponse = {
   featured: cards.slice(0, 2),
@@ -213,7 +218,9 @@ export const mockApi: ClientApi = {
         item.summary.toLowerCase().includes(normalized);
       const selected = [filters?.subject, filters?.setting, filters?.background, ...(filters?.tags ?? [])].filter(Boolean);
       const filterMatch = selected.every((tag) => item.tags.includes(tag as string) || item.category === tag);
-      return categoryMatch && queryMatch && filterMatch;
+      const publishedAfter = filters?.publishedAfter ? Date.parse(filters.publishedAfter) : Number.NaN;
+      const publishedMatch = !Number.isFinite(publishedAfter) || Date.parse(item.publishedAt || "") >= publishedAfter;
+      return categoryMatch && queryMatch && filterMatch && publishedMatch;
     });
     const safePage = Number.isInteger(page) && page > 0 ? page : 1;
     return delay(

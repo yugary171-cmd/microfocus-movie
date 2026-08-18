@@ -19,6 +19,7 @@
     { "path": "pages/profile/nickname", "style": { "navigationStyle": "custom", "navigationBarTextStyle": "white", "backgroundColor": "#000000" } },
     { "path": "pages/profile/signature", "style": { "navigationStyle": "custom", "navigationBarTextStyle": "white", "backgroundColor": "#000000" } },
     { "path": "pages/search/index", "style": { "navigationBarTitleText": "搜索", "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#ffffff", "onReachBottomDistance": 80 } },
+    { "path": "pages/new-drama/index", "style": { "navigationBarTitleText": "新剧推荐", "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#f7f7f8", "onReachBottomDistance": 120 } },
     { "path": "pages/category/index", "style": { "navigationBarTitleText": "筛选", "navigationStyle": "custom", "navigationBarTextStyle": "black", "backgroundColor": "#ffffff", "onReachBottomDistance": 80 } },
     { "path": "pages/drama/index", "style": { "navigationStyle": "custom", "navigationBarTitleText": "短剧详情", "navigationBarTextStyle": "white", "backgroundColor": "#0b0c0f" } },
     { "path": "pages/player/index", "style": { "navigationBarTitleText": "播放", "navigationStyle": "custom", "backgroundColor": "#050506" } },

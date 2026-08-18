@@ -6,6 +6,7 @@ import { createRewardedVideoAd } from "../../platform/ads";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
 import RewardUnlockSheet from "../../components/reward-unlock-sheet/index.vue";
+import { ACTION_ICONS } from "../../constants/icons";
 import {
   createVideoContext,
   getNetworkType,
@@ -59,10 +60,9 @@ const holdBoosting = ref(false);
 const speedDrawerOpen = ref(false);
 const episodeDrawerOpen = ref(false);
 const activeEpisodeRange = ref(0);
-const feedIntoView = ref("");
-const feedViewportHeight = ref(0);
-const feedScrollSettling = ref(false);
+const feedCurrentIndex = ref(0);
 const episodeTransitioning = ref(false);
+const deviceFullscreen = ref(false);
 const unlockVisible = ref(false);
 const unlockEpisode = ref<EpisodeSummary | null>(null);
 const entitlement = ref<{ remainingSeconds?: number | null } | null>(null);
@@ -80,10 +80,7 @@ const likeCount = ref(9712);
 const favoriteLabel = computed(() => formatEngagementCount(favoriteCount.value));
 const commentLabel = computed(() => formatEngagementCount(commentCount.value));
 const likeLabel = computed(() => formatEngagementCount(likeCount.value));
-const progressPercent = computed(() => {
-  if (!durationSeconds.value) return 0;
-  return Math.min(100, Math.max(0, (currentPosition.value / durationSeconds.value) * 100));
-});
+const progressMax = computed(() => Math.max(1, durationSeconds.value));
 
 let controller: PlaybackHeartbeatController | null = null;
 let heartbeatTimer = 0;
@@ -132,23 +129,13 @@ function episodeViewId(id: string): string {
   return `episode-feed-${id}`;
 }
 
-function measureFeedViewport() {
-  uni.createSelectorQuery()
-    .select(".episode-feed")
-    .boundingClientRect((rect) => {
-      const node = Array.isArray(rect) ? rect[0] : rect;
-      const height = Number(node?.height);
-      if (Number.isFinite(height) && height > 0) feedViewportHeight.value = height;
-    })
-    .exec();
+function isMountedEpisode(index: number): boolean {
+  return Math.abs(index - feedCurrentIndex.value) <= 1;
 }
 
-function focusEpisodeInFeed(id: string) {
-  feedScrollSettling.value = true;
-  feedIntoView.value = episodeViewId(id);
-  setTimeout(() => {
-    feedScrollSettling.value = false;
-  }, 260);
+function setFeedEpisode(id: string) {
+  const index = feedEpisodes.value.findIndex((episode) => episode.id === id);
+  if (index >= 0) feedCurrentIndex.value = index;
 }
 
 function clearTimers() {
@@ -317,7 +304,7 @@ async function openLease() {
       getApi().getDrama(dramaId.value).catch(() => null)
     ]);
     drama.value = detail;
-    feedIntoView.value = episodeViewId(episodeId.value);
+    setFeedEpisode(episodeId.value);
     episodeDurations = episodeDurationsFromDrama(detail);
     unlockCopy.value = detail?.title ? `${detail.title}当前可用观看时长。` : "";
     if (!pageVisible) {
@@ -330,7 +317,6 @@ async function openLease() {
     started.value = true;
     startTimers(created.heartbeatIntervalSeconds || HEARTBEAT_INTERVAL_SECONDS);
     applyLease(created);
-    void nextTick(() => measureFeedViewport());
     void hydrateLibraryFlags();
     void loadEntitlement();
   } catch (caught) {
@@ -419,7 +405,7 @@ async function startEpisode(episode: EpisodeSummary) {
   error.value = "";
   notice.value = "";
   closeDrawers();
-  focusEpisodeInFeed(episode.id);
+  setFeedEpisode(episode.id);
   await openLease();
 }
 
@@ -437,7 +423,7 @@ async function requestEpisodePlayback(episode: EpisodeSummary) {
         unlockVisible.value = true;
         rewardError.value = "";
         closeDrawers();
-        focusEpisodeInFeed(episodeId.value);
+        setFeedEpisode(episodeId.value);
         return;
       }
     }
@@ -451,15 +437,29 @@ async function selectEpisode(episode: EpisodeSummary) {
   await requestEpisodePlayback(episode);
 }
 
-async function onEpisodeFeedScroll(event: Event) {
-  if (feedScrollSettling.value || episodeTransitioning.value) return;
-  const detail = (event as unknown as { detail?: { scrollTop?: number } }).detail;
-  const scrollTop = Number(detail?.scrollTop);
-  const height = feedViewportHeight.value;
-  if (!Number.isFinite(scrollTop) || height <= 0) return;
-  const target = feedEpisodes.value[Math.round(scrollTop / height)];
-  if (!target || target.id === episodeId.value) return;
+async function onEpisodeFeedChange(event: Event) {
+  const nextIndex = Number((event as unknown as { detail?: { current?: number } }).detail?.current);
+  const target = feedEpisodes.value[nextIndex];
+  const previousIndex = feedCurrentIndex.value;
+  if (!target || nextIndex === previousIndex) return;
+  if (unlockVisible.value) {
+    await resetFeedToIndex(previousIndex, nextIndex);
+    return;
+  }
+  const needsUnlock = !canStartEpisode(
+    target.episodeNumber,
+    entitlement.value?.remainingSeconds ?? 0
+  );
+  if (needsUnlock) await resetFeedToIndex(previousIndex, nextIndex);
   await requestEpisodePlayback(target);
+}
+
+async function resetFeedToIndex(previousIndex: number, attemptedIndex: number) {
+  // Force the native swiper to observe both values. Assigning the old value
+  // alone is ignored because Vue still considers it unchanged.
+  feedCurrentIndex.value = attemptedIndex;
+  await nextTick();
+  feedCurrentIndex.value = previousIndex;
 }
 
 function closeUnlock() {
@@ -556,13 +556,10 @@ function onVideoReady(event: Event) {
   if (currentPosition.value > 0) videoContext?.seek(currentPosition.value);
 }
 
-function seekFromProgress(event: Event) {
-  if (!videoContext || !durationSeconds.value) return;
-  const detail = (event as unknown as { detail?: { x?: number } }).detail;
-  const x = Number(detail?.x);
-  const width = Number((event.currentTarget as unknown as { offsetWidth?: number })?.offsetWidth);
-  if (!Number.isFinite(x) || !Number.isFinite(width) || width <= 0) return;
-  const nextPosition = Math.min(durationSeconds.value, Math.max(0, (x / width) * durationSeconds.value));
+function onProgressChange(event: Event) {
+  if (!videoContext) return;
+  const nextPosition = Number((event as unknown as { detail?: { value?: number } }).detail?.value);
+  if (!Number.isFinite(nextPosition)) return;
   videoContext.seek(nextPosition);
   currentPosition.value = nextPosition;
 }
@@ -613,11 +610,8 @@ function goBack() {
   uni.navigateBack();
 }
 
-function enterFullScreen() {
-  const context = videoContext as unknown as {
-    requestFullScreen?: (options?: { direction?: number }) => void;
-  } | null;
-  context?.requestFullScreen?.({ direction: 0 });
+function toggleDeviceFullscreen() {
+  deviceFullscreen.value = !deviceFullscreen.value;
 }
 
 function requireSocialUser(): boolean {
@@ -723,7 +717,7 @@ onUnload(() => {
 </script>
 
 <template>
-  <view class="player-page">
+  <view class="player-page" :class="{ 'device-fullscreen': deviceFullscreen }">
     <internal-banner :visible="isMock" />
     <view class="stage" :class="{ 'stage-empty': loading || error || !hasPlaybackUrl }">
       <view v-if="loading" class="player-state" role="status">正在获取播放授权…</view>
@@ -736,24 +730,20 @@ onUnload(() => {
         <view class="state-title">尚未配置可播放视频</view>
         <view>服务端已返回播放授权，但没有视频地址。请先配置真实 VOD 播放地址。</view>
       </view>
-      <scroll-view
+      <swiper
         v-else
         class="episode-feed"
-        scroll-y
-        enhanced
-        :scroll-into-view="feedIntoView"
-        :scroll-with-animation="true"
-        :show-scrollbar="false"
+        vertical
+        :circular="false"
+        :current="feedCurrentIndex"
+        :duration="280"
         aria-label="暂停、播放或长按加速"
-        @scroll="onEpisodeFeedScroll"
-        @tap="togglePlayback"
-        @longpress="startHoldBoost"
-        @touchend="endHoldBoost"
-        @touchcancel="endHoldBoost"
+        @change="onEpisodeFeedChange"
       >
-        <view v-for="episode in feedEpisodes" :id="episodeViewId(episode.id)" :key="episode.id" class="episode-page">
+        <swiper-item v-for="(episode, index) in feedEpisodes" :id="episodeViewId(episode.id)" :key="episode.id" class="episode-slide">
+          <view class="episode-page">
           <video
-            v-if="episode.id === episodeId"
+            v-if="isMountedEpisode(index) && episode.id === episodeId"
             id="player"
             class="video"
             :src="playbackUrl"
@@ -774,9 +764,19 @@ onUnload(() => {
             @error="onVideoError"
             @loadedmetadata="onVideoReady"
           />
-          <view v-else class="episode-placeholder" aria-hidden="true">第{{ episode.episodeNumber }}集</view>
-        </view>
-      </scroll-view>
+            <view v-else class="episode-placeholder" aria-hidden="true">第{{ episode.episodeNumber }}集</view>
+            <view
+              class="episode-hit-layer"
+              role="button"
+              aria-label="暂停、播放或长按加速"
+              @tap="togglePlayback"
+              @longpress="startHoldBoost"
+              @touchend="endHoldBoost"
+              @touchcancel="endHoldBoost"
+            />
+          </view>
+        </swiper-item>
+      </swiper>
       <view v-if="hasPlaybackUrl" class="immersive-topbar" :style="{ paddingTop: `${statusBarInset}px` }">
         <view class="topbar-back" role="button" aria-label="返回" @tap="goBack">‹</view>
         <view class="topbar-episode">第{{ episodeNumber }}集</view>
@@ -788,6 +788,7 @@ onUnload(() => {
       <view v-if="hasPlaybackUrl && !isPlaying" class="play-mark" aria-hidden="true"><view class="play-triangle" /></view>
       <view v-else-if="hasPlaybackUrl && holdBoosting" class="boost-mark" aria-live="polite">{{ holdBoostRate() }}x</view>
       <PlayerActions
+        v-if="hasPlaybackUrl && !deviceFullscreen"
         class="stage-actions"
         :favorited="isFavorite"
         :liked="isLiked"
@@ -800,12 +801,23 @@ onUnload(() => {
         @like="toggleLike"
         @share="shareCurrent"
       />
-      <view v-if="hasPlaybackUrl" class="video-caption" role="button" aria-label="进入短剧详情" @tap="goToDrama">
+      <view v-if="hasPlaybackUrl && !deviceFullscreen" class="video-caption" role="button" aria-label="进入短剧详情" @tap="goToDrama">
         <view class="caption-badge">弹</view>
         <view class="caption-title">第{{ episodeNumber }}集｜{{ dramaTitle }} <text class="caption-chevron">›</text></view>
       </view>
-      <view v-if="hasPlaybackUrl" class="progress-bar" role="slider" aria-label="播放进度" @tap.stop="seekFromProgress">
-        <view class="progress-track"><view class="progress-fill" :style="{ width: `${progressPercent}%` }"><view class="progress-thumb" /></view></view>
+      <view v-if="hasPlaybackUrl" class="progress-bar">
+        <slider
+          :value="currentPosition"
+          :max="progressMax"
+          min="0"
+          :disabled="!durationSeconds"
+          activeColor="#ff7c32"
+          backgroundColor="rgba(255, 255, 255, .32)"
+          block-color="#fff"
+          block-size="18"
+          aria-label="播放进度"
+          @change="onProgressChange"
+        />
       </view>
     </view>
 
@@ -815,7 +827,12 @@ onUnload(() => {
         <text>选集 · 全{{ drama?.episodeCount || 0 }}集</text>
         <text class="episode-bar-arrow">⌃</text>
       </view>
-      <view class="fullscreen-button" role="button" aria-label="全屏播放" @tap="enterFullScreen"><view class="fullscreen-glyph" /></view>
+      <view
+        class="fullscreen-button"
+        role="button"
+        :aria-label="deviceFullscreen ? '退出全屏' : '全屏播放'"
+        @tap="toggleDeviceFullscreen"
+      ><image class="fullscreen-icon" :src="deviceFullscreen ? ACTION_ICONS.fullscreenExit : ACTION_ICONS.fullscreen" mode="aspectFit" aria-hidden="true" /></view>
     </view>
 
     <view v-if="speedDrawerOpen || episodeDrawerOpen" class="drawer-mask" @tap="closeDrawers">

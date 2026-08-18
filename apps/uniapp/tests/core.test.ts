@@ -662,6 +662,24 @@ describe("home feed pagination", () => {
     expect(second.items[0]?.id).not.toBe(first.items[0]?.id);
   });
 
+  it("returns only the last 20 days of Mock dramas in paged batches", async () => {
+    const { mockApi } = await import("../src/mocks/data");
+    const publishedAfter = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString();
+    const first = await mockApi.search("", "", 1, { publishedAfter });
+    const second = await mockApi.search("", "", 2, { publishedAfter });
+    expect(first.items).toHaveLength(20);
+    expect(first.hasMore).toBe(true);
+    expect(second.items.length).toBeGreaterThan(0);
+    expect(second.hasMore).toBe(false);
+    expect([...first.items, ...second.items].every((item) => Date.parse(item.publishedAt || "") >= Date.parse(publishedAfter))).toBe(true);
+    const male = await mockApi.search("", "", 1, { publishedAfter, tags: ["男频"] });
+    const female = await mockApi.search("", "", 1, { publishedAfter, tags: ["女频"] });
+    expect(male.items.length).toBeGreaterThan(0);
+    expect(female.items.length).toBeGreaterThan(0);
+    expect(male.items.every((item) => item.tags.includes("男频"))).toBe(true);
+    expect(female.items.every((item) => item.tags.includes("女频"))).toBe(true);
+  });
+
   it("treats search pages beyond 100 as empty results", async () => {
     const { mockApi } = await import("../src/mocks/data");
     const { SEARCH_MAX_PAGE } = await import("@microfocus/contracts");

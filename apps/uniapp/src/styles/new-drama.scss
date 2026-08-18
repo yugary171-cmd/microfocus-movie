@@ -1,0 +1,30 @@
+.new-drama-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 0 24rpx calc(48rpx + env(safe-area-inset-bottom));
+  color: #19191d;
+  background: #f7f7f8;
+}
+.new-drama-header { display: flex; align-items: center; min-height: 64rpx; box-sizing: content-box; }
+.back-button { width: 64rpx; margin: 0; padding: 0; color: #19191d; background: transparent; border: 0; font-size: 64rpx; font-weight: 300; line-height: 64rpx; text-align: left; }
+.page-title { flex: 1; color: #19191d; font-size: 34rpx; font-weight: 700; text-align: center; }
+.header-spacer { width: 64rpx; }
+.gender-tabs { display: flex; gap: 18rpx; margin: 20rpx 0 24rpx; }
+.gender-tab { margin: 0; padding: 14rpx 26rpx; color: #696970; background: #ececef; border: 0; border-radius: 16rpx; font-size: 28rpx; line-height: 1.1; }
+.gender-tab.active { color: #f07b29; background: #fff0df; font-weight: 700; }
+.mock-note { margin: 0 0 20rpx; color: #b8753e; font-size: 20rpx; }
+.new-drama-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28rpx 14rpx; }
+.new-drama-card { display: block; min-width: 0; margin: 0; padding: 0; color: #19191d; background: transparent; border: 0; text-align: left; line-height: 1.25; }
+.new-poster { position: relative; width: 100%; aspect-ratio: 0.68; overflow: hidden; border-radius: 18rpx; background: #24252a; }
+.poster-image { display: block; width: 100%; height: 100%; }
+.poster-placeholder { display: flex; align-items: flex-end; width: 100%; height: 100%; padding: 14rpx; box-sizing: border-box; background: linear-gradient(160deg, rgba(255,255,255,.08), transparent 48%), radial-gradient(circle at 70% 72%, rgba(255,255,255,.22) 0 18%, transparent 19%), linear-gradient(155deg, #334353, #121722 62%, #606b73); }
+.poster-placeholder text { color: rgba(255,255,255,.92); font-size: 28rpx; font-weight: 800; text-shadow: 0 2rpx 8rpx rgba(0,0,0,.65); }
+.poster-rose .poster-placeholder { background: linear-gradient(155deg, #613545, #bd6573 52%, #291521); }
+.poster-gold .poster-placeholder { background: linear-gradient(155deg, #573a23, #bd8349 52%, #33233b); }
+.poster-jade .poster-placeholder { background: linear-gradient(155deg, #274438, #84936e 52%, #4a3b32); }
+.poster-violet .poster-placeholder { background: linear-gradient(155deg, #392b57, #9e75bc 52%, #4b3041); }
+.poster-night .poster-placeholder { background: linear-gradient(155deg, #1a3442, #2a5b6a 52%, #101318); }
+.new-badge { position: absolute; top: 0; right: 0; padding: 9rpx 12rpx; color: #fff; background: #ff861f; border-radius: 0 0 0 14rpx; font-size: 19rpx; font-weight: 700; }
+.new-title { display: block; overflow: hidden; margin-top: 14rpx; color: #1d1d22; font-size: 27rpx; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.new-meta { display: block; overflow: hidden; margin-top: 8rpx; color: #7f7f86; font-size: 21rpx; text-overflow: ellipsis; white-space: nowrap; }
+.feed-state { margin: 28rpx 0; color: #96969c; font-size: 22rpx; text-align: center; }
