@@ -1,5 +1,6 @@
 import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocus/contracts";
 import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import { dramaInLibraryPages, setDramaLibraryFlag } from "../../services/library";
 import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
@@ -14,15 +15,9 @@ import { wechatAdapter } from "../../services/wechat-adapter";
 import { canStartEpisode, isFreeEpisode } from "../../utils/episode";
 import { getDeviceId } from "../../utils/device";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import {
-  ENTITLEMENT_INCOMPLETE_AD_LABEL,
-  ENTITLEMENT_SCOPE_LABEL,
-  episodeDurationsFromDrama,
-  formatApproximateRemainingEpisodes,
-  formatDateTime,
-  formatRewardUnlockCopy
-} from "../../utils/format";
+import { episodeDurationsFromDrama, formatRewardUnlockCopy } from "../../utils/format";
 import { buildDramaShareCard } from "../../utils/drama-share";
+import { FAVORITE_TAB } from "../../utils/inbox-view";
 
 Page({
   data: {
@@ -31,11 +26,10 @@ Page({
     loading: true,
     error: "",
     drama: null as DramaDetail | null,
+    summaryExpanded: false,
+    isFavorite: false,
+    favoriteLoading: false,
     entitlement: null as EntitlementSummary | null,
-    remainingLabel: "约 0 集",
-    expiryLabel: "暂无到期时间",
-    scopeLabel: ENTITLEMENT_SCOPE_LABEL,
-    incompleteAdLabel: ENTITLEMENT_INCOMPLETE_AD_LABEL,
     unlockCopy: formatRewardUnlockCopy("", []),
     unlockVisible: false,
     unlockEpisode: null as EpisodeSummary | null,
@@ -59,11 +53,14 @@ Page({
   },
 
   onShow() {
-    if (this.data.id && this.data.drama) void this.loadEntitlement();
+    if (this.data.id && this.data.drama) {
+      void this.loadEntitlement();
+      void this.hydrateFavoriteState();
+    }
   },
 
   async loadDetail() {
-    this.setData({ loading: true, error: "" });
+    this.setData({ loading: true, error: "", summaryExpanded: false });
     try {
       const [drama, entitlement] = await Promise.all([
         getApi().getDrama(this.data.id),
@@ -71,6 +68,7 @@ Page({
       ]);
       this.setData({ drama });
       this.applyEntitlement(entitlement);
+      void this.hydrateFavoriteState();
       trackFunnelEvent("drama_detail_view", { dramaId: drama.id });
       wx.setNavigationBarTitle({ title: drama.title || "短剧详情" });
       if (!this.data.isMock) {
@@ -87,6 +85,42 @@ Page({
     }
   },
 
+  toggleSummary() {
+    this.setData({ summaryExpanded: !this.data.summaryExpanded });
+  },
+
+  async hydrateFavoriteState() {
+    if (!this.data.id || (!this.data.isMock && !getStoredSession())) return;
+    try {
+      const isFavorite = await dramaInLibraryPages(
+        (page) => getApi().social.getFavorites(page),
+        this.data.id
+      );
+      this.setData({ isFavorite });
+    } catch {
+      // Keep the local flag when the library cannot be read.
+    }
+  },
+
+  async toggleFavorite() {
+    if (this.data.favoriteLoading || !this.data.id) return;
+    if (!this.data.isMock && !getStoredSession()) {
+      wx.showToast({ title: "请先登录后再收藏", icon: "none" });
+      return;
+    }
+    const next = !this.data.isFavorite;
+    this.setData({ favoriteLoading: true });
+    try {
+      await setDramaLibraryFlag(FAVORITE_TAB, this.data.id, next);
+      this.setData({ isFavorite: next });
+      wx.showToast({ title: next ? "已收藏到我的片单" : "已取消收藏", icon: "none" });
+    } catch (error) {
+      wx.showToast({ title: toFriendlyErrorMessage(error), icon: "none" });
+    } finally {
+      this.setData({ favoriteLoading: false });
+    }
+  },
+
   async loadEntitlement() {
     try {
       this.applyEntitlement(await getApi().getEntitlement(this.data.id));
@@ -99,8 +133,6 @@ Page({
     const durations = episodeDurationsFromDrama(this.data.drama);
     this.setData({
       entitlement,
-      remainingLabel: formatApproximateRemainingEpisodes(entitlement?.remainingSeconds, durations),
-      expiryLabel: formatDateTime(entitlement?.nearestExpiresAt),
       unlockCopy: formatRewardUnlockCopy(this.data.drama?.title ?? "", durations)
     });
   },

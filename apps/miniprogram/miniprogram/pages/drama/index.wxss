@@ -1,7 +1,11 @@
+.page {
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
+
 .overview {
   display: flex;
   gap: 28rpx;
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .cover {
@@ -23,7 +27,7 @@
 
 .overview-content {
   min-width: 0;
-  padding-bottom: 10rpx;
+  padding-top: 10rpx;
 }
 
 .title {
@@ -38,66 +42,81 @@
   font-size: 24rpx;
 }
 
-.summary,
-.filing,
-.entitlement {
-  margin-top: 28rpx;
-  padding: 26rpx;
-  background: #17181e;
-  border-radius: 20rpx;
-  line-height: 1.65;
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
 }
 
-.filing {
-  color: #a1a4ae;
-  font-size: 24rpx;
-}
-
-.filing-number {
-  color: #f7f7f8;
-  font-size: 27rpx;
-}
-
-.rights,
-.expiry {
-  margin-top: 8rpx;
-  color: #a1a4ae;
-  font-size: 23rpx;
-}
-
-.detail-link {
+.tag {
   display: inline-block;
-  margin-top: 12rpx;
-  color: #ffcf5a;
-  font-size: 24rpx;
-}
-
-.episode-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14rpx;
-}
-
-.episode {
-  min-width: 0;
-  margin: 0;
-  padding: 20rpx 4rpx;
-  color: #f7f7f8;
-  background: #1b1c22;
-  border-radius: 14rpx;
-  font-size: 26rpx;
+  padding: 8rpx 16rpx;
+  color: #dedfe5;
+  background: #292b34;
+  border-radius: 10rpx;
+  font-size: 22rpx;
   line-height: 1.2;
 }
 
-.episode.free {
-  color: #ffcf5a;
-  background: #292718;
+.summary-section {
+  margin-top: 34rpx;
 }
 
-.episode-state {
+.summary-section .section-title {
+  margin: 0 0 16rpx;
+}
+
+.summary-copy {
+  color: #c1c3ca;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.summary-copy.collapsed {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.summary-toggle {
   display: block;
-  margin-top: 8rpx;
-  font-size: 18rpx;
+  margin: 8rpx 0 0 auto;
+  padding: 0;
+  color: #79a0d5;
+  background: transparent;
+  font-size: 25rpx;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.favorite-button {
+  position: fixed;
+  z-index: 10;
+  right: 28rpx;
+  bottom: calc(24rpx + env(safe-area-inset-bottom));
+  left: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  height: 86rpx;
+  color: #5b402d;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 22rpx rgba(0, 0, 0, 0.18);
+  font-size: 32rpx;
+  font-weight: 750;
+}
+
+.favorite-button.favorited {
+  color: #9a6a2f;
+}
+
+.favorite-icon {
+  font-size: 42rpx;
+  line-height: 1;
 }
 
 .overlay {
@@ -148,10 +167,6 @@
 }
 
 @media (max-width: 360px) {
-  .episode-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .cover {
     width: 190rpx;
     height: 270rpx;

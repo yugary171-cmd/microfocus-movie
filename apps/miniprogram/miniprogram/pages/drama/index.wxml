@@ -13,36 +13,27 @@
       <view class="overview-content">
         <view class="title">{{drama.title}}</view>
         <view class="meta">{{drama.category}} · 全 {{drama.episodeCount}} 集</view>
-        <view class="tags"><text wx:for="{{drama.tags}}" wx:key="*this">#{{item}} </text></view>
+        <view class="tags"><text wx:for="{{drama.tags}}" wx:key="*this" class="tag">{{item}} ›</text></view>
       </view>
     </view>
-    <view class="summary">{{drama.summary}}</view>
-    <view class="filing">
-      <view>网络剧片发行许可证/备案号</view>
-      <view class="filing-number">{{drama.licenseNumber || '暂未配置，请勿对外发布'}}</view>
-      <view class="rights">版权方：{{drama.rightsHolder || '暂未配置'}}</view>
-    </view>
-    <view class="entitlement" role="status">
-      <view><text class="muted">当前短剧剩余</text> {{remainingLabel}}</view>
-      <view class="expiry">最近到期：{{expiryLabel}}</view>
-      <view class="expiry">{{scopeLabel}} · {{incompleteAdLabel}}</view>
-      <navigator class="detail-link" url="/pages/entitlements/index?dramaId={{drama.id}}">查看权益明细</navigator>
-    </view>
-    <view class="section-title">选集</view>
-    <view class="episode-grid">
-      <button
-        wx:for="{{drama.episodes}}"
-        wx:key="id"
-        class="episode {{item.isFree ? 'free' : ''}}"
-        data-id="{{item.id}}"
-        bindtap="selectEpisode"
-        aria-label="第 {{item.episodeNumber}} 集，{{item.isFree ? '免费' : '需要当前短剧观看时长'}}"
-      >
-        <text>{{item.episodeNumber}}</text>
-        <text class="episode-state">{{item.isFree ? '免费' : '🔒'}}</text>
-      </button>
+    <view class="summary-section">
+      <view class="section-title">剧情简介</view>
+      <view class="summary-copy {{summaryExpanded ? '' : 'collapsed'}}">{{drama.summary || '暂无剧情简介'}}</view>
+      <text class="summary-toggle" role="button" bindtap="toggleSummary">{{summaryExpanded ? '收起' : '展开'}}</text>
     </view>
   </block>
+</view>
+
+<view
+  wx:if="{{drama}}"
+  class="favorite-button {{isFavorite ? 'favorited' : ''}}"
+  role="button"
+  aria-pressed="{{isFavorite}}"
+  aria-label="收藏"
+  bindtap="toggleFavorite"
+>
+  <text class="favorite-icon" aria-hidden="true">☆</text>
+  <text>{{isFavorite ? '已收藏' : '收藏'}}</text>
 </view>
 
 <view wx:if="{{unlockVisible}}" class="overlay" bindtap="closeUnlock">

@@ -4,6 +4,7 @@ import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
 import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import { dramaInLibraryPages, setDramaLibraryFlag } from "../../services/library";
 import { trackFunnelEvent } from "../../services/telemetry";
 import {
   createRewardDependencies,
@@ -17,27 +18,20 @@ import {
 import { getDeviceId } from "../../utils/device";
 import { canStartEpisode } from "../../utils/episode";
 import { toFriendlyErrorMessage } from "../../utils/errors";
-import {
-  ENTITLEMENT_INCOMPLETE_AD_LABEL,
-  ENTITLEMENT_SCOPE_LABEL,
-  episodeDurationsFromDrama,
-  formatApproximateRemainingEpisodes,
-  formatDateTime,
-  formatRewardUnlockCopy
-} from "../../utils/format";
+import { episodeDurationsFromDrama, formatRewardUnlockCopy } from "../../utils/format";
 import { playerUrlFromEpisode } from "../../utils/player-navigation";
 import { buildDramaShareCard } from "../../utils/drama-share";
+import { FAVORITE_TAB } from "../../utils/inbox-view";
 
 const isMock = isMockMode();
 const id = ref("");
 const loading = ref(true);
 const error = ref("");
 const drama = ref<DramaDetail | null>(null);
+const summaryExpanded = ref(false);
+const isFavorite = ref(false);
+const favoriteLoading = ref(false);
 const entitlement = ref<EntitlementSummary | null>(null);
-const remainingLabel = ref("约 0 集");
-const expiryLabel = ref("暂无到期时间");
-const scopeLabel = ENTITLEMENT_SCOPE_LABEL;
-const incompleteAdLabel = ENTITLEMENT_INCOMPLETE_AD_LABEL;
 const unlockCopy = ref(formatRewardUnlockCopy("", []));
 const unlockVisible = ref(false);
 const unlockEpisode = ref<EpisodeSummary | null>(null);
@@ -51,8 +45,6 @@ let pendingRewardConfirmation: PendingRewardConfirmation | null = null;
 function applyEntitlement(summary: EntitlementSummary | null) {
   entitlement.value = summary;
   const durations = episodeDurationsFromDrama(drama.value);
-  remainingLabel.value = formatApproximateRemainingEpisodes(summary?.remainingSeconds, durations);
-  expiryLabel.value = formatDateTime(summary?.nearestExpiresAt);
   unlockCopy.value = formatRewardUnlockCopy(drama.value?.title ?? "", durations);
 }
 
@@ -67,6 +59,7 @@ async function loadEntitlement() {
 async function loadDetail() {
   loading.value = true;
   error.value = "";
+  summaryExpanded.value = false;
   try {
     const [detail, summary] = await Promise.all([
       getApi().getDrama(id.value),
@@ -74,6 +67,7 @@ async function loadDetail() {
     ]);
     drama.value = detail;
     applyEntitlement(summary);
+    void hydrateFavoriteState();
     trackFunnelEvent("drama_detail_view", { dramaId: detail.id });
     uni.setNavigationBarTitle({ title: detail.title || "短剧详情" });
     if (!isMock) {
@@ -88,6 +82,41 @@ async function loadDetail() {
     drama.value = null;
   } finally {
     loading.value = false;
+  }
+}
+
+function toggleSummary() {
+  summaryExpanded.value = !summaryExpanded.value;
+}
+
+async function hydrateFavoriteState() {
+  if (!id.value || (!isMock && !getStoredSession())) return;
+  try {
+    isFavorite.value = await dramaInLibraryPages(
+      (page) => getApi().social.getFavorites(page),
+      id.value
+    );
+  } catch {
+    // Keep the local flag when the library cannot be read.
+  }
+}
+
+async function toggleFavorite() {
+  if (favoriteLoading.value || !id.value) return;
+  if (!isMock && !getStoredSession()) {
+    uni.showToast({ title: "请先登录后再收藏", icon: "none" });
+    return;
+  }
+  const next = !isFavorite.value;
+  favoriteLoading.value = true;
+  try {
+    await setDramaLibraryFlag(FAVORITE_TAB, id.value, next);
+    isFavorite.value = next;
+    uni.showToast({ title: next ? "已收藏到我的片单" : "已取消收藏", icon: "none" });
+  } catch (caught) {
+    uni.showToast({ title: toFriendlyErrorMessage(caught), icon: "none" });
+  } finally {
+    favoriteLoading.value = false;
   }
 }
 
@@ -194,7 +223,10 @@ onLoad((options) => {
 });
 
 onShow(() => {
-  if (id.value && drama.value) void loadEntitlement();
+  if (id.value && drama.value) {
+    void loadEntitlement();
+    void hydrateFavoriteState();
+  }
 });
 
 onShareAppMessage(() => {
@@ -228,38 +260,34 @@ onShareAppMessage(() => {
         <view class="overview-content">
           <view class="title">{{ drama.title }}</view>
           <view class="meta">{{ drama.category }} · 全 {{ drama.episodeCount }} 集</view>
-          <view class="tags"><text v-for="tag in drama.tags" :key="tag">#{{ tag }} </text></view>
+          <view class="tags">
+            <text v-for="tag in drama.tags" :key="tag" class="tag">{{ tag }} ›</text>
+          </view>
         </view>
       </view>
-      <view class="summary">{{ drama.summary }}</view>
-      <view class="filing">
-        <view>网络剧片发行许可证/备案号</view>
-        <view class="filing-number">{{ drama.licenseNumber || "暂未配置，请勿对外发布" }}</view>
-        <view class="rights">版权方：{{ drama.rightsHolder || "暂未配置" }}</view>
-      </view>
-      <view class="entitlement" role="status">
-        <view><text class="muted">当前短剧剩余</text> {{ remainingLabel }}</view>
-        <view class="expiry">最近到期：{{ expiryLabel }}</view>
-        <view class="expiry">{{ scopeLabel }} · {{ incompleteAdLabel }}</view>
-        <navigator class="detail-link" :url="`/pages/entitlements/index?dramaId=${drama.id}`">
-          查看权益明细
-        </navigator>
-      </view>
-      <view class="section-title">选集</view>
-      <view class="episode-grid">
-        <button
-          v-for="item in drama.episodes"
-          :key="item.id"
-          class="episode"
-          :class="{ free: item.isFree }"
-          :aria-label="`第 ${item.episodeNumber} 集，${item.isFree ? '免费' : '需要当前短剧观看时长'}`"
-          @tap="selectEpisode(item)"
-        >
-          <text>{{ item.episodeNumber }}</text>
-          <text class="episode-state">{{ item.isFree ? "免费" : "🔒" }}</text>
-        </button>
+      <view class="summary-section">
+        <view class="section-title">剧情简介</view>
+        <view class="summary-copy" :class="{ collapsed: !summaryExpanded }">
+          {{ drama.summary || "暂无剧情简介" }}
+        </view>
+        <text class="summary-toggle" role="button" @tap="toggleSummary">
+          {{ summaryExpanded ? "收起" : "展开" }}
+        </text>
       </view>
     </template>
+  </view>
+
+  <view
+    v-if="drama"
+    class="favorite-button"
+    :class="{ favorited: isFavorite }"
+    role="button"
+    :aria-pressed="isFavorite"
+    aria-label="收藏"
+    @tap="toggleFavorite"
+  >
+    <text class="favorite-icon" aria-hidden="true">☆</text>
+    <text>{{ isFavorite ? "已收藏" : "收藏" }}</text>
   </view>
 
   <view v-if="unlockVisible" class="overlay" @tap="closeUnlock">
