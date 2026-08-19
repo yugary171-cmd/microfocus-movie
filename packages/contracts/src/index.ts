@@ -91,6 +91,11 @@ export const WECHAT_CODE_MAX_LENGTH = 256;
 export const EMAIL_MAX_LENGTH = 254;
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
+export const ADMIN_SETUP_PASSWORD_MIN_LENGTH = 12;
+export const ADMIN_DISPLAY_NAME_MAX_LENGTH = 191;
+export const ADMIN_SETUP_TOKEN_MAX_LENGTH = 128;
+export const ADMIN_SETUP_TOKEN_TTL_SECONDS = 24 * 60 * 60;
+export const ADMIN_SETUP_PAGE_PATH = "/account-setup";
 export const OTP_MIN_LENGTH = 6;
 export const OTP_MAX_LENGTH = 8;
 export const OTP_INPUT_LENGTH = 6;
@@ -224,7 +229,27 @@ export const ERROR_CODES = {
   DELETION_IDENTITY_MISMATCH: "DELETION_IDENTITY_MISMATCH",
   INVALID_ENTITY_ID: "INVALID_ENTITY_ID",
   RATE_LIMITED: "RATE_LIMITED",
-  FOLLOW_REQUIRED: "FOLLOW_REQUIRED"
+  FOLLOW_REQUIRED: "FOLLOW_REQUIRED",
+  ADMIN_ACCOUNT_UNAVAILABLE: "ADMIN_ACCOUNT_UNAVAILABLE",
+  ADMIN_ACCOUNT_PENDING_SETUP: "ADMIN_ACCOUNT_PENDING_SETUP",
+  ADMIN_ACCOUNT_SUSPENDED: "ADMIN_ACCOUNT_SUSPENDED",
+  ADMIN_SESSION_INVALID: "ADMIN_SESSION_INVALID",
+  ADMIN_OTP_INVALID: "ADMIN_OTP_INVALID",
+  ADMIN_SELF_ACTION_FORBIDDEN: "ADMIN_SELF_ACTION_FORBIDDEN",
+  ADMIN_EMAIL_ALREADY_EXISTS: "ADMIN_EMAIL_ALREADY_EXISTS",
+  ADMIN_ACCOUNT_UPDATE_EMPTY: "ADMIN_ACCOUNT_UPDATE_EMPTY",
+  LAST_ACTIVE_ADMIN: "LAST_ACTIVE_ADMIN",
+  EDITOR_TRANSFER_REQUIRED: "EDITOR_TRANSFER_REQUIRED",
+  EDITOR_TRANSFER_INVALID: "EDITOR_TRANSFER_INVALID",
+  ADMIN_SETUP_NOT_PENDING: "ADMIN_SETUP_NOT_PENDING",
+  ADMIN_SETUP_SECRET_UNAVAILABLE: "ADMIN_SETUP_SECRET_UNAVAILABLE",
+  ADMIN_SETUP_TOKEN_INVALID: "ADMIN_SETUP_TOKEN_INVALID",
+  ADMIN_SETUP_TOKEN_EXPIRED: "ADMIN_SETUP_TOKEN_EXPIRED",
+  ADMIN_SETUP_TOKEN_USED: "ADMIN_SETUP_TOKEN_USED",
+  INVALID_ADMIN_EMAIL: "INVALID_ADMIN_EMAIL",
+  INVALID_ADMIN_DISPLAY_NAME: "INVALID_ADMIN_DISPLAY_NAME",
+  INVALID_ADMIN_REASON: "INVALID_ADMIN_REASON",
+  INVALID_ADMIN_SETUP_PASSWORD: "INVALID_ADMIN_SETUP_PASSWORD"
 } as const;
 
 export const API_ROUTES = {
@@ -281,6 +306,16 @@ export const API_ROUTES = {
     root: "/v1/admin",
     login: "/v1/admin/auth/login",
     dashboard: "/v1/admin/dashboard",
+    accounts: "/v1/admin/accounts",
+    account: (adminId: string) => `/v1/admin/accounts/${adminId}`,
+    accountSuspend: (adminId: string) => `/v1/admin/accounts/${adminId}/suspend`,
+    accountActivate: (adminId: string) => `/v1/admin/accounts/${adminId}/activate`,
+    accountSetupLink: (adminId: string) => `/v1/admin/accounts/${adminId}/setup-link`,
+    accountSetupLinks: (adminId: string) => `/v1/admin/accounts/${adminId}/setup-links`,
+    accountCredentialReset: (adminId: string) =>
+      `/v1/admin/accounts/${adminId}/credential-reset`,
+    setupInspect: "/v1/admin/account-setup/inspect",
+    setupComplete: "/v1/admin/account-setup/complete",
     dramas: "/v1/admin/dramas",
     drama: (dramaId: string) => `/v1/admin/dramas/${dramaId}`,
     rights: (dramaId: string) => `/v1/admin/dramas/${dramaId}/rights`,
@@ -390,6 +425,105 @@ export enum AdminRole {
   EDITOR = "EDITOR",
   REVIEWER = "REVIEWER",
   ADMIN = "ADMIN"
+}
+
+export enum AdminAccountStatus {
+  PENDING_SETUP = "PENDING_SETUP",
+  ACTIVE = "ACTIVE",
+  SUSPENDED = "SUSPENDED"
+}
+
+export enum AdminSetupPurpose {
+  INVITE = "INVITE",
+  CREDENTIAL_RESET = "CREDENTIAL_RESET"
+}
+
+export interface AdminAccountView {
+  id: string;
+  email: string;
+  displayName: string;
+  role: AdminRole;
+  status: AdminAccountStatus;
+  totpEnabled: boolean;
+  ownedDramaCount: number;
+  setupCompletedAt: string | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAccountListResponse {
+  items: AdminAccountView[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface CreateAdminAccountRequest {
+  email: string;
+  displayName: string;
+  role: AdminRole;
+  otp: string;
+}
+
+export interface UpdateAdminAccountRequest {
+  displayName?: string;
+  role?: AdminRole;
+  transferEditorId?: string;
+  otp: string;
+}
+
+export interface AdminAccountSensitiveActionRequest {
+  otp: string;
+  transferEditorId?: string;
+  reason: string;
+}
+
+export interface CreateAdminSetupLinkRequest extends AdminAccountSensitiveActionRequest {
+  purpose: AdminSetupPurpose;
+}
+
+export interface AdminSetupLinkResponse {
+  account: AdminAccountView;
+  purpose: AdminSetupPurpose;
+  setupToken: string;
+  setupUrl: string;
+  expiresAt: string;
+}
+
+export interface InspectAdminSetupRequest {
+  token: string;
+}
+
+export interface AdminSetupInspectResponse {
+  email: string;
+  displayName: string;
+  role: AdminRole;
+  purpose: AdminSetupPurpose;
+  expiresAt: string;
+  otpauthUri: string;
+  manualKey: string;
+}
+
+export interface CompleteAdminSetupRequest {
+  token: string;
+  password: string;
+  otp: string;
+}
+
+export interface AdminSetupCompleteResponse {
+  account: AdminAccountView;
+}
+
+export interface AdminLoginResponse {
+  accessToken: string;
+  admin: {
+    id: string;
+    email: string;
+    displayName: string;
+    role: AdminRole;
+  };
 }
 
 export enum ChallengeStatus {

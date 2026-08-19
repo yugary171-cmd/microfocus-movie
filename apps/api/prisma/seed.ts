@@ -31,9 +31,12 @@ async function main(): Promise<void> {
     where: { email },
     create: {
       email,
+      displayName: email,
       passwordHash: await hash(password, 12),
       role: "ADMIN",
       active: true,
+      setupCompletedAt: new Date(),
+      sessionVersion: 1,
       totpEnabled: production,
       ...(production && normalizedTotpSecret && encryptionKey
         ? { totpSecretEncrypted: encryptTotpSecret(normalizedTotpSecret, encryptionKey) }

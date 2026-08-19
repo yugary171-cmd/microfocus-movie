@@ -1,5 +1,7 @@
 import {
+  AdminAccountStatus,
   AdminRole,
+  AdminSetupPurpose,
   ADMIN_LIST_MAX_PAGE,
   ADMIN_LIST_PAGE_SIZE,
   CALLBACK_MAX_ATTEMPTS,
@@ -25,6 +27,14 @@ import type {
   DramaRecord,
   PageResult,
   AdminCallbackEvent,
+  AdminAccountRecord,
+  AdminAccountSetupInfo,
+  AdminSetupLink,
+  CreateAdminAccountInput,
+  UpdateAdminAccountInput,
+  SuspendAdminAccountInput,
+  ActivateAdminAccountInput,
+  CreateAdminSetupLinkInput,
   ReviewItem,
   UploadSignature,
 } from "@/types/admin";
@@ -33,6 +43,162 @@ import { dramaDraftError } from "@/policies/drama-input";
 
 const now = new Date();
 const isoHoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();
+const MOCK_ACCOUNTS_KEY = "microfocus.admin.mock-accounts-v1";
+const MOCK_SETUP_LINKS_KEY = "microfocus.admin.mock-setup-links-v1";
+const MOCK_CURRENT_ADMIN_ID = "admin-1";
+
+interface MockSetupLinkRecord {
+  token: string;
+  accountId: string;
+  purpose: AdminSetupPurpose;
+  expiresAt: string;
+  usedAt: string | null;
+}
+
+const defaultAccounts = (): AdminAccountRecord[] => [
+  {
+    id: MOCK_CURRENT_ADMIN_ID,
+    displayName: "陈管理员",
+    email: "admin@example.com",
+    role: AdminRole.ADMIN,
+    status: AdminAccountStatus.ACTIVE,
+    totpEnabled: true,
+    ownedDramaCount: 0,
+    setupCompletedAt: isoHoursAgo(24 * 80),
+    lastLoginAt: isoHoursAgo(1),
+    createdAt: isoHoursAgo(24 * 80),
+    updatedAt: isoHoursAgo(1),
+  },
+  {
+    id: "editor-1",
+    displayName: "林编辑",
+    email: "editor@example.com",
+    role: AdminRole.EDITOR,
+    status: AdminAccountStatus.ACTIVE,
+    totpEnabled: true,
+    ownedDramaCount: 2,
+    setupCompletedAt: isoHoursAgo(24 * 40),
+    lastLoginAt: isoHoursAgo(8),
+    createdAt: isoHoursAgo(24 * 40),
+    updatedAt: isoHoursAgo(8),
+  },
+  {
+    id: "editor-2",
+    displayName: "许编辑",
+    email: "editor2@example.com",
+    role: AdminRole.EDITOR,
+    status: AdminAccountStatus.ACTIVE,
+    totpEnabled: true,
+    ownedDramaCount: 1,
+    setupCompletedAt: isoHoursAgo(24 * 25),
+    lastLoginAt: isoHoursAgo(20),
+    createdAt: isoHoursAgo(24 * 25),
+    updatedAt: isoHoursAgo(20),
+  },
+  {
+    id: "reviewer-1",
+    displayName: "周审核",
+    email: "reviewer@example.com",
+    role: AdminRole.REVIEWER,
+    status: AdminAccountStatus.ACTIVE,
+    totpEnabled: true,
+    ownedDramaCount: 0,
+    setupCompletedAt: isoHoursAgo(24 * 30),
+    lastLoginAt: isoHoursAgo(5),
+    createdAt: isoHoursAgo(24 * 30),
+    updatedAt: isoHoursAgo(5),
+  },
+];
+
+function readStoredList<T>(key: string, fallback: T[]): T[] {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? "[]");
+    return Array.isArray(value) && value.length > 0 ? value as T[] : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+let adminAccounts = readStoredList(MOCK_ACCOUNTS_KEY, defaultAccounts());
+let mockSetupLinks = readStoredList<MockSetupLinkRecord>(MOCK_SETUP_LINKS_KEY, []);
+
+function persistAdminAccounts(): void {
+  window.localStorage.setItem(MOCK_ACCOUNTS_KEY, JSON.stringify(adminAccounts));
+}
+
+function persistSetupLinks(): void {
+  window.localStorage.setItem(MOCK_SETUP_LINKS_KEY, JSON.stringify(mockSetupLinks));
+}
+
+function requireMockOtp(otp: string): void {
+  if (!/^\d{6}$/.test(otp)) throw new Error("请输入当前管理员的 6 位验证码");
+}
+
+function accountOwnedDramaCount(accountId: string): number {
+  return dramas.filter((drama) => drama.ownerId === accountId).length;
+}
+
+function refreshOwnedDramaCounts(): void {
+  adminAccounts = adminAccounts.map((account) => ({
+    ...account,
+    ownedDramaCount: accountOwnedDramaCount(account.id),
+  }));
+}
+
+function findAccount(id: string): AdminAccountRecord {
+  const account = adminAccounts.find((item) => item.id === id);
+  if (!account) throw new Error("未找到该管理员账号");
+  return account;
+}
+
+function assertReplacement(target: AdminAccountRecord, replacementEditorId?: string): void {
+  const ownedCount = accountOwnedDramaCount(target.id);
+  if (target.role !== AdminRole.EDITOR || ownedCount === 0) return;
+  const replacement = replacementEditorId
+    ? adminAccounts.find((item) => item.id === replacementEditorId)
+    : undefined;
+  if (!replacement || replacement.id === target.id || replacement.role !== AdminRole.EDITOR || replacement.status !== AdminAccountStatus.ACTIVE) {
+    throw new Error(`该内容编辑名下有 ${ownedCount} 部剧目，请选择另一名正常的内容编辑接替`);
+  }
+  dramas = dramas.map((drama) => drama.ownerId === target.id
+    ? { ...drama, ownerId: replacement.id, ownerName: replacement.displayName }
+    : drama);
+}
+
+function assertLastAdmin(target: AdminAccountRecord, nextRole = target.role, nextStatus = target.status): void {
+  if (target.role !== AdminRole.ADMIN || target.status !== AdminAccountStatus.ACTIVE) return;
+  if (nextRole === AdminRole.ADMIN && nextStatus === AdminAccountStatus.ACTIVE) return;
+  const otherActiveAdmins = adminAccounts.filter(
+    (item) => item.id !== target.id && item.role === AdminRole.ADMIN && item.status === AdminAccountStatus.ACTIVE,
+  );
+  if (otherActiveAdmins.length === 0) throw new Error("必须至少保留一个正常的系统管理员");
+}
+
+function issueMockSetupLink(accountId: string, purpose: AdminSetupPurpose): AdminSetupLink {
+  const nowIso = new Date().toISOString();
+  mockSetupLinks = mockSetupLinks.map((link) =>
+    link.accountId === accountId && !link.usedAt ? { ...link, usedAt: nowIso } : link,
+  );
+  const token = `mock-${crypto.randomUUID()}-${crypto.randomUUID()}`;
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+  mockSetupLinks.unshift({ token, accountId, purpose, expiresAt, usedAt: null });
+  persistSetupLinks();
+  return {
+    account: findAccount(accountId),
+    setupToken: token,
+    setupUrl: `${window.location.origin}/account-setup#token=${encodeURIComponent(token)}`,
+    expiresAt,
+    purpose,
+  };
+}
+
+function validMockSetupLink(token: string): MockSetupLinkRecord {
+  const link = mockSetupLinks.find((item) => item.token === token);
+  if (!link || link.usedAt || new Date(link.expiresAt).getTime() <= Date.now()) {
+    throw new Error("开通链接无效、已过期或已被使用");
+  }
+  return link;
+}
 
 const releaseGate: ReleaseGateStatus = {
   entityApproved: true,
@@ -284,15 +450,162 @@ function assertMockEpisodesReady(drama: DramaRecord): void {
 
 export const mockApi = {
   async login(email: string, _otp: string, role: AdminRole): Promise<AdminSession> {
+    const storedAccount = adminAccounts.find(
+      (account) => account.email === email.trim().toLowerCase(),
+    );
+    if (storedAccount && storedAccount.status !== AdminAccountStatus.ACTIVE) {
+      throw new Error("该演示账号尚未开通或已停用");
+    }
+    if (storedAccount) {
+      storedAccount.lastLoginAt = new Date().toISOString();
+      persistAdminAccounts();
+    }
     return mockDelay({
       accessToken: `mock-session-${crypto.randomUUID()}`,
-      user: {
-        id: role === AdminRole.EDITOR ? "editor-1" : `${role.toLowerCase()}-1`,
-        name: role === AdminRole.EDITOR ? "林编辑" : role === AdminRole.REVIEWER ? "周审核" : "陈管理员",
-        email,
-        role,
-      },
+      user: storedAccount
+        ? {
+            id: storedAccount.id,
+            name: storedAccount.displayName,
+            email: storedAccount.email,
+            role: storedAccount.role,
+          }
+        : {
+            id: role === AdminRole.EDITOR ? "editor-1" : `${role.toLowerCase()}-1`,
+            name: role === AdminRole.EDITOR ? "林编辑" : role === AdminRole.REVIEWER ? "周审核" : "陈管理员",
+            email,
+            role,
+          },
     });
+  },
+  async listAccounts(
+    query = "",
+    role: AdminRole | "" = "",
+    status: AdminAccountStatus | "" = "",
+    page = 1,
+  ): Promise<PageResult<AdminAccountRecord>> {
+    refreshOwnedDramaCounts();
+    const normalized = query.trim().toLowerCase();
+    const items = adminAccounts
+      .filter((account) =>
+        (!normalized || `${account.displayName} ${account.email}`.toLowerCase().includes(normalized)) &&
+        (!role || account.role === role) &&
+        (!status || account.status === status),
+      )
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return mockDelay(paginate(items, page));
+  },
+  async createAccount(input: CreateAdminAccountInput): Promise<AdminSetupLink> {
+    requireMockOtp(input.otp);
+    const displayName = input.displayName.trim();
+    const email = input.email.trim().toLowerCase();
+    if (!displayName || !email) throw new Error("姓名和邮箱不能为空");
+    if (adminAccounts.some((account) => account.email === email)) throw new Error("该邮箱已存在");
+    const createdAt = new Date().toISOString();
+    const account: AdminAccountRecord = {
+      id: `admin-account-${crypto.randomUUID()}`,
+      displayName,
+      email,
+      role: input.role,
+      status: AdminAccountStatus.PENDING_SETUP,
+      totpEnabled: false,
+      ownedDramaCount: 0,
+      setupCompletedAt: null,
+      lastLoginAt: null,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    adminAccounts.unshift(account);
+    persistAdminAccounts();
+    writeAudit("创建管理员账号", account.email, `角色 ${account.role}；等待本人完成开通`);
+    return mockDelay(issueMockSetupLink(account.id, AdminSetupPurpose.INVITE));
+  },
+  async updateAccount(id: string, input: UpdateAdminAccountInput): Promise<AdminAccountRecord> {
+    requireMockOtp(input.otp);
+    const account = findAccount(id);
+    const nextRole = input.role ?? account.role;
+    if (id === MOCK_CURRENT_ADMIN_ID && nextRole !== account.role) throw new Error("不能修改自己的角色");
+    assertLastAdmin(account, nextRole, account.status);
+    if (account.role === AdminRole.EDITOR && nextRole !== AdminRole.EDITOR) {
+      assertReplacement(account, input.transferEditorId);
+    }
+    account.displayName = input.displayName?.trim() || account.displayName;
+    account.role = nextRole;
+    account.updatedAt = new Date().toISOString();
+    refreshOwnedDramaCounts();
+    persistAdminAccounts();
+    writeAudit("修改管理员账号", account.email, `姓名 ${account.displayName}；角色 ${account.role}`);
+    return mockDelay(findAccount(account.id));
+  },
+  async suspendAccount(id: string, input: SuspendAdminAccountInput): Promise<AdminAccountRecord> {
+    requireMockOtp(input.otp);
+    if (id === MOCK_CURRENT_ADMIN_ID) throw new Error("不能停用自己的账号");
+    const account = findAccount(id);
+    assertLastAdmin(account, account.role, AdminAccountStatus.SUSPENDED);
+    assertReplacement(account, input.transferEditorId);
+    account.status = AdminAccountStatus.SUSPENDED;
+    account.updatedAt = new Date().toISOString();
+    refreshOwnedDramaCounts();
+    persistAdminAccounts();
+    writeAudit("停用管理员账号", account.email, input.reason.trim());
+    return mockDelay(findAccount(account.id));
+  },
+  async activateAccount(id: string, input: ActivateAdminAccountInput): Promise<AdminAccountRecord> {
+    requireMockOtp(input.otp);
+    const account = findAccount(id);
+    if (account.status === AdminAccountStatus.PENDING_SETUP) throw new Error("待开通账号必须先完成开通，不能直接启用");
+    account.status = AdminAccountStatus.ACTIVE;
+    account.updatedAt = new Date().toISOString();
+    persistAdminAccounts();
+    writeAudit("启用管理员账号", account.email, input.reason.trim());
+    return mockDelay(account);
+  },
+  async createAccountSetupLink(id: string, input: CreateAdminSetupLinkInput): Promise<AdminSetupLink> {
+    requireMockOtp(input.otp);
+    const account = findAccount(id);
+    if (input.purpose === AdminSetupPurpose.CREDENTIAL_RESET) {
+      if (id === MOCK_CURRENT_ADMIN_ID) throw new Error("不能重置自己的登录凭据");
+      assertLastAdmin(account, account.role, AdminAccountStatus.SUSPENDED);
+      assertReplacement(account, input.transferEditorId);
+      account.status = AdminAccountStatus.PENDING_SETUP;
+      account.setupCompletedAt = null;
+      account.totpEnabled = false;
+      account.updatedAt = new Date().toISOString();
+      persistAdminAccounts();
+      writeAudit("重置管理员登录凭据", account.email, input.reason.trim());
+    } else {
+      if (account.status !== AdminAccountStatus.PENDING_SETUP) throw new Error("只有待开通账号可以重发开通链接");
+      writeAudit("重发管理员开通链接", account.email, input.reason.trim());
+    }
+    return mockDelay(issueMockSetupLink(account.id, input.purpose));
+  },
+  async inspectAccountSetup(token: string): Promise<AdminAccountSetupInfo> {
+    const link = validMockSetupLink(token);
+    const account = findAccount(link.accountId);
+    const manualKey = `MOCK${account.id.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(-20).padEnd(20, "A")}`;
+    return mockDelay({
+      displayName: account.displayName,
+      email: account.email,
+      role: account.role,
+      purpose: link.purpose,
+      otpauthUri: `otpauth://totp/${encodeURIComponent(`微焦:${account.email}`)}?secret=${manualKey}&issuer=${encodeURIComponent("微焦短剧管理台")}`,
+      manualKey,
+      expiresAt: link.expiresAt,
+    });
+  },
+  async completeAccountSetup(token: string, password: string, otp: string): Promise<void> {
+    const link = validMockSetupLink(token);
+    if (password.length < 12 || password.length > 128) throw new Error("密码长度应为 12–128 位");
+    if (!/^\d{6}$/.test(otp)) throw new Error("请输入验证器中的 6 位验证码");
+    const account = findAccount(link.accountId);
+    account.status = AdminAccountStatus.ACTIVE;
+    account.setupCompletedAt = new Date().toISOString();
+    account.totpEnabled = true;
+    account.updatedAt = new Date().toISOString();
+    link.usedAt = new Date().toISOString();
+    persistAdminAccounts();
+    persistSetupLinks();
+    writeAudit("管理员完成账号开通", account.email, "本人设置密码并绑定 TOTP；演示模式未保存凭据");
+    return mockDelay(undefined);
   },
   async dashboard(): Promise<DashboardData> {
     const statusCounts = dramas.reduce<DashboardData["statusCounts"]>((counts, drama) => {

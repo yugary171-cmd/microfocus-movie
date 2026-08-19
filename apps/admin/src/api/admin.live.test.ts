@@ -1,4 +1,4 @@
-import { AdminRole, REVIEW_NOTES_MAX_LENGTH, REWARD_SECONDS, REWARD_TTL_SECONDS, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
+import { AdminAccountStatus, AdminRole, REVIEW_NOTES_MAX_LENGTH, REWARD_SECONDS, REWARD_TTL_SECONDS, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function success(data: unknown): Response {
@@ -93,6 +93,73 @@ describe("live admin API adapter", () => {
     expect(String(vi.mocked(fetch).mock.calls[2]?.[0])).toBe(
       "http://api.test/v1/admin/audit-logs?query=request-9&page=2",
     );
+  });
+
+  it("uses the account management and public setup contracts", async () => {
+    const account = {
+      id: "account-1",
+      displayName: "王审核",
+      email: "reviewer@example.com",
+      role: AdminRole.REVIEWER,
+      status: "PENDING_SETUP",
+      totpEnabled: false,
+      ownedDramaCount: 0,
+      setupCompletedAt: null,
+      lastLoginAt: null,
+      createdAt: "2026-08-18T00:00:00.000Z",
+      updatedAt: "2026-08-18T00:00:00.000Z",
+    };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(success({ items: [account], total: 1 }))
+      .mockResolvedValueOnce(success({
+        account,
+        setupUrl: "https://admin.example/account-setup?token=one-time",
+        setupToken: "one-time",
+        expiresAt: "2026-08-19T00:00:00.000Z",
+        purpose: "INVITE",
+      }))
+      .mockResolvedValueOnce(success({
+        displayName: "王审核",
+        email: "reviewer@example.com",
+        role: AdminRole.REVIEWER,
+        purpose: "INVITE",
+        otpauthUri: "otpauth://totp/mock",
+        manualKey: "MANUALKEY",
+        expiresAt: "2026-08-19T00:00:00.000Z",
+      }))
+      .mockResolvedValueOnce(success(null));
+    const { adminApi } = await import("./admin");
+
+    const list = await adminApi.listAccounts("王", AdminRole.REVIEWER, AdminAccountStatus.PENDING_SETUP, 2);
+    expect(list).toMatchObject({ total: 1, items: [{ id: "account-1" }] });
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe(
+      "http://api.test/v1/admin/accounts?query=%E7%8E%8B&role=REVIEWER&status=PENDING_SETUP&page=2",
+    );
+
+    const setupLink = await adminApi.createAccount({
+      displayName: "王审核",
+      email: "reviewer@example.com",
+      role: AdminRole.REVIEWER,
+      otp: "123456",
+    });
+    expect(setupLink.setupUrl).toContain("one-time");
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body))).toEqual({
+      displayName: "王审核",
+      email: "reviewer@example.com",
+      role: AdminRole.REVIEWER,
+      otp: "123456",
+    });
+
+    await expect(adminApi.inspectAccountSetup("one-time")).resolves.toMatchObject({
+      displayName: "王审核",
+      manualKey: "MANUALKEY",
+    });
+    await adminApi.completeAccountSetup("one-time", "strong-password-2026", "654321");
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[3]?.[1]?.body))).toEqual({
+      token: "one-time",
+      password: "strong-password-2026",
+      otp: "654321",
+    });
   });
 
   it("uses backend review and compensation request contracts", async () => {

@@ -13,6 +13,11 @@ enum AdminRole {
   ADMIN
 }
 
+enum AdminSetupPurpose {
+  INVITE
+  CREDENTIAL_RESET
+}
+
 enum DramaStatus {
   DRAFT
   UPLOADING
@@ -199,17 +204,42 @@ model DeletionQueryTokenReissue {
 }
 
 model AdminUser {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  passwordHash String
-  role         AdminRole
-  active       Boolean     @default(true)
-  totpEnabled  Boolean     @default(false)
-  totpSecretEncrypted String? @db.Text
-  createdAt    DateTime    @default(now())
-  editedDramas Drama[]     @relation("DramaEditor")
-  reviews      DramaReview[]
-  auditLogs    AuditLog[]
+  id                  String      @id @default(cuid())
+  email               String      @unique
+  displayName         String
+  passwordHash        String?
+  role                AdminRole
+  active              Boolean     @default(true)
+  setupCompletedAt    DateTime?
+  sessionVersion      Int         @default(1)
+  lastLoginAt         DateTime?
+  totpEnabled         Boolean     @default(false)
+  totpSecretEncrypted String?     @db.Text
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  editedDramas        Drama[]     @relation("DramaEditor")
+  reviews             DramaReview[]
+  auditLogs           AuditLog[]
+  setupTokens         AdminSetupToken[]
+
+  @@index([role, active, setupCompletedAt])
+}
+
+model AdminSetupToken {
+  id                  String            @id @default(cuid())
+  adminUserId         String
+  adminUser           AdminUser         @relation(fields: [adminUserId], references: [id])
+  purpose             AdminSetupPurpose
+  tokenDigest         String            @unique @db.VarChar(64)
+  totpSecretEncrypted String            @db.Text
+  expiresAt           DateTime
+  usedAt              DateTime?
+  createdByAdminId    String            @db.VarChar(191)
+  createdAt           DateTime          @default(now())
+
+  @@index([adminUserId, purpose, createdAt])
+  @@index([createdByAdminId, createdAt])
+  @@index([expiresAt])
 }
 
 model Drama {

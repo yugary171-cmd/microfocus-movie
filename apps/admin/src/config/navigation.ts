@@ -4,7 +4,7 @@ export interface NavigationItem {
   to: string;
   label: string;
   description: string;
-  icon: "home" | "grid" | "check" | "settings" | "clock";
+  icon: "home" | "grid" | "check" | "settings" | "clock" | "users";
   roles?: AdminRole[];
 }
 
@@ -32,4 +32,16 @@ export const navigationItems: NavigationItem[] = [
     icon: "clock",
     roles: [AdminRole.ADMIN],
   },
+  {
+    to: "/accounts",
+    label: "账号管理",
+    description: "管理员、角色与开通",
+    icon: "users",
+    roles: [AdminRole.ADMIN],
+  },
 ];
+
+export function isNavigationItemActive(currentPath: string, itemPath: string): boolean {
+  if (itemPath === "/") return currentPath === "/";
+  return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+}

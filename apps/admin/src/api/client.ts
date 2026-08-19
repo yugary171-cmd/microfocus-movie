@@ -1,4 +1,5 @@
 import type { ApiError, ApiSuccess } from "@microfocus/contracts";
+import { isAdminSessionInvalidCode } from "./account-errors";
 
 const SESSION_TOKEN_KEY = "microfocus.admin.access-token";
 
@@ -79,7 +80,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && (!isApiError(payload) || isAdminSessionInvalidCode(payload.code))) {
       clearSessionToken();
       window.dispatchEvent(new CustomEvent("admin:unauthorized"));
     }

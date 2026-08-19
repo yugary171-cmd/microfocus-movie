@@ -1,7 +1,7 @@
 # 页面与 API 契约说明
 
 - 文档用途：定义页面职责、接口语义、权限边界和验收关系
-- 更新日期：2026-08-17
+- 更新日期：2026-08-19
 - 本文定义目标契约，可能包含尚未进入 `packages/contracts` 或代码的接口；本文**不记录任务进度、完成比例或待办事项**，工程状态统一见 [status.md](./status.md)
 - 产品范围见 [product-plan.md](./product-plan.md)，详细需求见 [PRD](./prd-microfocus-movie-internal-validation.md)，技术不变量见 [architecture.md](./architecture.md)
 
@@ -117,12 +117,14 @@ flowchart LR
 | 审核队列 | `/reviews` | REVIEWER | 通过或驳回；不得审核本人创建或编辑的版本 |
 | 运营控制 | `/operations` | ADMIN | 熔断、人工补偿、账本纠错、回调积压列表/重放、注销查询令牌补发 |
 | 审计日志 | `/audit` | ADMIN | 查询关键操作与系统事件 |
+| 账号管理 | `/accounts` | ADMIN | 创建待开通账号、筛选列表、改姓名/角色、停用/启用、重发开通链接、重置凭据；敏感操作需当前管理员 OTP；内容编辑停用或改角色时若有剧目必须选择接替 EDITOR |
+| 账号开通 | `/account-setup` | 公开（一次性令牌） | 校验 24 小时开通/重置链接后设置密码并绑定 TOTP；过期、已用或被替代时统一失败，不暴露账号是否存在 |
 
 角色与关键动作（客户端策略，服务端仍以守卫为准）：
 
 - EDITOR：创建、编辑和提交本人负责的剧目；服务端必须按 `editorId` 或等价所有权字段过滤写操作。
 - REVIEWER：审核内容与媒体；不得审核本人创建或编辑的版本。
-- ADMIN：发布、下架、熔断、补偿和审计；不得绕过权利、媒体、职责分离或发布闸门。
+- ADMIN：发布、下架、熔断、补偿、审计和账号管理；不得绕过权利、媒体、职责分离或发布闸门；不得删除管理员账号。
 - 人工补偿秒数由事故或客服审批决定，不等同于广告默认奖励 600 秒；必须记录原因、过期时间、操作人和关联 challenge（如适用）。
 
 前端导航与按钮只负责可用性提示；服务端必须对每个管理接口执行管理员 JWT、角色、所有权和资源状态校验。
@@ -212,8 +214,16 @@ flowchart LR
 
 | 方法与路径 | 角色 | 所有权/状态约束 | 用途 |
 | --- | --- | --- | --- |
-| `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱最长 254；密码 `PASSWORD_MIN_LENGTH`–`PASSWORD_MAX_LENGTH`（8–128）；OTP 服务端 6–8（`OTP_MIN_LENGTH`/`OTP_MAX_LENGTH`）；管理端登录表单邮箱/密码 min/maxlength 与之共用，验证码输入仍为 `OTP_INPUT_LENGTH=6` 位 TOTP | 换管理员 JWT |
+| `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱最长 254；密码 `PASSWORD_MIN_LENGTH`–`PASSWORD_MAX_LENGTH`（8–128）；OTP 服务端 6–8（`OTP_MIN_LENGTH`/`OTP_MAX_LENGTH`）；管理端登录表单邮箱/密码 min/maxlength 与之共用，验证码输入仍为 `OTP_INPUT_LENGTH=6` 位 TOTP；成功写入 `lastLoginAt` | 换管理员 JWT（含 `sessionVersion`） |
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
+| `GET /v1/admin/accounts` | ADMIN | `query` 最长 100；按姓名/邮箱、角色、状态分页，每页 50，最多 100 页 | 管理员账号列表 |
+| `POST /v1/admin/accounts` | ADMIN + 当前管理员 OTP | 姓名、邮箱必填；邮箱转小写唯一；不生成可用密码 | 创建待开通账号并返回 24 小时一次性开通链接（明文只出现一次） |
+| `PATCH /v1/admin/accounts/:id` | ADMIN + 当前管理员 OTP | 禁止改自己的角色；降级最后一名正常 ADMIN 禁止；EDITOR 改角色且名下有剧目时必须 `transferEditorId` | 修改姓名或角色；角色变化提升 `sessionVersion` |
+| `POST /v1/admin/accounts/:id/suspend` | ADMIN + 当前管理员 OTP + 原因 | 禁止操作自己；禁止停用最后一名正常 ADMIN；EDITOR 有剧目时必须移交 | 停用账号并立即失效旧 JWT |
+| `POST /v1/admin/accounts/:id/activate` | ADMIN + 当前管理员 OTP + 原因 | 待开通账号不可直接启用 | 启用已停用账号，默认沿用原凭据 |
+| `POST /v1/admin/accounts/:id/setup-links` | ADMIN + 当前管理员 OTP + 原因 | `INVITE` 仅待开通；`CREDENTIAL_RESET` 立即停用并清空密码/TOTP | 重发开通链接或重置凭据 |
+| `POST /v1/admin/account-setup/inspect` | 公开、按连接 IP 限频 | 令牌无效/过期/已用返回对应错误，文案不暴露账号是否存在 | 读取待开通资料和 TOTP 配置 URI |
+| `POST /v1/admin/account-setup/complete` | 公开、按连接 IP 限频 | 密码 12–128 位 + 当前 TOTP；令牌一次性 | 原子完成开通；写入独立运营事件，不冒充创建者 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
 | `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情 |
 | `POST /v1/admin/dramas` | EDITOR | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件 | 创建草稿 |

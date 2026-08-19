@@ -1,6 +1,15 @@
 import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
+  AdminAccountRecord,
+  AdminAccountSetupInfo,
+  AdminSetupLink,
+  AdminAccountStatus,
+  CreateAdminAccountInput,
+  UpdateAdminAccountInput,
+  SuspendAdminAccountInput,
+  ActivateAdminAccountInput,
+  CreateAdminSetupLinkInput,
   AuditLog,
   CircuitBreakerState,
   CompensationInput,
@@ -20,6 +29,10 @@ import { mockApi } from "./mock";
 import { uploadFileError } from "@/policies/drama-input";
 import {
   normalizeAdminSession,
+  normalizeAdminAccount,
+  normalizeAdminAccountList,
+  normalizeAdminAccountSetupInfo,
+  normalizeAdminSetupLink,
   normalizeAuditList,
   normalizeCallbackEventList,
   normalizeCircuitBreaker,
@@ -81,6 +94,70 @@ export const adminApi = {
       request<unknown>(endpoints.releaseGate),
     ]);
     return normalizeDashboard(dashboard, gate);
+  },
+  async listAccounts(
+    query = "",
+    role: AdminRole | "" = "",
+    status: AdminAccountStatus | "" = "",
+    page = 1,
+  ): Promise<PageResult<AdminAccountRecord>> {
+    if (isMockMode) return mockApi.listAccounts(query, role, status, page);
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    if (role) params.set("role", role);
+    if (status) params.set("status", status);
+    if (page > 1) params.set("page", String(page));
+    const suffix = params.size ? `?${params}` : "";
+    return normalizeAdminAccountList(await request<unknown>(`${endpoints.accounts}${suffix}`));
+  },
+  async createAccount(input: CreateAdminAccountInput): Promise<AdminSetupLink> {
+    if (isMockMode) return mockApi.createAccount(input);
+    return normalizeAdminSetupLink(await request<unknown>(endpoints.accounts, {
+      method: "POST",
+      body: json(input),
+    }));
+  },
+  async updateAccount(id: string, input: UpdateAdminAccountInput): Promise<AdminAccountRecord> {
+    if (isMockMode) return mockApi.updateAccount(id, input);
+    return normalizeAdminAccount(await request<unknown>(encodedRoute(endpoints.account, id), {
+      method: "PATCH",
+      body: json(input),
+    }));
+  },
+  async suspendAccount(id: string, input: SuspendAdminAccountInput): Promise<AdminAccountRecord> {
+    if (isMockMode) return mockApi.suspendAccount(id, input);
+    return normalizeAdminAccount(await request<unknown>(encodedRoute(endpoints.accountSuspend, id), {
+      method: "POST",
+      body: json(input),
+    }));
+  },
+  async activateAccount(id: string, input: ActivateAdminAccountInput): Promise<AdminAccountRecord> {
+    if (isMockMode) return mockApi.activateAccount(id, input);
+    return normalizeAdminAccount(await request<unknown>(encodedRoute(endpoints.accountActivate, id), {
+      method: "POST",
+      body: json(input),
+    }));
+  },
+  async createAccountSetupLink(id: string, input: CreateAdminSetupLinkInput): Promise<AdminSetupLink> {
+    if (isMockMode) return mockApi.createAccountSetupLink(id, input);
+    return normalizeAdminSetupLink(await request<unknown>(encodedRoute(endpoints.accountSetupLinks, id), {
+      method: "POST",
+      body: json(input),
+    }));
+  },
+  async inspectAccountSetup(token: string): Promise<AdminAccountSetupInfo> {
+    if (isMockMode) return mockApi.inspectAccountSetup(token);
+    return normalizeAdminAccountSetupInfo(await request<unknown>(endpoints.setupInspect, {
+      method: "POST",
+      body: json({ token }),
+    }));
+  },
+  async completeAccountSetup(token: string, password: string, otp: string): Promise<void> {
+    if (isMockMode) return mockApi.completeAccountSetup(token, password, otp);
+    await request(endpoints.setupComplete, {
+      method: "POST",
+      body: json({ token, password, otp }),
+    });
   },
   async releaseGate(): Promise<ReleaseGateStatus> {
     if (isMockMode) return mockApi.releaseGate();

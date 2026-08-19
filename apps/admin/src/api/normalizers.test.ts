@@ -14,18 +14,18 @@ import { publishDecision } from "@/policies/admin";
 import { createGate, createUser } from "@/test/fixtures";
 
 describe("admin API normalizers", () => {
-  it("adapts the backend login administrator without inventing a display name", () => {
+  it("uses the administrator display name returned by the backend", () => {
     expect(
       normalizeAdminSession({
         accessToken: "token-for-test",
-        admin: { id: "admin-1", email: "admin@example.com", role: AdminRole.ADMIN },
+        admin: { id: "admin-1", displayName: "陈管理员", email: "admin@example.com", role: AdminRole.ADMIN },
       }),
     ).toEqual({
       accessToken: "token-for-test",
       user: {
         id: "admin-1",
         email: "admin@example.com",
-        name: "admin@example.com",
+        name: "陈管理员",
         role: AdminRole.ADMIN,
       },
     });

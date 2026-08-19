@@ -14,10 +14,18 @@ describe("principal parsing", () => {
       sub: "viewer-1",
       deviceId: "device-1"
     });
-    expect(parsePrincipal({ kind: "admin", sub: "admin-1", role: AdminRole.ADMIN })).toEqual({
+    expect(
+      parsePrincipal({
+        kind: "admin",
+        sub: "admin-1",
+        role: AdminRole.ADMIN,
+        sessionVersion: 3
+      })
+    ).toEqual({
       kind: "admin",
       sub: "admin-1",
-      role: AdminRole.ADMIN
+      role: AdminRole.ADMIN,
+      sessionVersion: 3
     });
   });
 
@@ -25,6 +33,12 @@ describe("principal parsing", () => {
     expect(() => parsePrincipal({ kind: "viewer", sub: "viewer-1" })).toThrow(
       /Invalid or expired access token/
     );
+  });
+
+  it("rejects admin tokens without a positive session version", () => {
+    expect(() =>
+      parsePrincipal({ kind: "admin", sub: "admin-1", role: AdminRole.ADMIN })
+    ).toThrow(/Invalid or expired access token/);
   });
 });
 
@@ -64,6 +78,85 @@ describe("jwt auth guard", () => {
         switchToHttp: () => ({ getRequest: () => request })
       } as never)
     ).rejects.toMatchObject({ code: ERROR_CODES.ACCOUNT_UNAVAILABLE });
+  });
+
+  it("checks administrator setup, active state, role, and session version in the database", async () => {
+    const jwt = {
+      verifyAsync: async () => ({
+        kind: "admin",
+        sub: "admin-1",
+        role: AdminRole.ADMIN,
+        sessionVersion: 7
+      }),
+      decode: () => ({ kind: "admin" })
+    };
+    const findUnique = vi.fn().mockResolvedValue({
+      active: true,
+      setupCompletedAt: new Date(),
+      role: AdminRole.ADMIN,
+      sessionVersion: 7
+    });
+    const guard = new JwtAuthGuard(jwt as never, {
+      adminUser: { findUnique }
+    } as never);
+    const request: { header: () => string; principal?: unknown } = {
+      header: () => "Bearer admin-token"
+    };
+
+    await expect(
+      guard.canActivate({
+        switchToHttp: () => ({ getRequest: () => request })
+      } as never)
+    ).resolves.toBe(true);
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { id: "admin-1" },
+      select: {
+        active: true,
+        setupCompletedAt: true,
+        role: true,
+        sessionVersion: true
+      }
+    });
+    expect(request.principal).toMatchObject({ sessionVersion: 7 });
+  });
+
+  it.each([
+    [
+      { active: true, setupCompletedAt: null, role: AdminRole.ADMIN, sessionVersion: 7 },
+      ERROR_CODES.ADMIN_ACCOUNT_PENDING_SETUP
+    ],
+    [
+      { active: false, setupCompletedAt: new Date(), role: AdminRole.ADMIN, sessionVersion: 7 },
+      ERROR_CODES.ADMIN_ACCOUNT_SUSPENDED
+    ],
+    [
+      { active: true, setupCompletedAt: new Date(), role: AdminRole.EDITOR, sessionVersion: 7 },
+      ERROR_CODES.ADMIN_SESSION_INVALID
+    ],
+    [
+      { active: true, setupCompletedAt: new Date(), role: AdminRole.ADMIN, sessionVersion: 8 },
+      ERROR_CODES.ADMIN_SESSION_INVALID
+    ]
+  ])("rejects stale administrator sessions with %s", async (admin, code) => {
+    const jwt = {
+      verifyAsync: async () => ({
+        kind: "admin",
+        sub: "admin-1",
+        role: AdminRole.ADMIN,
+        sessionVersion: 7
+      }),
+      decode: () => ({ kind: "admin" })
+    };
+    const guard = new JwtAuthGuard(jwt as never, {
+      adminUser: { findUnique: vi.fn().mockResolvedValue(admin) }
+    } as never);
+    await expect(
+      guard.canActivate({
+        switchToHttp: () => ({
+          getRequest: () => ({ header: () => "Bearer admin-token" })
+        })
+      } as never)
+    ).rejects.toMatchObject({ code });
   });
 
   it("rejects an oversized bearer token without verifying it", async () => {

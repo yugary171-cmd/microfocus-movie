@@ -24,9 +24,9 @@ small { color: var(--color-muted); }
 .sidebar nav { display: grid; gap: 5px; padding-top: 18px; }
 .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 9px; color: #cbd5e1; transition: background var(--transition), color var(--transition); }
 .nav-item:hover { color: #fff; background: rgba(255,255,255,.06); }
-.nav-item.router-link-active { color: #fff; background: rgba(81, 119, 231, .22); }
+.nav-item.is-active { color: #fff; background: rgba(81, 119, 231, .22); }
 .nav-item__icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; background: rgba(255,255,255,.06); font-size: 15px; }
-.nav-item.router-link-active .nav-item__icon { background: #4166d8; }
+.nav-item.is-active .nav-item__icon { background: #4166d8; }
 .nav-item strong { font-size: 13px; }
 .sidebar-user { display: grid; grid-template-columns: 36px 1fr 32px; align-items: center; gap: 9px; margin-top: auto; padding: 13px 9px 0; border-top: 1px solid rgba(255,255,255,.08); }
 .avatar { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: #fff; background: #31415f; font-weight: 700; }

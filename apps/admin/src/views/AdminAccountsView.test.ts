@@ -1,0 +1,236 @@
+import { AdminAccountStatus, AdminRole, ERROR_CODES } from "@microfocus/contracts";
+import { flushPromises, mount } from "@vue/test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiClientError } from "@/api/client";
+import AdminAccountsView from "./AdminAccountsView.vue";
+import type { AdminAccountRecord } from "@/types/admin";
+
+const api = vi.hoisted(() => ({
+  listAccounts: vi.fn(),
+  createAccount: vi.fn(),
+  updateAccount: vi.fn(),
+  suspendAccount: vi.fn(),
+  activateAccount: vi.fn(),
+  createAccountSetupLink: vi.fn(),
+}));
+
+const authUser = vi.hoisted(() => ({
+  value: {
+    id: "admin-1",
+    name: "陈管理员",
+    email: "admin@example.com",
+    role: "ADMIN" as AdminRole,
+  },
+}));
+
+vi.mock("@/api/admin", () => ({ adminApi: api }));
+vi.mock("@/stores/auth", () => ({
+  useAuthStore: () => ({ user: authUser.value }),
+}));
+
+const account = (overrides: Partial<AdminAccountRecord> = {}): AdminAccountRecord => ({
+  id: "editor-1",
+  displayName: "林编辑",
+  email: "editor@example.com",
+  role: AdminRole.EDITOR,
+  status: AdminAccountStatus.ACTIVE,
+  totpEnabled: true,
+  ownedDramaCount: 2,
+  setupCompletedAt: "2026-07-01T00:00:00.000Z",
+  lastLoginAt: "2026-08-18T12:00:00.000Z",
+  createdAt: "2026-07-01T00:00:00.000Z",
+  updatedAt: "2026-08-18T12:00:00.000Z",
+  ...overrides,
+});
+
+async function openRowAction(wrapper: ReturnType<typeof mount>, label: string): Promise<void> {
+  const details = wrapper.get("details");
+  details.element.setAttribute("open", "");
+  const button = details.findAll("button").find((item) => item.text() === label);
+  await button?.trigger("click");
+  await flushPromises();
+}
+
+describe("AdminAccountsView", () => {
+  beforeEach(() => {
+    Object.values(api).forEach((mock) => mock.mockReset());
+    authUser.value = {
+      id: "admin-1",
+      name: "陈管理员",
+      email: "admin@example.com",
+      role: AdminRole.ADMIN,
+    };
+    api.listAccounts.mockResolvedValue({ items: [account()], total: 1 });
+  });
+
+  it("hides account management from non-admin roles", async () => {
+    authUser.value.role = AdminRole.EDITOR;
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+    expect(wrapper.text()).toContain("只有系统管理员可以管理后台账号");
+    expect(api.listAccounts).not.toHaveBeenCalled();
+  });
+
+  it("filters the account list by keyword, role, and status", async () => {
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+    await wrapper.get("input[type='search']").setValue("林");
+    await wrapper.get("select").setValue(AdminRole.EDITOR);
+    await wrapper.findAll("select")[1]!.setValue(AdminAccountStatus.ACTIVE);
+    await wrapper.get("form.toolbar").trigger("submit");
+    await flushPromises();
+    expect(api.listAccounts).toHaveBeenLastCalledWith("林", AdminRole.EDITOR, AdminAccountStatus.ACTIVE, 1);
+  });
+
+  it("renders account state and requires an editor handoff before suspension", async () => {
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("林编辑");
+    expect(wrapper.text()).toContain("已绑定");
+    expect(wrapper.text()).toContain("2 部");
+
+    await openRowAction(wrapper, "停用");
+    expect(wrapper.text()).toContain("待移交 2 部剧目");
+    expect(api.listAccounts).toHaveBeenLastCalledWith("", AdminRole.EDITOR, "ACTIVE", 1);
+  });
+
+  it("creates an account and reveals the one-time link only in the success dialog", async () => {
+    api.createAccount.mockResolvedValue({
+      account: account({ id: "new-account", status: AdminAccountStatus.PENDING_SETUP, setupCompletedAt: null }),
+      setupUrl: "http://localhost:5174/account-setup?token=only-once",
+      setupToken: "only-once",
+      expiresAt: "2026-08-19T12:00:00.000Z",
+      purpose: "INVITE",
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+
+    const create = wrapper.findAll("button").find((button) => button.text() === "新增账号");
+    await create?.trigger("click");
+    const dialog = wrapper.get(".account-dialog");
+    const inputs = dialog.findAll("input");
+    await inputs[0]!.setValue("王审核");
+    await inputs[1]!.setValue("Reviewer@Example.com");
+    await dialog.get("select").setValue(AdminRole.REVIEWER);
+    await inputs[2]!.setValue("123456");
+    await dialog.trigger("submit");
+    await flushPromises();
+
+    expect(api.createAccount).toHaveBeenCalledWith({
+      displayName: "王审核",
+      email: "reviewer@example.com",
+      role: AdminRole.REVIEWER,
+      otp: "123456",
+    });
+    expect(wrapper.text()).toContain("仅本次显示");
+    expect((wrapper.get("textarea[readonly]").element as HTMLTextAreaElement).value).toContain("only-once");
+
+    await wrapper.get(".setup-link-dialog .button--secondary").trigger("click");
+    expect(writeText).toHaveBeenCalledWith("http://localhost:5174/account-setup?token=only-once");
+    await wrapper.get(".setup-link-dialog .button--primary").trigger("click");
+    expect(wrapper.find(".setup-link-dialog").exists()).toBe(false);
+  });
+
+  it("disables self suspend and reset, and maps last-admin API errors", async () => {
+    api.listAccounts.mockResolvedValue({
+      items: [account({ id: "admin-1", displayName: "陈管理员", role: AdminRole.ADMIN, ownedDramaCount: 0 })],
+      total: 1,
+    });
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+    const details = wrapper.get("details");
+    details.element.setAttribute("open", "");
+    const suspend = details.findAll("button").find((button) => button.text() === "停用");
+    const reset = details.findAll("button").find((button) => button.text() === "重置登录凭据");
+    expect(suspend?.attributes("disabled")).toBeDefined();
+    expect(reset?.attributes("disabled")).toBeDefined();
+
+    api.suspendAccount.mockRejectedValue(
+      new ApiClientError("The last active administrator must remain available", {
+        code: ERROR_CODES.LAST_ACTIVE_ADMIN,
+      }),
+    );
+    api.listAccounts.mockResolvedValue({
+      items: [account({ id: "admin-2", displayName: "备用管理员", role: AdminRole.ADMIN, ownedDramaCount: 0 })],
+      total: 1,
+    });
+    const other = mount(AdminAccountsView);
+    await flushPromises();
+    await openRowAction(other, "停用");
+    const form = other.get(".account-dialog");
+    await form.get("textarea").setValue("管理员离职需要停用账号");
+    await form.findAll("input").at(-1)!.setValue("123456");
+    await form.trigger("submit");
+    await flushPromises();
+    expect(other.text()).toContain("必须至少保留一个正常的系统管理员");
+    wrapper.unmount();
+    other.unmount();
+  });
+
+  it("activates a suspended account and resends a pending setup link", async () => {
+    api.listAccounts.mockResolvedValue({
+      items: [
+        account({
+          id: "reviewer-9",
+          displayName: "周审核",
+          role: AdminRole.REVIEWER,
+          status: AdminAccountStatus.SUSPENDED,
+          ownedDramaCount: 0,
+        }),
+      ],
+      total: 1,
+    });
+    api.activateAccount.mockResolvedValue(account({ status: AdminAccountStatus.ACTIVE, ownedDramaCount: 0 }));
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+    await openRowAction(wrapper, "启用");
+    const form = wrapper.get(".account-dialog");
+    await form.get("textarea").setValue("账号重新启用用于审核");
+    await form.findAll("input").at(-1)!.setValue("123456");
+    await form.trigger("submit");
+    await flushPromises();
+    expect(api.activateAccount).toHaveBeenCalledWith("reviewer-9", {
+      reason: "账号重新启用用于审核",
+      otp: "123456",
+    });
+
+    api.listAccounts.mockResolvedValue({
+      items: [
+        account({
+          id: "pending-1",
+          displayName: "待开通",
+          status: AdminAccountStatus.PENDING_SETUP,
+          setupCompletedAt: null,
+          ownedDramaCount: 0,
+        }),
+      ],
+      total: 1,
+    });
+    api.createAccountSetupLink.mockResolvedValue({
+      account: account({ id: "pending-1", status: AdminAccountStatus.PENDING_SETUP }),
+      setupUrl: "http://localhost:5174/account-setup#token=reissued",
+      setupToken: "reissued",
+      expiresAt: "2026-08-19T12:00:00.000Z",
+      purpose: "INVITE",
+    });
+    const pending = mount(AdminAccountsView);
+    await flushPromises();
+    await openRowAction(pending, "重发开通链接");
+    const invite = pending.get(".account-dialog");
+    await invite.get("textarea").setValue("同事未收到开通邮件改用链接");
+    await invite.findAll("input").at(-1)!.setValue("123456");
+    await invite.trigger("submit");
+    await flushPromises();
+    expect(api.createAccountSetupLink).toHaveBeenCalledWith("pending-1", {
+      purpose: "INVITE",
+      reason: "同事未收到开通邮件改用链接",
+      otp: "123456",
+    });
+    expect(pending.text()).toContain("仅本次显示");
+    wrapper.unmount();
+    pending.unmount();
+  });
+});

@@ -1,0 +1,131 @@
+import {
+  ADMIN_DISPLAY_NAME_MAX_LENGTH,
+  ADMIN_REASON_MAX_LENGTH,
+  ADMIN_REASON_MIN_LENGTH,
+  ADMIN_SETUP_PASSWORD_MIN_LENGTH,
+  ADMIN_SETUP_TOKEN_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
+  ENTITY_ID_MAX_LENGTH,
+  OTP_INPUT_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  AdminRole,
+  AdminSetupPurpose,
+  type AdminAccountSensitiveActionRequest,
+  type CompleteAdminSetupRequest,
+  type CreateAdminAccountRequest,
+  type CreateAdminSetupLinkRequest,
+  type InspectAdminSetupRequest,
+  type UpdateAdminAccountRequest
+} from "@microfocus/contracts";
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  MaxLength,
+  MinLength
+} from "class-validator";
+
+const OTP_PATTERN = /^\d{6}$/;
+
+export class CreateAdminAccountDto implements CreateAdminAccountRequest {
+  @IsEmail()
+  @MaxLength(EMAIL_MAX_LENGTH)
+  email!: string;
+
+  @IsString()
+  @Length(1, ADMIN_DISPLAY_NAME_MAX_LENGTH)
+  displayName!: string;
+
+  @IsEnum(AdminRole)
+  role!: AdminRole;
+
+  @IsString()
+  @Length(OTP_INPUT_LENGTH, OTP_INPUT_LENGTH)
+  @Matches(OTP_PATTERN)
+  otp!: string;
+}
+
+export class UpdateAdminAccountDto implements UpdateAdminAccountRequest {
+  @IsOptional()
+  @IsString()
+  @Length(1, ADMIN_DISPLAY_NAME_MAX_LENGTH)
+  displayName?: string;
+
+  @IsOptional()
+  @IsEnum(AdminRole)
+  role?: AdminRole;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
+  transferEditorId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
+  replacementEditorId?: string;
+
+  @IsString()
+  @Length(OTP_INPUT_LENGTH, OTP_INPUT_LENGTH)
+  @Matches(OTP_PATTERN)
+  otp!: string;
+}
+
+export class AdminAccountSensitiveActionDto
+  implements AdminAccountSensitiveActionRequest
+{
+  @IsString()
+  @Length(OTP_INPUT_LENGTH, OTP_INPUT_LENGTH)
+  @Matches(OTP_PATTERN)
+  otp!: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
+  transferEditorId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
+  replacementEditorId?: string;
+
+  @IsString()
+  @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH)
+  reason!: string;
+}
+
+export class CreateAdminSetupLinkDto
+  extends AdminAccountSensitiveActionDto
+  implements CreateAdminSetupLinkRequest
+{
+  @IsEnum(AdminSetupPurpose)
+  purpose!: AdminSetupPurpose;
+}
+
+export class InspectAdminSetupDto implements InspectAdminSetupRequest {
+  @IsString()
+  @Length(32, ADMIN_SETUP_TOKEN_MAX_LENGTH)
+  token!: string;
+}
+
+export class CompleteAdminSetupDto implements CompleteAdminSetupRequest {
+  @IsString()
+  @Length(32, ADMIN_SETUP_TOKEN_MAX_LENGTH)
+  token!: string;
+
+  @IsString()
+  @Length(ADMIN_SETUP_PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH)
+  password!: string;
+
+  @IsString()
+  @Length(OTP_INPUT_LENGTH, OTP_INPUT_LENGTH)
+  @Matches(OTP_PATTERN)
+  otp!: string;
+}

@@ -1,8 +1,17 @@
 import type {
+  AdminAccountSensitiveActionRequest,
+  AdminAccountStatus as ContractAdminAccountStatus,
+  AdminAccountView,
+  AdminSetupInspectResponse,
+  AdminSetupLinkResponse,
+  AdminSetupPurpose as ContractAdminSetupPurpose,
   AdminRole,
+  CreateAdminAccountRequest,
+  CreateAdminSetupLinkRequest,
   DramaStatus,
   MediaStatus,
   ReleaseGateStatus,
+  UpdateAdminAccountRequest,
 } from "@microfocus/contracts";
 
 export interface AdminUser {
@@ -16,6 +25,17 @@ export interface AdminSession {
   accessToken: string;
   user: AdminUser;
 }
+
+export type AdminAccountStatus = ContractAdminAccountStatus;
+export type AdminSetupPurpose = ContractAdminSetupPurpose;
+export type AdminAccountRecord = AdminAccountView;
+export type AdminSetupLink = AdminSetupLinkResponse;
+export type AdminAccountSetupInfo = AdminSetupInspectResponse;
+export type CreateAdminAccountInput = CreateAdminAccountRequest;
+export type UpdateAdminAccountInput = UpdateAdminAccountRequest;
+export type SuspendAdminAccountInput = AdminAccountSensitiveActionRequest;
+export type ActivateAdminAccountInput = AdminAccountSensitiveActionRequest;
+export type CreateAdminSetupLinkInput = CreateAdminSetupLinkRequest;
 
 export interface EpisodeRecord {
   id: string;

@@ -3,6 +3,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { AppConfigService } from "./config/config.service.js";
 import { VodProviderService, WechatProviderService } from "./providers/providers.js";
 import { AdminRolesGuard, JwtAuthGuard, OptionalJwtAuthGuard } from "./security/security.js";
+import { TotpService } from "./security/totp.service.js";
 
 @Global()
 @Module({
@@ -18,7 +19,8 @@ import { AdminRolesGuard, JwtAuthGuard, OptionalJwtAuthGuard } from "./security/
     VodProviderService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
-    AdminRolesGuard
+    AdminRolesGuard,
+    TotpService
   ],
   exports: [
     JwtModule,
@@ -27,7 +29,8 @@ import { AdminRolesGuard, JwtAuthGuard, OptionalJwtAuthGuard } from "./security/
     VodProviderService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
-    AdminRolesGuard
+    AdminRolesGuard,
+    TotpService
   ]
 })
 export class InfrastructureModule {}

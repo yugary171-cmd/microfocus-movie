@@ -91,6 +91,7 @@ import {
   type Principal
 } from "../security/security.js";
 import { AdminWriteRateLimitGuard } from "../security/admin-write-rate-limit.js";
+import { AdminSetupRateLimitGuard } from "../security/admin-setup-rate-limit.js";
 import {
   assertEditorOwns,
   assertNotPublished,
@@ -110,6 +111,12 @@ import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQ
 import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
 import { boundedListWindow, emptyBoundedPage, parsePage } from "../common/list-pagination.js";
 import { requireEntityId, optionalEntityId } from "../common/entity-id.js";
+import {
+  AdminAccountsController,
+  AdminSetupController
+} from "./admin-accounts.controller.js";
+import { AdminAccountsService } from "./admin-accounts.service.js";
+import { AdminSetupService } from "./admin-setup.service.js";
 
 export class EpisodeInput {
   @IsInt()
@@ -1317,5 +1324,8 @@ function assertUniqueEpisodeNumbers(episodes: EpisodeInput[]): void {
   }
 }
 
-@Module({ controllers: [AdminController] })
+@Module({
+  controllers: [AdminController, AdminAccountsController, AdminSetupController],
+  providers: [AdminAccountsService, AdminSetupService, AdminSetupRateLimitGuard]
+})
 export class AdminModule {}

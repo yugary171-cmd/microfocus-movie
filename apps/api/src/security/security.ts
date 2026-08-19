@@ -16,7 +16,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 export type Principal =
   | { kind: "user"; sub: string }
   | { kind: "viewer"; sub: string; deviceId: string }
-  | { kind: "admin"; sub: string; role: AdminRole };
+  | { kind: "admin"; sub: string; role: AdminRole; sessionVersion?: number };
 
 export type AuthenticatedRequest = {
   header(name: string): string | undefined;
@@ -44,6 +44,50 @@ export class JwtAuthGuard implements CanActivate {
           throw Errors.unauthorized(
             "This account is unavailable",
             ERROR_CODES.ACCOUNT_UNAVAILABLE
+          );
+        }
+      }
+      if (principal.kind === "admin") {
+        if (!this.prisma) {
+          throw Errors.unauthorized(
+            "Administrator account could not be verified",
+            ERROR_CODES.ADMIN_ACCOUNT_UNAVAILABLE
+          );
+        }
+        const admin = await this.prisma.adminUser.findUnique({
+          where: { id: principal.sub },
+          select: {
+            active: true,
+            setupCompletedAt: true,
+            role: true,
+            sessionVersion: true
+          }
+        });
+        if (!admin) {
+          throw Errors.unauthorized(
+            "Administrator account is unavailable",
+            ERROR_CODES.ADMIN_ACCOUNT_UNAVAILABLE
+          );
+        }
+        if (!admin.setupCompletedAt) {
+          throw Errors.unauthorized(
+            "Administrator setup is incomplete",
+            ERROR_CODES.ADMIN_ACCOUNT_PENDING_SETUP
+          );
+        }
+        if (!admin.active) {
+          throw Errors.unauthorized(
+            "Administrator account is suspended",
+            ERROR_CODES.ADMIN_ACCOUNT_SUSPENDED
+          );
+        }
+        if (
+          admin.role !== principal.role ||
+          admin.sessionVersion !== principal.sessionVersion
+        ) {
+          throw Errors.unauthorized(
+            "Administrator session is no longer valid",
+            ERROR_CODES.ADMIN_SESSION_INVALID
           );
         }
       }
@@ -124,10 +168,14 @@ export function parsePrincipal(payload: unknown): Principal {
   }
   if (record.kind === "admin") {
     const role = record.role;
+    const sessionVersion = record.sessionVersion;
     if (role !== AdminRole.ADMIN && role !== AdminRole.EDITOR && role !== AdminRole.REVIEWER) {
       throw Errors.unauthorized("Invalid or expired access token");
     }
-    return { kind: "admin", sub, role };
+    if (!Number.isSafeInteger(sessionVersion) || (sessionVersion as number) < 1) {
+      throw Errors.unauthorized("Invalid or expired access token");
+    }
+    return { kind: "admin", sub, role, sessionVersion: sessionVersion as number };
   }
   throw Errors.unauthorized("Invalid or expired access token");
 }

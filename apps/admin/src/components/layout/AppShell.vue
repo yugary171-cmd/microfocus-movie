@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { navigationItems } from "@/config/navigation";
+import { isNavigationItemActive, navigationItems } from "@/config/navigation";
 import { roleLabels } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import ModeBanner from "@/components/ModeBanner.vue";
@@ -44,7 +44,9 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
           :key="item.to"
           :to="item.to"
           class="nav-item"
-          :class="{ 'router-link-active': item.to === '/' ? route.path === '/' : route.path.startsWith(item.to) }"
+          active-class="nav-item--route-active"
+          exact-active-class="nav-item--route-exact"
+          :class="{ 'is-active': isNavigationItemActive(route.path, item.to) }"
           @click="menuOpen = false"
         >
           <span class="nav-item__icon"><Icon :name="item.icon" /></span>
