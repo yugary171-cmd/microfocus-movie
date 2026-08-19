@@ -1,4 +1,4 @@
-import { EMAIL_MAX_LENGTH, OTP_INPUT_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@microfocus/contracts";
+import { ADMIN_LOGIN_ID_MAX_LENGTH, OTP_INPUT_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginView from "./LoginView.vue";
@@ -26,23 +26,23 @@ describe("LoginView", () => {
 
   it("uses contract email and password limits and blocks oversized login", async () => {
     const wrapper = mount(LoginView);
-    const email = wrapper.get("input[type='email']");
+    const email = wrapper.get("input[autocomplete='username']");
     const password = wrapper.get("input[type='password']");
     const otp = wrapper.get("input[autocomplete='one-time-code']");
 
-    expect(email.attributes("maxlength")).toBe(String(EMAIL_MAX_LENGTH));
+    expect(email.attributes("maxlength")).toBe(String(ADMIN_LOGIN_ID_MAX_LENGTH));
     expect(password.attributes("maxlength")).toBe(String(PASSWORD_MAX_LENGTH));
     expect(password.attributes("minlength")).toBe(String(PASSWORD_MIN_LENGTH));
     expect(otp.attributes("maxlength")).toBe(String(OTP_INPUT_LENGTH));
     expect(otp.attributes("minlength")).toBe(String(OTP_INPUT_LENGTH));
 
-    await email.setValue(`${"a".repeat(EMAIL_MAX_LENGTH)}@x.invalid`);
+    await email.setValue(`${"a".repeat(ADMIN_LOGIN_ID_MAX_LENGTH)}@x.invalid`);
     await password.setValue("password1");
     await otp.setValue("123456");
     await wrapper.get("form").trigger("submit");
     await flushPromises();
     expect(login).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain(`邮箱最长 ${EMAIL_MAX_LENGTH}`);
+    expect(wrapper.text()).toContain(`登录名最长 ${ADMIN_LOGIN_ID_MAX_LENGTH}`);
 
     await email.setValue("editor@microfocus.local");
     await password.setValue("p".repeat(PASSWORD_MAX_LENGTH + 1));
@@ -57,6 +57,17 @@ describe("LoginView", () => {
     expect(login).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain(`密码至少 ${PASSWORD_MIN_LENGTH}`);
 
+    wrapper.unmount();
+  });
+
+  it("accepts a login id that is not an email address", async () => {
+    const wrapper = mount(LoginView);
+    await wrapper.get("input[autocomplete='username']").setValue("stellan");
+    await wrapper.get("input[autocomplete='current-password']").setValue("password1");
+    await wrapper.get("input[autocomplete='one-time-code']").setValue("123456");
+    await wrapper.get("form").trigger("submit");
+    await flushPromises();
+    expect(login).toHaveBeenCalledWith("stellan", "password1", "123456", expect.anything());
     wrapper.unmount();
   });
 

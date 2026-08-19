@@ -5,13 +5,15 @@ import {
   ADMIN_DISPLAY_NAME_MAX_LENGTH,
   ADMIN_REASON_MAX_LENGTH,
   ADMIN_REASON_MIN_LENGTH,
+  ADMIN_LOGIN_ID_MAX_LENGTH,
+  ADMIN_LOGIN_ID_PATTERN_SOURCE,
   ASSIGNABLE_ADMIN_ROLES,
-  EMAIL_MAX_LENGTH,
   LIST_QUERY_MAX_LENGTH,
   OTP_INPUT_LENGTH,
   AdminAccountStatus,
   AdminRole,
   AdminSetupPurpose,
+  isAdminLoginId,
   isAssignableAdminRole,
   isOwnedContentRole,
   type AssignableAdminRole,
@@ -22,6 +24,7 @@ import { accountManagementMessage } from "@/api/account-errors";
 import { toErrorMessage } from "@/api/client";
 import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
+import Icon from "@/components/Icon.vue";
 import { formatDateTime, roleLabels } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import type {
@@ -49,6 +52,8 @@ const activeEditors = ref<AdminAccountRecord[]>([]);
 const setupLink = ref<AdminSetupLink | null>(null);
 const setupLinkOwner = ref("");
 const copied = ref(false);
+const copiedLoginId = ref("");
+let copiedLoginTimer = 0;
 const actionMenuAccount = ref<AdminAccountRecord | null>(null);
 const actionMenuStyle = ref<{ top: string; right: string }>({ top: "0px", right: "0px" });
 const form = reactive({
@@ -190,7 +195,7 @@ function formError(): string {
     if (!form.displayName.trim()) return "请输入真实姓名";
   }
   if (dialogMode.value === "create") {
-    if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email.trim())) return "请输入有效邮箱";
+    if (!isAdminLoginId(form.email)) return "请输入登录名，例如 name 或 name@company.com";
   }
   if (!new RegExp(`^\\d{${OTP_INPUT_LENGTH}}$`).test(form.otp)) {
     return `请输入当前管理员的 ${OTP_INPUT_LENGTH} 位验证码`;
@@ -274,6 +279,20 @@ async function submit(): Promise<void> {
   }
 }
 
+async function copyLoginId(loginId: string, event: Event): Promise<void> {
+  event.stopPropagation();
+  try {
+    await navigator.clipboard.writeText(loginId);
+    copiedLoginId.value = loginId;
+    window.clearTimeout(copiedLoginTimer);
+    copiedLoginTimer = window.setTimeout(() => {
+      if (copiedLoginId.value === loginId) copiedLoginId.value = "";
+    }, 1500);
+  } catch {
+    error.value = "浏览器未允许复制，请手动选择登录名复制";
+  }
+}
+
 async function copySetupLink(): Promise<void> {
   if (!setupLink.value) return;
   try {
@@ -323,6 +342,7 @@ onMounted(() => {
   document.addEventListener("pointerdown", onDocumentPointerDown);
 });
 onBeforeUnmount(() => {
+  window.clearTimeout(copiedLoginTimer);
   window.removeEventListener("resize", closeActions);
   window.removeEventListener("scroll", closeActions, true);
   document.removeEventListener("pointerdown", onDocumentPointerDown);
@@ -348,7 +368,7 @@ onBeforeUnmount(() => {
       <div v-if="error && !dialogMode" class="operation-message operation-message--error" role="alert">{{ error }}</div>
       <section class="panel accounts-panel">
         <form class="toolbar" role="search" @submit.prevent="filter">
-          <label class="field"><span>搜索账号</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="姓名或邮箱" /></label>
+          <label class="field"><span>搜索账号</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="姓名或登录名" /></label>
           <label class="field"><span>角色</span><select v-model="roleFilter"><option value="">全部角色</option><option v-for="role in Object.values(AdminRole)" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
           <label class="field"><span>状态</span><select v-model="statusFilter"><option value="">全部状态</option><option value="PENDING_SETUP">待开通</option><option value="ACTIVE">正常</option><option value="SUSPENDED">已停用</option></select></label>
           <button class="button button--secondary" type="submit" :disabled="loading">筛选</button>
@@ -361,10 +381,25 @@ onBeforeUnmount(() => {
           <div class="list-summary">第 {{ page }} 页 · 共 {{ total }} 个账号</div>
           <div class="table-wrap accounts-table table-wrap--sticky-actions">
             <table>
-              <thead><tr><th>姓名与邮箱</th><th>角色</th><th>状态</th><th>TOTP</th><th>负责剧目</th><th>最后登录</th><th>创建时间</th><th>操作</th></tr></thead>
+              <thead><tr><th>姓名与登录名</th><th>角色</th><th>状态</th><th>TOTP</th><th>负责剧目</th><th>最后登录</th><th>创建时间</th><th>操作</th></tr></thead>
               <tbody>
                 <tr v-for="account in items" :key="account.id">
-                  <td><span class="table-title"><strong>{{ account.displayName }} <small v-if="account.id === auth.user?.id">（当前账号）</small></strong><small>{{ account.email }}</small></span></td>
+                  <td>
+                    <span class="table-title">
+                      <strong>{{ account.displayName }} <small v-if="account.id === auth.user?.id">（当前账号）</small></strong>
+                      <span class="account-login-id">
+                        <small>{{ account.email }}</small>
+                        <button
+                          class="icon-button copy-login-id"
+                          type="button"
+                          :aria-label="copiedLoginId === account.email ? `${account.email} 已复制` : `复制登录名 ${account.email}`"
+                          @click="copyLoginId(account.email, $event)"
+                        >
+                          <Icon :name="copiedLoginId === account.email ? 'check' : 'copy'" :size="14" />
+                        </button>
+                      </span>
+                    </span>
+                  </td>
                   <td class="nowrap">{{ roleLabels[account.role] }}</td>
                   <td><StatusBadge :label="statusLabel(account.status)" :tone="statusTone(account.status)" /></td>
                   <td><StatusBadge :label="account.totpEnabled ? '已绑定' : '待绑定'" :tone="account.totpEnabled ? 'success' : 'warning'" /></td>
@@ -406,7 +441,7 @@ onBeforeUnmount(() => {
           <p v-if="selected">目标账号：{{ selected.displayName }}（{{ selected.email }}）</p>
           <template v-if="dialogMode === 'create' || dialogMode === 'edit'">
             <label class="field"><span>真实姓名 *</span><input v-model="form.displayName" autocomplete="off" :maxlength="ADMIN_DISPLAY_NAME_MAX_LENGTH" required /></label>
-            <label v-if="dialogMode === 'create'" class="field"><span>邮箱（登录名）*</span><input v-model="form.email" type="email" autocomplete="off" :maxlength="EMAIL_MAX_LENGTH" required /></label>
+            <label v-if="dialogMode === 'create'" class="field"><span>登录名 *</span><input v-model="form.email" type="text" autocomplete="off" :maxlength="ADMIN_LOGIN_ID_MAX_LENGTH" :pattern="ADMIN_LOGIN_ID_PATTERN_SOURCE" required placeholder="name 或 name@company.com" /><small>只作登录标识，不会用来收发邮件；已有带 @ 的账号仍可登录。</small></label>
             <label class="field"><span>角色 *</span><select v-model="form.role"><option v-for="role in ASSIGNABLE_ADMIN_ROLES" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
           </template>
           <label v-if="['suspend', 'activate', 'invite', 'reset'].includes(dialogMode)" class="field"><span>操作原因 *</span><textarea v-model="form.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required /></label>
@@ -439,7 +474,10 @@ onBeforeUnmount(() => {
 .accounts-table table { min-width: 980px; }
 .list-summary { margin: -4px 0 10px; color: var(--color-muted); font-size: 12px; }
 .pager { display: flex; gap: 8px; margin-top: 12px; }
-.nowrap { white-space: nowrap; }
+.account-login-id { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.account-login-id small { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy-login-id { width: 24px; height: 24px; color: var(--color-muted); }
+.copy-login-id:hover { color: var(--color-text); background: rgba(102, 112, 133, 0.1); }
 .account-actions-trigger { padding: 4px 2px; }
 .account-actions-menu { position: fixed; z-index: 81; display: grid; width: 170px; padding: 6px; border: 1px solid var(--color-border); border-radius: 9px; background: #fff; box-shadow: var(--shadow-md); }
 .account-actions-menu button { padding: 8px 9px; border: 0; border-radius: 6px; text-align: left; color: #344054; background: transparent; cursor: pointer; }

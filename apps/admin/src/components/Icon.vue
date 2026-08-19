@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type IconName = "home" | "grid" | "check" | "settings" | "clock" | "users" | "menu" | "logout" | "loading" | "empty" | "forbidden" | "error" | "warning" | "help" | "close" | "stop" | "play" | "add" | "eye" | "eye-off";
+type IconName = "home" | "grid" | "check" | "settings" | "clock" | "users" | "menu" | "logout" | "loading" | "empty" | "forbidden" | "error" | "warning" | "help" | "close" | "stop" | "play" | "add" | "eye" | "eye-off" | "copy";
 
 withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 20 });
 
@@ -23,7 +23,8 @@ const paths: Record<IconName, string> = {
   play: "M5 3l14 9-14 9z",
   add: "M12 5v14M5 12h14",
   eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
-  "eye-off": "M3 3l18 18 M10.6 10.6a2 2 0 0 0 2.8 2.8 M9.4 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-2.2 3.1 M6.1 6.1C3.9 7.8 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 4.4-1"
+  "eye-off": "M3 3l18 18 M10.6 10.6a2 2 0 0 0 2.8 2.8 M9.4 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-2.2 3.1 M6.1 6.1C3.9 7.8 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 4.4-1",
+  copy: "M9 9h11v12H9z M4 4h11v3"
 };
 </script>
 

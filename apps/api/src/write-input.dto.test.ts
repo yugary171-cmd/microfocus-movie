@@ -76,6 +76,15 @@ describe("remaining write input limits", () => {
     expect(
       await validate(
         plainToInstance(AdminLoginDto, {
+          email: "stellan",
+          password: "password1",
+          otp: "123456"
+        })
+      )
+    ).toEqual([]);
+    expect(
+      await validate(
+        plainToInstance(AdminLoginDto, {
           email: "ops@example.invalid",
           password: "password1",
           otp: "123456"

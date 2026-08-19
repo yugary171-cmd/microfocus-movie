@@ -256,3 +256,4 @@
 - 2026-08-19：补充公开管理员应急恢复规程 `docs/admin-emergency-access.md`，并实现全员锁死恢复命令 `npm run db:admin-break-glass`（确认短语、重置已有 ADMIN 密码与 TOTP、审计事件；非登录后门，变量不进入 API `envSchema`）。
 - 2026-08-19：本机测试库演练 `db:admin-break-glass`：干跑命中演练 ADMIN 后 `--commit` 写入密码哈希/加密 TOTP 与 `ADMIN_BREAK_GLASS_RECOVERY` 审计；离线校验真实 TOTP 通过。开发环境 HTTP 登录仍被 `ADMIN_TEST_OTP` 短路（新密码 + 测试 OTP 返回 201）。已停用演练账号并销毁一次性明文。根目录脚本已转发 `--commit`。未改日常登录账号。
 - 2026-08-19：管理后台改为两角色：内容编辑负责上传、审核（含自审）、发布与下架；系统管理员具备全部内容能力并独享运营、审计和账号。存量 REVIEWER 按内容编辑兼容，新建账号不再提供该角色。未改账本与 break-glass。
+- 2026-08-19：管理员登录标识不再要求 RFC 邮箱；API 字段仍为 `email`，不发信。账号列表可为登录名一键复制。

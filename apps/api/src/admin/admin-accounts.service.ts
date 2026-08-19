@@ -6,13 +6,13 @@ import {
   ADMIN_LIST_PAGE_SIZE,
   ADMIN_REASON_MAX_LENGTH,
   ADMIN_REASON_MIN_LENGTH,
-  EMAIL_MAX_LENGTH,
   ERROR_CODES,
   REQUEST_ID_MAX_LENGTH,
   AdminAccountStatus,
   AdminRole,
   AdminSetupPurpose,
   boundListQuery,
+  isAdminLoginId,
   isAssignableAdminRole,
   isOwnedContentRole,
   type AdminAccountListResponse,
@@ -502,8 +502,8 @@ function assertAssignableRole(role: AdminRole): void {
 
 function normalizeEmail(value: string): string {
   const email = value.trim().toLowerCase();
-  if (!email || email.length > EMAIL_MAX_LENGTH) {
-    throw Errors.badRequest(ERROR_CODES.INVALID_ADMIN_EMAIL, "Administrator email is invalid");
+  if (!isAdminLoginId(email)) {
+    throw Errors.badRequest(ERROR_CODES.INVALID_ADMIN_EMAIL, "Administrator login id is invalid");
   }
   return email;
 }

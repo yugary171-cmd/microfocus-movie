@@ -8,6 +8,7 @@ import {
   DeletionRequestStatus,
   DELETION_QUERY_TOKEN_TTL_SECONDS,
   DramaStatus,
+  isAdminLoginId,
   isAssignableAdminRole,
   isOwnedContentRole,
   isRightsMaterialDigest,
@@ -502,7 +503,8 @@ export const mockApi = {
     const email = input.email.trim().toLowerCase();
     if (!displayName || !email) throw new Error("姓名和邮箱不能为空");
     if (!isAssignableAdminRole(input.role)) throw new Error("新建账号只能是内容编辑或系统管理员");
-    if (adminAccounts.some((account) => account.email === email)) throw new Error("该邮箱已存在");
+    if (!isAdminLoginId(email)) throw new Error("登录名格式无效");
+    if (adminAccounts.some((account) => account.email === email)) throw new Error("该登录名已存在");
     const createdAt = new Date().toISOString();
     const account: AdminAccountRecord = {
       id: `admin-account-${crypto.randomUUID()}`,

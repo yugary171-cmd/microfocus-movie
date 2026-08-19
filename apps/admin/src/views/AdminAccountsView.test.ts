@@ -99,6 +99,17 @@ describe("AdminAccountsView", () => {
     expect(api.listAccounts).toHaveBeenLastCalledWith("", AdminRole.EDITOR, "ACTIVE", 1);
   });
 
+  it("copies the login id from the account list", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+    await wrapper.get('button[aria-label="复制登录名 editor@example.com"]').trigger("click");
+    await flushPromises();
+    expect(writeText).toHaveBeenCalledWith("editor@example.com");
+    wrapper.unmount();
+  });
+
   it("creates an account and reveals the one-time link only in the success dialog", async () => {
     api.createAccount.mockResolvedValue({
       account: account({ id: "new-account", status: AdminAccountStatus.PENDING_SETUP, setupCompletedAt: null }),

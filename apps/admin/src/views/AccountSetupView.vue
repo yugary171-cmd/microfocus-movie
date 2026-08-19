@@ -121,7 +121,7 @@ onMounted(inspect);
         <div class="setup-heading"><p class="eyebrow">SECURE ACCOUNT SETUP</p><h1>{{ title }}</h1><p>此链接仅能使用一次，请在 {{ formatDateTime(info.expiresAt) }} 前完成。</p></div>
         <dl class="account-summary">
           <div><dt>姓名</dt><dd>{{ info.displayName }}</dd></div>
-          <div><dt>邮箱</dt><dd>{{ info.email }}</dd></div>
+          <div><dt>登录名</dt><dd>{{ info.email }}</dd></div>
           <div><dt>角色</dt><dd>{{ roleLabels[info.role] }}</dd></div>
         </dl>
 

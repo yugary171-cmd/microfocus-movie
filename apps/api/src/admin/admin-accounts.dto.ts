@@ -4,8 +4,9 @@ import {
   ADMIN_REASON_MIN_LENGTH,
   ADMIN_SETUP_PASSWORD_MIN_LENGTH,
   ADMIN_SETUP_TOKEN_MAX_LENGTH,
+  ADMIN_LOGIN_ID_MAX_LENGTH,
+  ADMIN_LOGIN_ID_PATTERN,
   ASSIGNABLE_ADMIN_ROLES,
-  EMAIL_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   OTP_INPUT_LENGTH,
   PASSWORD_MAX_LENGTH,
@@ -19,7 +20,6 @@ import {
   type UpdateAdminAccountRequest
 } from "@microfocus/contracts";
 import {
-  IsEmail,
   IsEnum,
   IsIn,
   IsOptional,
@@ -33,8 +33,9 @@ import {
 const OTP_PATTERN = /^\d{6}$/;
 
 export class CreateAdminAccountDto implements CreateAdminAccountRequest {
-  @IsEmail()
-  @MaxLength(EMAIL_MAX_LENGTH)
+  @IsString()
+  @Matches(ADMIN_LOGIN_ID_PATTERN)
+  @MaxLength(ADMIN_LOGIN_ID_MAX_LENGTH)
   email!: string;
 
   @IsString()

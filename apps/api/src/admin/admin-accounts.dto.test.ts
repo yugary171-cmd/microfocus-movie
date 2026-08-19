@@ -43,6 +43,31 @@ describe("administrator account DTO limits", () => {
     expect(invalid.some((error) => error.property === "otp")).toBe(true);
   });
 
+  it("accepts a non-email login id and rejects spaces", async () => {
+    expect(
+      await validate(
+        plainToInstance(CreateAdminAccountDto, {
+          email: "stellan",
+          displayName: "新管理员",
+          role: AdminRole.EDITOR,
+          otp: "123456"
+        })
+      )
+    ).toEqual([]);
+    expect(
+      (
+        await validate(
+          plainToInstance(CreateAdminAccountDto, {
+            email: "ste llan",
+            displayName: "新管理员",
+            role: AdminRole.EDITOR,
+            otp: "123456"
+          })
+        )
+      ).some((error) => error.property === "email")
+    ).toBe(true);
+  });
+
   it("rejects REVIEWER when creating or changing an assignable role", async () => {
     expect(
       (

@@ -3,8 +3,9 @@ import { JwtService } from "@nestjs/jwt";
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
   API_ROUTES,
+  ADMIN_LOGIN_ID_MAX_LENGTH,
+  ADMIN_LOGIN_ID_PATTERN,
   DEVICE_ID_MAX_LENGTH,
-  EMAIL_MAX_LENGTH,
   ERROR_CODES,
   OTP_INPUT_LENGTH,
   PASSWORD_MAX_LENGTH,
@@ -16,7 +17,7 @@ import {
   type AnonymousSessionResponse,
   type WechatLoginResponse
 } from "@microfocus/contracts";
-import { IsEmail, IsString, Length, Matches, MaxLength, MinLength } from "class-validator";
+import { IsString, Length, Matches, MaxLength, MinLength } from "class-validator";
 import { compare } from "bcryptjs";
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
@@ -46,8 +47,9 @@ export class AnonymousSessionDto {
 }
 
 export class AdminLoginDto {
-  @IsEmail()
-  @MaxLength(EMAIL_MAX_LENGTH)
+  @IsString()
+  @Matches(ADMIN_LOGIN_ID_PATTERN)
+  @MaxLength(ADMIN_LOGIN_ID_MAX_LENGTH)
   email!: string;
 
   @IsString()

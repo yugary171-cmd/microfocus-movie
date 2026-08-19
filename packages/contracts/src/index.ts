@@ -89,6 +89,11 @@ export const DEVICE_ID_MAX_LENGTH = 128;
 export const SESSION_ID_MAX_LENGTH = 128;
 export const WECHAT_CODE_MAX_LENGTH = 256;
 export const EMAIL_MAX_LENGTH = 254;
+/** Admin login identifier max; API field remains `email` and is not used for SMTP. */
+export const ADMIN_LOGIN_ID_MAX_LENGTH = EMAIL_MAX_LENGTH;
+export const ADMIN_LOGIN_ID_PATTERN_SOURCE =
+  "[A-Za-z0-9]+(?:[._+-][A-Za-z0-9]+)*(?:@[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?";
+export const ADMIN_LOGIN_ID_PATTERN = new RegExp(`^${ADMIN_LOGIN_ID_PATTERN_SOURCE}$`);
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 export const ADMIN_SETUP_PASSWORD_MIN_LENGTH = 12;
@@ -208,6 +213,16 @@ export function resolveUploadContentType(fileType: string): UploadContentType | 
   const type = fileType.trim();
   if (!type) return "application/octet-stream";
   return (UPLOAD_CONTENT_TYPES as readonly string[]).includes(type) ? (type as UploadContentType) : null;
+}
+
+export function normalizeAdminLoginId(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+/** Admin login identifier. Existing `name@domain` values remain valid; SMTP is not implied. */
+export function isAdminLoginId(value: string): boolean {
+  const id = normalizeAdminLoginId(value);
+  return id.length > 0 && id.length <= ADMIN_LOGIN_ID_MAX_LENGTH && ADMIN_LOGIN_ID_PATTERN.test(id);
 }
 
 export const ERROR_CODES = {

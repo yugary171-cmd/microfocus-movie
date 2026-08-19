@@ -1,7 +1,7 @@
 import { ERROR_CODES } from "@microfocus/contracts";
 
 const ACCOUNT_ERROR_MESSAGES: Record<string, string> = {
-  [ERROR_CODES.ADMIN_EMAIL_ALREADY_EXISTS]: "该邮箱已被使用",
+  [ERROR_CODES.ADMIN_EMAIL_ALREADY_EXISTS]: "该登录名已被使用",
   [ERROR_CODES.ADMIN_SELF_ACTION_FORBIDDEN]: "不能对自己的账号执行此操作",
   [ERROR_CODES.LAST_ACTIVE_ADMIN]: "必须至少保留一个正常的系统管理员",
   [ERROR_CODES.EDITOR_TRANSFER_REQUIRED]: "该内容编辑名下仍有剧目，请选择接替编辑",
@@ -11,7 +11,7 @@ const ACCOUNT_ERROR_MESSAGES: Record<string, string> = {
   [ERROR_CODES.ADMIN_SETUP_NOT_PENDING]: "该账号当前不能执行此开通操作",
   [ERROR_CODES.INVALID_ADMIN_REASON]: "操作原因长度不符合要求",
   [ERROR_CODES.INVALID_ADMIN_DISPLAY_NAME]: "真实姓名无效",
-  [ERROR_CODES.INVALID_ADMIN_EMAIL]: "邮箱无效",
+  [ERROR_CODES.INVALID_ADMIN_EMAIL]: "登录名无效",
   [ERROR_CODES.RATE_LIMITED]: "操作过于频繁，请稍后再试",
 };
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ASSIGNABLE_ADMIN_ROLES, AdminRole, EMAIL_MAX_LENGTH, OTP_INPUT_LENGTH, OTP_INPUT_PATTERN, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@microfocus/contracts";
+import { ASSIGNABLE_ADMIN_ROLES, AdminRole, ADMIN_LOGIN_ID_MAX_LENGTH, ADMIN_LOGIN_ID_PATTERN_SOURCE, isAdminLoginId, OTP_INPUT_LENGTH, OTP_INPUT_PATTERN, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@microfocus/contracts";
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
@@ -22,8 +22,12 @@ const error = ref("");
 async function submit(): Promise<void> {
   error.value = "";
   const trimmedEmail = email.value.trim();
-  if (trimmedEmail.length > EMAIL_MAX_LENGTH) {
-    error.value = `邮箱最长 ${EMAIL_MAX_LENGTH} 个字符`;
+  if (trimmedEmail.length > ADMIN_LOGIN_ID_MAX_LENGTH) {
+    error.value = `登录名最长 ${ADMIN_LOGIN_ID_MAX_LENGTH} 个字符`;
+    return;
+  }
+  if (!isAdminLoginId(trimmedEmail)) {
+    error.value = "登录名只能包含字母、数字、点、下划线和可选的 @域";
     return;
   }
   if (password.value.length > PASSWORD_MAX_LENGTH) {
@@ -40,7 +44,7 @@ async function submit(): Promise<void> {
   }
   busy.value = true;
   try {
-    await auth.login(trimmedEmail, password.value, otp.value, mockRole.value);
+                await auth.login(trimmedEmail.toLowerCase(), password.value, otp.value, mockRole.value);
     const redirect = typeof route.query.redirect === "string" && route.query.redirect.startsWith("/")
       ? route.query.redirect
       : "/";
@@ -76,18 +80,19 @@ async function submit(): Promise<void> {
       </div>
       <div v-if="adminApi.mode === 'mock'" class="login-mock-notice" role="status">
         <strong>演示 Mock 模式</strong>
-        <span>不会连接真实账号或云服务；输入任意符合格式的账号、密码和 {{ OTP_INPUT_LENGTH }} 位验证码即可体验。</span>
+        <span>不会连接真实账号或云服务；输入任意符合格式的登录名、密码和 {{ OTP_INPUT_LENGTH }} 位验证码即可体验。登录名只是标识，不必是能收信的邮箱。</span>
       </div>
       <form @submit.prevent="submit">
         <label class="field">
-          <span>邮箱</span>
+          <span>登录名</span>
           <input
             v-model="email"
-            type="email"
+            type="text"
             autocomplete="username"
             required
-            :maxlength="EMAIL_MAX_LENGTH"
-            placeholder="name@company.com"
+            :maxlength="ADMIN_LOGIN_ID_MAX_LENGTH"
+            :pattern="ADMIN_LOGIN_ID_PATTERN_SOURCE"
+            placeholder="name 或 name@company.com"
           />
         </label>
         <label class="field">

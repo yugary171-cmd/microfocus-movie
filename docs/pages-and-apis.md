@@ -110,7 +110,7 @@ flowchart LR
 
 | 页面 | 路由 | 允许角色 | 职责 |
 | --- | --- | --- | --- |
-| 登录 | `/login` | 未登录 | 邮箱、密码、OTP 换管理员 JWT |
+| 登录 | `/login` | 未登录 | 登录名、密码、OTP 换管理员 JWT |
 | 工作台 | `/` | EDITOR / REVIEWER / ADMIN | 内容状态和发布闸门摘要 |
 | 剧目列表 | `/dramas` | EDITOR / REVIEWER / ADMIN | 按权限查看和筛选剧目；列表由服务端分页
 | 新建/编辑剧 | `/dramas/new`、`/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 编辑本人负责的剧目；ADMIN 可改任意剧；均可提交审核、发布、下架 |
@@ -209,14 +209,14 @@ flowchart LR
 
 ### 5.2 管理端
 
-除登录接口外，所有管理接口均需管理员 JWT；表中角色是服务端必须执行的最小权限。写操作（POST/PATCH/PUT/DELETE）和只读 GET 分别按认证管理员身份限频，分桶计数；管理员 ID 写入哈希前最长 `RATE_LIMIT_CLIENT_KEY_MAX_LENGTH`（128），不使用可伪造的客户端字段。登录仍单独按 IP+邮箱限频，该键完整哈希。
+除登录接口外，所有管理接口均需管理员 JWT；表中角色是服务端必须执行的最小权限。写操作（POST/PATCH/PUT/DELETE）和只读 GET 分别按认证管理员身份限频，分桶计数；管理员 ID 写入哈希前最长 `RATE_LIMIT_CLIENT_KEY_MAX_LENGTH`（128），不使用可伪造的客户端字段。登录仍单独按 IP+登录名限频，该键完整哈希。
 
 | 方法与路径 | 角色 | 所有权/状态约束 | 用途 |
 | --- | --- | --- | --- |
-| `POST /v1/admin/auth/login` | 公开、按连接 IP + 邮箱限频 | 邮箱最长 254；密码 `PASSWORD_MIN_LENGTH`–`PASSWORD_MAX_LENGTH`（8–128）；OTP 服务端 6–8（`OTP_MIN_LENGTH`/`OTP_MAX_LENGTH`）；管理端登录表单邮箱/密码 min/maxlength 与之共用，验证码输入仍为 `OTP_INPUT_LENGTH=6` 位 TOTP；成功写入 `lastLoginAt` | 换管理员 JWT（含 `sessionVersion`） |
+| `POST /v1/admin/auth/login` | 公开、按连接 IP + 登录名限频 | 登录名最长 254（`ADMIN_LOGIN_ID_MAX_LENGTH`，API 字段仍为 `email`，不作 SMTP）；允许 `stellan` 或既有 `name@domain`；密码 `PASSWORD_MIN_LENGTH`–`PASSWORD_MAX_LENGTH`（8–128）；OTP 服务端 6–8（`OTP_MIN_LENGTH`/`OTP_MAX_LENGTH`）；管理端登录表单登录名/密码 min/maxlength 与之共用，验证码输入仍为 `OTP_INPUT_LENGTH=6` 位 TOTP；成功写入 `lastLoginAt` | 换管理员 JWT（含 `sessionVersion`） |
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
-| `GET /v1/admin/accounts` | ADMIN | `query` 最长 100；按姓名/邮箱、角色、状态分页，每页 50，最多 100 页 | 管理员账号列表 |
-| `POST /v1/admin/accounts` | ADMIN + 当前管理员 OTP | 姓名、邮箱必填；邮箱转小写唯一；不生成可用密码 | 创建待开通账号并返回 24 小时一次性开通链接（明文只出现一次） |
+| `GET /v1/admin/accounts` | ADMIN | `query` 最长 100；按姓名/登录名、角色、状态分页，每页 50，最多 100 页 | 管理员账号列表 |
+| `POST /v1/admin/accounts` | ADMIN + 当前管理员 OTP | 姓名、登录名必填；登录名转小写唯一（字段仍为 `email`）；不生成可用密码 | 创建待开通账号并返回 24 小时一次性开通链接（明文只出现一次） |
 | `PATCH /v1/admin/accounts/:id` | ADMIN + 当前管理员 OTP | 禁止改自己的角色；降级最后一名正常 ADMIN 禁止；EDITOR 改角色且名下有剧目时必须 `transferEditorId` | 修改姓名或角色；角色变化提升 `sessionVersion` |
 | `POST /v1/admin/accounts/:id/suspend` | ADMIN + 当前管理员 OTP + 原因 | 禁止操作自己；禁止停用最后一名正常 ADMIN；EDITOR 有剧目时必须移交 | 停用账号并立即失效旧 JWT |
 | `POST /v1/admin/accounts/:id/activate` | ADMIN + 当前管理员 OTP + 原因 | 待开通账号不可直接启用 | 启用已停用账号，默认沿用原凭据 |
