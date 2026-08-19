@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AdminRole, EMAIL_MAX_LENGTH, OTP_INPUT_LENGTH, OTP_INPUT_PATTERN, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@microfocus/contracts";
+import { ASSIGNABLE_ADMIN_ROLES, AdminRole, EMAIL_MAX_LENGTH, OTP_INPUT_LENGTH, OTP_INPUT_PATTERN, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@microfocus/contracts";
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
@@ -116,7 +116,7 @@ async function submit(): Promise<void> {
         <label v-if="adminApi.mode === 'mock'" class="field">
           <span>演示角色</span>
           <select v-model="mockRole">
-            <option v-for="role in AdminRole" :key="role" :value="role">{{ roleLabels[role] }}</option>
+            <option v-for="role in ASSIGNABLE_ADMIN_ROLES" :key="role" :value="role">{{ roleLabels[role] }}</option>
           </select>
         </label>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>

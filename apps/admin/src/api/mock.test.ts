@@ -103,7 +103,7 @@ describe("mock admin publish path", () => {
     const link = await mockApi.createAccount({
       displayName: "王审核",
       email,
-      role: AdminRole.REVIEWER,
+      role: AdminRole.EDITOR,
       otp: "123456",
     });
     const token = new URLSearchParams(new URL(link.setupUrl).hash.replace(/^#/, "")).get("token");
@@ -111,17 +111,17 @@ describe("mock admin publish path", () => {
     await expect(mockApi.login(email, "123456", AdminRole.ADMIN)).rejects.toThrow("尚未开通");
 
     const setup = await mockApi.inspectAccountSetup(token!);
-    expect(setup).toMatchObject({ displayName: "王审核", email, role: AdminRole.REVIEWER });
+    expect(setup).toMatchObject({ displayName: "王审核", email, role: AdminRole.EDITOR });
     await mockApi.completeAccountSetup(token!, "strong-password-2026", "123456");
     await expect(mockApi.inspectAccountSetup(token!)).rejects.toThrow("无效");
 
-    const accounts = await mockApi.listAccounts(email, AdminRole.REVIEWER, AdminAccountStatus.ACTIVE, 1);
+    const accounts = await mockApi.listAccounts(email, AdminRole.EDITOR, AdminAccountStatus.ACTIVE, 1);
     expect(accounts.items).toHaveLength(1);
     expect(accounts.items[0]).toMatchObject({ email, status: "ACTIVE", totpEnabled: true });
     await expect(mockApi.login(email, "123456", AdminRole.ADMIN)).resolves.toMatchObject({
-      user: { email, role: AdminRole.REVIEWER },
+      user: { email, role: AdminRole.EDITOR },
     });
-    const afterLogin = await mockApi.listAccounts(email, AdminRole.REVIEWER, AdminAccountStatus.ACTIVE, 1);
+    const afterLogin = await mockApi.listAccounts(email, AdminRole.EDITOR, AdminAccountStatus.ACTIVE, 1);
     expect(afterLogin.items[0]?.lastLoginAt).toBeTruthy();
 
     const persisted = `${localStorage.getItem("microfocus.admin.mock-accounts-v1")} ${localStorage.getItem("microfocus.admin.mock-setup-links-v1")}`;

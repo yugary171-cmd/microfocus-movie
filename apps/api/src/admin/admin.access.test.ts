@@ -6,7 +6,6 @@ import type { PrismaService } from "../prisma/prisma.service.js";
 import {
   assertEditorOwns,
   assertNotPublished,
-  assertNotSelfReview,
   editorScope
 } from "./admin.access.js";
 import {
@@ -20,13 +19,13 @@ const reviewer = { kind: "admin" as const, sub: "reviewer-1", role: AdminRole.RE
 const admin = { kind: "admin" as const, sub: "admin-1", role: AdminRole.ADMIN };
 
 describe("admin access", () => {
-  it("scopes lists to the editor and leaves reviewer/admin unscoped", () => {
+  it("scopes lists to owned-content roles and leaves admin unscoped", () => {
     expect(editorScope(editor)).toEqual({ editorId: "editor-1" });
-    expect(editorScope(reviewer)).toEqual({});
+    expect(editorScope(reviewer)).toEqual({ editorId: "reviewer-1" });
     expect(editorScope(admin)).toEqual({});
   });
 
-  it("blocks editors from other editors' dramas", () => {
+  it("blocks owned-content roles from other editors' dramas and lets admin through", () => {
     expect(() => assertEditorOwns({ editorId: "editor-2" }, editor)).toThrow(AppError);
     try {
       assertEditorOwns({ editorId: "editor-2" }, editor);
@@ -34,11 +33,11 @@ describe("admin access", () => {
       expect(error).toMatchObject({ code: "OWNERSHIP_REQUIRED" });
     }
     expect(assertEditorOwns({ editorId: "editor-1" }, editor).editorId).toBe("editor-1");
-    expect(assertEditorOwns({ editorId: "editor-1" }, reviewer).editorId).toBe("editor-1");
+    expect(assertEditorOwns({ editorId: "editor-1" }, admin).editorId).toBe("editor-1");
+    expect(() => assertEditorOwns({ editorId: "editor-1" }, reviewer)).toThrow(AppError);
   });
 
-  it("forbids self-review and published mutation", () => {
-    expect(() => assertNotSelfReview("reviewer-1", "reviewer-1")).toThrow(AppError);
+  it("blocks published mutation", () => {
     expect(() => assertNotPublished("PUBLISHED")).toThrow(AppError);
     expect(() => assertNotPublished("DRAFT")).not.toThrow();
   });

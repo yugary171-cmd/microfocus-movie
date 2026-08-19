@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import Icon from "@/components/Icon.vue";
-import { ADMIN_LIST_PAGE_SIZE, DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, DramaStatus, LIST_QUERY_MAX_LENGTH, isContentOperator } from "@microfocus/contracts";
 import { computed, onMounted, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { dramaStatusLabels, formatDateTime } from "@/i18n";
+import { useAuthStore } from "@/stores/auth";
 import type { DramaRecord } from "@/types/admin";
+
+const auth = useAuthStore();
+const canCreateDrama = computed(() => Boolean(auth.user && isContentOperator(auth.user.role)));
 
 const items = ref<DramaRecord[]>([]);
 const total = ref(0);
@@ -67,8 +71,12 @@ onMounted(load);
 <template>
   <div>
     <header class="page-header">
-      <div><p class="eyebrow">CONTENT LIBRARY</p><h1>剧目管理</h1><p>维护元数据、版权许可、分集媒体与发布状态。</p></div>
-      <RouterLink class="button button--primary" to="/dramas/new"><Icon name="add" />新建剧目</RouterLink>
+      <div>
+        <p class="eyebrow">CONTENT LIBRARY</p>
+        <h1>剧目管理</h1>
+        <p>维护元数据、版权许可、分集媒体与发布状态。</p>
+      </div>
+      <RouterLink v-if="canCreateDrama" class="button button--primary" to="/dramas/new"><Icon name="add" />新建剧目</RouterLink>
     </header>
     <section class="panel">
       <form class="toolbar" role="search" @submit.prevent="filter">
@@ -79,8 +87,13 @@ onMounted(load);
       </form>
       <PageState v-if="loading" type="loading" message="正在加载剧目列表…" />
       <PageState v-else-if="error" type="error" :message="error" @retry="load" />
-      <PageState v-else-if="items.length === 0 && total === 0" type="empty" title="没有匹配的剧目" message="调整筛选条件，或创建第一部剧目。">
-        <RouterLink class="button button--primary" to="/dramas/new">新建剧目</RouterLink>
+      <PageState
+        v-else-if="items.length === 0 && total === 0"
+        type="empty"
+        title="没有匹配的剧目"
+        message="调整筛选条件，或创建第一部剧目。"
+      >
+        <RouterLink v-if="canCreateDrama" class="button button--primary" to="/dramas/new">新建剧目</RouterLink>
       </PageState>
       <template v-else>
         <div class="list-summary">第 {{ page }} 页 · 共 {{ total }} 部剧目</div>

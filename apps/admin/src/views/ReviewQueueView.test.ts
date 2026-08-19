@@ -3,8 +3,14 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ReviewQueueView from "./ReviewQueueView.vue";
 
-const { listReviews } = vi.hoisted(() => ({
+const { listReviews, authUser } = vi.hoisted(() => ({
   listReviews: vi.fn(),
+  authUser: {
+    id: "editor-1",
+    name: "林编辑",
+    email: "editor@example.com",
+    role: "EDITOR" as AdminRole,
+  },
 }));
 
 vi.mock("@/api/admin", () => ({
@@ -13,12 +19,16 @@ vi.mock("@/api/admin", () => ({
 
 vi.mock("@/stores/auth", () => ({
   useAuthStore: () => ({
-    user: { id: "reviewer-1", name: "审", email: "reviewer@example.com", role: AdminRole.REVIEWER },
+    user: authUser,
   }),
 }));
 
 describe("ReviewQueueView", () => {
-  beforeEach(() => listReviews.mockReset());
+  beforeEach(() => {
+    listReviews.mockReset();
+    authUser.id = "editor-1";
+    authUser.role = AdminRole.EDITOR;
+  });
 
   it("requests paged reviews and can move to the next page", async () => {
     listReviews.mockResolvedValue({
@@ -47,6 +57,29 @@ describe("ReviewQueueView", () => {
     await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
     await flushPromises();
     expect(listReviews).toHaveBeenLastCalledWith(2);
+  });
+
+  it("lets an editor approve their own pending submission", async () => {
+    listReviews.mockResolvedValue({
+      items: [
+        {
+          id: "review-own",
+          dramaId: "drama-1",
+          dramaTitle: "自己提交的剧",
+          submitterId: "editor-1",
+          submitterName: "林编辑",
+          submittedAt: "2026-08-14T00:00:00.000Z",
+          riskFlags: [],
+          status: "PENDING",
+        },
+      ],
+      total: 1,
+    });
+    const wrapper = mount(ReviewQueueView);
+    await flushPromises();
+    expect(wrapper.text()).not.toContain("当前角色不能访问审核队列");
+    expect(wrapper.findAll("button").some((button) => button.text() === "审核通过")).toBe(true);
+    wrapper.unmount();
   });
 
   it("caps reject notes to the content-review contract limit", async () => {

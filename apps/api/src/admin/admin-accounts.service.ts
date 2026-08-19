@@ -13,6 +13,8 @@ import {
   AdminRole,
   AdminSetupPurpose,
   boundListQuery,
+  isAssignableAdminRole,
+  isOwnedContentRole,
   type AdminAccountListResponse,
   type AdminAccountView,
   type AdminSetupLinkResponse,
@@ -98,6 +100,7 @@ export class AdminAccountsService {
   ): Promise<AdminSetupLinkResponse> {
     const email = normalizeEmail(body.email);
     const displayName = normalizeDisplayName(body.displayName);
+    assertAssignableRole(body.role);
     const prepared = this.setup.prepareSetupToken(email, AdminSetupPurpose.INVITE);
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -142,6 +145,7 @@ export class AdminAccountsService {
   ): Promise<AdminAccountView> {
     const id = requireEntityId(targetId, "Administrator");
     if (operatorId === id && body.role !== undefined) assertNotSelf(operatorId, id);
+    if (body.role !== undefined) assertAssignableRole(body.role);
     if (body.displayName === undefined && body.role === undefined) {
       throw Errors.badRequest(
         ERROR_CODES.ADMIN_ACCOUNT_UPDATE_EMPTY,
@@ -162,7 +166,7 @@ export class AdminAccountsService {
         setupCompletedAt: target.setupCompletedAt
       });
       const transferredDramas =
-        roleChanged && target.role === AdminRole.EDITOR && nextRole !== AdminRole.EDITOR
+        roleChanged && isOwnedContentRole(target.role as AdminRole) && !isOwnedContentRole(nextRole)
           ? await transferEditorDramas(tx, target.id, body.transferEditorId)
           : 0;
       const account = await tx.adminUser.update({
@@ -201,7 +205,7 @@ export class AdminAccountsService {
         setupCompletedAt: target.setupCompletedAt
       });
       const transferredDramas =
-        target.role === AdminRole.EDITOR
+        isOwnedContentRole(target.role as AdminRole)
           ? await transferEditorDramas(tx, target.id, transferEditorId)
           : 0;
       const account = target.active
@@ -326,7 +330,7 @@ export class AdminAccountsService {
           setupCompletedAt: null
         });
         transferredDramas =
-          target.role === AdminRole.EDITOR
+          isOwnedContentRole(target.role as AdminRole)
             ? await transferEditorDramas(tx, target.id, transferEditorId)
             : 0;
         await tx.adminUser.update({
@@ -487,6 +491,12 @@ function assertNotSelf(operatorId: string, targetId: string): void {
       ERROR_CODES.ADMIN_SELF_ACTION_FORBIDDEN,
       "Administrators may not manage their own account"
     );
+  }
+}
+
+function assertAssignableRole(role: AdminRole): void {
+  if (!isAssignableAdminRole(role)) {
+    throw Errors.badRequest("VALIDATION_ERROR", "New administrator roles must be EDITOR or ADMIN");
   }
 }
 

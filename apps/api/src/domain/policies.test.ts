@@ -189,7 +189,19 @@ describe("publication gate", () => {
     ).toEqual([]);
   });
 
-  it("blocks self review, incomplete rights and failed media gates", () => {
+  it("allows a fully approved drama reviewed by the same editor", () => {
+    expect(
+      publicationBlockers({
+        editorId: "editor",
+        reviewerId: "editor",
+        now: new Date("2026-01-01T00:00:00Z"),
+        rights,
+        episodes: [{ currentAsset: approvedAsset }]
+      })
+    ).toEqual([]);
+  });
+
+  it("blocks incomplete rights and failed media gates", () => {
     const blockers = publicationBlockers({
       editorId: "editor",
       reviewerId: "editor",
@@ -197,7 +209,7 @@ describe("publication gate", () => {
       rights: { ...rights, allowsAdMonetization: false },
       episodes: [{ currentAsset: { ...approvedAsset, manualReviewStatus: "REJECTED" } }]
     });
-    expect(blockers).toContain("SELF_REVIEW_FORBIDDEN");
+    expect(blockers).not.toContain("SELF_REVIEW_FORBIDDEN");
     expect(blockers).toContain("RIGHTS_SCOPE_INCOMPLETE");
     expect(blockers).toContain("MANUAL_REVIEW_REQUIRED");
   });

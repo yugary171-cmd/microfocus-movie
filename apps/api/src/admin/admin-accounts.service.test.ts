@@ -195,7 +195,7 @@ describe("administrator account listing and creation", () => {
       service(transactionPrisma(tx)).create("editor-1", {
         email: "new@example.com",
         displayName: "新账号",
-        role: AdminRole.REVIEWER,
+        role: AdminRole.EDITOR,
         otp: "123456"
       })
     ).rejects.toMatchObject({ code: "INSUFFICIENT_ROLE" });
@@ -215,7 +215,7 @@ describe("administrator account listing and creation", () => {
         .create("operator-1", {
           email: "new@example.com",
           displayName: "新账号",
-          role: AdminRole.REVIEWER,
+          role: AdminRole.EDITOR,
           otp: "000000"
         })
     ).rejects.toMatchObject({ code: ERROR_CODES.ADMIN_OTP_INVALID });
@@ -265,6 +265,7 @@ describe("administrator account mutation safety", () => {
         ),
         update: vi.fn().mockResolvedValue(updated)
       },
+      drama: { count: vi.fn().mockResolvedValue(0) },
       auditLog: { create: vi.fn().mockResolvedValue({ id: "audit-1" }) }
     };
     const result = await service(transactionPrisma(tx)).update(
@@ -458,6 +459,7 @@ describe("administrator account mutation safety", () => {
         update: vi.fn().mockResolvedValue(pending),
         findUniqueOrThrow: vi.fn().mockResolvedValue(pending)
       },
+      drama: { count: vi.fn().mockResolvedValue(0) },
       adminSetupToken: {
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
         create: vi.fn().mockResolvedValue({ id: "reset-token" })

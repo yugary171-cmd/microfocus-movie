@@ -1,4 +1,4 @@
-import { AdminRole, DramaStatus, isRightsMaterialDigest, MediaStatus, type ReleaseGateStatus } from "@microfocus/contracts";
+import { DramaStatus, isContentOperator, isOwnedContentRole, isRightsMaterialDigest, MediaStatus, type ReleaseGateStatus } from "@microfocus/contracts";
 import type { AdminUser, DramaRecord, ReviewItem } from "@/types/admin";
 
 export interface ActionDecision {
@@ -20,8 +20,7 @@ export function isRightsActive(validFrom: string, expiresAt: string, now = Date.
 }
 
 export function canReview(user: AdminUser, item: ReviewItem): ActionDecision {
-  if (user.role !== AdminRole.REVIEWER) return { allowed: false, reason: "仅内容审核角色可以审核" };
-  if (user.id === item.submitterId) return { allowed: false, reason: "不能审核本人提交的作品" };
+  if (!isContentOperator(user.role)) return { allowed: false, reason: "当前角色不能审核" };
   if (item.status !== "PENDING") return { allowed: false, reason: "该任务已经处理" };
   return { allowed: true, reason: "" };
 }
@@ -32,8 +31,8 @@ export function publishDecision(
   gate: ReleaseGateStatus,
   options: { allowMockInternal?: boolean } = {},
 ): ActionDecision {
-  if (user.role !== AdminRole.ADMIN) {
-    return { allowed: false, reason: "仅系统管理员可以发布" };
+  if (!isContentOperator(user.role)) {
+    return { allowed: false, reason: "当前角色不能发布" };
   }
   if (!gate.readyForExternalTraffic && !options.allowMockInternal) {
     return { allowed: false, reason: "合规发布闸门尚未通过" };
@@ -66,8 +65,10 @@ export function publishDecision(
 }
 
 export function canSubmitReview(user: AdminUser, drama: DramaRecord): ActionDecision {
-  if (user.role !== AdminRole.EDITOR) return { allowed: false, reason: "仅内容编辑可以提交审核" };
-  if (drama.ownerId !== user.id) return { allowed: false, reason: "只能提交本人负责的剧目" };
+  if (!isContentOperator(user.role)) return { allowed: false, reason: "当前角色不能提交审核" };
+  if (isOwnedContentRole(user.role) && drama.ownerId !== user.id) {
+    return { allowed: false, reason: "只能提交本人负责的剧目" };
+  }
   if (![DramaStatus.DRAFT, DramaStatus.OFFLINE].includes(drama.status)) {
     return { allowed: false, reason: "当前状态不能重复提交" };
   }
@@ -105,7 +106,7 @@ export function canSubmitReview(user: AdminUser, drama: DramaRecord): ActionDeci
 }
 
 export function canOffline(user: AdminUser, drama: DramaRecord): ActionDecision {
-  if (user.role !== AdminRole.ADMIN) return { allowed: false, reason: "仅管理员可以下架" };
+  if (!isContentOperator(user.role)) return { allowed: false, reason: "当前角色不能下架" };
   if (drama.status !== DramaStatus.PUBLISHED) return { allowed: false, reason: "只有已发布剧目可以下架" };
   return { allowed: true, reason: "" };
 }

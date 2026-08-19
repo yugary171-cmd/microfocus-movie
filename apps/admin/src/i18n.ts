@@ -2,7 +2,7 @@ import { AdminRole, DramaStatus, MediaStatus } from "@microfocus/contracts";
 
 export const roleLabels: Record<AdminRole, string> = {
   [AdminRole.EDITOR]: "内容编辑",
-  [AdminRole.REVIEWER]: "内容审核",
+  [AdminRole.REVIEWER]: "内容编辑（旧审核账号）",
   [AdminRole.ADMIN]: "系统管理员",
 };
 

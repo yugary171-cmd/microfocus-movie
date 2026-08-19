@@ -194,6 +194,5 @@ export function publicationBlockers(input: {
     blockers.push("WECHAT_REVIEW_REQUIRED");
   }
   if (!input.reviewerId) blockers.push("DRAMA_REVIEW_REQUIRED");
-  if (input.reviewerId === input.editorId) blockers.push("SELF_REVIEW_FORBIDDEN");
   return blockers;
 }

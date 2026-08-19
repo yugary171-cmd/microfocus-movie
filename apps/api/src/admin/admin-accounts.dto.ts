@@ -4,12 +4,13 @@ import {
   ADMIN_REASON_MIN_LENGTH,
   ADMIN_SETUP_PASSWORD_MIN_LENGTH,
   ADMIN_SETUP_TOKEN_MAX_LENGTH,
+  ASSIGNABLE_ADMIN_ROLES,
   EMAIL_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   OTP_INPUT_LENGTH,
   PASSWORD_MAX_LENGTH,
-  AdminRole,
   AdminSetupPurpose,
+  type AssignableAdminRole,
   type AdminAccountSensitiveActionRequest,
   type CompleteAdminSetupRequest,
   type CreateAdminAccountRequest,
@@ -20,6 +21,7 @@ import {
 import {
   IsEmail,
   IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   Length,
@@ -39,8 +41,8 @@ export class CreateAdminAccountDto implements CreateAdminAccountRequest {
   @Length(1, ADMIN_DISPLAY_NAME_MAX_LENGTH)
   displayName!: string;
 
-  @IsEnum(AdminRole)
-  role!: AdminRole;
+  @IsIn([...ASSIGNABLE_ADMIN_ROLES])
+  role!: AssignableAdminRole;
 
   @IsString()
   @Length(OTP_INPUT_LENGTH, OTP_INPUT_LENGTH)
@@ -55,8 +57,8 @@ export class UpdateAdminAccountDto implements UpdateAdminAccountRequest {
   displayName?: string;
 
   @IsOptional()
-  @IsEnum(AdminRole)
-  role?: AdminRole;
+  @IsIn([...ASSIGNABLE_ADMIN_ROLES])
+  role?: AssignableAdminRole;
 
   @IsOptional()
   @IsString()

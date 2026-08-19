@@ -427,6 +427,34 @@ export enum AdminRole {
   ADMIN = "ADMIN"
 }
 
+/** New accounts may only be EDITOR or ADMIN. REVIEWER remains for existing rows. */
+export const ASSIGNABLE_ADMIN_ROLES = [AdminRole.EDITOR, AdminRole.ADMIN] as const;
+export type AssignableAdminRole = (typeof ASSIGNABLE_ADMIN_ROLES)[number];
+
+export const CONTENT_OPERATOR_ROLES = [
+  AdminRole.EDITOR,
+  AdminRole.REVIEWER,
+  AdminRole.ADMIN
+] as const;
+
+export function isAssignableAdminRole(role: AdminRole): role is AssignableAdminRole {
+  return role === AdminRole.EDITOR || role === AdminRole.ADMIN;
+}
+
+export function isSuperAdmin(role: AdminRole): boolean {
+  return role === AdminRole.ADMIN;
+}
+
+export function isOwnedContentRole(role: AdminRole): boolean {
+  return role === AdminRole.EDITOR || role === AdminRole.REVIEWER;
+}
+
+export function isContentOperator(role: AdminRole): boolean {
+  return (
+    role === AdminRole.EDITOR || role === AdminRole.REVIEWER || role === AdminRole.ADMIN
+  );
+}
+
 export enum AdminAccountStatus {
   PENDING_SETUP = "PENDING_SETUP",
   ACTIVE = "ACTIVE",
@@ -463,13 +491,13 @@ export interface AdminAccountListResponse {
 export interface CreateAdminAccountRequest {
   email: string;
   displayName: string;
-  role: AdminRole;
+  role: AssignableAdminRole;
   otp: string;
 }
 
 export interface UpdateAdminAccountRequest {
   displayName?: string;
-  role?: AdminRole;
+  role?: AssignableAdminRole;
   transferEditorId?: string;
   otp: string;
 }

@@ -5,22 +5,24 @@ import DramaActions from "./DramaActions.vue";
 import { createDrama, createGate, createUser } from "@/test/fixtures";
 
 describe("DramaActions", () => {
-  it.each([
-    [AdminRole.EDITOR, "提交审核", "发布剧目", "下架剧目"],
-    [AdminRole.REVIEWER, "", "提交审核", "发布剧目"],
-  ])("shows only the action owned by %s", (role, visible, hiddenA, hiddenB) => {
-    const drama = role === AdminRole.EDITOR
-      ? createDrama({ status: DramaStatus.DRAFT })
-      : createDrama();
-    const wrapper = mount(DramaActions, {
-      props: { user: createUser(role), drama, gate: createGate() },
-    });
+  it.each([AdminRole.EDITOR, AdminRole.REVIEWER, AdminRole.ADMIN])(
+    "shows submit, publish, and offline to content operator %s",
+    (role) => {
+      const wrapper = mount(DramaActions, {
+        props: {
+          user: createUser(role),
+          drama: createDrama({ status: DramaStatus.DRAFT, ownerId: `${role.toLowerCase()}-1` }),
+          gate: createGate(),
+        },
+      });
 
-    if (visible) expect(wrapper.get("button").text()).toBe(visible);
-    else expect(wrapper.find("button").exists()).toBe(false);
-    expect(wrapper.text()).not.toContain(hiddenA);
-    expect(wrapper.text()).not.toContain(hiddenB);
-  });
+      expect(wrapper.findAll("button").map((button) => button.text())).toEqual([
+        "提交审核",
+        "发布剧目",
+        "下架剧目",
+      ]);
+    },
+  );
 
   it("renders a disabled publish button and the gate reason", () => {
     const wrapper = mount(DramaActions, {
@@ -31,12 +33,12 @@ describe("DramaActions", () => {
       },
     });
 
-    const button = wrapper.get("button");
-    expect(button.attributes("disabled")).toBeDefined();
+    const publish = wrapper.findAll("button").find((button) => button.text() === "发布剧目");
+    expect(publish?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("合规发布闸门尚未通过");
   });
 
-  it("shows publish and offline controls only to administrators", () => {
+  it("lets administrators publish a ready drama and keeps offline disabled", () => {
     const wrapper = mount(DramaActions, {
       props: {
         user: createUser(AdminRole.ADMIN),
@@ -45,11 +47,9 @@ describe("DramaActions", () => {
       },
     });
 
-    expect(wrapper.findAll("button").map((button) => button.text())).toEqual([
-      "发布剧目",
-      "下架剧目",
-    ]);
-    expect(wrapper.get("button.button--primary").attributes("disabled")).toBeUndefined();
-    expect(wrapper.get("button.button--danger").attributes("disabled")).toBeDefined();
+    const publish = wrapper.findAll("button").find((button) => button.text() === "发布剧目");
+    const offline = wrapper.findAll("button").find((button) => button.text() === "下架剧目");
+    expect(publish?.attributes("disabled")).toBeUndefined();
+    expect(offline?.attributes("disabled")).toBeDefined();
   });
 });

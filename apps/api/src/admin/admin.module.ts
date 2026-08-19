@@ -20,6 +20,7 @@ import {
   MEDIA_REVIEW_NOTES_MIN_LENGTH,
   REVIEW_NOTES_MAX_LENGTH,
   AdminRole,
+  CONTENT_OPERATOR_ROLES,
   COMPENSATION_SECONDS_MIN,
   COVER_URL_MAX_LENGTH,
   CallbackEventStatus,
@@ -95,8 +96,8 @@ import { AdminSetupRateLimitGuard } from "../security/admin-setup-rate-limit.js"
 import {
   assertEditorOwns,
   assertNotPublished,
-  assertNotSelfReview,
   editorScope,
+  ownedDramaWriteWhere,
   type AdminPrincipal
 } from "./admin.access.js";
 import {
@@ -465,7 +466,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.dramas))
-  @Roles(AdminRole.EDITOR)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async createDrama(@CurrentPrincipal() principal: Principal, @Body() body: CreateDramaDto) {
     const admin = requireAdmin(principal);
     assertUniqueEpisodeNumbers(body.episodes);
@@ -494,7 +495,7 @@ export class AdminController {
   }
 
   @Patch(adminPath(API_ROUTES.admin.drama(":dramaId")))
-  @Roles(AdminRole.EDITOR)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async updateDrama(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
@@ -504,8 +505,7 @@ export class AdminController {
     await this.requireOwnedUnpublishedDrama(requireEntityId(dramaId, "dramaId"), admin);
     const updated = await this.prisma.drama.updateMany({
       where: {
-        id: dramaId,
-        editorId: admin.sub,
+        ...ownedDramaWriteWhere(dramaId, admin),
         status: { in: ["DRAFT", "READY", "OFFLINE"] }
       },
       data: {
@@ -527,7 +527,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.rights(":dramaId")))
-  @Roles(AdminRole.EDITOR)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async addRights(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
@@ -566,7 +566,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.mediaAssets(":dramaId")))
-  @Roles(AdminRole.EDITOR)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async addMedia(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
@@ -610,7 +610,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.submitReview(":dramaId")))
-  @Roles(AdminRole.EDITOR)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async submitReview(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string
@@ -618,7 +618,7 @@ export class AdminController {
     const admin = requireAdmin(principal);
     await this.requireOwnedDrama(requireEntityId(dramaId, "dramaId"), admin);
     const updated = await this.prisma.drama.updateMany({
-      where: { id: dramaId, editorId: admin.sub, status: { in: ["DRAFT", "READY"] } },
+      where: { ...ownedDramaWriteWhere(dramaId, admin), status: { in: ["DRAFT", "READY"] } },
       data: { status: "PENDING_REVIEW" }
     });
     if (!updated.count) throw Errors.conflict("INVALID_DRAMA_STATE", "Drama cannot be submitted");
@@ -627,7 +627,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.review(":dramaId")))
-  @Roles(AdminRole.REVIEWER)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async review(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
@@ -640,7 +640,6 @@ export class AdminController {
     if (drama.status !== "PENDING_REVIEW") {
       throw Errors.conflict("INVALID_DRAMA_STATE", "Only pending dramas can be reviewed");
     }
-    assertNotSelfReview(drama.editorId, admin.sub);
     const review = await this.prisma.dramaReview.create({
       data: {
         dramaId,
@@ -659,7 +658,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.publish(":dramaId")))
-  @Roles(AdminRole.ADMIN)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async publish(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string
@@ -710,7 +709,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.offline(":dramaId")))
-  @Roles(AdminRole.ADMIN)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async offline(
     @CurrentPrincipal() principal: Principal,
     @Param("dramaId") dramaId: string,
@@ -729,7 +728,7 @@ export class AdminController {
   }
 
   @Post(adminPath(API_ROUTES.admin.uploadSign))
-  @Roles(AdminRole.EDITOR)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async uploadSign(
     @CurrentPrincipal() principal: Principal,
     @Body() body: UploadSignDto
@@ -750,7 +749,7 @@ export class AdminController {
   }
 
   @Patch(adminPath(API_ROUTES.admin.mediaReview(":assetId")))
-  @Roles(AdminRole.REVIEWER)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async reviewMedia(
     @CurrentPrincipal() principal: Principal,
     @Param("assetId") assetId: string,
@@ -766,7 +765,6 @@ export class AdminController {
       include: { episode: { include: { drama: true } } }
     });
     if (!asset) throw Errors.notFound("Current media asset");
-    assertNotSelfReview(asset.episode.drama.editorId, admin.sub);
     if (asset.episode.drama.status === "PUBLISHED") {
       throw Errors.conflict("PUBLISHED_DRAMA_IMMUTABLE", "Offline the drama before reviewing media");
     }
@@ -792,7 +790,7 @@ export class AdminController {
   }
 
   @Get(adminPath(API_ROUTES.admin.reviews))
-  @Roles(AdminRole.REVIEWER)
+  @Roles(...CONTENT_OPERATOR_ROLES)
   async reviews(@Query("page") pageValue = "1") {
     const pageSize = ADMIN_LIST_PAGE_SIZE;
     const window = boundedListWindow({

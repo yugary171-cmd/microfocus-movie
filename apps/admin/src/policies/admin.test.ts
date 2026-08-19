@@ -1,6 +1,6 @@
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, DramaStatus } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
-import { isRightsActive, publishDecision } from "./admin";
+import { canReview, canSubmitReview, isRightsActive, publishDecision } from "./admin";
 import { createDrama, createGate, createUser } from "@/test/fixtures";
 
 describe("publishDecision", () => {
@@ -35,14 +35,15 @@ describe("publishDecision", () => {
     });
   });
 
-  it("does not expose publishing authority to reviewers", () => {
+  it("allows content operators to publish when the mock internal gate is waived", () => {
     const decision = publishDecision(
       createUser(AdminRole.REVIEWER),
       createDrama(),
-      createGate(),
+      createGate({ readyForExternalTraffic: false, blockers: ["Provider 尚未配置"] }),
+      { allowMockInternal: true },
     );
 
-    expect(decision).toEqual({ allowed: false, reason: "仅系统管理员可以发布" });
+    expect(decision).toEqual({ allowed: true, reason: "" });
   });
 
   it("allows an internal Mock publish while keeping the external gate closed", () => {
@@ -54,5 +55,28 @@ describe("publishDecision", () => {
     );
 
     expect(decision).toEqual({ allowed: true, reason: "" });
+  });
+
+  it("lets an editor review their own pending item and publish a ready drama", () => {
+    const editor = createUser(AdminRole.EDITOR);
+    expect(
+      canReview(editor, {
+        id: "review-1",
+        dramaId: "drama-test",
+        dramaTitle: "测试剧目",
+        submitterId: editor.id,
+        submitterName: editor.name,
+        submittedAt: "2026-08-14T00:00:00.000Z",
+        riskFlags: [],
+        status: "PENDING",
+      }),
+    ).toEqual({ allowed: true, reason: "" });
+    expect(publishDecision(editor, createDrama({ ownerId: editor.id }), createGate())).toEqual({
+      allowed: true,
+      reason: "",
+    });
+    expect(canSubmitReview(editor, createDrama({ status: DramaStatus.DRAFT, ownerId: editor.id })).allowed).toBe(
+      true,
+    );
   });
 });

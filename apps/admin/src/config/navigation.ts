@@ -16,7 +16,6 @@ export const navigationItems: NavigationItem[] = [
     label: "审核队列",
     description: "待审内容与结论",
     icon: "check",
-    roles: [AdminRole.REVIEWER],
   },
   {
     to: "/operations",

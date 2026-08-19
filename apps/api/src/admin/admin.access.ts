@@ -1,11 +1,11 @@
-import { AdminRole } from "@microfocus/contracts";
+import { AdminRole, isOwnedContentRole } from "@microfocus/contracts";
 import { Errors } from "../common/app-error.js";
 import type { Principal } from "../security/security.js";
 
 export type AdminPrincipal = Extract<Principal, { kind: "admin" }>;
 
 export function editorScope(admin: AdminPrincipal): { editorId?: string } {
-  return admin.role === AdminRole.EDITOR ? { editorId: admin.sub } : {};
+  return isOwnedContentRole(admin.role) ? { editorId: admin.sub } : {};
 }
 
 export function assertEditorOwns<T extends { editorId: string }>(
@@ -13,16 +13,10 @@ export function assertEditorOwns<T extends { editorId: string }>(
   admin: AdminPrincipal
 ): T {
   if (!drama) throw Errors.notFound("Drama");
-  if (admin.role === AdminRole.EDITOR && drama.editorId !== admin.sub) {
+  if (isOwnedContentRole(admin.role) && drama.editorId !== admin.sub) {
     throw Errors.forbidden("OWNERSHIP_REQUIRED", "Editors may only access their own dramas");
   }
   return drama;
-}
-
-export function assertNotSelfReview(editorId: string, reviewerId: string): void {
-  if (editorId === reviewerId) {
-    throw Errors.forbidden("SELF_REVIEW_FORBIDDEN", "An editor cannot review their own drama");
-  }
 }
 
 export function assertNotPublished(status: string): void {
@@ -32,4 +26,13 @@ export function assertNotPublished(status: string): void {
       "Published drama rights or media cannot be replaced; offline it first"
     );
   }
+}
+
+export function ownedDramaWriteWhere(
+  dramaId: string,
+  admin: AdminPrincipal
+): { id: string; editorId?: string } {
+  return isOwnedContentRole(admin.role)
+    ? { id: dramaId, editorId: admin.sub }
+    : { id: dramaId };
 }

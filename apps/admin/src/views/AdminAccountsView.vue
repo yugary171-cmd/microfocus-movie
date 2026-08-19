@@ -5,12 +5,16 @@ import {
   ADMIN_DISPLAY_NAME_MAX_LENGTH,
   ADMIN_REASON_MAX_LENGTH,
   ADMIN_REASON_MIN_LENGTH,
+  ASSIGNABLE_ADMIN_ROLES,
   EMAIL_MAX_LENGTH,
   LIST_QUERY_MAX_LENGTH,
   OTP_INPUT_LENGTH,
   AdminAccountStatus,
   AdminRole,
   AdminSetupPurpose,
+  isAssignableAdminRole,
+  isOwnedContentRole,
+  type AssignableAdminRole,
 } from "@microfocus/contracts";
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
@@ -50,7 +54,7 @@ const actionMenuStyle = ref<{ top: string; right: string }>({ top: "0px", right:
 const form = reactive({
   displayName: "",
   email: "",
-  role: AdminRole.EDITOR,
+  role: AdminRole.EDITOR as AssignableAdminRole,
   otp: "",
   reason: "",
   replacementEditorId: "",
@@ -60,9 +64,9 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / ADMIN_LIST
 const isSelf = computed(() => selected.value?.id === auth.user?.id);
 const needsReplacement = computed(() => {
   const account = selected.value;
-  if (!account || account.role !== AdminRole.EDITOR || account.ownedDramaCount < 1) return false;
+  if (!account || !isOwnedContentRole(account.role) || account.ownedDramaCount < 1) return false;
   if (dialogMode.value === "suspend" || dialogMode.value === "reset") return true;
-  return dialogMode.value === "edit" && form.role !== AdminRole.EDITOR;
+  return dialogMode.value === "edit" && !isOwnedContentRole(form.role);
 });
 const dialogTitle = computed(() => ({
   create: "新增管理员账号",
@@ -77,7 +81,7 @@ function resetForm(): void {
   Object.assign(form, {
     displayName: "",
     email: "",
-    role: AdminRole.EDITOR,
+    role: AdminRole.EDITOR as AssignableAdminRole,
     otp: "",
     reason: "",
     replacementEditorId: "",
@@ -169,8 +173,8 @@ function openDialog(mode: DialogMode, account?: AdminAccountRecord): void {
   if (account) {
     form.displayName = account.displayName;
     form.email = account.email;
-    form.role = account.role;
-    if (account.role === AdminRole.EDITOR && account.ownedDramaCount > 0) void loadEditors();
+    form.role = isAssignableAdminRole(account.role) ? account.role : AdminRole.EDITOR;
+    if (isOwnedContentRole(account.role) && account.ownedDramaCount > 0) void loadEditors();
   }
 }
 
@@ -403,7 +407,7 @@ onBeforeUnmount(() => {
           <template v-if="dialogMode === 'create' || dialogMode === 'edit'">
             <label class="field"><span>真实姓名 *</span><input v-model="form.displayName" autocomplete="off" :maxlength="ADMIN_DISPLAY_NAME_MAX_LENGTH" required /></label>
             <label v-if="dialogMode === 'create'" class="field"><span>邮箱（登录名）*</span><input v-model="form.email" type="email" autocomplete="off" :maxlength="EMAIL_MAX_LENGTH" required /></label>
-            <label class="field"><span>角色 *</span><select v-model="form.role"><option v-for="role in Object.values(AdminRole)" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
+            <label class="field"><span>角色 *</span><select v-model="form.role"><option v-for="role in ASSIGNABLE_ADMIN_ROLES" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
           </template>
           <label v-if="['suspend', 'activate', 'invite', 'reset'].includes(dialogMode)" class="field"><span>操作原因 *</span><textarea v-model="form.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required /></label>
           <div v-if="dialogMode === 'reset'" class="danger-note">重置后目标账号会立即暂停，旧密码、TOTP 和现有会话全部失效，直到本人通过新链接重新开通。</div>

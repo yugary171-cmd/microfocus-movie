@@ -1,4 +1,4 @@
-import { DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+import { AdminRole, DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DramaListView from "./DramaListView.vue";
@@ -10,6 +10,12 @@ const { listDramas } = vi.hoisted(() => ({
 
 vi.mock("@/api/admin", () => ({
   adminApi: { listDramas },
+}));
+
+vi.mock("@/stores/auth", () => ({
+  useAuthStore: () => ({
+    user: { id: "editor-1", name: "林编辑", email: "editor@example.com", role: AdminRole.EDITOR },
+  }),
 }));
 
 function drama(overrides: Partial<DramaRecord> = {}): DramaRecord {

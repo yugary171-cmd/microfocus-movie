@@ -43,11 +43,36 @@ describe("administrator account DTO limits", () => {
     expect(invalid.some((error) => error.property === "otp")).toBe(true);
   });
 
+  it("rejects REVIEWER when creating or changing an assignable role", async () => {
+    expect(
+      (
+        await validate(
+          plainToInstance(CreateAdminAccountDto, {
+            email: "new@example.com",
+            displayName: "新管理员",
+            role: AdminRole.REVIEWER,
+            otp: "123456"
+          })
+        )
+      ).some((error) => error.property === "role")
+    ).toBe(true);
+    expect(
+      (
+        await validate(
+          plainToInstance(UpdateAdminAccountDto, {
+            role: AdminRole.REVIEWER,
+            otp: "123456"
+          })
+        )
+      ).some((error) => error.property === "role")
+    ).toBe(true);
+  });
+
   it("bounds transfer editor ids and setup passwords", async () => {
     expect(
       await validate(
         plainToInstance(UpdateAdminAccountDto, {
-          role: AdminRole.REVIEWER,
+          role: AdminRole.EDITOR,
           transferEditorId: "editor-2",
           otp: "123456"
         })

@@ -139,14 +139,14 @@ describe("live admin API adapter", () => {
     const setupLink = await adminApi.createAccount({
       displayName: "王审核",
       email: "reviewer@example.com",
-      role: AdminRole.REVIEWER,
+      role: AdminRole.EDITOR,
       otp: "123456",
     });
     expect(setupLink.setupUrl).toContain("one-time");
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body))).toEqual({
       displayName: "王审核",
       email: "reviewer@example.com",
-      role: AdminRole.REVIEWER,
+      role: AdminRole.EDITOR,
       otp: "123456",
     });
 

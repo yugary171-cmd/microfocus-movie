@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Icon from "@/components/Icon.vue";
-import { ADMIN_LIST_PAGE_SIZE, AdminRole, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_LIST_PAGE_SIZE, isContentOperator, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
 import { computed, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -22,7 +22,7 @@ const notice = ref("");
 const busy = ref(false);
 const selected = ref<ReviewItem | null>(null);
 const dialog = reactive<{ decision: "approve" | "reject" | null }>({ decision: null });
-const allowed = computed(() => auth.user?.role === AdminRole.REVIEWER);
+const allowed = computed(() => Boolean(auth.user && isContentOperator(auth.user.role)));
 const totalPages = computed(() => Math.ceil(total.value / ADMIN_LIST_PAGE_SIZE));
 
 async function load(): Promise<void> {
@@ -103,7 +103,7 @@ onMounted(load);
       <div><p class="eyebrow">REVIEW WORKSPACE</p><h1>审核队列</h1><p>审核内容与版权信息；审核结论不替代媒体平台状态。</p></div>
       <button v-if="allowed" class="button button--secondary" type="button" :disabled="loading" @click="load">刷新队列</button>
     </header>
-    <PageState v-if="!allowed" type="forbidden" message="只有内容审核角色可以访问审核队列。" />
+    <PageState v-if="!allowed" type="forbidden" message="当前角色不能访问审核队列。" />
     <PageState v-else-if="loading" type="loading" message="正在加载待审内容…" />
     <PageState v-else-if="error && items.length === 0 && total === 0" type="error" :message="error" @retry="load" />
     <template v-else>

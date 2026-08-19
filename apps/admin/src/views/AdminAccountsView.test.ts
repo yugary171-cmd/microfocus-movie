@@ -118,7 +118,7 @@ describe("AdminAccountsView", () => {
     const inputs = dialog.findAll("input");
     await inputs[0]!.setValue("王审核");
     await inputs[1]!.setValue("Reviewer@Example.com");
-    await dialog.get("select").setValue(AdminRole.REVIEWER);
+    await dialog.get("select").setValue(AdminRole.EDITOR);
     await inputs[2]!.setValue("123456");
     await dialog.trigger("submit");
     await flushPromises();
@@ -126,7 +126,7 @@ describe("AdminAccountsView", () => {
     expect(api.createAccount).toHaveBeenCalledWith({
       displayName: "王审核",
       email: "reviewer@example.com",
-      role: AdminRole.REVIEWER,
+      role: AdminRole.EDITOR,
       otp: "123456",
     });
     expect(wrapper.text()).toContain("仅本次显示");

@@ -113,8 +113,8 @@ flowchart LR
 | 登录 | `/login` | 未登录 | 邮箱、密码、OTP 换管理员 JWT |
 | 工作台 | `/` | EDITOR / REVIEWER / ADMIN | 内容状态和发布闸门摘要 |
 | 剧目列表 | `/dramas` | EDITOR / REVIEWER / ADMIN | 按权限查看和筛选剧目；列表由服务端分页
-| 新建/编辑剧 | `/dramas/new`、`/dramas/:id` | EDITOR | 编辑本人负责的剧目、权利和媒体版本并提交审核 |
-| 审核队列 | `/reviews` | REVIEWER | 通过或驳回；不得审核本人创建或编辑的版本 |
+| 新建/编辑剧 | `/dramas/new`、`/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 编辑本人负责的剧目；ADMIN 可改任意剧；均可提交审核、发布、下架 |
+| 审核队列 | `/reviews` | EDITOR / REVIEWER / ADMIN | 通过或驳回；允许审核本人创建或编辑的版本 |
 | 运营控制 | `/operations` | ADMIN | 熔断、人工补偿、账本纠错、回调积压列表/重放、注销查询令牌补发 |
 | 审计日志 | `/audit` | ADMIN | 查询关键操作与系统事件 |
 | 账号管理 | `/accounts` | ADMIN | 创建待开通账号、筛选列表、改姓名/角色、停用/启用、重发开通链接、重置凭据；敏感操作需当前管理员 OTP；内容编辑停用或改角色时若有剧目必须选择接替 EDITOR |
@@ -122,9 +122,8 @@ flowchart LR
 
 角色与关键动作（客户端策略，服务端仍以守卫为准）：
 
-- EDITOR：创建、编辑和提交本人负责的剧目；服务端必须按 `editorId` 或等价所有权字段过滤写操作。
-- REVIEWER：审核内容与媒体；不得审核本人创建或编辑的版本。
-- ADMIN：发布、下架、熔断、补偿、审计和账号管理；不得绕过权利、媒体、职责分离或发布闸门；不得删除管理员账号。
+- EDITOR：创建、编辑、提交、审核、发布和下架本人负责的剧目；服务端必须按 `editorId` 过滤本人写操作。存量 REVIEWER 权限相同。
+- ADMIN：具备 EDITOR 的全部内容能力并可修改任意剧目；另含熔断、补偿、审计和账号管理；不得绕过权利、媒体或发布闸门；不得删除管理员账号。
 - 人工补偿秒数由事故或客服审批决定，不等同于广告默认奖励 600 秒；必须记录原因、过期时间、操作人和关联 challenge（如适用）。
 
 前端导航与按钮只负责可用性提示；服务端必须对每个管理接口执行管理员 JWT、角色、所有权和资源状态校验。
@@ -225,15 +224,15 @@ flowchart LR
 | `POST /v1/admin/account-setup/inspect` | 公开、按连接 IP 限频 | 令牌无效/过期/已用返回对应错误，文案不暴露账号是否存在 | 读取待开通资料和 TOTP 配置 URI |
 | `POST /v1/admin/account-setup/complete` | 公开、按连接 IP 限频 | 密码 12–128 位 + 当前 TOTP；令牌一次性 | 原子完成开通；写入独立运营事件，不冒充创建者 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
-| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR 只能访问授权范围；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情 |
-| `POST /v1/admin/dramas` | EDITOR | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件 | 创建草稿 |
-| `PATCH /v1/admin/dramas/:id` | EDITOR | 仅本人负责且可编辑状态；字段上限与创建一致 | 修改元数据 |
-| `POST .../:id/rights` | EDITOR | 仅本人负责；新版本使内容回到待审链路；权利人/证号/材料键限长；`territory` 必须是 `RIGHTS_TERRITORY=CN`，管理端 live 保存发送该值，编辑页不提供地域控件；`materialDigestSha256` 必须是 64 位十六进制（`RIGHTS_MATERIAL_DIGEST_LENGTH`），管理端输入 maxlength/pattern 与之共用 | 写入不可覆盖的权利版本 |
-| `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR | 仅本人负责；禁止修改已发布内容；签发成功写入审计，不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL；`size` 1–`UPLOAD_FILE_SIZE_MAX_BYTES`（5×1024³ 字节）；`contentType` 仅 `UPLOAD_CONTENT_TYPES`（mp4/quicktime/webm，空类型回退 `application/octet-stream`）；管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |
-| `POST .../:id/submit-review` | EDITOR | 仅本人负责，材料完整 | 提交审核 |
-| `GET /v1/admin/reviews` | REVIEWER | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页；无 `q`/`query`，不按标题或提交人过滤；超过页上限返回空结果 | 审核队列 |
-| `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | REVIEWER | 禁止自审，结论进入审计；内容审核 `notes` 可选、最长 2000（`REVIEW_NOTES_MAX_LENGTH`），退回时管理端必填；媒体审核 `notes` 仍为 6–500（`MEDIA_REVIEW_NOTES_*`），不与内容审核混用 | 内容和媒体审核 |
-| `POST .../:id/publish`、`POST .../:id/offline` | ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
+| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR/REVIEWER 只能访问授权范围；ADMIN 看全部；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情 |
+| `POST /v1/admin/dramas` | EDITOR / REVIEWER / ADMIN | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件 | 创建草稿 |
+| `PATCH /v1/admin/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责且可编辑状态；ADMIN 可改未发布剧；字段上限与创建一致 | 修改元数据 |
+| `POST .../:id/rights` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；新版本使内容回到待审链路；权利人/证号/材料键限长；`territory` 必须是 `RIGHTS_TERRITORY=CN`，管理端 live 保存发送该值，编辑页不提供地域控件；`materialDigestSha256` 必须是 64 位十六进制（`RIGHTS_MATERIAL_DIGEST_LENGTH`），管理端输入 maxlength/pattern 与之共用 | 写入不可覆盖的权利版本 |
+| `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；禁止修改已发布内容；签发成功写入审计，不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL；`size` 1–`UPLOAD_FILE_SIZE_MAX_BYTES`（5×1024³ 字节）；`contentType` 仅 `UPLOAD_CONTENT_TYPES`（mp4/quicktime/webm，空类型回退 `application/octet-stream`）；管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |
+| `POST .../:id/submit-review` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可提交任意剧；材料完整 | 提交审核 |
+| `GET /v1/admin/reviews` | EDITOR / REVIEWER / ADMIN | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页；无 `q`/`query`，不按标题或提交人过滤；超过页上限返回空结果 | 审核队列 |
+| `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | EDITOR / REVIEWER / ADMIN | 允许自审，结论进入审计；内容审核 `notes` 可选、最长 2000（`REVIEW_NOTES_MAX_LENGTH`），退回时管理端必填；媒体审核 `notes` 仍为 6–500（`MEDIA_REVIEW_NOTES_*`），不与内容审核混用 | 内容和媒体审核 |
+| `POST .../:id/publish`、`POST .../:id/offline` | EDITOR / REVIEWER / ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId` 和操作人邮箱过滤；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联 |
 | `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；原因 6–300 字；`targetId` 限长 191；`updatedBy` 为管理员 ID 或 `system:*` 作业标识，写入最长 `CIRCUIT_UPDATED_BY_MAX_LENGTH`（128）；自动打开的 provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH`（32） | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key`（trim、最长 128）；写 Guard 仍先占桶 | 用户/剧目 ID 限长 191，管理端表单 maxlength 与之共用；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |
@@ -290,7 +289,7 @@ flowchart LR
 | 广告换时长 | 播放器；reward challenge/complete/callback | 未完成不发奖；重试幂等；验证中/失败可恢复 |
 | 锁定内容播放 | 播放器；leases/heartbeats/renew | 服务端鉴权、单活租约、短窗口预算、5 秒心跳、15 秒离线宽限；停止心跳不能继续获得媒体窗口 |
 | 恢复观看 | 我的、播放器；history/progress | 登录后恢复正确剧集和进度；失效内容不可续播 |
-| 内容发布 | 管理端；rights/media/review/publish | 创建与审核职责分离；权利、媒体、闸门全部通过 |
+| 内容发布 | 管理端；rights/media/review/publish | 权利、媒体、闸门全部通过；允许自审 |
 | 事故控制 | 运营控制；offline/circuit/compensate/audit | 停止新凭证或奖励；账本与审计不删除；补偿可追溯 |
 
 ## 八、契约维护规则

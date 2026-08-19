@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
-  AdminRole,
+  isOwnedContentRole,
+  isSuperAdmin,
   COVER_URL_MAX_LENGTH,
   DRAMA_CATEGORY_MAX_LENGTH,
   DRAMA_SUMMARY_MAX_LENGTH,
@@ -75,7 +76,13 @@ const tagsText = ref("");
 
 const canEdit = computed(() => {
   if (!auth.user) return false;
-  return auth.user.role === AdminRole.EDITOR && (isNew.value || drama.value?.ownerId === auth.user.id);
+  if (isSuperAdmin(auth.user.role)) return true;
+  return isOwnedContentRole(auth.user.role) && (isNew.value || drama.value?.ownerId === auth.user.id);
+});
+
+const readonlyReason = computed(() => {
+  if (canEdit.value) return "";
+  return "只能编辑本人负责的剧目。";
 });
 
 function applyDrama(value: DramaRecord): void {
@@ -252,7 +259,7 @@ onMounted(load);
     <template v-else>
       <div v-if="error" class="inline-message inline-message--error" role="alert">{{ error }}</div>
       <div v-if="notice" class="inline-message inline-message--success" role="status">{{ notice }}</div>
-      <div v-if="!canEdit" class="inline-message" role="status">当前角色为只读视图；审核、发布或下架请使用页面顶部的授权操作。</div>
+      <div v-if="readonlyReason" class="inline-message" role="status">{{ readonlyReason }}</div>
       <div v-else-if="adminApi.mode === 'live' && !isNew" class="inline-message" role="status">当前 API 仅支持更新既有剧目的元数据与新增版权版本；分集标题、时长和媒体保持只读。</div>
       <div class="editor-grid" @input="inputChanged" @change="inputChanged">
         <section class="panel" aria-labelledby="metadata-title">

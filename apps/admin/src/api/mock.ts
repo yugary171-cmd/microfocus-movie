@@ -8,6 +8,8 @@ import {
   DeletionRequestStatus,
   DELETION_QUERY_TOKEN_TTL_SECONDS,
   DramaStatus,
+  isAssignableAdminRole,
+  isOwnedContentRole,
   isRightsMaterialDigest,
   MediaStatus,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
@@ -153,7 +155,7 @@ function findAccount(id: string): AdminAccountRecord {
 
 function assertReplacement(target: AdminAccountRecord, replacementEditorId?: string): void {
   const ownedCount = accountOwnedDramaCount(target.id);
-  if (target.role !== AdminRole.EDITOR || ownedCount === 0) return;
+  if (!isOwnedContentRole(target.role) || ownedCount === 0) return;
   const replacement = replacementEditorId
     ? adminAccounts.find((item) => item.id === replacementEditorId)
     : undefined;
@@ -499,6 +501,7 @@ export const mockApi = {
     const displayName = input.displayName.trim();
     const email = input.email.trim().toLowerCase();
     if (!displayName || !email) throw new Error("姓名和邮箱不能为空");
+    if (!isAssignableAdminRole(input.role)) throw new Error("新建账号只能是内容编辑或系统管理员");
     if (adminAccounts.some((account) => account.email === email)) throw new Error("该邮箱已存在");
     const createdAt = new Date().toISOString();
     const account: AdminAccountRecord = {
@@ -523,9 +526,12 @@ export const mockApi = {
     requireMockOtp(input.otp);
     const account = findAccount(id);
     const nextRole = input.role ?? account.role;
+    if (input.role !== undefined && !isAssignableAdminRole(input.role)) {
+      throw new Error("只能改为内容编辑或系统管理员");
+    }
     if (id === MOCK_CURRENT_ADMIN_ID && nextRole !== account.role) throw new Error("不能修改自己的角色");
     assertLastAdmin(account, nextRole, account.status);
-    if (account.role === AdminRole.EDITOR && nextRole !== AdminRole.EDITOR) {
+    if (isOwnedContentRole(account.role) && !isOwnedContentRole(nextRole)) {
       assertReplacement(account, input.transferEditorId);
     }
     account.displayName = input.displayName?.trim() || account.displayName;
