@@ -7,11 +7,12 @@ import { toErrorMessage } from "@/api/client";
 import { roleLabels } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import Icon from "@/components/Icon.vue";
+import PasswordField from "@/components/PasswordField.vue";
 
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-const email = ref("editor@microfocus.local");
+const email = ref(adminApi.mode === "mock" ? "editor@microfocus.local" : "");
 const password = ref("");
 const otp = ref("");
 const mockRole = ref(AdminRole.EDITOR);
@@ -91,13 +92,11 @@ async function submit(): Promise<void> {
         </label>
         <label class="field">
           <span>密码</span>
-          <input
+          <PasswordField
             v-model="password"
-            type="password"
             autocomplete="current-password"
             :minlength="PASSWORD_MIN_LENGTH"
             :maxlength="PASSWORD_MAX_LENGTH"
-            required
           />
         </label>
         <label class="field">

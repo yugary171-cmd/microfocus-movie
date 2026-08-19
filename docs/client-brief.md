@@ -68,6 +68,7 @@
 - 技术评审：`architecture.md`、`deployment.md`
 - 接口联调：`pages-and-apis.md`（目标契约，含尚未落地接口）
 - 上线值班：`operations.md`
+- 后台怎么用：`admin-handbook.md`
 - 环境接入：`configuration.md`（仅技术对接人）
 
 **不发送**

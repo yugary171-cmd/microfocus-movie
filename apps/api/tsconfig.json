@@ -8,6 +8,7 @@
     "declaration": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "useDefineForClassFields": false,
     "incremental": true
   },
   "include": ["src/**/*.ts"],

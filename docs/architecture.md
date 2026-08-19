@@ -1,7 +1,7 @@
 # 系统架构与业务不变量
 
 - 文档用途：定义稳定系统边界、信任模型、数据一致性和故障策略
-- 更新日期：2026-08-17
+- 更新日期：2026-08-19
 - 本文描述目标架构和必须保持的业务不变量，不代表所有模型与机制已经实现；当前状态统一见 [status.md](./status.md)
 
 本系统采用 **NestJS 模块化单体 API + MySQL + Vue 管理端 + uni-app 微信观看端**。在业务规模和团队边界没有证据支持前，不拆分微服务；模块之间通过显式服务接口和数据库事务协作，不直接复制彼此的业务规则。
@@ -24,7 +24,7 @@ flowchart LR
 
 服务端是目录可见性、内容发布、奖励发放、权益余额和播放许可的唯一事实来源。小程序不能直接修改余额，也不能使用长期媒体地址。
 
-页面、接口、认证和错误契约见 [pages-and-apis.md](./pages-and-apis.md)；运行组件、数据库与托管拓扑见 [deployment.md](./deployment.md)；环境和秘密配置见 [configuration.md](./configuration.md)；事故操作见 [operations.md](./operations.md)。
+页面、接口、认证和错误契约见 [pages-and-apis.md](./pages-and-apis.md)；运行组件、数据库与托管拓扑见 [deployment.md](./deployment.md)；环境和秘密配置见 [configuration.md](./configuration.md)；后台日常操作见 [admin-handbook.md](./admin-handbook.md)；事故操作见 [operations.md](./operations.md)；管理员无法登录时的公开恢复见 [admin-emergency-access.md](./admin-emergency-access.md)。
 
 ## 2. 模块边界
 

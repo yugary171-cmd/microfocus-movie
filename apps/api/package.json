@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=../../.env ../../node_modules/tsx/dist/cli.mjs watch src/main.ts",
+    "dev": "node --env-file=../../.env ../../node_modules/@nestjs/cli/bin/nest.js start --watch --preserveWatchOutput",
     "prebuild": "npm run build -w @microfocus/contracts",
     "build": "nest build",
     "pretypecheck": "npm run build -w @microfocus/contracts",
@@ -15,6 +15,7 @@
     "db:migrate": "node ../../scripts/run-with-root-env.mjs ../../node_modules/prisma/build/index.js migrate dev",
     "db:migrate:deploy": "node ../../scripts/run-with-root-env.mjs ../../node_modules/prisma/build/index.js migrate deploy",
     "db:seed": "node ../../scripts/run-with-root-env.mjs ../../node_modules/tsx/dist/cli.mjs prisma/seed.ts",
+    "db:admin-break-glass": "node ../../scripts/run-with-root-env.mjs ../../node_modules/tsx/dist/cli.mjs prisma/break-glass-admin.ts --",
     "totp:reencrypt": "node ../../scripts/run-with-root-env.mjs ../../node_modules/tsx/dist/cli.mjs prisma/rotate-totp-encryption.ts"
   },
   "dependencies": {

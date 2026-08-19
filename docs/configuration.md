@@ -47,7 +47,7 @@ COMPLIANCE_ADS_APPROVED=false
 
 Mock 模式只提供确定性开发数据，不模拟真实广告收入、微信审核、版权许可或视频发布资格。管理后台和观看端必须展示“内部体验”标识，Mock 失败时不得自动回退为伪造成功。
 
-本地管理员可使用 `ADMIN_TEST_OTP`。该变量不得进入生产；生产管理员初始化必须提供 Base32 格式的 `ADMIN_BOOTSTRAP_TOTP_SECRET` 与至少 32 字符的 `TOTP_ENCRYPTION_KEY`。种子脚本只写入 AES-256-GCM 密文，初始化完成后应移除 bootstrap 密码和 TOTP 明文。回调规范化载荷使用 AES-256-GCM；`CALLBACK_PAYLOAD_ENCRYPTION_KEY` 可选，缺省回退到 `TOTP_ENCRYPTION_KEY`。密文不得写入日志或工单。
+本地管理员可使用 `ADMIN_TEST_OTP`。该变量不得进入生产；生产管理员初始化必须提供 Base32 格式的 `ADMIN_BOOTSTRAP_TOTP_SECRET` 与至少 32 字符的 `TOTP_ENCRYPTION_KEY`。种子脚本只写入 AES-256-GCM 密文，初始化完成后应移除 bootstrap 密码和 TOTP 明文。全员无法登录时使用公开命令 `npm run db:admin-break-glass`（见 [admin-emergency-access.md](./admin-emergency-access.md)），不要把 `ADMIN_BREAK_GLASS_*` 写入常驻 API 环境。回调规范化载荷使用 AES-256-GCM；`CALLBACK_PAYLOAD_ENCRYPTION_KEY` 可选，缺省回退到 `TOTP_ENCRYPTION_KEY`。密文不得写入日志或工单。
 
 ### 3.1 Demo 媒体
 

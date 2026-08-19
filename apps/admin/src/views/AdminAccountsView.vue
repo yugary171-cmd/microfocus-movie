@@ -12,7 +12,7 @@ import {
   AdminRole,
   AdminSetupPurpose,
 } from "@microfocus/contracts";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { adminApi } from "@/api/admin";
 import { accountManagementMessage } from "@/api/account-errors";
 import { toErrorMessage } from "@/api/client";
@@ -45,6 +45,8 @@ const activeEditors = ref<AdminAccountRecord[]>([]);
 const setupLink = ref<AdminSetupLink | null>(null);
 const setupLinkOwner = ref("");
 const copied = ref(false);
+const actionMenuAccount = ref<AdminAccountRecord | null>(null);
+const actionMenuStyle = ref<{ top: string; right: string }>({ top: "0px", right: "0px" });
 const form = reactive({
   displayName: "",
   email: "",
@@ -121,6 +123,7 @@ async function loadEditors(): Promise<void> {
 
 function filter(): void {
   page.value = 1;
+  closeActions();
   void load();
 }
 
@@ -129,15 +132,36 @@ function clearFilters(): void {
   roleFilter.value = "";
   statusFilter.value = "";
   page.value = 1;
+  closeActions();
   void load();
 }
 
 function go(next: number): void {
   page.value = next;
+  closeActions();
   void load();
 }
 
+function closeActions(): void {
+  actionMenuAccount.value = null;
+}
+
+function toggleActions(account: AdminAccountRecord, event: MouseEvent): void {
+  event.stopPropagation();
+  if (actionMenuAccount.value?.id === account.id) {
+    closeActions();
+    return;
+  }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  actionMenuAccount.value = account;
+  actionMenuStyle.value = {
+    top: `${Math.round(rect.bottom + 4)}px`,
+    right: `${Math.round(window.innerWidth - rect.right)}px`,
+  };
+}
+
 function openDialog(mode: DialogMode, account?: AdminAccountRecord): void {
+  closeActions();
   resetForm();
   error.value = "";
   selected.value = account ?? null;
@@ -278,11 +302,31 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
       : "warning";
 }
 
-onMounted(load);
+function onDocumentPointerDown(event: Event): void {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    closeActions();
+    return;
+  }
+  if (target.closest(".account-actions-menu") || target.closest(".account-actions-trigger")) return;
+  closeActions();
+}
+
+onMounted(() => {
+  void load();
+  window.addEventListener("resize", closeActions);
+  window.addEventListener("scroll", closeActions, true);
+  document.addEventListener("pointerdown", onDocumentPointerDown);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", closeActions);
+  window.removeEventListener("scroll", closeActions, true);
+  document.removeEventListener("pointerdown", onDocumentPointerDown);
+});
 </script>
 
 <template>
-  <div>
+  <div class="accounts-page">
     <header class="page-header">
       <div>
         <p class="eyebrow">ADMIN ACCOUNTS</p>
@@ -298,7 +342,7 @@ onMounted(load);
     <template v-else>
       <div v-if="notice" class="operation-message" role="status">{{ notice }}</div>
       <div v-if="error && !dialogMode" class="operation-message operation-message--error" role="alert">{{ error }}</div>
-      <section class="panel">
+      <section class="panel accounts-panel">
         <form class="toolbar" role="search" @submit.prevent="filter">
           <label class="field"><span>搜索账号</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="姓名或邮箱" /></label>
           <label class="field"><span>角色</span><select v-model="roleFilter"><option value="">全部角色</option><option v-for="role in Object.values(AdminRole)" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
@@ -311,29 +355,26 @@ onMounted(load);
         <PageState v-else-if="items.length === 0" type="empty" title="没有匹配的管理员账号" message="请调整筛选条件，或新增账号。" />
         <template v-else>
           <div class="list-summary">第 {{ page }} 页 · 共 {{ total }} 个账号</div>
-          <div class="table-wrap">
+          <div class="table-wrap accounts-table table-wrap--sticky-actions">
             <table>
               <thead><tr><th>姓名与邮箱</th><th>角色</th><th>状态</th><th>TOTP</th><th>负责剧目</th><th>最后登录</th><th>创建时间</th><th>操作</th></tr></thead>
               <tbody>
                 <tr v-for="account in items" :key="account.id">
                   <td><span class="table-title"><strong>{{ account.displayName }} <small v-if="account.id === auth.user?.id">（当前账号）</small></strong><small>{{ account.email }}</small></span></td>
-                  <td>{{ roleLabels[account.role] }}</td>
+                  <td class="nowrap">{{ roleLabels[account.role] }}</td>
                   <td><StatusBadge :label="statusLabel(account.status)" :tone="statusTone(account.status)" /></td>
                   <td><StatusBadge :label="account.totpEnabled ? '已绑定' : '待绑定'" :tone="account.totpEnabled ? 'success' : 'warning'" /></td>
-                  <td>{{ account.ownedDramaCount }} 部</td>
+                  <td class="nowrap">{{ account.ownedDramaCount }} 部</td>
                   <td class="nowrap">{{ formatDateTime(account.lastLoginAt) }}</td>
                   <td class="nowrap">{{ formatDateTime(account.createdAt) }}</td>
-                  <td>
-                    <details class="account-actions">
-                      <summary>操作</summary>
-                      <div>
-                        <button type="button" @click="openDialog('edit', account)">编辑资料/角色</button>
-                        <button v-if="account.status === 'PENDING_SETUP'" type="button" @click="openDialog('invite', account)">重发开通链接</button>
-                        <button v-if="account.status === 'ACTIVE'" type="button" :disabled="account.id === auth.user?.id" @click="openDialog('suspend', account)">停用</button>
-                        <button v-if="account.status === 'SUSPENDED'" type="button" @click="openDialog('activate', account)">启用</button>
-                        <button v-if="account.status !== 'PENDING_SETUP'" type="button" :disabled="account.id === auth.user?.id" @click="openDialog('reset', account)">重置登录凭据</button>
-                      </div>
-                    </details>
+                  <td class="nowrap">
+                    <button
+                      class="link account-actions-trigger"
+                      type="button"
+                      :aria-expanded="actionMenuAccount?.id === account.id"
+                      aria-haspopup="menu"
+                      @click="toggleActions(account, $event)"
+                    >操作</button>
                   </td>
                 </tr>
               </tbody>
@@ -348,6 +389,13 @@ onMounted(load);
     </template>
 
     <Teleport to="body">
+      <div v-if="actionMenuAccount" class="account-actions-menu" role="menu" :style="actionMenuStyle">
+          <button type="button" role="menuitem" @click="openDialog('edit', actionMenuAccount)">编辑资料/角色</button>
+          <button v-if="actionMenuAccount.status === 'PENDING_SETUP'" type="button" role="menuitem" @click="openDialog('invite', actionMenuAccount)">重发开通链接</button>
+          <button v-if="actionMenuAccount.status === 'ACTIVE'" type="button" role="menuitem" :disabled="actionMenuAccount.id === auth.user?.id" @click="openDialog('suspend', actionMenuAccount)">停用</button>
+          <button v-if="actionMenuAccount.status === 'SUSPENDED'" type="button" role="menuitem" @click="openDialog('activate', actionMenuAccount)">启用</button>
+          <button v-if="actionMenuAccount.status !== 'PENDING_SETUP'" type="button" role="menuitem" :disabled="actionMenuAccount.id === auth.user?.id" @click="openDialog('reset', actionMenuAccount)">重置登录凭据</button>
+        </div>
       <div v-if="dialogMode" class="dialog-backdrop" @keydown.esc="closeDialog">
         <form class="dialog account-dialog" role="dialog" aria-modal="true" :aria-labelledby="`${dialogMode}-title`" @submit.prevent="submit">
           <h2 :id="`${dialogMode}-title`">{{ dialogTitle }}</h2>
@@ -380,22 +428,22 @@ onMounted(load);
 </template>
 
 <style scoped>
+.accounts-page { display: flex; min-height: calc(100dvh - 67px - 40px - 12px - 2 * clamp(20px, 3vw, 34px)); flex-direction: column; }
+.accounts-panel { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+.accounts-panel :deep(.page-state) { flex: 1; }
+.accounts-table { flex: 1; min-height: 280px; overflow: auto; }
+.accounts-table table { min-width: 980px; }
 .list-summary { margin: -4px 0 10px; color: var(--color-muted); font-size: 12px; }
 .pager { display: flex; gap: 8px; margin-top: 12px; }
 .nowrap { white-space: nowrap; }
-.account-actions { position: relative; }
-.account-actions summary { cursor: pointer; color: var(--color-primary); font-weight: 700; list-style: none; }
-.account-actions summary::-webkit-details-marker { display: none; }
-.account-actions > div { position: absolute; z-index: 8; right: 0; display: grid; width: 170px; padding: 6px; border: 1px solid var(--color-border); border-radius: 9px; background: #fff; box-shadow: var(--shadow-md); }
-.account-actions button { padding: 8px 9px; border: 0; border-radius: 6px; text-align: left; color: #344054; background: transparent; cursor: pointer; }
-.account-actions button:hover:not(:disabled) { background: #f2f5f9; }
-.account-actions button:disabled { color: #a8b0bc; cursor: not-allowed; }
+.account-actions-trigger { padding: 4px 2px; }
+.account-actions-menu { position: fixed; z-index: 81; display: grid; width: 170px; padding: 6px; border: 1px solid var(--color-border); border-radius: 9px; background: #fff; box-shadow: var(--shadow-md); }
+.account-actions-menu button { padding: 8px 9px; border: 0; border-radius: 6px; text-align: left; color: #344054; background: transparent; cursor: pointer; }
+.account-actions-menu button:hover:not(:disabled) { background: #f2f5f9; }
+.account-actions-menu button:disabled { color: #a8b0bc; cursor: not-allowed; }
 .account-dialog { display: grid; gap: 14px; width: min(540px, 100%); max-height: calc(100vh - 36px); overflow-y: auto; }
 .account-dialog h2, .account-dialog p, .setup-link-dialog h2 { margin-bottom: 0; }
 .danger-note { padding: 10px 12px; border-radius: 8px; color: #8f1f34; background: var(--color-danger-soft); font-size: 12px; line-height: 1.6; }
 .setup-link-dialog { width: min(600px, 100%); }
 .setup-link-dialog textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
-@media (max-width: 720px) {
-  .account-actions > div { right: auto; left: 0; }
-}
 </style>

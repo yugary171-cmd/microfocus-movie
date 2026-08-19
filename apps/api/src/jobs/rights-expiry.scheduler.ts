@@ -15,11 +15,13 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RightsExpiryScheduler.name);
   private timer?: ReturnType<typeof setInterval>;
   private running = false;
+  private readonly prisma: PrismaService;
+  private readonly drain: ProcessDrain;
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly drain: ProcessDrain
-  ) {}
+  constructor(prisma: PrismaService, drain: ProcessDrain) {
+    this.prisma = prisma;
+    this.drain = drain;
+  }
 
   onModuleInit(): void {
     if (process.env.NODE_ENV === "test") return;
@@ -34,7 +36,7 @@ export class RightsExpiryScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   async tick(): Promise<void> {
-    if (this.running || this.drain.isDraining()) return;
+    if (this.running || this.drain?.isDraining()) return;
     this.running = true;
     try {
       const ownerId = `${hostname()}:${process.pid}`;

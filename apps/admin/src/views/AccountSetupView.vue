@@ -8,6 +8,7 @@ import {
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
+import PasswordField from "@/components/PasswordField.vue";
 import { roleLabels, formatDateTime } from "@/i18n";
 import type { AdminAccountSetupInfo } from "@/types/admin";
 
@@ -126,8 +127,8 @@ onMounted(inspect);
 
         <section class="setup-section">
           <div><span class="step-number">1</span><h2>设置登录密码</h2></div>
-          <label class="field"><span>新密码 *</span><input v-model="password" type="password" autocomplete="new-password" :minlength="ADMIN_SETUP_PASSWORD_MIN_LENGTH" :maxlength="PASSWORD_MAX_LENGTH" required /><small>使用 {{ ADMIN_SETUP_PASSWORD_MIN_LENGTH }}–{{ PASSWORD_MAX_LENGTH }} 位密码，不要与其他网站共用。</small></label>
-          <label class="field"><span>确认新密码 *</span><input v-model="confirmPassword" type="password" autocomplete="new-password" :minlength="ADMIN_SETUP_PASSWORD_MIN_LENGTH" :maxlength="PASSWORD_MAX_LENGTH" required /></label>
+          <label class="field"><span>新密码 *</span><PasswordField v-model="password" autocomplete="new-password" :minlength="ADMIN_SETUP_PASSWORD_MIN_LENGTH" :maxlength="PASSWORD_MAX_LENGTH" /><small>使用 {{ ADMIN_SETUP_PASSWORD_MIN_LENGTH }}–{{ PASSWORD_MAX_LENGTH }} 位密码，不要与其他网站共用。</small></label>
+          <label class="field"><span>确认新密码 *</span><PasswordField v-model="confirmPassword" autocomplete="new-password" :minlength="ADMIN_SETUP_PASSWORD_MIN_LENGTH" :maxlength="PASSWORD_MAX_LENGTH" /></label>
         </section>
 
         <section class="setup-section">

@@ -32,7 +32,7 @@ export class TotpService {
     manualKey: string;
     otpauthUri: string;
   } {
-    const manualKey = encodeBase32(randomBytes(20));
+    const manualKey = generateTotpManualKey();
     const key = this.requireEncryptionKey();
     return {
       encryptedSecret: encryptTotpSecret(manualKey, key),
@@ -94,6 +94,10 @@ export function verifyTotp(base32Secret: string, token: string, now = Date.now()
     if (safeEqual(totpAt(secret, Math.floor(now / 30_000) + offset), token)) return true;
   }
   return false;
+}
+
+export function generateTotpManualKey(): string {
+  return encodeBase32(randomBytes(20));
 }
 
 export function buildOtpauthUri(email: string, secret: string): string {

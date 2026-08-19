@@ -55,7 +55,11 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
       </nav>
       <div v-if="auth.user" class="sidebar-user">
         <span class="avatar" aria-hidden="true">{{ auth.user.name.slice(0, 1) }}</span>
-        <span><strong>{{ auth.user.name }}</strong><small>{{ roleLabels[auth.user.role] }}</small></span>
+        <span class="sidebar-user__meta has-tooltip" tabindex="0" aria-describedby="sidebar-user-tooltip">
+          <strong>{{ auth.user.name }}</strong>
+          <small>{{ roleLabels[auth.user.role] }}</small>
+          <span id="sidebar-user-tooltip" class="tooltip tooltip--above" role="tooltip">{{ auth.user.email }}</span>
+        </span>
         <button class="icon-button" type="button" aria-label="退出登录" title="退出登录" @click="logout"><Icon name="logout" /></button>
       </div>
     </aside>

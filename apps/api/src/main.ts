@@ -9,6 +9,7 @@ import { applyJsonBodyLimit } from "./common/http-limits.js";
 import { mountOpenApiDocs, shouldMountOpenApiDocs } from "./common/open-api.js";
 import { RequestLogInterceptor } from "./common/request-log.js";
 import { AppConfigService } from "./config/config.service.js";
+import { resolveAdminCorsOrigins } from "./config/cors-origins.js";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -18,12 +19,17 @@ async function bootstrap(): Promise<void> {
   });
   const config = app.get(AppConfigService);
   applyJsonBodyLimit(app);
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" }
+    })
+  );
   app.use(requestContext);
   app.enableCors({
-    origin: [config.env.ADMIN_ORIGIN],
+    origin: resolveAdminCorsOrigins(config.env.ADMIN_ORIGIN, config.env.NODE_ENV),
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Accept", "Content-Type", "Authorization", "Idempotency-Key"]
   });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })

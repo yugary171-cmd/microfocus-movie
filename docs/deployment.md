@@ -164,6 +164,8 @@ Live 构建命令见 [configuration.md](./configuration.md) §4.1。外部灰度
 | [configuration.md](./configuration.md) | 环境变量分类、秘密暴露边界、微信/VOD 接入 |
 | [release-checklist.md](./release-checklist.md) | 外部灰度与正式发布硬闸门 |
 | [operations.md](./operations.md) | 备份恢复、事故与数据库恢复审批 |
+| [admin-handbook.md](./admin-handbook.md) | 管理后台日常操作（登录、上剧、审核、发布、账号） |
+| [admin-emergency-access.md](./admin-emergency-access.md) | 管理员无法登录时的公开、可审计恢复（非隐藏入口） |
 | [status.md](./status.md) | 当前实现矩阵与工程阻塞 |
 | [ci-pipeline.md](./ci-pipeline.md) | Git/CI、API/管理端/小程序最小发布流水线 |
 | [README.md](../README.md) | 本地启动与验证命令 |

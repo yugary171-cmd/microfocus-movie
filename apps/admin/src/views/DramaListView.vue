@@ -85,7 +85,7 @@ onMounted(load);
       <template v-else>
         <div class="list-summary">第 {{ page }} 页 · 共 {{ total }} 部剧目</div>
         <PageState v-if="items.length === 0" type="empty" title="这一页没有剧目" message="请返回上一页，或重新筛选。" />
-        <div v-else class="table-wrap">
+        <div v-else class="table-wrap table-wrap--sticky-actions">
           <table>
             <thead><tr><th>剧目</th><th>状态</th><th>负责人</th><th>集数</th><th>许可资料</th><th>最后更新</th><th><span class="sr-only">操作</span></th></tr></thead>
             <tbody>

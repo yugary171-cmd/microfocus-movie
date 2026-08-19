@@ -92,4 +92,25 @@ describe("AccountSetupView", () => {
     expect(completeAccountSetup).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain("两次输入的密码不一致");
   });
+
+  it("toggles new and confirm password visibility independently", async () => {
+    inspectAccountSetup.mockResolvedValue({
+      displayName: "王审核",
+      email: "reviewer@example.com",
+      role: AdminRole.REVIEWER,
+      purpose: "INVITE",
+      otpauthUri: "otpauth://totp/mock",
+      manualKey: "MOCKKEY",
+      expiresAt: "2026-08-19T12:00:00.000Z",
+    });
+    const wrapper = mount(AccountSetupView);
+    await flushPromises();
+    const fields = wrapper.findAll(".password-field");
+    expect(fields).toHaveLength(2);
+    expect(fields[0]!.get("input").attributes("type")).toBe("password");
+    await fields[0]!.get('button[aria-label="显示密码"]').trigger("click");
+    expect(fields[0]!.get("input").attributes("type")).toBe("text");
+    expect(fields[1]!.get("input").attributes("type")).toBe("password");
+    wrapper.unmount();
+  });
 });

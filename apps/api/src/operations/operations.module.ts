@@ -8,10 +8,13 @@ import { ProcessDrain } from "./process-drain.js";
 
 @Controller()
 export class OperationsController {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly drain: ProcessDrain
-  ) {}
+  private readonly prisma: PrismaService;
+  private readonly drain: ProcessDrain;
+
+  constructor(prisma: PrismaService, drain: ProcessDrain) {
+    this.prisma = prisma;
+    this.drain = drain;
+  }
 
   @Get(controllerPath(API_ROUTES.health.live))
   live() {

@@ -18,6 +18,8 @@
 - 微信 `code2session` 登录适配已实现；腾讯云 VOD 上传/播放签名和微信激励广告可信服务端验证仍为 fail-closed。发布闸门会返回 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`，生产进程也会拒绝启动，直到企业账号完成真实实现与端到端验收。
 - 外部构建还受配置链路约束：内部 Mock 构建允许空 API 地址并注入 Demo 媒体；外部包必须 `MICROFOCUS_CLIENT_MODE=live` 且公开 HTTPS API 地址合法，产物不得含 Demo 媒体。真实 Live provider 和发布证据仍未完成。边界见 [configuration.md](./configuration.md)。
 - 2026-08-15 当前工作区执行 `npm run check` 通过；该结果覆盖 typecheck、单元/组件测试和构建，不等于 HTTP E2E、真实 MySQL 并发、真机或真实 provider 验收。
+- 本地 `npm run dev:api` 走 Nest CLI watch（tsc 发出装饰器元数据）。`tsx watch` 不会注入 Nest 依赖，`/health/ready` 与后台作业会失败。管理端连本机 API 需 `VITE_API_BASE_URL=http://localhost:3000`（不要加 `/api` 后缀）。
+- 非生产 CORS 在 `ADMIN_ORIGIN` 之外允许本机管理端 `http://localhost:5174`（及 `127.0.0.1:5174`），避免 `.env` 仍写旧 Vite 端口 5173 时登录预检被拦；生产仍只允许 `ADMIN_ORIGIN`。开通链接仍按 `ADMIN_ORIGIN` 生成，本地联调请把它改成 `http://localhost:5174`。
 - 2026-08-18：「我的」登录改为只调用微信 `uni.login`/`wx.login` 获取一次性 code，再由服务端完成 `code2session` 和 JWT 换取；不再依赖微信基础库 3.17.0 已移除的 `getUserProfile` 授权窗。头像继续使用 `chooseAvatar`，昵称使用资料编辑页的 `type="nickname"` 能力；退出登录确认后调用 `clearStoredSession()`，回到游客态；与申请注销分开。
 - 已有契约常量接到 Mock、表单和测试的收口已扫完；剩余硬编码要么是样例数据，要么没有对应契约，不再发明新规则。
 - 产品证据仍停留在内部方案：无用户行为、无内容供给承诺、无类目/广告批复。
@@ -250,4 +252,7 @@
 - 2026-08-18：修复管理后台侧栏选中状态与运营图标：不再使用 Vue Router 默认的根路径前缀高亮类，改为工作台仅 `/` 精确选中、其它菜单覆盖自身及子路由；运营控制图标替换为完整位于 `24×24` viewBox 内的居中齿轮，并将 SVG 设为块级。管理端 64 项测试与构建通过，浏览器验证运营控制/审计日志切换时仅当前菜单高亮。
 - 2026-08-19：新增仅系统管理员可见的账号管理全生命周期：共享 contracts 与 Prisma 支持真实姓名、待开通状态、24 小时一次性 setup token、会话版本和最后登录；API 提供筛选列表、创建、编辑、停用/启用、剧目移交、开通链接重发、密码与 TOTP 重置以及公开 inspect/complete。后台新增 `/accounts` 与 `/account-setup#token=…`，Mock 本地持久化不保存输入密码、OTP 或真实 TOTP 密钥，二维码依赖仅在开通页懒加载。停用/改角色/重置会使旧 JWT 下一请求失效；自操作、最后正常管理员、编辑移交、操作原因、OTP、token 摘要和公开开通限流均由服务端强制，账号不提供公开注册或硬删除。
 - 2026-08-19：产品决定停止原生小程序新功能开发；观看端只维护 `apps/uniapp`。`apps/miniprogram` 不再对齐新页面或新交互。
-- 2026-08-19：账号管理补齐规划剩余项：开通/敏感操作的 401 不再误清管理员会话；账号页把稳定错误码映射为中文；列表筛选、启用、重发链接、复制/关闭一次性链接、禁止自操作和最后管理员错误均有页面测试；Mock 记录最后登录且禁止自停用/自改角色。未跑真实 MySQL migrate，未做浏览器人工点检。
+- 2026-08-19：本地 Docker MySQL 已执行 `db:migrate:deploy`，应用 `20260818110000_admin_account_management`（AdminUser 开通字段与 AdminSetupToken）。此前 16 条迁移已在库中。未重新 seed。
+- 2026-08-19：补充公开管理员应急恢复规程 `docs/admin-emergency-access.md`，并实现全员锁死恢复命令 `npm run db:admin-break-glass`（确认短语、重置已有 ADMIN 密码与 TOTP、审计事件；非登录后门，变量不进入 API `envSchema`）。
+- 2026-08-19：本机测试库演练 `db:admin-break-glass`：干跑命中演练 ADMIN 后 `--commit` 写入密码哈希/加密 TOTP 与 `ADMIN_BREAK_GLASS_RECOVERY` 审计；离线校验真实 TOTP 通过。开发环境 HTTP 登录仍被 `ADMIN_TEST_OTP` 短路（新密码 + 测试 OTP 返回 201）。已停用演练账号并销毁一次性明文。根目录脚本已转发 `--commit`。未改日常登录账号。
+- 2026-08-19：新增通俗后台操作说明 [admin-handbook.md](./admin-handbook.md)，覆盖角色、登录开通、上剧审核发布、运营控制与账号管理；与事故手册、应急恢复分开。

@@ -130,7 +130,7 @@ npm run check
 DATABASE_URL='mysql://...' npm run db:migrate:deploy
 ```
 
-5. 按需执行 seed（仅/bootstrap 场景；生产 seed 需单独审批）。
+5. 按需执行 seed（仅 bootstrap 场景；生产 seed 需单独审批）。全员管理员无法登录时不要重复 seed，改用 [admin-emergency-access.md](./admin-emergency-access.md) 的 `npm run db:admin-break-glass`。
 
 ### 5.2 API 部署
 

@@ -43,10 +43,14 @@ const account = (overrides: Partial<AdminAccountRecord> = {}): AdminAccountRecor
   ...overrides,
 });
 
-async function openRowAction(wrapper: ReturnType<typeof mount>, label: string): Promise<void> {
-  const details = wrapper.get("details");
-  details.element.setAttribute("open", "");
-  const button = details.findAll("button").find((item) => item.text() === label);
+async function openRowAction(
+  wrapper: ReturnType<typeof mount>,
+  label: string,
+  rowIndex = 0,
+): Promise<void> {
+  await wrapper.findAll(".account-actions-trigger")[rowIndex]!.trigger("click");
+  await flushPromises();
+  const button = wrapper.findAll(".account-actions-menu button").find((item) => item.text() === label);
   await button?.trigger("click");
   await flushPromises();
 }
@@ -88,7 +92,7 @@ describe("AdminAccountsView", () => {
 
     expect(wrapper.text()).toContain("林编辑");
     expect(wrapper.text()).toContain("已绑定");
-    expect(wrapper.text()).toContain("2 部");
+    wrapper.get(".table-wrap--sticky-actions");
 
     await openRowAction(wrapper, "停用");
     expect(wrapper.text()).toContain("待移交 2 部剧目");
@@ -141,10 +145,9 @@ describe("AdminAccountsView", () => {
     });
     const wrapper = mount(AdminAccountsView);
     await flushPromises();
-    const details = wrapper.get("details");
-    details.element.setAttribute("open", "");
-    const suspend = details.findAll("button").find((button) => button.text() === "停用");
-    const reset = details.findAll("button").find((button) => button.text() === "重置登录凭据");
+    await wrapper.get(".account-actions-trigger").trigger("click");
+    const suspend = wrapper.findAll(".account-actions-menu button").find((button) => button.text() === "停用");
+    const reset = wrapper.findAll(".account-actions-menu button").find((button) => button.text() === "重置登录凭据");
     expect(suspend?.attributes("disabled")).toBeDefined();
     expect(reset?.attributes("disabled")).toBeDefined();
 
@@ -232,5 +235,29 @@ describe("AdminAccountsView", () => {
     expect(pending.text()).toContain("仅本次显示");
     wrapper.unmount();
     pending.unmount();
+  });
+
+  it("keeps a single floating action menu and closes it from outside clicks", async () => {
+    api.listAccounts.mockResolvedValue({
+      items: [
+        account({ id: "editor-1" }),
+        account({ id: "editor-2", displayName: "赵编辑", email: "editor-2@example.com" }),
+      ],
+      total: 2,
+    });
+    const wrapper = mount(AdminAccountsView, { attachTo: document.body });
+    await flushPromises();
+    const triggers = wrapper.findAll(".account-actions-trigger");
+    await triggers[0]!.trigger("click");
+    expect(wrapper.findAll(".account-actions-menu")).toHaveLength(1);
+    expect(wrapper.get(".account-actions-menu").text()).toContain("停用");
+
+    await triggers[1]!.trigger("click");
+    expect(wrapper.findAll(".account-actions-menu")).toHaveLength(1);
+
+    document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    await flushPromises();
+    expect(wrapper.find(".account-actions-menu").exists()).toBe(false);
+    wrapper.unmount();
   });
 });

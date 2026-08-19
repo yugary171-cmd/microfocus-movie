@@ -59,4 +59,18 @@ describe("LoginView", () => {
 
     wrapper.unmount();
   });
+
+  it("toggles password visibility from the field control", async () => {
+    const wrapper = mount(LoginView);
+    const toggle = wrapper.get('button[aria-label="显示密码"]');
+    expect(wrapper.get("input[autocomplete='current-password']").attributes("type")).toBe("password");
+
+    await toggle.trigger("click");
+    expect(wrapper.get("input[autocomplete='current-password']").attributes("type")).toBe("text");
+    wrapper.get('button[aria-label="隐藏密码"]');
+
+    await wrapper.get('button[aria-label="隐藏密码"]').trigger("click");
+    expect(wrapper.get("input[autocomplete='current-password']").attributes("type")).toBe("password");
+    wrapper.unmount();
+  });
 });
