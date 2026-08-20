@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
-import { RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
+import { CATALOG_TAG_GROUPS, parseStoredTagIds, RIGHTS_MATERIAL_DIGEST_LENGTH, RIGHTS_TERRITORY } from "@microfocus/contracts";
 import { encryptTotpSecret } from "../src/security/totp-crypto.js";
 import { assertTotpSecretBase32, isExampleTotpSecret } from "../src/security/totp-secret.js";
 
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
         summary: "用于本地开发的短剧样例。",
         coverUrl: "https://images.example.com/micro-light.jpg",
         category: "都市",
-        tagsJson: ["都市", "成长"],
+        tagsJson: ["ctag_042", "ctag_014"],
         recommendationRank: 100,
         status: "PUBLISHED",
         editorId: admin.id,
@@ -111,6 +111,29 @@ async function main(): Promise<void> {
       },
       update: {}
     });
+
+    const library = await prisma.catalogTag.findMany({ select: { id: true, group: true, name: true } });
+    const knownIds = new Set(library.map((tag) => tag.id));
+    const dramas = await prisma.drama.findMany({ select: { id: true, tagsJson: true } });
+    for (const row of dramas) {
+      const stored = parseStoredTagIds(row.tagsJson);
+      const next: string[] = [];
+      for (const value of stored) {
+        if (knownIds.has(value)) {
+          if (!next.includes(value)) next.push(value);
+          continue;
+        }
+        const matches = library.filter((tag) => tag.name === value);
+        const chosen =
+          matches.length === 1
+            ? matches[0]
+            : CATALOG_TAG_GROUPS.map((group) => matches.find((tag) => tag.group === group.id)).find(Boolean);
+        if (chosen && !next.includes(chosen.id)) next.push(chosen.id);
+      }
+      if (JSON.stringify(next) !== JSON.stringify(stored)) {
+        await prisma.drama.update({ where: { id: row.id }, data: { tagsJson: next } });
+      }
+    }
   }
 }
 

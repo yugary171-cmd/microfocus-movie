@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import DramaEditorView from "./DramaEditorView.vue";
 import { createDrama } from "@/test/fixtures";
 
-const { saveDrama, releaseGate, authUser } = vi.hoisted(() => ({
+const { saveDrama, releaseGate, listCatalogTags, authUser } = vi.hoisted(() => ({
   saveDrama: vi.fn(),
   releaseGate: vi.fn(),
+  listCatalogTags: vi.fn(),
   authUser: {
     id: "editor-1",
     name: "林编辑",
@@ -21,6 +22,7 @@ vi.mock("@/api/admin", () => ({
     saveDrama,
     releaseGate,
     getDrama: vi.fn(),
+    listCatalogTags,
   },
 }));
 
@@ -39,6 +41,10 @@ vi.mock("@/stores/auth", () => ({
 describe("DramaEditorView", () => {
   beforeEach(() => {
     saveDrama.mockReset();
+    listCatalogTags.mockReset();
+    listCatalogTags.mockResolvedValue({
+      items: [{ id: "ctag-1", group: "subjects", name: "都市", status: "ACTIVE", sortOrder: 0 }],
+    });
     authUser.id = "editor-1";
     authUser.role = AdminRole.EDITOR;
     releaseGate.mockResolvedValue({
@@ -120,7 +126,7 @@ describe("DramaEditorView", () => {
       expect.objectContaining({
         title: "管理员新建剧",
         category: "真人剧",
-        tags: ["都市"],
+        tagIds: ["ctag-1"],
       }),
       undefined,
     );

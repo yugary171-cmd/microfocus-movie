@@ -25,6 +25,7 @@ function drama(overrides: Partial<DramaRecord> = {}): DramaRecord {
     summary: "简介",
     category: "都市",
     tags: [],
+    tagIds: [],
     coverUrl: "",
     promoCoverUrl: "",
     status: DramaStatus.DRAFT,

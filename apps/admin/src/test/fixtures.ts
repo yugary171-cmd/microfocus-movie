@@ -30,6 +30,7 @@ export function createDrama(overrides: Partial<DramaRecord> = {}): DramaRecord {
     summary: "用于验证管理台行为",
     category: "测试",
     tags: [],
+    tagIds: [],
     coverUrl: "",
     promoCoverUrl: "",
     status: DramaStatus.READY,

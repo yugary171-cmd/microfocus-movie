@@ -38,6 +38,15 @@ describe("AccountSetupView", () => {
     expect(wrapper.text()).not.toContain("expired");
   });
 
+  it("does not inspect a token supplied in the query string", async () => {
+    window.history.replaceState({}, "", "/account-setup?token=query-token");
+    const wrapper = mount(AccountSetupView);
+    await flushPromises();
+
+    expect(inspectAccountSetup).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain("这个链接已无法使用");
+  });
+
   it("renders the QR code and completes setup with password and current TOTP", async () => {
     inspectAccountSetup.mockResolvedValue({
       displayName: "王审核",

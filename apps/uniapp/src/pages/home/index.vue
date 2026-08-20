@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DramaCard, HomeFilterOptions } from "@microfocus/contracts";
+import { publicDramaTags } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { HOME_PRIMARY_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../../constants/runtime";
@@ -25,7 +26,7 @@ function toHomeDrama(card: DramaCard, index: number): HomeDrama {
     id: card.id,
     title: card.title || "未命名短剧",
     subtitle: `${card.category || "短剧"} · 全 ${Math.max(0, card.episodeCount || 0)} 集`,
-    ranking: Array.isArray(card.tags) && card.tags[0] ? card.tags[0] : card.category || "短剧",
+    ranking: publicDramaTags(Array.isArray(card.tags) ? card.tags : [])[0] || card.category || "短剧",
     tone: TONES[index % TONES.length] || "mist"
   };
 }

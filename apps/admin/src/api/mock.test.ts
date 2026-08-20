@@ -9,7 +9,7 @@ describe("mock admin publish path", () => {
       title: "Mock 发布验收剧",
       summary: "用于验证管理端发布主路径。",
       category: "真人剧",
-      tags: ["验收"],
+      tagIds: ["ctag_042"],
       coverUrl: "",
       promoCoverUrl: "",
       rightsHolder: "Mock 内容方",
@@ -91,7 +91,7 @@ describe("mock admin publish path", () => {
         title: "x".repeat(DRAMA_TITLE_MAX_LENGTH + 1),
         summary: "简介",
         category: "都市",
-        tags: [],
+        tagIds: [],
         coverUrl: "",
         promoCoverUrl: "",
         rightsHolder: "",
@@ -117,6 +117,7 @@ describe("mock admin publish path", () => {
       email,
       role: AdminRole.EDITOR,
       otp: "123456",
+      reason: "补充一名内容编辑",
     });
     const token = new URLSearchParams(new URL(link.setupUrl).hash.replace(/^#/, "")).get("token");
     expect(token).toBeTruthy();
@@ -153,6 +154,7 @@ describe("mock admin publish path", () => {
       mockApi.updateAccount("admin-1", {
         role: AdminRole.EDITOR,
         otp: "123456",
+        reason: "调整账号角色",
       }),
     ).rejects.toThrow("不能修改自己的角色");
   });
@@ -170,5 +172,37 @@ describe("mock admin publish path", () => {
     });
     const dramas = await mockApi.listDramas("", "", 1);
     expect(dramas.items.filter((item) => item.ownerId === "editor-1")).toHaveLength(0);
+  });
+
+  it("seeds a tag library and rejects drama tags outside the active names", async () => {
+    const listed = await mockApi.listCatalogTags();
+    expect(listed.items.some((tag) => tag.name === "都市" && tag.status === "ACTIVE")).toBe(true);
+    const urban = listed.items.find((tag) => tag.name === "都市" && tag.group === "backgrounds");
+    expect(urban).toBeTruthy();
+    const detail = await mockApi.getCatalogTag(urban!.id);
+    expect(detail.usageCount).toBeGreaterThanOrEqual(0);
+    await expect(mockApi.createCatalogTag("subjects", "现代")).rejects.toThrow("同一分组内已有相同标签");
+    await expect(
+      mockApi.saveDrama({
+        title: "脏标签草稿",
+        summary: "简介",
+        category: "真人剧",
+        tagIds: ["草稿"],
+        coverUrl: "",
+        promoCoverUrl: "",
+        rightsHolder: "",
+        licenseNumber: "",
+        rightsValidFrom: "",
+        licenseExpiresAt: "",
+        rightsReportNumber: "",
+        rightsMaterialObjectKey: "",
+        rightsMaterialDigestSha256: "",
+        allowsWechatDistribution: false,
+        allowsAdMonetization: false,
+        allowsTranscoding: false,
+        allowsPromotionalMaterial: false,
+        episodes: [],
+      }),
+    ).rejects.toThrow("启用词库");
   });
 });

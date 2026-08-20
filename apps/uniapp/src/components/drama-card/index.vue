@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import type { DramaCard } from "@microfocus/contracts";
-import { ref } from "vue";
+import { publicDramaTags, type DramaCard, type HomeFilterOptions } from "@microfocus/contracts";
+import { computed, ref } from "vue";
 import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
 import { toFriendlyErrorMessage } from "../../utils/errors";
 
 const props = defineProps<{
   drama?: DramaCard;
   compact?: boolean;
+  filterOptions?: HomeFilterOptions;
 }>();
 
 const opening = ref(false);
+const displayTags = computed(() =>
+  publicDramaTags(Array.isArray(props.drama?.tags) ? props.drama.tags : [], props.filterOptions)
+);
 
 async function open() {
   if (!props.drama?.id) return;
@@ -47,7 +51,7 @@ async function open() {
       <view class="meta">{{ drama?.category }} · {{ drama?.episodeCount }} 集</view>
       <view class="summary">{{ drama?.summary }}</view>
       <view class="tags">
-        <text v-for="tag in drama?.tags || []" :key="tag" class="tag">{{ tag }}</text>
+        <text v-for="tag in displayTags" :key="tag" class="tag">{{ tag }}</text>
       </view>
     </view>
   </view>

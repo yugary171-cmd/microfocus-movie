@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { SEARCH_MAX_PAGE, SEARCH_PAGE_SIZE, ENTITY_ID_MAX_LENGTH } from "@microfocus/contracts";
-import { CatalogController, publicSearchWhere } from "./catalog.module.js";
+import { CatalogController, publicSearchWhere, resolvePublicSearchTagFilter } from "./catalog.module.js";
 import { RATE_LIMITS, rateLimitBucketId } from "../security/rate-limit.js";
 
 function exhaustedBucket() {
@@ -26,6 +26,25 @@ describe("catalog search filters", () => {
     const where = publicSearchWhere("", "都市");
     expect(where).toMatchObject({ status: "PUBLISHED", category: "都市" });
     expect(where).not.toHaveProperty("OR");
+  });
+
+  it("resolves filter names to catalog tag ids and fail-closes unknown names", async () => {
+    const prisma = {
+      catalogTag: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "ctag_001", group: "subjects", name: "现代" },
+          { id: "ctag_041", group: "backgrounds", name: "现代" }
+        ])
+      }
+    };
+    const filter = await resolvePublicSearchTagFilter(prisma, { subject: "现代" });
+    expect(filter).toEqual([["ctag_001"]]);
+    expect(publicSearchWhere("", "", {}, filter)).toMatchObject({
+      AND: [{ tagsJson: { array_contains: "ctag_001" } }]
+    });
+    prisma.catalogTag.findMany.mockResolvedValue([]);
+    const missing = await resolvePublicSearchTagFilter(prisma, { background: "不存在" });
+    expect(publicSearchWhere("", "", {}, missing)).toMatchObject({ id: { in: [] } });
   });
 
   it("returns empty search results past page 100 without a large offset", async () => {
@@ -129,10 +148,17 @@ describe("public catalog shelves", () => {
   it("loads latest by publish time instead of reshuffling the ranked shelf", async () => {
     const prisma = {
       rateLimitBucket: allowRateLimit(),
-      drama: { findMany: vi.fn().mockResolvedValue([]) }
+      drama: { findMany: vi.fn().mockResolvedValue([]) },
+      catalogTag: { findMany: vi.fn().mockResolvedValue([]) }
     };
     const controller = new CatalogController(prisma as never);
-    await controller.catalog({ socket: { remoteAddress: "10.0.0.8" } });
+    const catalog = await controller.catalog({ socket: { remoteAddress: "10.0.0.8" } });
+    expect(catalog.filterOptions).toEqual({ subjects: [], settings: [], backgrounds: [] });
+    expect(prisma.catalogTag.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "ACTIVE" })
+      })
+    );
     expect(prisma.drama.findMany).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({

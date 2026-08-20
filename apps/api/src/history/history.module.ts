@@ -27,6 +27,7 @@ import {
 import { controllerPath } from "../common/http.js";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { catalogTagNameMap, resolvedTagNames } from "../catalog/catalog-tags.js";
 import {
   CurrentPrincipal,
   JwtAuthGuard,
@@ -96,6 +97,10 @@ export class HistoryController {
         completedByDrama.set(row.dramaId, row._count._all);
       }
     }
+    const nameById = await catalogTagNameMap(
+      this.prisma,
+      rows.map((row) => row.drama)
+    );
     return rows.map((row) => ({
       drama: {
         id: row.drama.id,
@@ -103,9 +108,7 @@ export class HistoryController {
         summary: row.drama.summary,
         coverUrl: row.drama.coverUrl,
         category: row.drama.category,
-        tags: Array.isArray(row.drama.tagsJson)
-          ? row.drama.tagsJson.filter((tag): tag is string => typeof tag === "string")
-          : [],
+        tags: resolvedTagNames(row.drama.tagsJson, nameById),
         episodeCount: row.drama._count.episodes,
         recommendationRank: row.drama.recommendationRank,
         licenseNumber: row.drama.rightsRecords[0]?.licenseNumber ?? ""

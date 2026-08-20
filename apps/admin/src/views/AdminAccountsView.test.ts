@@ -113,7 +113,7 @@ describe("AdminAccountsView", () => {
   it("creates an account and reveals the one-time link only in the success dialog", async () => {
     api.createAccount.mockResolvedValue({
       account: account({ id: "new-account", status: AdminAccountStatus.PENDING_SETUP, setupCompletedAt: null }),
-      setupUrl: "http://localhost:5174/account-setup?token=only-once",
+      setupUrl: "http://localhost:5174/account-setup#token=only-once",
       setupToken: "only-once",
       expiresAt: "2026-08-19T12:00:00.000Z",
       purpose: "INVITE",
@@ -130,6 +130,7 @@ describe("AdminAccountsView", () => {
     await inputs[0]!.setValue("王审核");
     await inputs[1]!.setValue("Reviewer@Example.com");
     await dialog.get("select").setValue(AdminRole.EDITOR);
+    await dialog.get("textarea").setValue("新增同事负责短剧内容");
     await inputs[2]!.setValue("123456");
     await dialog.trigger("submit");
     await flushPromises();
@@ -139,14 +140,34 @@ describe("AdminAccountsView", () => {
       email: "reviewer@example.com",
       role: AdminRole.EDITOR,
       otp: "123456",
+      reason: "新增同事负责短剧内容",
     });
     expect(wrapper.text()).toContain("仅本次显示");
     expect((wrapper.get("textarea[readonly]").element as HTMLTextAreaElement).value).toContain("only-once");
 
     await wrapper.get(".setup-link-dialog .button--secondary").trigger("click");
-    expect(writeText).toHaveBeenCalledWith("http://localhost:5174/account-setup?token=only-once");
+    expect(writeText).toHaveBeenCalledWith("http://localhost:5174/account-setup#token=only-once");
     await wrapper.get(".setup-link-dialog .button--primary").trigger("click");
     expect(wrapper.find(".setup-link-dialog").exists()).toBe(false);
+  });
+
+  it("does not submit an unchanged role when editing an account profile", async () => {
+    api.updateAccount.mockResolvedValue(account({ displayName: "新姓名" }));
+    const wrapper = mount(AdminAccountsView);
+    await flushPromises();
+    await openRowAction(wrapper, "编辑资料/角色");
+    const dialog = wrapper.get(".account-dialog");
+    await dialog.find("input").setValue("新姓名");
+    await dialog.get("textarea").setValue("更新管理员展示姓名");
+    await dialog.findAll("input").at(-1)!.setValue("123456");
+    await dialog.trigger("submit");
+    await flushPromises();
+
+    expect(api.updateAccount).toHaveBeenCalledWith("editor-1", {
+      displayName: "新姓名",
+      otp: "123456",
+      reason: "更新管理员展示姓名",
+    });
   });
 
   it("disables self suspend and reset, and maps last-admin API errors", async () => {

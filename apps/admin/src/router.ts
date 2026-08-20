@@ -22,6 +22,12 @@ export const router = createRouter({
         { path: "dramas/new", name: "drama-new", component: () => import("@/views/DramaEditorView.vue") },
         { path: "dramas/:id", name: "drama-edit", component: () => import("@/views/DramaEditorView.vue") },
         { path: "reviews", name: "reviews", component: () => import("@/views/ReviewQueueView.vue") },
+        {
+          path: "tags",
+          name: "tags",
+          component: () => import("@/views/TagLibraryView.vue"),
+          meta: { roles: [AdminRole.ADMIN] },
+        },
         { path: "operations", name: "operations", component: () => import("@/views/OperationsView.vue") },
         { path: "audit", name: "audit", component: () => import("@/views/AuditLogView.vue") },
         {

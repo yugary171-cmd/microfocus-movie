@@ -6,13 +6,12 @@ import {
   AdminSetupPurpose,
 } from "@microfocus/contracts";
 import { computed, onMounted, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
 import PasswordField from "@/components/PasswordField.vue";
 import { roleLabels, formatDateTime } from "@/i18n";
 import type { AdminAccountSetupInfo } from "@/types/admin";
 
-const route = useRoute();
 const router = useRouter();
 const state = ref<"loading" | "ready" | "invalid" | "success">("loading");
 const token = ref("");
@@ -29,8 +28,7 @@ const title = computed(() => info.value?.purpose === AdminSetupPurpose.CREDENTIA
 
 async function inspect(): Promise<void> {
   const fragmentToken = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token")?.trim() ?? "";
-  const queryToken = typeof route.query.token === "string" ? route.query.token.trim() : "";
-  const setupToken = fragmentToken || queryToken;
+  const setupToken = fragmentToken;
   if (!setupToken) {
     state.value = "invalid";
     return;

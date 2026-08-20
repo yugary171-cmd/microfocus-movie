@@ -37,6 +37,7 @@ export const DRAMA_SUMMARY_MAX_LENGTH = 2000;
 export const DRAMA_CATEGORY_MAX_LENGTH = 64;
 export const DRAMA_TAG_MAX_LENGTH = 32;
 export const DRAMA_TAG_MAX_COUNT = 20;
+/** Seed / test fallback for public filter groups. Live catalog `filterOptions` is assembled from CatalogTag. */
 export const CATALOG_FILTER_OPTIONS = {
   subjects: ["现代", "女性成长", "脑洞", "奇幻", "玄幻", "古言", "战神", "宫斗", "仙侠", "权谋", "悬疑", "喜剧", "青春"],
   settings: ["打脸虐渣", "大男主", "大女主", "马甲", "重生", "穿越", "系统", "先婚后爱", "家长里短", "破镜重圆", "神豪", "豪门", "强者回归", "异能"],
@@ -60,6 +61,7 @@ export const DRAMA_TYPE_OPTIONS = [
   }
 ] as const;
 export type DramaTypeCategory = (typeof DRAMA_TYPE_OPTIONS)[number]["category"];
+/** Seed data for CatalogTag. Runtime admin picker reads GET /v1/admin/tags. */
 export const ADMIN_DRAMA_TAG_GROUPS = [
   {
     id: "subjects",
@@ -93,6 +95,137 @@ export const ADMIN_DRAMA_TAG_GROUPS = [
   { id: "tones", label: "风格", options: ["轻松", "高能", "致郁", "甜虐", "搞笑", "燃"] },
   { id: "audiences", label: "受众", options: ["男频", "女频"] }
 ] as const;
+export const CATALOG_TAG_GROUPS = [
+  { id: "subjects", label: "主题" },
+  { id: "settings", label: "情节设定" },
+  { id: "backgrounds", label: "时代背景" },
+  { id: "roles", label: "人物" },
+  { id: "tones", label: "风格" },
+  { id: "audiences", label: "受众" }
+] as const;
+export type CatalogTagGroupId = (typeof CATALOG_TAG_GROUPS)[number]["id"];
+export const CATALOG_TAG_GROUP_IDS = CATALOG_TAG_GROUPS.map((group) => group.id);
+export const PUBLIC_CATALOG_TAG_GROUPS = ["subjects", "settings", "backgrounds"] as const satisfies readonly CatalogTagGroupId[];
+export type PublicCatalogTagGroupId = (typeof PUBLIC_CATALOG_TAG_GROUPS)[number];
+
+export enum CatalogTagStatus {
+  ACTIVE = "ACTIVE",
+  ARCHIVED = "ARCHIVED"
+}
+
+export interface CatalogTag {
+  id: string;
+  group: CatalogTagGroupId;
+  name: string;
+  status: CatalogTagStatus;
+  sortOrder: number;
+  usageCount?: number;
+}
+
+export function isCatalogTagGroupId(value: string): value is CatalogTagGroupId {
+  return (CATALOG_TAG_GROUP_IDS as string[]).includes(value);
+}
+
+export function normalizeCatalogTagName(value: string): string {
+  return value.trim().slice(0, DRAMA_TAG_MAX_LENGTH);
+}
+
+export function seedCatalogTagLibrary(): Array<{
+  group: CatalogTagGroupId;
+  name: string;
+  status: CatalogTagStatus;
+  sortOrder: number;
+}> {
+  return ADMIN_DRAMA_TAG_GROUPS.flatMap((group, groupIndex) =>
+    group.options.map((name, index) => ({
+      group: group.id,
+      name,
+      status: CatalogTagStatus.ACTIVE,
+      sortOrder: groupIndex * 100 + index
+    }))
+  );
+}
+
+export function activeCatalogTagNames(
+  library: ReadonlyArray<{ name: string; status?: string }>
+): Set<string> {
+  return new Set(
+    library
+      .filter((tag) => !tag.status || tag.status === CatalogTagStatus.ACTIVE)
+      .map((tag) => tag.name)
+  );
+}
+
+export function homeFilterOptionsFromTags(
+  library: ReadonlyArray<{ group: string; name: string; status?: string }>
+): { subjects: string[]; settings: string[]; backgrounds: string[] } {
+  const active = library.filter((tag) => !tag.status || tag.status === CatalogTagStatus.ACTIVE);
+  const names = (group: PublicCatalogTagGroupId) =>
+    active.filter((tag) => tag.group === group).map((tag) => tag.name);
+  return {
+    subjects: names("subjects"),
+    settings: names("settings"),
+    backgrounds: names("backgrounds")
+  };
+}
+
+export type PublicDramaTagLibrary =
+  | ReadonlyArray<{ group: string; name: string; status?: string }>
+  | { subjects?: readonly string[]; settings?: readonly string[]; backgrounds?: readonly string[] };
+
+function isCatalogTagRowLibrary(
+  library: PublicDramaTagLibrary
+): library is ReadonlyArray<{ group: string; name: string; status?: string }> {
+  return Array.isArray(library);
+}
+
+export function parseStoredTagIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export function replaceStoredTagId(ids: readonly string[], fromId: string, toId: string): string[] {
+  const next: string[] = [];
+  for (const id of ids) {
+    const mapped = id === fromId ? toId : id;
+    if (!next.includes(mapped)) next.push(mapped);
+  }
+  return next;
+}
+
+export function catalogTagNamesById(
+  ids: readonly string[],
+  library: ReadonlyArray<{ id: string; name: string }>
+): string[] {
+  const names = new Map(library.map((tag) => [tag.id, tag.name]));
+  return ids.map((id) => names.get(id)).filter((name): name is string => Boolean(name));
+}
+
+export function publicDramaTags(
+  tags: readonly string[],
+  library: PublicDramaTagLibrary = seedCatalogTagLibrary()
+): string[] {
+  const allowed = new Set<string>();
+  if (isCatalogTagRowLibrary(library)) {
+    for (const tag of library) {
+      if (
+        (!tag.status || tag.status === CatalogTagStatus.ACTIVE) &&
+        (PUBLIC_CATALOG_TAG_GROUPS as readonly string[]).includes(tag.group)
+      ) {
+        allowed.add(tag.name);
+      }
+    }
+  } else {
+    for (const name of library.subjects ?? []) allowed.add(name);
+    for (const name of library.settings ?? []) allowed.add(name);
+    for (const name of library.backgrounds ?? []) allowed.add(name);
+  }
+  return tags.filter((tag) => allowed.has(tag));
+}
+
 export const POSTER_FILE_SIZE_MAX_BYTES = 10 * 1024 * 1024;
 export const POSTER_CONTENT_TYPES = ["image/jpeg", "image/png", "image/bmp", "image/x-ms-bmp"] as const;
 export const POSTER_FILE_ACCEPT = ".jpg,.jpeg,.bmp,.png,image/jpeg,image/png,image/bmp";
@@ -357,6 +490,9 @@ export const ERROR_CODES = {
   ADMIN_SETUP_TOKEN_EXPIRED: "ADMIN_SETUP_TOKEN_EXPIRED",
   ADMIN_SETUP_TOKEN_USED: "ADMIN_SETUP_TOKEN_USED",
   INVALID_ADMIN_EMAIL: "INVALID_ADMIN_EMAIL",
+  CATALOG_TAG_NOT_IN_LIBRARY: "CATALOG_TAG_NOT_IN_LIBRARY",
+  CATALOG_TAG_DUPLICATE: "CATALOG_TAG_DUPLICATE",
+  CATALOG_TAG_IN_USE: "CATALOG_TAG_IN_USE",
   INVALID_ADMIN_DISPLAY_NAME: "INVALID_ADMIN_DISPLAY_NAME",
   INVALID_ADMIN_REASON: "INVALID_ADMIN_REASON",
   INVALID_ADMIN_SETUP_PASSWORD: "INVALID_ADMIN_SETUP_PASSWORD"
@@ -451,6 +587,8 @@ export const API_ROUTES = {
       `/v1/admin/deletion-requests/${deletionRequestId}`,
     deletionQueryTokenReissue: (deletionRequestId: string) =>
       `/v1/admin/deletion-requests/${deletionRequestId}/query-tokens`,
+    tags: "/v1/admin/tags",
+    tag: (tagId: string) => `/v1/admin/tags/${tagId}`,
     releaseGate: "/v1/admin/release-gate"
   },
   /** Provider-facing; not used by viewer or admin clients. */
@@ -603,6 +741,7 @@ export interface CreateAdminAccountRequest {
   displayName: string;
   role: AssignableAdminRole;
   otp: string;
+  reason: string;
 }
 
 export interface UpdateAdminAccountRequest {
@@ -610,6 +749,7 @@ export interface UpdateAdminAccountRequest {
   role?: AssignableAdminRole;
   transferEditorId?: string;
   otp: string;
+  reason: string;
 }
 
 export interface AdminAccountSensitiveActionRequest {

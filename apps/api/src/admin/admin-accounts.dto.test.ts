@@ -27,7 +27,8 @@ describe("administrator account DTO limits", () => {
           email: "new@example.com",
           displayName: "新管理员",
           role: AdminRole.EDITOR,
-          otp: "123456"
+          otp: "123456",
+          reason: "新增内容编辑账号"
         })
       )
     ).toEqual([]);
@@ -36,7 +37,8 @@ describe("administrator account DTO limits", () => {
         email: "new@example.com",
         displayName: "x".repeat(ADMIN_DISPLAY_NAME_MAX_LENGTH + 1),
         role: AdminRole.EDITOR,
-        otp: "not-otp"
+        otp: "not-otp",
+        reason: "新增内容编辑账号"
       })
     );
     expect(invalid.some((error) => error.property === "displayName")).toBe(true);
@@ -50,7 +52,8 @@ describe("administrator account DTO limits", () => {
           email: "stellan",
           displayName: "新管理员",
           role: AdminRole.EDITOR,
-          otp: "123456"
+          otp: "123456",
+          reason: "新增内容编辑账号"
         })
       )
     ).toEqual([]);
@@ -61,7 +64,8 @@ describe("administrator account DTO limits", () => {
             email: "ste llan",
             displayName: "新管理员",
             role: AdminRole.EDITOR,
-            otp: "123456"
+            otp: "123456",
+            reason: "新增内容编辑账号"
           })
         )
       ).some((error) => error.property === "email")
@@ -76,7 +80,8 @@ describe("administrator account DTO limits", () => {
             email: "new@example.com",
             displayName: "新管理员",
             role: AdminRole.REVIEWER,
-            otp: "123456"
+            otp: "123456",
+            reason: "新增内容编辑账号"
           })
         )
       ).some((error) => error.property === "role")
@@ -86,7 +91,8 @@ describe("administrator account DTO limits", () => {
         await validate(
           plainToInstance(UpdateAdminAccountDto, {
             role: AdminRole.REVIEWER,
-            otp: "123456"
+            otp: "123456",
+            reason: "调整账号角色"
           })
         )
       ).some((error) => error.property === "role")
@@ -99,7 +105,8 @@ describe("administrator account DTO limits", () => {
         plainToInstance(UpdateAdminAccountDto, {
           role: AdminRole.EDITOR,
           transferEditorId: "editor-2",
-          otp: "123456"
+          otp: "123456",
+          reason: "调整账号角色"
         })
       )
     ).toEqual([]);

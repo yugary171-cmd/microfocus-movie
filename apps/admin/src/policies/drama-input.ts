@@ -4,7 +4,7 @@ import {
   DRAMA_EPISODE_MAX_COUNT,
   DRAMA_SUMMARY_MAX_LENGTH,
   DRAMA_TAG_MAX_COUNT,
-  DRAMA_TAG_MAX_LENGTH,
+  ENTITY_ID_MAX_LENGTH,
   DRAMA_TITLE_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
   EPISODE_TITLE_MAX_LENGTH,
@@ -60,7 +60,7 @@ export function posterFileError(file: { name: string; size: number; type?: strin
   return "";
 }
 
-export function dramaDraftError(input: DramaInput): string {
+export function dramaDraftError(input: DramaInput, activeTagIds?: ReadonlySet<string>): string {
   if (input.title.length > DRAMA_TITLE_MAX_LENGTH) {
     return `剧名不能超过 ${DRAMA_TITLE_MAX_LENGTH} 字`;
   }
@@ -76,14 +76,17 @@ export function dramaDraftError(input: DramaInput): string {
   if (input.coverUrl.length > COVER_URL_MAX_LENGTH) {
     return `封面 URL 不能超过 ${COVER_URL_MAX_LENGTH} 字`;
   }
-  if (input.tags.length === 0) {
+  if (input.tagIds.length === 0) {
     return "请至少选择一个标签";
   }
-  if (input.tags.length > DRAMA_TAG_MAX_COUNT) {
+  if (input.tagIds.length > DRAMA_TAG_MAX_COUNT) {
     return `标签最多 ${DRAMA_TAG_MAX_COUNT} 个`;
   }
-  if (input.tags.some((tag) => tag.length > DRAMA_TAG_MAX_LENGTH)) {
-    return `单个标签不能超过 ${DRAMA_TAG_MAX_LENGTH} 字`;
+  if (input.tagIds.some((tag) => !tag || tag.length > ENTITY_ID_MAX_LENGTH)) {
+    return "标签必须是词库中的启用项";
+  }
+  if (activeTagIds && input.tagIds.some((tag) => !activeTagIds.has(tag))) {
+    return "标签须全部来自当前启用词库，请先去掉未知或已停用词";
   }
   if (input.rightsHolder.length > RIGHTS_HOLDER_MAX_LENGTH) {
     return `权利方不能超过 ${RIGHTS_HOLDER_MAX_LENGTH} 字`;

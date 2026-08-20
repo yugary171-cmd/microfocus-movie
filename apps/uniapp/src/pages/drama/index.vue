@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { DramaDetail, EntitlementSummary, EpisodeSummary } from "@microfocus/contracts";
+import type { DramaDetail, EntitlementSummary, EpisodeSummary, HomeFilterOptions } from "@microfocus/contracts";
+import { publicDramaTags } from "@microfocus/contracts";
 import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
-import { nextTick, ref } from "vue";
+import { nextTick, computed, ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
 import RewardUnlockSheet from "../../components/reward-unlock-sheet/index.vue";
 import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
@@ -29,6 +30,10 @@ const id = ref("");
 const loading = ref(true);
 const error = ref("");
 const drama = ref<DramaDetail | null>(null);
+const publicFilterOptions = ref<HomeFilterOptions | null>(null);
+const displayTags = computed(() =>
+  publicDramaTags(Array.isArray(drama.value?.tags) ? drama.value.tags : [], publicFilterOptions.value ?? undefined)
+);
 const navInsetTop = ref(52);
 const summaryExpanded = ref(false);
 const summaryOverflow = ref(false);
@@ -79,11 +84,13 @@ async function loadDetail() {
   summaryExpanded.value = false;
   summaryOverflow.value = false;
   try {
-    const [detail, summary] = await Promise.all([
+    const [detail, summary, catalog] = await Promise.all([
       getApi().getDrama(id.value),
-      getApi().getEntitlement(id.value).catch(() => null)
+      getApi().getEntitlement(id.value).catch(() => null),
+      getApi().getCatalog().catch(() => null)
     ]);
     drama.value = detail;
+    publicFilterOptions.value = catalog?.filterOptions ?? null;
     applyEntitlement(summary);
     await nextTick();
     measureSummaryOverflow();
@@ -305,7 +312,7 @@ onShareAppMessage(() => {
           <view class="title">{{ drama.title }}</view>
           <view class="meta">{{ drama.category }} · 全 {{ drama.episodeCount }} 集</view>
           <view class="tags">
-            <text v-for="tag in drama.tags" :key="tag" class="tag">{{ tag }} ›</text>
+            <text v-for="tag in displayTags" :key="tag" class="tag">{{ tag }} ›</text>
           </view>
         </view>
       </view>

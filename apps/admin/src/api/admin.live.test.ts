@@ -1,4 +1,4 @@
-import { AdminAccountStatus, AdminRole, REVIEW_NOTES_MAX_LENGTH, REWARD_SECONDS, REWARD_TTL_SECONDS, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
+import { AdminAccountStatus, AdminRole, CatalogTagStatus, REVIEW_NOTES_MAX_LENGTH, REWARD_SECONDS, REWARD_TTL_SECONDS, UPLOAD_FILE_NAME_MAX_LENGTH, UPLOAD_FILE_SIZE_MAX_BYTES } from "@microfocus/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function success(data: unknown): Response {
@@ -95,6 +95,26 @@ describe("live admin API adapter", () => {
     );
   });
 
+  it("lists and patches catalog tags through the admin contract routes", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(success({ items: [{ id: "ctag-1", group: "subjects", name: "都市", status: "ACTIVE", sortOrder: 1 }] }))
+      .mockResolvedValueOnce(success({ id: "ctag-2", group: "tones", name: "赛博", status: "ACTIVE", sortOrder: 0 }))
+      .mockResolvedValueOnce(success({ id: "ctag-1", group: "subjects", name: "都市", status: "ARCHIVED", sortOrder: 1 }))
+      .mockResolvedValueOnce(success({ id: "ctag-1", replacementTagId: "ctag-2", rewrittenDramas: 0 }));
+    const { adminApi } = await import("./admin");
+    const listed = await adminApi.listCatalogTags(true);
+    await adminApi.createCatalogTag("tones", "赛博");
+    await adminApi.patchCatalogTag("ctag-1", CatalogTagStatus.ARCHIVED);
+    await adminApi.deleteCatalogTag("ctag-1", "ctag-2");
+
+    expect(listed.items[0]).toMatchObject({ name: "都市" });
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe("http://api.test/v1/admin/tags?includeArchived=1");
+    expect(String(vi.mocked(fetch).mock.calls[1]?.[0])).toBe("http://api.test/v1/admin/tags");
+    expect(String(vi.mocked(fetch).mock.calls[2]?.[0])).toBe("http://api.test/v1/admin/tags/ctag-1");
+    expect(String(vi.mocked(fetch).mock.calls[3]?.[0])).toBe("http://api.test/v1/admin/tags/ctag-1");
+    expect(vi.mocked(fetch).mock.calls[3]?.[1]).toMatchObject({ method: "DELETE" });
+  });
+
   it("uses the account management and public setup contracts", async () => {
     const account = {
       id: "account-1",
@@ -113,7 +133,7 @@ describe("live admin API adapter", () => {
       .mockResolvedValueOnce(success({ items: [account], total: 1 }))
       .mockResolvedValueOnce(success({
         account,
-        setupUrl: "https://admin.example/account-setup?token=one-time",
+        setupUrl: "https://admin.example/account-setup#token=one-time",
         setupToken: "one-time",
         expiresAt: "2026-08-19T00:00:00.000Z",
         purpose: "INVITE",
@@ -141,6 +161,7 @@ describe("live admin API adapter", () => {
       email: "reviewer@example.com",
       role: AdminRole.EDITOR,
       otp: "123456",
+      reason: "补充一名内容编辑",
     });
     expect(setupLink.setupUrl).toContain("one-time");
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body))).toEqual({
@@ -148,6 +169,7 @@ describe("live admin API adapter", () => {
       email: "reviewer@example.com",
       role: AdminRole.EDITOR,
       otp: "123456",
+      reason: "补充一名内容编辑",
     });
 
     await expect(adminApi.inspectAccountSetup("one-time")).resolves.toMatchObject({

@@ -129,5 +129,25 @@ describe("admin content Nest routes follow contracts", () => {
       path: adminMethod(API_ROUTES.admin.releaseGate),
       method: RequestMethod.GET
     });
+    expect(routeOf(AdminController.prototype.catalogTags)).toEqual({
+      path: adminMethod(API_ROUTES.admin.tags),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(AdminController.prototype.createCatalogTag)).toEqual({
+      path: adminMethod(API_ROUTES.admin.tags),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(AdminController.prototype.patchCatalogTag)).toEqual({
+      path: adminMethod(API_ROUTES.admin.tag(":tagId")),
+      method: RequestMethod.PATCH
+    });
+    expect(routeOf(AdminController.prototype.catalogTag)).toEqual({
+      path: adminMethod(API_ROUTES.admin.tag(":tagId")),
+      method: RequestMethod.GET
+    });
+    expect(routeOf(AdminController.prototype.deleteCatalogTag)).toEqual({
+      path: adminMethod(API_ROUTES.admin.tag(":tagId")),
+      method: RequestMethod.DELETE
+    });
   });
 });

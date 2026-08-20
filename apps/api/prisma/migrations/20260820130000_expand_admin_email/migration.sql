@@ -1,0 +1,2 @@
+ALTER TABLE `AdminUser`
+    MODIFY COLUMN `email` VARCHAR(254) NOT NULL;

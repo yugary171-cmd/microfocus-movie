@@ -2,11 +2,12 @@ import { Controller, Get, Module, Param, Query, Req } from "@nestjs/common";
 import {
   API_ROUTES,
   boundListQuery,
-  CATALOG_FILTER_OPTIONS,
   FREE_EPISODE_COUNT,
+  PUBLIC_CATALOG_TAG_GROUPS,
   SEARCH_MAX_PAGE,
   SEARCH_PAGE_SIZE,
   episodeDisplayTitle,
+  homeFilterOptionsFromTags,
   type CatalogResponse,
   type DramaSearchFilters,
   type DramaCard,
@@ -17,7 +18,8 @@ import { requireEntityId } from "../common/entity-id.js";
 import { Errors } from "../common/app-error.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
-import { catalogCardInclude, toDramaCard } from "./drama-card.js";
+import { catalogTagNameMap } from "./catalog-tags.js";
+import { catalogCardInclude, toDramaCard, toDramaCards } from "./drama-card.js";
 
 const CATALOG_FEATURED_LIMIT = 8;
 const CATALOG_SHELF_LIMIT = 20;
@@ -30,7 +32,7 @@ export class CatalogController {
   async catalog(@Req() request: SocketRequest): Promise<CatalogResponse> {
     await assertNamedRateLimit(this.prisma, "catalog", requestIpKey(request));
     const where = publicSearchWhere("", "");
-    const [ranked, latestRows] = await Promise.all([
+    const [ranked, latestRows, tagRows] = await Promise.all([
       this.prisma.drama.findMany({
         where,
         include: catalogCardInclude,
@@ -42,20 +44,24 @@ export class CatalogController {
         include: catalogCardInclude,
         orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
         take: CATALOG_SHELF_LIMIT
+      }),
+      this.prisma.catalogTag.findMany({
+        where: {
+          status: "ACTIVE",
+          group: { in: [...PUBLIC_CATALOG_TAG_GROUPS] }
+        },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
       })
     ]);
-    const rankedCards = ranked.map(toDramaCard);
-    const latestCards = latestRows.map(toDramaCard);
+    const nameById = await catalogTagNameMap(this.prisma, [...ranked, ...latestRows]);
+    const rankedCards = ranked.map((drama) => toDramaCard(drama, nameById));
+    const latestCards = latestRows.map((drama) => toDramaCard(drama, nameById));
     return {
       featured: rankedCards.slice(0, CATALOG_FEATURED_LIMIT),
       latest: latestCards,
       popular: rankedCards,
       categories: [...new Set([...rankedCards, ...latestCards].map((card) => card.category))],
-      filterOptions: {
-        subjects: [...CATALOG_FILTER_OPTIONS.subjects],
-        settings: [...CATALOG_FILTER_OPTIONS.settings],
-        backgrounds: [...CATALOG_FILTER_OPTIONS.backgrounds]
-      }
+      filterOptions: homeFilterOptionsFromTags(tagRows)
     };
   }
 
@@ -93,7 +99,8 @@ export class CatalogController {
       tags: tags.split(",").map((tag) => boundListQuery(tag)).filter(Boolean),
       ...(boundedPublishedAfter ? { publishedAfter: boundedPublishedAfter } : {})
     };
-    const where = publicSearchWhere(q, normalizedCategory, filters);
+    const tagFilter = await resolvePublicSearchTagFilter(this.prisma, filters);
+    const where = publicSearchWhere(q, normalizedCategory, filters, tagFilter);
     const [dramas, total] = await this.prisma.$transaction([
       this.prisma.drama.findMany({
         where,
@@ -108,7 +115,7 @@ export class CatalogController {
       this.prisma.drama.count({ where })
     ]);
     return {
-      items: dramas.map(toDramaCard),
+      items: await toDramaCards(this.prisma, dramas),
       page,
       pageSize,
       total,
@@ -136,8 +143,10 @@ export class CatalogController {
       }
     });
     if (!drama) throw Errors.notFound("Drama");
+    const [card] = await toDramaCards(this.prisma, [drama]);
+    if (!card) throw Errors.notFound("Drama");
     return {
-      ...toDramaCard(drama),
+      ...card,
       rightsHolder: drama.rightsRecords[0]?.rightsHolder ?? "",
       episodes: drama.episodes.map((episode) => ({
         id: episode.id,
@@ -150,10 +159,55 @@ export class CatalogController {
   }
 }
 
-export function publicSearchWhere(q: string, category: string, filters: DramaSearchFilters = {}) {
-  const selectedTags = [filters.subject, filters.setting, filters.background, ...(filters.tags ?? [])].filter(
+export type PublicSearchTagFilter = Array<string | string[]>;
+
+export async function resolvePublicSearchTagFilter(
+  prisma: { catalogTag: { findMany: (args: object) => Promise<Array<{ id: string; group: string; name: string }>> } },
+  filters: DramaSearchFilters
+): Promise<PublicSearchTagFilter> {
+  const names = [filters.subject, filters.setting, filters.background, ...(filters.tags ?? [])].filter(
     (value): value is string => Boolean(value)
   );
+  if (!names.length) return [];
+  const rows = await prisma.catalogTag.findMany({
+    where: { status: "ACTIVE", name: { in: names } },
+    select: { id: true, group: true, name: true }
+  });
+  const clauses: PublicSearchTagFilter = [];
+  const push = (name: string | undefined, group?: string) => {
+    if (!name) return;
+    clauses.push(
+      rows.filter((row) => row.name === name && (!group || row.group === group)).map((row) => row.id)
+    );
+  };
+  push(filters.subject, "subjects");
+  push(filters.setting, "settings");
+  push(filters.background, "backgrounds");
+  for (const tag of filters.tags ?? []) push(tag);
+  return clauses;
+}
+
+export function publicSearchWhere(
+  q: string,
+  category: string,
+  filters: DramaSearchFilters = {},
+  tagFilter: PublicSearchTagFilter = []
+) {
+  const tagIds = tagFilter.map((clause) => (Array.isArray(clause) ? clause.filter(Boolean) : clause ? [clause] : []));
+  const impossible = Boolean(tagFilter.length) && tagIds.some((ids) => ids.length === 0);
+  const tagClauses: Array<
+    | { tagsJson: { array_contains: string } }
+    | { OR: Array<{ tagsJson: { array_contains: string } }> }
+  > = [];
+  for (const ids of tagIds) {
+    const first = ids[0];
+    if (!first) continue;
+    if (ids.length === 1) {
+      tagClauses.push({ tagsJson: { array_contains: first } });
+      continue;
+    }
+    tagClauses.push({ OR: ids.map((id) => ({ tagsJson: { array_contains: id } })) });
+  }
   return {
     status: "PUBLISHED" as const,
     rightsRecords: {
@@ -161,7 +215,7 @@ export function publicSearchWhere(q: string, category: string, filters: DramaSea
     },
     ...(category ? { category } : {}),
     ...(q ? { OR: [{ title: { contains: q } }, { summary: { contains: q } }] } : {}),
-    ...(selectedTags.length ? { AND: selectedTags.map((tag) => ({ tagsJson: { array_contains: tag } })) } : {}),
+    ...(impossible ? { id: { in: [] as string[] } } : tagClauses.length ? { AND: tagClauses } : {}),
     ...(filters.publishedAfter ? { publishedAt: { gte: new Date(filters.publishedAfter) } } : {})
   };
 }

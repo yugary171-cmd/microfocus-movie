@@ -205,7 +205,7 @@ model DeletionQueryTokenReissue {
 
 model AdminUser {
   id                  String      @id @default(cuid())
-  email               String      @unique
+  email               String      @unique @db.VarChar(254)
   displayName         String
   passwordHash        String?
   role                AdminRole
@@ -242,13 +242,40 @@ model AdminSetupToken {
   @@index([expiresAt])
 }
 
+enum CatalogTagGroup {
+  subjects
+  settings
+  backgrounds
+  roles
+  tones
+  audiences
+}
+
+enum CatalogTagStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model CatalogTag {
+  id        String           @id @default(cuid())
+  group     CatalogTagGroup
+  name      String           @db.VarChar(32)
+  status    CatalogTagStatus @default(ACTIVE)
+  sortOrder Int
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([group, name])
+  @@index([status, group, sortOrder])
+}
+
 model Drama {
   id                 String        @id @default(cuid())
   title              String
   summary            String        @db.Text
   coverUrl           String
   category           String
-  tagsJson           Json
+  tagsJson           Json // CatalogTag ids
   recommendationRank Int           @default(0)
   contentVersion     Int           @default(1)
   status             DramaStatus   @default(DRAFT)

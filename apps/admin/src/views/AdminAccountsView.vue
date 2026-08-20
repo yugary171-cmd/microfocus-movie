@@ -200,7 +200,7 @@ function formError(): string {
   if (!new RegExp(`^\\d{${OTP_INPUT_LENGTH}}$`).test(form.otp)) {
     return `请输入当前管理员的 ${OTP_INPUT_LENGTH} 位验证码`;
   }
-  if (["suspend", "activate", "invite", "reset"].includes(dialogMode.value ?? "")) {
+  if (["create", "edit", "suspend", "activate", "invite", "reset"].includes(dialogMode.value ?? "")) {
     const length = form.reason.trim().length;
     if (length < ADMIN_REASON_MIN_LENGTH || length > ADMIN_REASON_MAX_LENGTH) {
       return `操作原因应为 ${ADMIN_REASON_MIN_LENGTH}–${ADMIN_REASON_MAX_LENGTH} 个字符`;
@@ -231,6 +231,7 @@ async function submit(): Promise<void> {
         email: form.email.trim().toLowerCase(),
         role: form.role,
         otp: form.otp,
+        reason: form.reason.trim(),
       });
       setupLink.value = result;
       setupLinkOwner.value = form.displayName.trim();
@@ -238,9 +239,10 @@ async function submit(): Promise<void> {
     } else if (selected.value && dialogMode.value === "edit") {
       await adminApi.updateAccount(selected.value.id, {
         displayName: form.displayName.trim(),
-        role: form.role,
+        ...(form.role !== selected.value.role ? { role: form.role } : {}),
         ...(needsReplacement.value ? { transferEditorId: form.replacementEditorId } : {}),
         otp: form.otp,
+        reason: form.reason.trim(),
       });
       notice.value = "账号资料已更新；角色变化会要求目标账号重新登录。";
     } else if (selected.value && dialogMode.value === "suspend") {
@@ -444,7 +446,7 @@ onBeforeUnmount(() => {
             <label v-if="dialogMode === 'create'" class="field"><span>登录名 *</span><input v-model="form.email" type="text" autocomplete="off" :maxlength="ADMIN_LOGIN_ID_MAX_LENGTH" :pattern="ADMIN_LOGIN_ID_PATTERN_SOURCE" required placeholder="name 或 name@company.com" /><small>只作登录标识，不会用来收发邮件；已有带 @ 的账号仍可登录。</small></label>
             <label class="field"><span>角色 *</span><select v-model="form.role"><option v-for="role in ASSIGNABLE_ADMIN_ROLES" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
           </template>
-          <label v-if="['suspend', 'activate', 'invite', 'reset'].includes(dialogMode)" class="field"><span>操作原因 *</span><textarea v-model="form.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required /></label>
+          <label v-if="['create', 'edit', 'suspend', 'activate', 'invite', 'reset'].includes(dialogMode)" class="field"><span>操作原因 *</span><textarea v-model="form.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required /></label>
           <div v-if="dialogMode === 'reset'" class="danger-note">重置后目标账号会立即暂停，旧密码、TOTP 和现有会话全部失效，直到本人通过新链接重新开通。</div>
           <label v-if="needsReplacement" class="field"><span>接替内容编辑（待移交 {{ selected?.ownedDramaCount }} 部剧目）*</span><select v-model="form.replacementEditorId" required><option value="">请选择正常的内容编辑</option><option v-for="editor in activeEditors" :key="editor.id" :value="editor.id">{{ editor.displayName }} · {{ editor.email }}</option></select></label>
           <label class="field"><span>当前管理员 TOTP 验证码 *</span><input v-model="form.otp" inputmode="numeric" autocomplete="one-time-code" :maxlength="OTP_INPUT_LENGTH" pattern="[0-9]*" required /></label>

@@ -18,6 +18,13 @@ export const navigationItems: NavigationItem[] = [
     icon: "circle-check",
   },
   {
+    to: "/tags",
+    label: "标签库",
+    description: "维护启用词与分组",
+    icon: "grid",
+    roles: [AdminRole.ADMIN],
+  },
+  {
     to: "/operations",
     label: "运营控制",
     description: "熔断、补偿、纠错、死信重放与注销令牌补发",

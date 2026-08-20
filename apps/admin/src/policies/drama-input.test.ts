@@ -18,7 +18,7 @@ function draft(overrides: Partial<DramaInput> = {}): DramaInput {
     title: "微焦之城",
     summary: "简介",
     category: "真人剧",
-    tags: ["都市"],
+    tagIds: ["ctag_042"],
     coverUrl: "https://example.invalid/cover.jpg",
     promoCoverUrl: "",
     rightsHolder: "权利方",
@@ -52,7 +52,7 @@ describe("dramaDraftError", () => {
 
   it("rejects oversized titles, tag lists, and episode durations", () => {
     expect(
-      dramaDraftError(draft({ tags: [] })),
+      dramaDraftError(draft({ tagIds: [] })),
     ).toContain("请至少选择一个标签");
     expect(dramaDraftError(draft({ category: "都市" }))).toContain("请选择剧目类型");
     expect(
@@ -62,7 +62,7 @@ describe("dramaDraftError", () => {
     );
     expect(
       dramaDraftError(
-        draft({ tags: Array.from({ length: DRAMA_TAG_MAX_COUNT + 1 }, (_, index) => `t${index}`) }),
+        draft({ tagIds: Array.from({ length: DRAMA_TAG_MAX_COUNT + 1 }, (_, index) => `t${index}`) }),
       ),
     ).toContain("标签最多");
     expect(
@@ -98,6 +98,7 @@ describe("dramaDraftError", () => {
     expect(
       dramaDraftError(draft({ rightsMaterialDigestSha256: "not-a-digest" })),
     ).toContain("材料 SHA-256");
+    expect(dramaDraftError(draft({ tagIds: ["草稿"] }), new Set(["都市"]))).toContain("启用词库");
     expect(
       dramaDraftError(
         draft({

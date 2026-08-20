@@ -8,6 +8,7 @@ import {
   assertNotPublished,
   editorScope
 } from "./admin.access.js";
+import { AdminController } from "./admin.module.js";
 import {
   compensationMatches,
   createIdempotentCompensation,
@@ -40,6 +41,23 @@ describe("admin access", () => {
   it("blocks published mutation", () => {
     expect(() => assertNotPublished("PUBLISHED")).toThrow(AppError);
     expect(() => assertNotPublished("DRAFT")).not.toThrow();
+  });
+
+  it("enforces ownership before publish and offline actions", async () => {
+    const prisma = {
+      drama: {
+        findUnique: vi.fn().mockResolvedValue({ id: "drama-2", editorId: "editor-2" })
+      },
+      $transaction: vi.fn(),
+      auditLog: { create: vi.fn() }
+    };
+    const api = new AdminController(prisma as never, {} as never, {} as never, {} as never);
+
+    await expect(api.publish(editor, "drama-2")).rejects.toMatchObject({ code: "OWNERSHIP_REQUIRED" });
+    await expect(
+      api.offline(editor, "drama-2", { reason: "下架他人剧目" } as never)
+    ).rejects.toMatchObject({ code: "OWNERSHIP_REQUIRED" });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
 

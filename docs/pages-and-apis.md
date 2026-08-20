@@ -1,7 +1,7 @@
 # 页面与 API 契约说明
 
 - 文档用途：定义页面职责、接口语义、权限边界和验收关系
-- 更新日期：2026-08-19
+- 更新日期：2026-08-20
 - 本文定义目标契约，可能包含尚未进入 `packages/contracts` 或代码的接口；本文**不记录任务进度、完成比例或待办事项**，工程状态统一见 [status.md](./status.md)
 - 产品范围见 [product-plan.md](./product-plan.md)，详细需求见 [PRD](./prd-microfocus-movie-internal-validation.md)，技术不变量见 [architecture.md](./architecture.md)
 
@@ -73,7 +73,7 @@ flowchart LR
 | 搜索 | `apps/uniapp/src/pages/search/index.vue` | 按剧名、简介和分类检索；展示推荐搜索与空状态 | `GET /v1/search`、`GET /v1/catalog` |
 | 筛选 | `apps/uniapp/src/pages/category/index.vue` | 首页筛选页：体裁/主题/设定/背景走搜索筛选参数；推荐/受众/时间仅本地 UI，收起后隐藏后三栏；结果三列网格，每页 `SEARCH_PAGE_SIZE` | `GET /v1/search`（无独立筛选 API） |
 | 排行榜 | `apps/uniapp/src/pages/ranking/index.vue` | 首页排行榜页：顶部分类全部/真人剧/漫剧/AI 剧，无演员；标签为推荐榜/热播榜/热搜榜/收藏榜；「分类」打开与首页相同的筛选抽屉（主题/设定/背景，catalog `filterOptions`）；同一搜索列表本地排序，无独立榜单 API | `GET /v1/catalog`、`GET /v1/search` |
-| 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、标题、类型标签、可展开剧情简介和底部收藏入口；详情页不展示选集、演员、剧评、写剧评入口或备案/权益卡片，保留播放/登录/解锁处理逻辑；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益、收藏 |
+| 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、标题、类型标签、可展开剧情简介和底部收藏入口；详情与卡片只展示词库中对用户开放的分组（主题/设定/背景）；人物/风格/受众可打在剧上并用于搜索，但不铺开展示；详情页不展示选集、演员、剧评、写剧评入口或备案/权益卡片，保留播放/登录/解锁处理逻辑；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益、收藏 |
 | 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复；登录后可读收藏/点赞态并切换；评论底栏有 `dramaId` 时走剧评 API | 播放、奖励、权益、进度及 `GET/PUT/DELETE /v1/me/favorites`、`GET/PUT/DELETE /v1/me/liked-dramas`、剧评读写 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |
 | 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（微信 `uni.login` 换取登录 code，不依赖已废弃的 `getUserProfile` 授权窗）、点击头像通过 `chooseAvatar` 更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 经 `getApi().social` 拉列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑与历史相同；Mock 读写内存片库，Live 走 Nest（需已 migrate）；「消息」Tab 登录后拉粉丝/评论收件/我的评论/获赞摘要，不跳转、不接私信写接口，系统通知仍本地 | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile`、`GET /v1/me/favorites`、`GET /v1/me/liked-dramas`、`GET /v1/users/:userId`、`GET /v1/me/followers`、`GET /v1/me/comment-inbox`、`GET /v1/me/comments`、`GET /v1/me/received-comment-likes` |
@@ -115,6 +115,7 @@ flowchart LR
 | 剧目列表 | `/dramas` | EDITOR / REVIEWER / ADMIN | 按权限查看和筛选剧目；列表由服务端分页
 | 新建/编辑剧 | `/dramas/new`、`/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 编辑本人负责的剧目；ADMIN 可改任意剧；均可提交审核、发布、下架 |
 | 审核队列 | `/reviews` | EDITOR / REVIEWER / ADMIN | 通过或驳回；允许审核本人创建或编辑的版本 |
+| 标签库 | `/tags` | ADMIN | 按六组维护启用/停用词；可新增、停用；删除无引用词，或先替换成同组启用词再删；不可改名；内容编辑只能在剧目编辑里勾选启用词 |
 | 运营控制 | `/operations` | ADMIN | 熔断、人工补偿、账本纠错、回调积压列表/重放、注销查询令牌补发 |
 | 审计日志 | `/audit` | ADMIN | 查询关键操作与系统事件 |
 | 账号管理 | `/accounts` | ADMIN | 创建待开通账号、筛选列表、改姓名/角色、停用/启用、重发开通链接、重置凭据；敏感操作需当前管理员 OTP；内容编辑停用或改角色时若有剧目必须选择接替 EDITOR |
@@ -123,7 +124,7 @@ flowchart LR
 角色与关键动作（客户端策略，服务端仍以守卫为准）：
 
 - EDITOR：创建、编辑、提交、审核、发布和下架本人负责的剧目；服务端必须按 `editorId` 过滤本人写操作。存量 REVIEWER 权限相同。
-- ADMIN：具备 EDITOR 的全部内容能力并可修改任意剧目；另含熔断、补偿、审计和账号管理；不得绕过权利、媒体或发布闸门；不得删除管理员账号。
+- ADMIN：具备 EDITOR 的全部内容能力并可修改任意剧目；另含标签库、熔断、补偿、审计和账号管理；不得绕过权利、媒体或发布闸门；不得删除管理员账号。
 - 人工补偿秒数由事故或客服审批决定，不等同于广告默认奖励 600 秒；必须记录原因、过期时间、操作人和关联 challenge（如适用）。
 
 前端导航与按钮只负责可用性提示；服务端必须对每个管理接口执行管理员 JWT、角色、所有权和资源状态校验。
@@ -189,9 +190,9 @@ flowchart LR
 | --- | --- | --- | --- |
 | `POST /v1/auth/anonymous` | 公开、按连接 IP 限频（新建会话）；刷新已有 device/session 不占桶 | `deviceId/sessionId`，各最长 128 | 短期匿名 viewer token；不代表微信登录，不得访问用户权益或历史 |
 | `POST /v1/auth/wechat` | 公开、用户显式触发、按连接 IP 限频 | `code` 最长 256 | 用户 JWT；H5/App 不得复用。微信端点登录时调用 `uni.login` 获取一次性 code，再由服务端完成 `code2session`；不依赖已废弃的 `getUserProfile` 原生授权窗。头像通过 `chooseAvatar`，昵称通过资料编辑页的 `type="nickname"` 输入能力填写 |
-| `GET /v1/catalog` | 公开、按连接 IP 限频 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容；`latest` 按发布时间倒序，不从推荐榜重排 |
-| `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page`；`q` 与 `category` 最长 100（`LIST_QUERY_MAX_LENGTH` / `boundListQuery`），观看端搜索框 maxlength 与之共用 | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
-| `GET /v1/dramas/:dramaId` | 公开、按连接 IP 限频 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算 |
+| `GET /v1/catalog` | 公开、按连接 IP 限频 | 无 | `featured/latest/popular/categories`；只含已发布且权利有效内容；`latest` 按发布时间倒序，不从推荐榜重排；`filterOptions` 来自 `CatalogTag` 中启用且属于开放组（`subjects`/`settings`/`backgrounds`）的词，不跟库里已有哪些剧绑定；表空返回空数组，不回退写死列表。UniApp 本地 Mock 仍用契约种子灌筛选项，与管理端 Mock 词库不共享 |
+| `GET /v1/search` | 公开、按连接 IP 限频 | `q/category/page`；`q` 与 `category` 最长 100（`LIST_QUERY_MAX_LENGTH` / `boundListQuery`），观看端搜索框 maxlength 与之共用；`subject`/`setting`/`background`/`tags` 仍传名称，服务端解析成启用 `CatalogTag` id 再匹配 `tagsJson`；名称在对应组不存在则空结果 | 分页剧卡；`pageSize` 固定 20；超过第 100 页返回空结果；空结果为 `items: []` |
+| `GET /v1/dramas/:dramaId` | 公开、按连接 IP 限频 | 路径 ID | 剧目与按集目录；免费集由服务端规则计算；`tagsJson` 存 CatalogTag id，卡片/详情 `tags` 仍返回解析后的名称（含受众等，供搜索），观看端展示再过滤开放组 |
 | `GET /v1/me/history` | 用户 JWT；按认证用户限频 | 无 | 观看历史，按最近更新时间排序，最多 `HISTORY_LIST_LIMIT`（50）条 |
 | `DELETE /v1/me/history` | 用户 JWT；按认证用户限频 | `dramaIds` 1–`HISTORY_DELETE_MAX_IDS`（50）个，每项 1–`ENTITY_ID_MAX_LENGTH`；服务端去重后只删当前用户的 `WatchProgress`；不存在的 id 不报错 | `{ deletedDramaIds }`，幂等 |
 | `GET /v1/me/profile` | 用户 JWT；按认证用户限频 | 无 | 当前用户资料：`displayName`、`avatarUrl`、`signature`、`gender`；微焦号为用户 ID，不作为可写字段 |
@@ -224,9 +225,14 @@ flowchart LR
 | `POST /v1/admin/account-setup/inspect` | 公开、按连接 IP 限频 | 令牌无效/过期/已用返回对应错误，文案不暴露账号是否存在 | 读取待开通资料和 TOTP 配置 URI |
 | `POST /v1/admin/account-setup/complete` | 公开、按连接 IP 限频 | 密码 12–128 位 + 当前 TOTP；令牌一次性 | 原子完成开通；写入独立运营事件，不冒充创建者 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
-| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR/REVIEWER 只能访问授权范围；ADMIN 看全部；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情 |
-| `POST /v1/admin/dramas` | EDITOR / REVIEWER / ADMIN | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`tags` 至少 1 个；管理端剧目类型写入 `category` 为 `真人剧` / `AI 剧` / `漫剧`；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件；版权资料走独立 rights 接口，草稿可不写；`coverUrl` 仍是剧目海报地址，推广海报尚无独立 API 字段 | 创建草稿 |
-| `PATCH /v1/admin/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责且可编辑状态；ADMIN 可改未发布剧；字段上限与创建一致 | 修改元数据 |
+| `GET /v1/admin/tags` | 全部管理员角色 | 默认只返回 `ACTIVE`；`includeArchived=1` 仅 ADMIN | 标签库列表 |
+| `POST /v1/admin/tags` | ADMIN | `group` 必须是六组之一；名称 trim 后 1–32 字，组内唯一 | 新增启用词并审计；不能改名 |
+| `GET /v1/admin/tags/:tagId` | 全部管理员角色 | 路径 ID | 单条词库记录，含 `usageCount` |
+| `PATCH /v1/admin/tags/:tagId` | ADMIN | 只改 `status`（`ACTIVE`/`ARCHIVED`）；停用不改已有剧的 `tagsJson` | 停用或重新启用 |
+| `DELETE /v1/admin/tags/:tagId` | ADMIN | 无引用可直接删；有引用必须 `replacementTagId`（同组、启用、不同 id）；事务内改写剧目 `tagsJson`（含已发布，不升内容审核版本）后再删词库行；替换后剧目不得变成 0 个标签；占用中且无替换返回 `CATALOG_TAG_IN_USE` | 删除词条并审计 |
+| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR/REVIEWER 只能访问授权范围；ADMIN 看全部；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情；`tagIds` 为词库 id，`tags` 为解析后的名称 |
+| `POST /v1/admin/dramas` | EDITOR / REVIEWER / ADMIN | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`tags` 至少 1 个且必须全部是当前启用词的 **id**；未知或已停用返回 `CATALOG_TAG_NOT_IN_LIBRARY`；管理端剧目类型写入 `category` 为 `真人剧` / `AI 剧` / `漫剧`；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件；版权资料走独立 rights 接口，草稿可不写；`coverUrl` 仍是剧目海报地址，推广海报尚无独立 API 字段 | 创建草稿 |
+| `PATCH /v1/admin/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责且可编辑状态；ADMIN 可改未发布剧；字段上限与创建一致；更新 `tags` 时同样校验启用 id | 修改元数据 |
 | `POST .../:id/rights` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；新版本使内容回到待审链路；权利人/证号/材料键限长；`territory` 必须是 `RIGHTS_TERRITORY=CN`，管理端 live 保存发送该值，编辑页不提供地域控件；`materialDigestSha256` 必须是 64 位十六进制（`RIGHTS_MATERIAL_DIGEST_LENGTH`），管理端输入 maxlength/pattern 与之共用 | 写入不可覆盖的权利版本 |
 | `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；禁止修改已发布内容；签发成功写入审计，不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL；`size` 1–`UPLOAD_FILE_SIZE_MAX_BYTES`（5×1024³ 字节）；`contentType` 仅 `UPLOAD_CONTENT_TYPES`（mp4/quicktime/webm，空类型回退 `application/octet-stream`）；管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |
 | `POST .../:id/submit-review` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可提交任意剧；材料完整 | 提交审核 |

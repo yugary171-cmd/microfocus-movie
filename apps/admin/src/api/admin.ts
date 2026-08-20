@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, CatalogTagStatus, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, type CatalogTag, type CatalogTagGroupId, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AdminAccountRecord,
@@ -35,6 +35,8 @@ import {
   normalizeAdminSetupLink,
   normalizeAuditList,
   normalizeCallbackEventList,
+  normalizeCatalogTag,
+  normalizeCatalogTagList,
   normalizeCircuitBreaker,
   normalizeDashboard,
   normalizeDrama,
@@ -163,6 +165,46 @@ export const adminApi = {
     if (isMockMode) return mockApi.releaseGate();
     return normalizeReleaseGate(await request<unknown>(endpoints.releaseGate));
   },
+  async listCatalogTags(includeArchived = false): Promise<{ items: CatalogTag[] }> {
+    if (isMockMode) return mockApi.listCatalogTags(includeArchived);
+    const suffix = includeArchived ? "?includeArchived=1" : "";
+    return { items: normalizeCatalogTagList(await request<unknown>(`${endpoints.tags}${suffix}`)) };
+  },
+  async createCatalogTag(group: CatalogTagGroupId, name: string): Promise<CatalogTag> {
+    if (isMockMode) return mockApi.createCatalogTag(group, name);
+    const created = normalizeCatalogTag(
+      await request<unknown>(endpoints.tags, {
+        method: "POST",
+        body: json({ group, name }),
+      }),
+    );
+    if (!created) throw new Error("标签已创建但响应缺少记录");
+    return created;
+  },
+  async patchCatalogTag(tagId: string, status: CatalogTagStatus): Promise<CatalogTag> {
+    if (isMockMode) return mockApi.patchCatalogTag(tagId, status);
+    const updated = normalizeCatalogTag(
+      await request<unknown>(encodedRoute(endpoints.tag, tagId), {
+        method: "PATCH",
+        body: json({ status }),
+      }),
+    );
+    if (!updated) throw new Error("标签已更新但响应缺少记录");
+    return updated;
+  },
+  async getCatalogTag(tagId: string): Promise<CatalogTag> {
+    if (isMockMode) return mockApi.getCatalogTag(tagId);
+    const tag = normalizeCatalogTag(await request<unknown>(encodedRoute(endpoints.tag, tagId)));
+    if (!tag) throw new Error("未找到该标签");
+    return tag;
+  },
+  async deleteCatalogTag(tagId: string, replacementTagId?: string): Promise<void> {
+    if (isMockMode) return mockApi.deleteCatalogTag(tagId, replacementTagId);
+    await request<unknown>(encodedRoute(endpoints.tag, tagId), {
+      method: "DELETE",
+      body: json(replacementTagId ? { replacementTagId } : {}),
+    });
+  },
   async listDramas(query = "", status = "", page = 1): Promise<PageResult<DramaRecord>> {
     if (isMockMode) return mockApi.listDramas(query, status, page);
     const params = new URLSearchParams();
@@ -229,7 +271,7 @@ export const adminApi = {
           summary: input.summary,
           coverUrl: input.coverUrl,
           category: input.category,
-          tags: input.tags,
+          tags: input.tagIds,
           recommendationRank: RECOMMENDATION_RANK_DEFAULT,
         }
       : {
@@ -237,7 +279,7 @@ export const adminApi = {
           summary: input.summary,
           coverUrl: input.coverUrl,
           category: input.category,
-          tags: input.tags,
+          tags: input.tagIds,
           recommendationRank: RECOMMENDATION_RANK_DEFAULT,
           episodes: input.episodes.map((episode) => ({
             episodeNumber: episode.episodeNumber,

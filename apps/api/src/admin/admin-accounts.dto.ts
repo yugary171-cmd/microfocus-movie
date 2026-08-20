@@ -49,6 +49,10 @@ export class CreateAdminAccountDto implements CreateAdminAccountRequest {
   @Length(OTP_INPUT_LENGTH, OTP_INPUT_LENGTH)
   @Matches(OTP_PATTERN)
   otp!: string;
+
+  @IsString()
+  @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH)
+  reason!: string;
 }
 
 export class UpdateAdminAccountDto implements UpdateAdminAccountRequest {
@@ -77,6 +81,10 @@ export class UpdateAdminAccountDto implements UpdateAdminAccountRequest {
   @Length(OTP_INPUT_LENGTH, OTP_INPUT_LENGTH)
   @Matches(OTP_PATTERN)
   otp!: string;
+
+  @IsString()
+  @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH)
+  reason!: string;
 }
 
 export class AdminAccountSensitiveActionDto

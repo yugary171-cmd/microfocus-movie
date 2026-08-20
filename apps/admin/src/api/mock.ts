@@ -5,15 +5,24 @@ import {
   ADMIN_LIST_MAX_PAGE,
   ADMIN_LIST_PAGE_SIZE,
   CALLBACK_MAX_ATTEMPTS,
+  CatalogTagStatus,
   DeletionRequestStatus,
   DELETION_QUERY_TOKEN_TTL_SECONDS,
   DramaStatus,
   isAdminLoginId,
   isAssignableAdminRole,
+  isCatalogTagGroupId,
   isOwnedContentRole,
   isRightsMaterialDigest,
   MediaStatus,
+  normalizeCatalogTagName,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
+  catalogTagNamesById,
+  CATALOG_TAG_GROUPS,
+  replaceStoredTagId,
+  seedCatalogTagLibrary,
+  type CatalogTag,
+  type CatalogTagGroupId,
   type ReissueDeletionQueryTokenResponse,
   type ReleaseGateStatus,
 } from "@microfocus/contracts";
@@ -49,6 +58,7 @@ const isoHoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_00
 const MOCK_ACCOUNTS_KEY = "microfocus.admin.mock-accounts-v1";
 const MOCK_SETUP_LINKS_KEY = "microfocus.admin.mock-setup-links-v1";
 const MOCK_CONTENT_KEY = "microfocus.admin.mock-content-v1";
+const MOCK_TAGS_KEY = "microfocus.admin.mock-tags-v1";
 const MOCK_CURRENT_ADMIN_ID = "admin-1";
 
 interface MockSetupLinkRecord {
@@ -219,7 +229,8 @@ let dramas: DramaRecord[] = [
     title: "晚风也曾拥抱你",
     summary: "城市修复师在一次旧宅委托中重逢少年时代的邻居。",
     category: "都市情感",
-    tags: ["重逢", "治愈"],
+    tags: ["都市", "甜宠"],
+    tagIds: ["ctag_042", "ctag_014"],
     coverUrl: "",
     promoCoverUrl: "",
     status: DramaStatus.PENDING_REVIEW,
@@ -274,7 +285,8 @@ let dramas: DramaRecord[] = [
     title: "长街灯火",
     summary: "小城夜市摊主与纪录片导演共同守护即将消失的老街。",
     category: "现实生活",
-    tags: ["烟火气", "小城"],
+    tags: ["家长里短", "乡村"],
+    tagIds: ["ctag_030", "ctag_044"],
     coverUrl: "",
     promoCoverUrl: "",
     status: DramaStatus.READY,
@@ -314,7 +326,8 @@ let dramas: DramaRecord[] = [
     title: "未命名新项目",
     summary: "尚在完善中的剧目草稿。",
     category: "悬疑",
-    tags: ["草稿"],
+    tags: ["悬疑"],
+    tagIds: ["ctag_011"],
     coverUrl: "",
     promoCoverUrl: "",
     status: DramaStatus.DRAFT,
@@ -352,7 +365,83 @@ let reviews: ReviewItem[] = [
   },
 ];
 
+function seedMockCatalogTags(): CatalogTag[] {
+  return seedCatalogTagLibrary().map((tag, index) => ({
+    id: `ctag_${String(index + 1).padStart(3, "0")}`,
+    group: tag.group,
+    name: tag.name,
+    status: tag.status,
+    sortOrder: tag.sortOrder,
+  }));
+}
+
+let catalogTags: CatalogTag[] = seedMockCatalogTags();
+restoreMockTags();
 restoreMockContent();
+
+function persistMockTags(): void {
+  if (typeof window === "undefined" || import.meta.env.MODE === "test") return;
+  window.localStorage.setItem(MOCK_TAGS_KEY, JSON.stringify(catalogTags));
+}
+
+function restoreMockTags(): void {
+  if (typeof window === "undefined" || import.meta.env.MODE === "test") return;
+  try {
+    const raw = window.localStorage.getItem(MOCK_TAGS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed) || parsed.length === 0) return;
+    catalogTags = parsed.filter((item): item is CatalogTag => {
+      if (!item || typeof item !== "object") return false;
+      const row = item as CatalogTag;
+      return (
+        typeof row.id === "string" &&
+        isCatalogTagGroupId(row.group) &&
+        typeof row.name === "string" &&
+        (row.status === CatalogTagStatus.ACTIVE || row.status === CatalogTagStatus.ARCHIVED)
+      );
+    });
+    if (catalogTags.length === 0) catalogTags = seedMockCatalogTags();
+  } catch {
+    catalogTags = seedMockCatalogTags();
+  }
+}
+
+function dramaTagIds(drama: { tagIds?: string[] | undefined }): string[] {
+  return Array.isArray(drama.tagIds) ? drama.tagIds.filter((id) => typeof id === "string" && id) : [];
+}
+
+function catalogTagIdForName(name: string): string | undefined {
+  const matches = catalogTags.filter((tag) => tag.name === name);
+  if (matches.length === 1) return matches[0]?.id;
+  for (const group of CATALOG_TAG_GROUPS) {
+    const hit = matches.find((tag) => tag.group === group.id);
+    if (hit) return hit.id;
+  }
+  return undefined;
+}
+
+function backfillDramaTagIds(drama: DramaRecord): DramaRecord {
+  const raw = [...dramaTagIds(drama), ...(Array.isArray(drama.tags) ? drama.tags : [])];
+  const tagIds: string[] = [];
+  for (const value of raw) {
+    const trimmed = typeof value === "string" ? value.trim() : "";
+    if (!trimmed) continue;
+    const id = catalogTags.some((tag) => tag.id === trimmed) ? trimmed : catalogTagIdForName(trimmed);
+    if (id && !tagIds.includes(id)) tagIds.push(id);
+  }
+  return {
+    ...drama,
+    tagIds,
+    tags: catalogTagNamesById(tagIds, catalogTags),
+  };
+}
+function dramaUsesCatalogTag(drama: { tagIds?: string[] | undefined; tags?: string[] | undefined }, tagId: string): boolean {
+  if (dramaTagIds(drama).includes(tagId)) return true;
+  const tag = catalogTags.find((item) => item.id === tagId);
+  const names = Array.isArray(drama.tags) ? drama.tags : [];
+  return Boolean(tag && names.includes(tag.name));
+}
 
 function persistMockContent(): void {
   if (typeof window === "undefined" || import.meta.env.MODE === "test") return;
@@ -368,8 +457,9 @@ function restoreMockContent(): void {
     if (!Array.isArray(parsed.dramas) || parsed.dramas.length === 0 || !Array.isArray(parsed.reviews)) {
       return;
     }
-    dramas = parsed.dramas as DramaRecord[];
+    dramas = (parsed.dramas as DramaRecord[]).map((drama) => backfillDramaTagIds(drama));
     reviews = parsed.reviews as ReviewItem[];
+    persistMockContent();
   } catch {
     /* keep seed data */
   }
@@ -670,6 +760,78 @@ export const mockApi = {
   async releaseGate(): Promise<ReleaseGateStatus> {
     return mockDelay(releaseGate);
   },
+  async listCatalogTags(includeArchived = false): Promise<{ items: CatalogTag[] }> {
+    const items = includeArchived
+      ? catalogTags
+      : catalogTags.filter((tag) => tag.status === CatalogTagStatus.ACTIVE);
+    return mockDelay({ items: [...items] });
+  },
+  async createCatalogTag(group: CatalogTagGroupId, name: string): Promise<CatalogTag> {
+    const normalized = normalizeCatalogTagName(name);
+    if (!normalized) throw new Error("请填写标签名称");
+    if (!isCatalogTagGroupId(group)) throw new Error("请选择标签分组");
+    if (catalogTags.some((tag) => tag.group === group && tag.name === normalized)) {
+      throw new Error("同一分组内已有相同标签");
+    }
+    const maxOrder = catalogTags
+      .filter((tag) => tag.group === group)
+      .reduce((max, tag) => Math.max(max, tag.sortOrder), -1);
+    const created: CatalogTag = {
+      id: `ctag-${crypto.randomUUID()}`,
+      group,
+      name: normalized,
+      status: CatalogTagStatus.ACTIVE,
+      sortOrder: maxOrder + 1,
+    };
+    catalogTags = [...catalogTags, created];
+    persistMockTags();
+    writeAudit("新增标签", created.name, created.group);
+    return mockDelay(created);
+  },
+  async patchCatalogTag(tagId: string, status: CatalogTagStatus): Promise<CatalogTag> {
+    const existing = catalogTags.find((tag) => tag.id === tagId);
+    if (!existing) throw new Error("未找到该标签");
+    existing.status = status;
+    persistMockTags();
+    writeAudit(status === CatalogTagStatus.ARCHIVED ? "停用标签" : "启用标签", existing.name, existing.group);
+    return mockDelay({ ...existing });
+  },
+  async getCatalogTag(tagId: string): Promise<CatalogTag> {
+    const existing = catalogTags.find((tag) => tag.id === tagId);
+    if (!existing) throw new Error("未找到该标签");
+    return mockDelay({
+      ...existing,
+      usageCount: dramas.filter((drama) => dramaUsesCatalogTag(drama, tagId)).length,
+    });
+  },
+  async deleteCatalogTag(tagId: string, replacementTagId?: string): Promise<void> {
+    const existing = catalogTags.find((tag) => tag.id === tagId);
+    if (!existing) throw new Error("未找到该标签");
+    const referencing = dramas.filter((drama) => dramaUsesCatalogTag(drama, tagId));
+    const replacementId = replacementTagId?.trim() ?? "";
+    if (referencing.length && !replacementId) {
+      throw new Error("该标签已被剧目使用，请选择替换标签后再删除");
+    }
+    if (replacementId) {
+      const replacement = catalogTags.find((tag) => tag.id === replacementId);
+      if (!replacement || replacement.id === tagId || replacement.status !== CatalogTagStatus.ACTIVE || replacement.group !== existing.group) {
+        throw new Error("替换标签必须是同一分组的其他启用词");
+      }
+      dramas = dramas.map((drama) => {
+        if (!dramaUsesCatalogTag(drama, tagId)) return drama;
+        const tagIds = replaceStoredTagId(dramaTagIds(drama), tagId, replacementId);
+        return {
+          ...drama,
+          tagIds,
+          tags: catalogTagNamesById(tagIds, catalogTags),
+        };
+      });
+    }
+    catalogTags = catalogTags.filter((tag) => tag.id !== tagId);
+    persistMockTags();
+    persistMockContent();
+    writeAudit("删除标签", existing.name, replacementId || existing.group);
+  },
   async listDramas(query = "", status = "", page = 1): Promise<PageResult<DramaRecord>> {
     const normalized = query.trim().toLowerCase();
     const items = dramas.filter(
@@ -687,12 +849,18 @@ export const mockApi = {
     return mockDelay(drama);
   },
   async saveDrama(input: DramaInput, id?: string): Promise<DramaRecord> {
-    const validation = dramaDraftError(input);
+    const validation = dramaDraftError(
+      input,
+      new Set(catalogTags.filter((tag) => tag.status === CatalogTagStatus.ACTIVE).map((tag) => tag.id)),
+    );
     if (validation) throw new Error(validation);
     const existing = id ? dramas.find((item) => item.id === id) : undefined;
+    const tagIds = [...input.tagIds];
     const saved: DramaRecord = {
       id: existing?.id ?? `drama-${crypto.randomUUID()}`,
       ...input,
+      tagIds,
+      tags: catalogTagNamesById(tagIds, catalogTags),
       status: existing?.status ?? DramaStatus.DRAFT,
       ownerId: existing?.ownerId ?? "editor-1",
       ownerName: existing?.ownerName ?? "林编辑",

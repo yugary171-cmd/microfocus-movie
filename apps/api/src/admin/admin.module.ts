@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Module,
@@ -30,12 +31,19 @@ import {
   DRAMA_TAG_MAX_COUNT,
   DRAMA_TAG_MAX_LENGTH,
   DRAMA_TITLE_MAX_LENGTH,
+  parseStoredTagIds,
   RECOMMENDATION_RANK_MAX,
   RECOMMENDATION_RANK_MIN,
   REQUEST_ID_MAX_LENGTH,
   ENTITY_ID_MAX_LENGTH,
   ENTITLEMENT_SECONDS_MAX,
+  CATALOG_TAG_GROUP_IDS,
+  CATALOG_TAG_GROUPS,
+  CatalogTagStatus,
+  ERROR_CODES,
   boundCircuitUpdatedBy,
+  normalizeCatalogTagName,
+  type CatalogTagGroupId,
   boundListQuery,
   EPISODE_DURATION_SECONDS_MAX,
   EPISODE_TITLE_MAX_LENGTH,
@@ -109,6 +117,8 @@ import { replayCallbackEvent } from "../callbacks/callback-replay.js";
 import { listAdminCallbackEvents } from "../callbacks/callback-list.js";
 import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/callback-payload.js";
 import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
+import { Prisma } from "@prisma/client";
+import { toCatalogTag, catalogTagNameMap, resolvedTagNames, rewriteDramaTagIds } from "../catalog/catalog-tags.js";
 import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
 import { boundedListWindow, emptyBoundedPage, parsePage } from "../common/list-pagination.js";
 import { requireEntityId, optionalEntityId } from "../common/entity-id.js";
@@ -143,7 +153,7 @@ export class CreateDramaDto {
   @ArrayMinSize(1)
   @ArrayMaxSize(DRAMA_TAG_MAX_COUNT)
   @IsString({ each: true })
-  @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })
+  @MaxLength(ENTITY_ID_MAX_LENGTH, { each: true })
   tags!: string[];
   @IsInt() @Min(RECOMMENDATION_RANK_MIN) @Max(RECOMMENDATION_RANK_MAX) recommendationRank!: number;
   @IsArray()
@@ -164,7 +174,7 @@ export class UpdateDramaDto {
   @ArrayMinSize(1)
   @ArrayMaxSize(DRAMA_TAG_MAX_COUNT)
   @IsString({ each: true })
-  @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })
+  @MaxLength(ENTITY_ID_MAX_LENGTH, { each: true })
   tags?: string[];
   @IsOptional() @IsInt() @Min(RECOMMENDATION_RANK_MIN) @Max(RECOMMENDATION_RANK_MAX) recommendationRank?: number;
 }
@@ -308,6 +318,28 @@ export class CircuitCollectionDto {
   @IsOptional() @IsString() @MaxLength(ENTITY_ID_MAX_LENGTH) targetId?: string;
   @IsBoolean() enabled!: boolean;
   @IsString() @Length(ADMIN_REASON_MIN_LENGTH, ADMIN_REASON_MAX_LENGTH) reason!: string;
+}
+
+export class CreateCatalogTagDto {
+  @IsIn(CATALOG_TAG_GROUP_IDS)
+  group!: CatalogTagGroupId;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(DRAMA_TAG_MAX_LENGTH)
+  name!: string;
+}
+
+export class PatchCatalogTagDto {
+  @IsIn([CatalogTagStatus.ACTIVE, CatalogTagStatus.ARCHIVED])
+  status!: CatalogTagStatus;
+}
+
+export class DeleteCatalogTagDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
+  replacementTagId?: string;
 }
 
 function adminPath(route: string): string {
@@ -457,8 +489,9 @@ export class AdminController {
       }),
       this.prisma.drama.count({ where })
     ]);
+    const nameById = await catalogTagNameMap(this.prisma, items);
     return {
-      items: items.map(toAdminDrama),
+      items: items.map((drama) => toAdminDrama(drama, nameById)),
       page: window.page,
       pageSize,
       total,
@@ -466,22 +499,187 @@ export class AdminController {
     };
   }
 
+  @Get(adminPath(API_ROUTES.admin.tags))
+  async catalogTags(
+    @CurrentPrincipal() principal: Principal,
+    @Query("includeArchived") includeArchived = ""
+  ) {
+    const admin = requireAdmin(principal);
+    const include = includeArchived === "1" || includeArchived.toLowerCase() === "true";
+    if (include && admin.role !== AdminRole.ADMIN) {
+      throw Errors.forbidden("INSUFFICIENT_ROLE", "Administrator role is insufficient");
+    }
+    const rows = await this.prisma.catalogTag.findMany({
+      where: include ? {} : { status: CatalogTagStatus.ACTIVE },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
+    });
+    return { items: sortCatalogTags(rows.map(toCatalogTag)) };
+  }
+
+  @Post(adminPath(API_ROUTES.admin.tags))
+  @Roles(AdminRole.ADMIN)
+  async createCatalogTag(@CurrentPrincipal() principal: Principal, @Body() body: CreateCatalogTagDto) {
+    const admin = requireAdmin(principal);
+    const name = normalizeCatalogTagName(body.name);
+    if (!name) {
+      throw Errors.badRequest(ERROR_CODES.CATALOG_TAG_NOT_IN_LIBRARY, "Tag name is required");
+    }
+    const maxOrder = await this.prisma.catalogTag.aggregate({
+      where: { group: body.group },
+      _max: { sortOrder: true }
+    });
+    try {
+      const created = await this.prisma.catalogTag.create({
+        data: {
+          group: body.group,
+          name,
+          status: CatalogTagStatus.ACTIVE,
+          sortOrder: (maxOrder._max.sortOrder ?? -1) + 1
+        }
+      });
+      await this.audit(admin.sub, "CATALOG_TAG_CREATED", "CatalogTag", created.id, {
+        group: String(created.group),
+        name: created.name
+      });
+      return toCatalogTag(created);
+    } catch (error) {
+      if (
+        (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") ||
+        (typeof error === "object" && error !== null && "code" in error && error.code === "P2002")
+      ) {
+        throw Errors.conflict(ERROR_CODES.CATALOG_TAG_DUPLICATE, "Tag already exists in this group");
+      }
+      throw error;
+    }
+  }
+
+  @Patch(adminPath(API_ROUTES.admin.tag(":tagId")))
+  @Roles(AdminRole.ADMIN)
+  async patchCatalogTag(
+    @CurrentPrincipal() principal: Principal,
+    @Param("tagId") tagId: string,
+    @Body() body: PatchCatalogTagDto
+  ) {
+    const admin = requireAdmin(principal);
+    const id = requireEntityId(tagId, "tagId");
+    const existing = await this.prisma.catalogTag.findUnique({ where: { id } });
+    if (!existing) throw Errors.notFound("CatalogTag");
+    const updated = await this.prisma.catalogTag.update({
+      where: { id },
+      data: { status: body.status }
+    });
+    await this.audit(admin.sub, "CATALOG_TAG_STATUS_CHANGED", "CatalogTag", updated.id, {
+      status: String(updated.status)
+    });
+    return toCatalogTag(updated);
+  }
+
+  @Get(adminPath(API_ROUTES.admin.tag(":tagId")))
+  async catalogTag(@CurrentPrincipal() principal: Principal, @Param("tagId") tagId: string) {
+    requireAdmin(principal);
+    const id = requireEntityId(tagId, "tagId");
+    const existing = await this.prisma.catalogTag.findUnique({ where: { id } });
+    if (!existing) throw Errors.notFound("CatalogTag");
+    const usageCount = await countCatalogTagUsage(this.prisma, id);
+    return toCatalogTag({ ...existing, usageCount });
+  }
+
+  @Delete(adminPath(API_ROUTES.admin.tag(":tagId")))
+  @Roles(AdminRole.ADMIN)
+  async deleteCatalogTag(
+    @CurrentPrincipal() principal: Principal,
+    @Param("tagId") tagId: string,
+    @Body() body?: DeleteCatalogTagDto
+  ) {
+    const admin = requireAdmin(principal);
+    const id = requireEntityId(tagId, "tagId");
+    const existing = await this.prisma.catalogTag.findUnique({ where: { id } });
+    if (!existing) throw Errors.notFound("CatalogTag");
+    const referencing = await this.prisma.drama.findMany({
+      where: { tagsJson: { array_contains: id } },
+      select: { id: true, tagsJson: true }
+    });
+    const replacementId = body?.replacementTagId?.trim() ?? "";
+    if (referencing.length && !replacementId) {
+      throw Errors.conflict(
+        ERROR_CODES.CATALOG_TAG_IN_USE,
+        "Tag is used by dramas and requires a replacement"
+      );
+    }
+    if (replacementId) {
+      if (replacementId === id) {
+        throw Errors.badRequest(ERROR_CODES.CATALOG_TAG_NOT_IN_LIBRARY, "Replacement tag must be different");
+      }
+      const replacement = await this.prisma.catalogTag.findUnique({ where: { id: replacementId } });
+      if (
+        !replacement ||
+        replacement.status !== CatalogTagStatus.ACTIVE ||
+        replacement.group !== existing.group
+      ) {
+        throw Errors.badRequest(
+          ERROR_CODES.CATALOG_TAG_NOT_IN_LIBRARY,
+          "Replacement must be an active tag in the same group"
+        );
+      }
+    }
+    await this.prisma.$transaction(async (tx) => {
+      for (const drama of referencing) {
+        const next = rewriteDramaTagIds(drama.tagsJson, id, replacementId);
+        if (next.length === 0) {
+          throw Errors.badRequest(ERROR_CODES.CATALOG_TAG_IN_USE, "Replacement would leave a drama with no tags");
+        }
+        await tx.drama.update({
+          where: { id: drama.id },
+          data: { tagsJson: next }
+        });
+      }
+      await tx.catalogTag.delete({ where: { id } });
+    });
+    await this.audit(admin.sub, "CATALOG_TAG_DELETED", "CatalogTag", id, {
+      name: existing.name,
+      group: String(existing.group),
+      rewrittenDramas: String(referencing.length),
+      ...(replacementId ? { replacementTagId: replacementId } : {})
+    });
+    return { id, replacementTagId: replacementId || null, rewrittenDramas: referencing.length };
+  }
+
   @Post(adminPath(API_ROUTES.admin.dramas))
   @Roles(...CONTENT_OPERATOR_ROLES)
   async createDrama(@CurrentPrincipal() principal: Principal, @Body() body: CreateDramaDto) {
     const admin = requireAdmin(principal);
     assertUniqueEpisodeNumbers(body.episodes);
-    const drama = await this.prisma.drama.create({
-      data: {
-        title: body.title,
-        summary: body.summary,
-        coverUrl: body.coverUrl,
-        category: body.category,
-        tagsJson: body.tags,
-        recommendationRank: body.recommendationRank,
-        editorId: admin.sub,
-        episodes: { create: body.episodes }
+    await requireActiveCatalogTagIds(this.prisma, body.tags);
+    const drama = await this.prisma.$transaction(async (tx) => {
+      await lockHealthyAdminRows(tx);
+      await lockAdminRow(tx, admin.sub);
+      const current = await tx.adminUser.findUnique({
+        where: { id: admin.sub },
+        select: { role: true, active: true, setupCompletedAt: true }
+      });
+      if (
+        !current ||
+        !current.active ||
+        !current.setupCompletedAt ||
+        !CONTENT_OPERATOR_ROLES.includes(current.role as AdminRole)
+      ) {
+        throw Errors.conflict(
+          ERROR_CODES.ADMIN_ACCOUNT_UNAVAILABLE,
+          "Administrator account is no longer available for content operations"
+        );
       }
+      return tx.drama.create({
+        data: {
+          title: body.title,
+          summary: body.summary,
+          coverUrl: body.coverUrl,
+          category: body.category,
+          tagsJson: body.tags,
+          recommendationRank: body.recommendationRank,
+          editorId: admin.sub,
+          episodes: { create: body.episodes }
+        }
+      });
     });
     await this.audit(admin.sub, "DRAMA_CREATED", "Drama", drama.id);
     return this.loadDramaView(drama.id, admin);
@@ -504,6 +702,9 @@ export class AdminController {
   ) {
     const admin = requireAdmin(principal);
     await this.requireOwnedUnpublishedDrama(requireEntityId(dramaId, "dramaId"), admin);
+    if (body.tags !== undefined) {
+      await requireActiveCatalogTagIds(this.prisma, body.tags);
+    }
     const updated = await this.prisma.drama.updateMany({
       where: {
         ...ownedDramaWriteWhere(dramaId, admin),
@@ -666,10 +867,6 @@ export class AdminController {
   ) {
     const admin = requireAdmin(principal);
     dramaId = requireEntityId(dramaId, "dramaId");
-    const gate = this.releaseGate();
-    if (!gate.readyForExternalTraffic) {
-      throw Errors.conflict("RELEASE_GATE_FAILED", gate.blockers.join(","));
-    }
     const drama = await this.prisma.drama.findUnique({
       where: { id: dramaId },
       include: {
@@ -683,6 +880,11 @@ export class AdminController {
       }
     });
     if (!drama) throw Errors.notFound("Drama");
+    assertEditorOwns(drama, admin);
+    const gate = this.releaseGate();
+    if (!gate.readyForExternalTraffic) {
+      throw Errors.conflict("RELEASE_GATE_FAILED", gate.blockers.join(","));
+    }
     if (drama.status !== "READY") {
       throw Errors.conflict("INVALID_DRAMA_STATE", "Only ready dramas can be published");
     }
@@ -718,6 +920,11 @@ export class AdminController {
   ) {
     const admin = requireAdmin(principal);
     dramaId = requireEntityId(dramaId, "dramaId");
+    const drama = await this.prisma.drama.findUnique({
+      where: { id: dramaId },
+      select: { id: true, editorId: true }
+    });
+    assertEditorOwns(drama, admin);
     const offlined = await this.prisma.$transaction(async (tx) =>
       tryOfflinePublishedDrama(tx as never, dramaId)
     );
@@ -1162,7 +1369,7 @@ export class AdminController {
         reviews: { where: { status: "APPROVED" }, orderBy: { createdAt: "desc" } }
       }
     });
-    return toAdminDrama(assertEditorOwns(drama, admin));
+    return toAdminDrama(assertEditorOwns(drama, admin), await catalogTagNameMap(this.prisma, drama ? [drama] : []));
   }
 
   private async requireOwnedDrama(dramaId: string, admin: AdminPrincipal) {
@@ -1186,7 +1393,8 @@ function auditDetail(value: unknown): string {
   return typeof reason === "string" ? reason : "";
 }
 
-export function toAdminDrama(drama: {
+export function toAdminDrama(
+  drama: {
   id: string;
   title: string;
   summary: string;
@@ -1228,16 +1436,18 @@ export function toAdminDrama(drama: {
       fileId: string;
     }>;
   }>;
-}) {
+},
+  nameById: Map<string, string> = new Map()
+) {
   const rights = drama.rightsRecords[0];
+  const tagIds = parseStoredTagIds(drama.tagsJson);
   return {
     id: drama.id,
     title: drama.title,
     summary: drama.summary,
     category: drama.category,
-    tags: Array.isArray(drama.tagsJson)
-      ? drama.tagsJson.filter((tag): tag is string => typeof tag === "string")
-      : [],
+    tagIds,
+    tags: resolvedTagNames(drama.tagsJson, nameById),
     coverUrl: drama.coverUrl,
     status: drama.status,
     ownerId: drama.editorId,
@@ -1311,6 +1521,55 @@ function isAdminAssetReady(
 function requireAdmin(principal: Principal): Extract<Principal, { kind: "admin" }> {
   if (principal.kind !== "admin") throw Errors.forbidden();
   return principal;
+}
+
+async function lockHealthyAdminRows(tx: Prisma.TransactionClient): Promise<void> {
+  await tx.$queryRaw(
+    Prisma.sql`SELECT id FROM AdminUser WHERE role = 'ADMIN' AND active = true AND setupCompletedAt IS NOT NULL ORDER BY id FOR UPDATE`
+  );
+}
+
+async function lockAdminRow(tx: Prisma.TransactionClient, id: string): Promise<void> {
+  await tx.$queryRaw(Prisma.sql`SELECT id FROM AdminUser WHERE id = ${id} FOR UPDATE`);
+}
+
+function sortCatalogTags<T extends { group: string; sortOrder: number; name: string }>(items: T[]): T[] {
+  const rank = new Map<string, number>(CATALOG_TAG_GROUPS.map((group, index) => [group.id, index]));
+  return [...items].sort((left, right) => {
+    const groupDelta = (rank.get(left.group) ?? 99) - (rank.get(right.group) ?? 99);
+    if (groupDelta !== 0) return groupDelta;
+    if (left.sortOrder !== right.sortOrder) return left.sortOrder - right.sortOrder;
+    return left.name.localeCompare(right.name, "zh");
+  });
+}
+
+async function countCatalogTagUsage(
+  prisma: { drama: { count: (args: object) => Promise<number> } },
+  tagId: string
+): Promise<number> {
+  return prisma.drama.count({
+    where: { tagsJson: { array_contains: tagId } }
+  });
+}
+
+async function requireActiveCatalogTagIds(prisma: PrismaService, tags: string[]): Promise<void> {
+  const ids = tags.map((tag) => tag.trim()).filter(Boolean);
+  if (ids.length !== tags.length || new Set(ids).size !== ids.length) {
+    throw Errors.badRequest(
+      ERROR_CODES.CATALOG_TAG_NOT_IN_LIBRARY,
+      "Tags must be unique current active catalog ids"
+    );
+  }
+  const rows = await prisma.catalogTag.findMany({
+    where: { status: CatalogTagStatus.ACTIVE, id: { in: ids } },
+    select: { id: true }
+  });
+  if (rows.length !== ids.length) {
+    throw Errors.badRequest(
+      ERROR_CODES.CATALOG_TAG_NOT_IN_LIBRARY,
+      "Tags must be current active catalog ids"
+    );
+  }
 }
 
 function assertUniqueEpisodeNumbers(episodes: EpisodeInput[]): void {

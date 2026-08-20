@@ -100,6 +100,7 @@ export class AdminAccountsService {
   ): Promise<AdminSetupLinkResponse> {
     const email = normalizeEmail(body.email);
     const displayName = normalizeDisplayName(body.displayName);
+    const auditReason = normalizeReason(body.reason);
     assertAssignableRole(body.role);
     const prepared = this.setup.prepareSetupToken(email, AdminSetupPurpose.INVITE);
     try {
@@ -128,7 +129,8 @@ export class AdminAccountsService {
         await this.setup.persistSetupToken(tx, account.id, operatorId, prepared);
         await audit(tx, operatorId, "ADMIN_ACCOUNT_CREATED", account.id, {
           role: body.role,
-          purpose: prepared.purpose
+          purpose: prepared.purpose,
+          reason: auditReason
         });
         return this.setup.setupLinkResponse(account, prepared);
       });
@@ -154,6 +156,7 @@ export class AdminAccountsService {
     }
     const displayName =
       body.displayName === undefined ? undefined : normalizeDisplayName(body.displayName);
+    const auditReason = normalizeReason(body.reason);
     return this.prisma.$transaction(async (tx) => {
       const healthyAdminIds = await lockHealthyAdmins(tx);
       await this.assertOperatorOtp(tx, operatorId, body.otp);
@@ -179,7 +182,8 @@ export class AdminAccountsService {
       });
       await audit(tx, operatorId, "ADMIN_ACCOUNT_UPDATED", id, {
         role: nextRole,
-        transferredDramas
+        transferredDramas,
+        reason: auditReason
       });
       return toAdminAccountView(account);
     });

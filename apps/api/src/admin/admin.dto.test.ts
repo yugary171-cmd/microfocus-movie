@@ -22,7 +22,7 @@ import {
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES
 } from "@microfocus/contracts";
-import { AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, MediaReviewDto, OfflineDto, ReviewDto, RightsDto, UploadSignDto } from "./admin.module.js";
+import { CreateCatalogTagDto, PatchCatalogTagDto, AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, MediaReviewDto, OfflineDto, ReviewDto, RightsDto, UploadSignDto } from "./admin.module.js";
 
 function validDrama(overrides: Record<string, unknown> = {}) {
   return {
@@ -30,7 +30,7 @@ function validDrama(overrides: Record<string, unknown> = {}) {
     summary: "用于本地开发的短剧样例。",
     coverUrl: "https://example.invalid/cover.jpg",
     category: "都市",
-    tags: ["都市", "成长"],
+    tags: ["都市", "甜宠"],
     recommendationRank: 1,
     episodes: [{ episodeNumber: 1, title: "第1集", durationSeconds: 120 }],
     ...overrides
@@ -326,5 +326,17 @@ describe("admin entitlement write input limits", () => {
         })
       )).some((error) => error.property === "notes")
     ).toBe(true);
+  });
+
+  it("accepts catalog tag create and status patch payloads", async () => {
+    expect(await validate(plainToInstance(CreateCatalogTagDto, { group: "subjects", name: "赛博" }))).toEqual(
+      []
+    );
+    expect(
+      (await validate(plainToInstance(CreateCatalogTagDto, { group: "unknown", name: "赛博" }))).some(
+        (error) => error.property === "group"
+      )
+    ).toBe(true);
+    expect(await validate(plainToInstance(PatchCatalogTagDto, { status: "ARCHIVED" }))).toEqual([]);
   });
 });

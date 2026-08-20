@@ -50,7 +50,8 @@ describe("admin API normalizers", () => {
     });
 
     expect(drama.status).toBe(DramaStatus.READY);
-    expect(drama.tags).toEqual(["测试"]);
+    expect(drama.tags).toEqual([]);
+    expect(drama.tagIds).toEqual(["测试"]);
     expect(drama.episodes[0]?.mediaStatus).toBe(MediaStatus.READY);
     expect(drama.contentApproved).toBe(false);
     expect(drama.copyrightVerified).toBe(false);
@@ -65,6 +66,7 @@ describe("admin API normalizers", () => {
       summary: "真实响应夹具",
       category: "都市",
       tags: ["已审"],
+      tagIds: ["ctag_ready"],
       coverUrl: "https://media.example.com/cover.jpg",
       status: "READY",
       ownerId: "editor-1",

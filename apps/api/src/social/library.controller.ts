@@ -3,7 +3,7 @@ import { API_ROUTES, type DramaLibraryItem } from "@microfocus/contracts";
 import { controllerPath } from "../common/http.js";
 import { requireEntityId } from "../common/entity-id.js";
 import { Errors } from "../common/app-error.js";
-import { catalogCardInclude, toDramaCard } from "../catalog/drama-card.js";
+import { catalogCardInclude, toDramaCards } from "../catalog/drama-card.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { requireUser } from "../history/history.module.js";
 import {
@@ -147,11 +147,15 @@ export class LibraryController {
         }
       ])
     );
+    const items = await toDramaCards(
+      this.prisma,
+      rows.map((row) => row.drama)
+    );
     return toSocialPage(
-      rows.map((row) => {
+      rows.map((row, index) => {
         const resume = progressByDrama.get(row.dramaId);
         return {
-          drama: toDramaCard(row.drama),
+          drama: items[index]!,
           createdAt: row.createdAt.toISOString(),
           resumeEpisodeNumber: resume?.resumeEpisodeNumber ?? null,
           resumePositionSeconds: resume?.resumePositionSeconds ?? null

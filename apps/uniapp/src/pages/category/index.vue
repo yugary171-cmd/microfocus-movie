@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SEARCH_PAGE_SIZE, type DramaCard } from "@microfocus/contracts";
+import { SEARCH_PAGE_SIZE, publicDramaTags, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { getApi } from "../../services/api";
@@ -153,7 +153,7 @@ onReachBottom(() => {
       >
         <view class="filter-poster">{{ item.title.slice(0, 1) }}</view>
         <view class="filter-title">{{ item.title }}</view>
-        <view class="filter-meta">热度 {{ rankingHeatLabel(item.recommendationRank) }} · {{ item.tags[0] || item.category }}</view>
+        <view class="filter-meta">热度 {{ rankingHeatLabel(item.recommendationRank) }} · {{ publicDramaTags(item.tags || [])[0] || item.category }}</view>
       </button>
     </view>
     <view v-if="loadingMore" class="filter-state">正在加载更多…</view>

@@ -165,7 +165,8 @@ describe("administrator account listing and creation", () => {
       email: " NEW@example.com ",
       displayName: " 新管理员 ",
       role: AdminRole.EDITOR,
-      otp: "654321"
+      otp: "654321",
+      reason: "新增内容编辑账号"
     });
 
     expect(result.setupToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -196,7 +197,8 @@ describe("administrator account listing and creation", () => {
         email: "new@example.com",
         displayName: "新账号",
         role: AdminRole.EDITOR,
-        otp: "123456"
+        otp: "123456",
+        reason: "新增内容编辑账号"
       })
     ).rejects.toMatchObject({ code: "INSUFFICIENT_ROLE" });
     expect(tx.adminUser.create).not.toHaveBeenCalled();
@@ -216,7 +218,8 @@ describe("administrator account listing and creation", () => {
           email: "new@example.com",
           displayName: "新账号",
           role: AdminRole.EDITOR,
-          otp: "000000"
+          otp: "000000",
+          reason: "新增内容编辑账号"
         })
     ).rejects.toMatchObject({ code: ERROR_CODES.ADMIN_OTP_INVALID });
     expect(tx.adminUser.create).not.toHaveBeenCalled();
@@ -249,7 +252,8 @@ describe("administrator account mutation safety", () => {
     await expect(
       service(transactionPrisma(tx)).update("admin-1", "admin-1", {
         displayName: " 新姓名 ",
-        otp: "123456"
+        otp: "123456",
+        reason: "更新管理员资料"
       })
     ).resolves.toMatchObject({ displayName: "新姓名", role: AdminRole.ADMIN });
   });
@@ -271,7 +275,7 @@ describe("administrator account mutation safety", () => {
     const result = await service(transactionPrisma(tx)).update(
       "operator-1",
       "reviewer-1",
-      { displayName: " 新姓名 ", role: AdminRole.ADMIN, otp: "123456" }
+      { displayName: " 新姓名 ", role: AdminRole.ADMIN, otp: "123456", reason: "调整账号角色" }
     );
     expect(result).toMatchObject({ displayName: "新姓名", role: AdminRole.ADMIN });
     expect(tx.adminUser.update).toHaveBeenCalledWith(

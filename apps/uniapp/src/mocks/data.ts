@@ -8,6 +8,8 @@ import {
   PLAYBACK_TOKEN_TTL_SECONDS,
   SEARCH_MAX_PAGE,
   SEARCH_PAGE_SIZE,
+  homeFilterOptionsFromTags,
+  seedCatalogTagLibrary,
   type CatalogResponse,
   type DramaDetail,
   type EntitlementSummary,
@@ -32,7 +34,7 @@ const seedDramas: DramaDetail[] = [
     summary: "用于本地开发的短剧样例。",
     coverUrl: "https://images.example.com/micro-light.jpg",
     category: "都市",
-    tags: ["都市", "成长"],
+    tags: ["都市", "甜宠"],
     episodeCount: 4,
     recommendationRank: 100,
     licenseNumber: "LOCAL-DEMO-001",
@@ -70,7 +72,7 @@ const seedDramas: DramaDetail[] = [
     summary: "年轻摄影师沿着祖父的来信，寻找一段被时光珍藏的故事。",
     coverUrl: "",
     category: "萌宝",
-    tags: ["萌宝", "亲情"],
+    tags: ["萌宝", "甜宠"],
     episodeCount: 10,
     recommendationRank: 80,
     licenseNumber: "内部体验备案号：DEMO-003",
@@ -90,11 +92,11 @@ const extraSeedSpecs = [
   { id: "demo-d5", title: "引她入室", category: "甜宠", tags: ["甜宠", "大女主"], episodeCount: 58, rank: 68 },
   { id: "demo-d6", title: "小公主回家", category: "萌宝", tags: ["萌宝", "甜宠"], episodeCount: 72, rank: 66 },
   { id: "demo-d7", title: "十八岁奶奶驾到", category: "宫斗", tags: ["宫斗", "豪门"], episodeCount: 64, rank: 64 },
-  { id: "demo-d8", title: "月光落在你肩上", category: "甜宠", tags: ["甜宠", "爱情"], episodeCount: 48, rank: 62 },
+  { id: "demo-d8", title: "月光落在你肩上", category: "甜宠", tags: ["甜宠", "虐恋"], episodeCount: 48, rank: 62 },
   { id: "demo-d9", title: "她的秘密花园", category: "重生", tags: ["重生", "逆袭"], episodeCount: 52, rank: 60 },
-  { id: "demo-d10", title: "龙王归来", category: "战神", tags: ["战神", "打脸"], episodeCount: 24, rank: 58 },
+  { id: "demo-d10", title: "龙王归来", category: "战神", tags: ["战神", "打脸虐渣"], episodeCount: 24, rank: 58 },
   { id: "demo-d11", title: "上门女婿", category: "赘婿", tags: ["赘婿", "逆袭"], episodeCount: 30, rank: 56 },
-  { id: "demo-d12", title: "隐世神医", category: "神医", tags: ["神医", "打脸"], episodeCount: 16, rank: 54 }
+  { id: "demo-d12", title: "隐世神医", category: "神医", tags: ["神医", "打脸虐渣"], episodeCount: 16, rank: 54 }
 ];
 
 const extraSeedDramas: DramaDetail[] = extraSeedSpecs.map((item) => ({
@@ -159,11 +161,7 @@ const catalog: CatalogResponse = {
   categories: [HOME_RECOMMEND_CHANNEL].concat(
     Array.isArray(HOME_DRAMA_CHANNELS) ? Array.from(HOME_DRAMA_CHANNELS) : []
   ),
-  filterOptions: {
-    subjects: ["现代", "女性成长", "脑洞", "奇幻", "玄幻", "古言", "战神", "宫斗", "仙侠", "权谋", "悬疑", "喜剧", "青春"],
-    settings: ["打脸虐渣", "大男主", "大女主", "马甲", "重生", "穿越", "系统", "先婚后爱", "家长里短", "破镜重圆", "神豪", "豪门", "强者回归", "异能"],
-    backgrounds: ["现代", "都市", "古代", "乡村", "年代", "架空", "职场", "民国", "校园", "宫廷"]
-  }
+  filterOptions: homeFilterOptionsFromTags(seedCatalogTagLibrary())
 };
 
 const entitlement: EntitlementSummary = {

@@ -2,6 +2,8 @@
 import {
   isOwnedContentRole,
   isSuperAdmin,
+  CATALOG_TAG_GROUPS,
+  CatalogTagStatus,
   DRAMA_POSTER_SIZE_HINT,
   DRAMA_SUMMARY_MAX_LENGTH,
   DRAMA_TAG_MAX_COUNT,
@@ -17,6 +19,7 @@ import {
   RIGHTS_MATERIAL_DIGEST_LENGTH,
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
   normalizeDramaTypeCategory,
+  type CatalogTag,
   type ReleaseGateStatus,
 } from "@microfocus/contracts";
 import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
@@ -62,7 +65,7 @@ const form = reactive<DramaInput>({
   title: "",
   summary: "",
   category: "",
-  tags: [],
+  tagIds: [],
   coverUrl: "",
   promoCoverUrl: "",
   rightsHolder: "",
@@ -80,6 +83,15 @@ const form = reactive<DramaInput>({
 });
 
 const tagPickerOpen = ref(false);
+const tagLibrary = ref<CatalogTag[]>([]);
+const tagGroups = computed(() =>
+  CATALOG_TAG_GROUPS.map((group) => ({
+    ...group,
+    options: tagLibrary.value
+      .filter((tag) => tag.group === group.id && tag.status === CatalogTagStatus.ACTIVE)
+      .map((tag) => ({ id: tag.id, name: tag.name })),
+  })),
+);
 const selectedDramaType = computed(
   () =>
     DRAMA_TYPE_OPTIONS.find((option) => option.category === form.category) ??
@@ -110,7 +122,7 @@ function applyDrama(value: DramaRecord): void {
     title: value.title ?? "",
     summary: value.summary ?? "",
     category: value.category ?? "",
-    tags: Array.isArray(value.tags) ? value.tags : [],
+    tagIds: Array.isArray(value.tagIds) ? value.tagIds : [],
     coverUrl: value.coverUrl ?? "",
     promoCoverUrl: value.promoCoverUrl ?? "",
     rightsHolder: value.rightsHolder ?? "",
@@ -167,8 +179,15 @@ function clearPoster(kind: "cover" | "promo"): void {
   inputChanged();
 }
 
-function applySelectedTags(tags: string[]): void {
-  form.tags = [...tags];
+const selectedTagChips = computed(() =>
+  form.tagIds.map((id) => ({
+    id,
+    name: tagLibrary.value.find((tag) => tag.id === id)?.name ?? "未知标签",
+  })),
+);
+
+function applySelectedTags(tagIds: string[]): void {
+  form.tagIds = [...tagIds];
   tagPickerOpen.value = false;
   inputChanged();
 }
@@ -187,11 +206,13 @@ async function load(): Promise<void> {
   error.value = "";
   loading.value = !isNew.value;
   try {
-    const [gateResult, dramaResult] = await Promise.all([
+    const [gateResult, dramaResult, tagsResult] = await Promise.all([
       adminApi.releaseGate(),
       isNew.value ? Promise.resolve(null) : adminApi.getDrama(id.value),
+      adminApi.listCatalogTags(),
     ]);
     gate.value = gateResult;
+    tagLibrary.value = Array.isArray(tagsResult.items) ? tagsResult.items : [];
     if (dramaResult) applyDrama(dramaResult);
   } catch (caught) {
     error.value = toErrorMessage(caught);
@@ -206,7 +227,7 @@ function normalizedInput(): DramaInput {
     title: form.title.trim(),
     summary: form.summary.trim(),
     category: normalizeDramaTypeCategory(form.category),
-    tags: [...form.tags],
+    tagIds: [...form.tagIds],
     coverUrl: form.coverUrl.trim(),
     promoCoverUrl: form.promoCoverUrl.trim(),
     rightsHolder: form.rightsHolder.trim(),
@@ -236,7 +257,10 @@ async function save(): Promise<DramaRecord | null> {
   error.value = "";
   notice.value = "";
   const payload = normalizedInput();
-  const validation = dramaDraftError(payload);
+  const validation = dramaDraftError(
+    payload,
+    new Set(tagLibrary.value.filter((tag) => tag.status === CatalogTagStatus.ACTIVE).map((tag) => tag.id)),
+  );
   if (validation) {
     error.value = validation;
     return null;
@@ -490,29 +514,29 @@ onUnmounted(() => {
                 </button>
               </div>
               <div class="tag-summary">
-                <div v-if="form.tags.length" class="tag-picker__chips">
+                <div v-if="selectedTagChips.length" class="tag-picker__chips">
                   <button
-                    v-for="tag in form.tags"
-                    :key="tag"
+                    v-for="tag in selectedTagChips"
+                    :key="tag.id"
                     class="tag-chip tag-chip--active"
                     type="button"
                     :disabled="!canEdit"
                     @click="
                       canEdit &&
                       applySelectedTags(
-                        form.tags.filter((item) => item !== tag),
+                        form.tagIds.filter((item) => item !== tag.id),
                       )
                     "
                   >
-                    {{ tag }}
+                    {{ tag.name }}
                   </button>
                 </div>
                 <p v-else class="tag-summary__empty">尚未选择标签</p>
               </div>
               <small
-                >按主题、情节、背景等分类多选，至少 1 个，最多
+                >从启用词库多选，至少 1 个，最多
                 {{ DRAMA_TAG_MAX_COUNT }} 个，每个不超过
-                {{ DRAMA_TAG_MAX_LENGTH }} 字。弹窗内可搜索。</small
+                {{ DRAMA_TAG_MAX_LENGTH }} 字。弹窗内可搜索，不能随手造词。</small
               >
             </div>
             <div class="field field--wide poster-row">
@@ -716,7 +740,8 @@ onUnmounted(() => {
     />
     <TagPickerDialog
       :open="tagPickerOpen"
-      :selected="form.tags"
+      :selected="form.tagIds"
+      :groups="tagGroups"
       :disabled="!canEdit"
       @close="tagPickerOpen = false"
       @confirm="applySelectedTags"

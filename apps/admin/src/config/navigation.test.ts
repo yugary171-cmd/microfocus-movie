@@ -20,4 +20,9 @@ describe("admin navigation active state", () => {
     expect(accounts).toMatchObject({ label: "账号管理", roles: [AdminRole.ADMIN] });
     expect(isNavigationItemActive("/accounts", "/accounts")).toBe(true);
   });
+
+  it("exposes the tag library to system administrators only", () => {
+    const tags = navigationItems.find((item) => item.to === "/tags");
+    expect(tags).toMatchObject({ label: "标签库", roles: [AdminRole.ADMIN] });
+  });
 });
