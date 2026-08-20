@@ -48,6 +48,7 @@ const now = new Date();
 const isoHoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000).toISOString();
 const MOCK_ACCOUNTS_KEY = "microfocus.admin.mock-accounts-v1";
 const MOCK_SETUP_LINKS_KEY = "microfocus.admin.mock-setup-links-v1";
+const MOCK_CONTENT_KEY = "microfocus.admin.mock-content-v1";
 const MOCK_CURRENT_ADMIN_ID = "admin-1";
 
 interface MockSetupLinkRecord {
@@ -220,6 +221,7 @@ let dramas: DramaRecord[] = [
     category: "都市情感",
     tags: ["重逢", "治愈"],
     coverUrl: "",
+    promoCoverUrl: "",
     status: DramaStatus.PENDING_REVIEW,
     ownerId: "editor-1",
     ownerName: "林编辑",
@@ -274,6 +276,7 @@ let dramas: DramaRecord[] = [
     category: "现实生活",
     tags: ["烟火气", "小城"],
     coverUrl: "",
+    promoCoverUrl: "",
     status: DramaStatus.READY,
     ownerId: "editor-2",
     ownerName: "周编辑",
@@ -313,6 +316,7 @@ let dramas: DramaRecord[] = [
     category: "悬疑",
     tags: ["草稿"],
     coverUrl: "",
+    promoCoverUrl: "",
     status: DramaStatus.DRAFT,
     ownerId: "editor-1",
     ownerName: "林编辑",
@@ -347,6 +351,29 @@ let reviews: ReviewItem[] = [
     status: "PENDING",
   },
 ];
+
+restoreMockContent();
+
+function persistMockContent(): void {
+  if (typeof window === "undefined" || import.meta.env.MODE === "test") return;
+  window.localStorage.setItem(MOCK_CONTENT_KEY, JSON.stringify({ dramas, reviews }));
+}
+
+function restoreMockContent(): void {
+  if (typeof window === "undefined" || import.meta.env.MODE === "test") return;
+  try {
+    const raw = window.localStorage.getItem(MOCK_CONTENT_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { dramas?: unknown; reviews?: unknown };
+    if (!Array.isArray(parsed.dramas) || parsed.dramas.length === 0 || !Array.isArray(parsed.reviews)) {
+      return;
+    }
+    dramas = parsed.dramas as DramaRecord[];
+    reviews = parsed.reviews as ReviewItem[];
+  } catch {
+    /* keep seed data */
+  }
+}
 
 let auditLogs: AuditLog[] = [
   {
@@ -688,7 +715,8 @@ export const mockApi = {
     dramas = existing
       ? dramas.map((item) => (item.id === existing.id ? saved : item))
       : [saved, ...dramas];
-    writeAudit(existing ? "编辑剧目" : "创建剧目", saved.title, "演示数据已保存在当前页面内存中");
+    writeAudit(existing ? "编辑剧目" : "创建剧目", saved.title, "演示数据已保存在当前浏览器中");
+    persistMockContent();
     return mockDelay(saved);
   },
   async submitReview(id: string): Promise<void> {
@@ -706,10 +734,11 @@ export const mockApi = {
       status: "PENDING",
     });
     writeAudit("提交审核", drama.title, "进入演示审核队列");
+    persistMockContent();
     return mockDelay(undefined);
   },
   async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
-    return mockDelay(paginate(reviews, page));
+    return mockDelay(paginate(reviews.filter((item) => item.status === "PENDING"), page));
   },
   async review(id: string, approved: boolean, reason: string): Promise<void> {
     const review = reviews.find((item) => item.id === id);
@@ -723,6 +752,7 @@ export const mockApi = {
       drama.wechatApproved = approved;
     }
     writeAudit(approved ? "审核通过" : "审核拒绝", review.dramaTitle, reason || "未填写补充说明");
+    persistMockContent();
     return mockDelay(undefined);
   },
   async publish(id: string): Promise<void> {
@@ -736,6 +766,7 @@ export const mockApi = {
     assertMockEpisodesReady(drama);
     drama.status = DramaStatus.PUBLISHED;
     writeAudit("发布剧目", drama.title, "仅更新演示数据，未触发真实发布");
+    persistMockContent();
     return mockDelay(undefined);
   },
   async offline(id: string, reason: string): Promise<void> {
@@ -743,6 +774,7 @@ export const mockApi = {
     if (!drama) throw new Error("未找到该剧目");
     drama.status = DramaStatus.OFFLINE;
     writeAudit("下架剧目", drama.title, reason);
+    persistMockContent();
     return mockDelay(undefined);
   },
   async signUpload(file: File, dramaId: string, episodeId: string): Promise<UploadSignature> {

@@ -225,7 +225,7 @@ flowchart LR
 | `POST /v1/admin/account-setup/complete` | 公开、按连接 IP 限频 | 密码 12–128 位 + 当前 TOTP；令牌一次性 | 原子完成开通；写入独立运营事件，不冒充创建者 |
 | `GET /v1/admin/release-gate` | 全部管理员角色 | 只读 | 对外流量闸门 |
 | `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR/REVIEWER 只能访问授权范围；ADMIN 看全部；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情 |
-| `POST /v1/admin/dramas` | EDITOR / REVIEWER / ADMIN | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件 | 创建草稿 |
+| `POST /v1/admin/dramas` | EDITOR / REVIEWER / ADMIN | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`tags` 至少 1 个；管理端剧目类型写入 `category` 为 `真人剧` / `AI 剧` / `漫剧`；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件；版权资料走独立 rights 接口，草稿可不写；`coverUrl` 仍是剧目海报地址，推广海报尚无独立 API 字段 | 创建草稿 |
 | `PATCH /v1/admin/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责且可编辑状态；ADMIN 可改未发布剧；字段上限与创建一致 | 修改元数据 |
 | `POST .../:id/rights` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；新版本使内容回到待审链路；权利人/证号/材料键限长；`territory` 必须是 `RIGHTS_TERRITORY=CN`，管理端 live 保存发送该值，编辑页不提供地域控件；`materialDigestSha256` 必须是 64 位十六进制（`RIGHTS_MATERIAL_DIGEST_LENGTH`），管理端输入 maxlength/pattern 与之共用 | 写入不可覆盖的权利版本 |
 | `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；禁止修改已发布内容；签发成功写入审计，不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL；`size` 1–`UPLOAD_FILE_SIZE_MAX_BYTES`（5×1024³ 字节）；`contentType` 仅 `UPLOAD_CONTENT_TYPES`（mp4/quicktime/webm，空类型回退 `application/octet-stream`）；管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |

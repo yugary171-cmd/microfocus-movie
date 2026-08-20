@@ -26,6 +26,7 @@ function drama(overrides: Partial<DramaRecord> = {}): DramaRecord {
     category: "都市",
     tags: [],
     coverUrl: "",
+    promoCoverUrl: "",
     status: DramaStatus.DRAFT,
     ownerId: "editor-1",
     ownerName: "林编辑",

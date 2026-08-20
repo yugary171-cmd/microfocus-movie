@@ -57,6 +57,9 @@ describe("admin content input limits", () => {
     );
     expect(tooManyTags.some((error) => error.property === "tags")).toBe(true);
 
+    const emptyTags = await validate(plainToInstance(CreateDramaDto, validDrama({ tags: [] })));
+    expect(emptyTags.some((error) => error.property === "tags")).toBe(true);
+
     const tooManyEpisodes = await validate(
       plainToInstance(
         CreateDramaDto,
@@ -70,6 +73,17 @@ describe("admin content input limits", () => {
       )
     );
     expect(tooManyEpisodes.some((error) => error.property === "episodes")).toBe(true);
+
+    expect(
+      (
+        await validate(
+          plainToInstance(
+            CreateDramaDto,
+            validDrama({ episodes: [{ episodeNumber: 1, title: "", durationSeconds: 60 }] }),
+          ),
+        )
+      ).length
+    ).toBe(0);
 
     expect(
       (await validate(plainToInstance(CreateDramaDto, validDrama({ recommendationRank: RECOMMENDATION_RANK_MAX + 1 })))).some(

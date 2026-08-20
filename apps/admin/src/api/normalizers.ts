@@ -292,6 +292,7 @@ export function normalizeDrama(value: unknown): DramaRecord {
       (item): item is string => typeof item === "string",
     ),
     coverUrl: text(source.coverUrl),
+    promoCoverUrl: text(source.promoCoverUrl),
     status: enumValue(source.status, Object.values(DramaStatus), DramaStatus.DRAFT),
     ownerId: text(source.ownerId) || text(source.editorId) || text(editor.id),
     ownerName: text(source.ownerName) || text(editor.email),

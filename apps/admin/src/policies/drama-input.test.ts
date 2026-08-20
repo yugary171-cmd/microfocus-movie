@@ -4,21 +4,23 @@ import {
   DRAMA_TITLE_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
   MediaStatus,
+  POSTER_FILE_SIZE_MAX_BYTES,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES,
 } from "@microfocus/contracts";
 import { describe, expect, it } from "vitest";
-import { dramaDraftError, uploadFileError, uploadFileNameError } from "./drama-input";
+import { dramaDraftError, posterFileError, uploadFileError, uploadFileNameError } from "./drama-input";
 import type { DramaInput } from "@/types/admin";
 
 function draft(overrides: Partial<DramaInput> = {}): DramaInput {
   return {
     title: "微焦之城",
     summary: "简介",
-    category: "都市",
+    category: "真人剧",
     tags: ["都市"],
     coverUrl: "https://example.invalid/cover.jpg",
+    promoCoverUrl: "",
     rightsHolder: "权利方",
     licenseNumber: "license",
     rightsValidFrom: "2026-01-01",
@@ -49,7 +51,13 @@ describe("dramaDraftError", () => {
   });
 
   it("rejects oversized titles, tag lists, and episode durations", () => {
-    expect(dramaDraftError(draft({ title: "x".repeat(DRAMA_TITLE_MAX_LENGTH + 1) }))).toContain(
+    expect(
+      dramaDraftError(draft({ tags: [] })),
+    ).toContain("请至少选择一个标签");
+    expect(dramaDraftError(draft({ category: "都市" }))).toContain("请选择剧目类型");
+    expect(
+      dramaDraftError(draft({ title: "x".repeat(DRAMA_TITLE_MAX_LENGTH + 1) })),
+    ).toContain(
       "剧名不能超过",
     );
     expect(
@@ -72,6 +80,21 @@ describe("dramaDraftError", () => {
         }),
       ),
     ).toContain("单集时长");
+    expect(
+      dramaDraftError(
+        draft({
+          episodes: [
+            {
+              id: "episode-1",
+              episodeNumber: 1,
+              title: "",
+              durationSeconds: 60,
+              mediaStatus: MediaStatus.CREATED,
+            },
+          ],
+        }),
+      ),
+    ).toBe("");
     expect(
       dramaDraftError(draft({ rightsMaterialDigestSha256: "not-a-digest" })),
     ).toContain("材料 SHA-256");
@@ -121,6 +144,19 @@ describe("uploadFileError", () => {
     expect(uploadFileError({ name: "episode.mp4", size: 12, type: "video/webm" })).toBe("");
     expect(uploadFileError({ name: "episode.mp4", size: 12, type: "video/x-matroska" })).toContain(
       "仅支持 MP4、MOV、WebM",
+    );
+  });
+});
+
+describe("posterFileError", () => {
+  it("accepts a bounded jpg poster", () => {
+    expect(posterFileError({ name: "cover.jpg", size: 12, type: "image/jpeg" })).toBe("");
+  });
+
+  it("rejects unsupported types and oversized posters", () => {
+    expect(posterFileError({ name: "cover.gif", size: 12, type: "image/gif" })).toContain("jpg、jpeg、bmp、png");
+    expect(posterFileError({ name: "cover.png", size: POSTER_FILE_SIZE_MAX_BYTES + 1, type: "image/png" })).toContain(
+      "不能超过",
     );
   });
 });

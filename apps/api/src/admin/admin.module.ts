@@ -125,7 +125,6 @@ export class EpisodeInput {
   episodeNumber!: number;
 
   @IsString()
-  @MinLength(1)
   @MaxLength(EPISODE_TITLE_MAX_LENGTH)
   title!: string;
 
@@ -141,6 +140,7 @@ export class CreateDramaDto {
   @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) coverUrl!: string;
   @IsString() @MinLength(1) @MaxLength(DRAMA_CATEGORY_MAX_LENGTH) category!: string;
   @IsArray()
+  @ArrayMinSize(1)
   @ArrayMaxSize(DRAMA_TAG_MAX_COUNT)
   @IsString({ each: true })
   @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })
@@ -161,6 +161,7 @@ export class UpdateDramaDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(DRAMA_CATEGORY_MAX_LENGTH) category?: string;
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @ArrayMaxSize(DRAMA_TAG_MAX_COUNT)
   @IsString({ each: true })
   @MaxLength(DRAMA_TAG_MAX_LENGTH, { each: true })

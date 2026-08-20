@@ -37,12 +37,107 @@ export const DRAMA_SUMMARY_MAX_LENGTH = 2000;
 export const DRAMA_CATEGORY_MAX_LENGTH = 64;
 export const DRAMA_TAG_MAX_LENGTH = 32;
 export const DRAMA_TAG_MAX_COUNT = 20;
+export const CATALOG_FILTER_OPTIONS = {
+  subjects: ["现代", "女性成长", "脑洞", "奇幻", "玄幻", "古言", "战神", "宫斗", "仙侠", "权谋", "悬疑", "喜剧", "青春"],
+  settings: ["打脸虐渣", "大男主", "大女主", "马甲", "重生", "穿越", "系统", "先婚后爱", "家长里短", "破镜重圆", "神豪", "豪门", "强者回归", "异能"],
+  backgrounds: ["现代", "都市", "古代", "乡村", "年代", "架空", "职场", "民国", "校园", "宫廷"]
+} as const;
+export const DRAMA_TYPE_OPTIONS = [
+  {
+    label: "真人",
+    category: "真人剧",
+    hint: "由真实演员出演的剧目。"
+  },
+  {
+    label: "数字真人",
+    category: "AI 剧",
+    hint: "指基于计算机图形技术与人工智能算法生成的、具有逼真人类外观及行为表现的虚拟角色出演的剧目。提审流程无需上传对应的演职人员信息。"
+  },
+  {
+    label: "漫剧",
+    category: "漫剧",
+    hint: "以动画或漫画影像呈现的剧目。"
+  }
+] as const;
+export type DramaTypeCategory = (typeof DRAMA_TYPE_OPTIONS)[number]["category"];
+export const ADMIN_DRAMA_TAG_GROUPS = [
+  {
+    id: "subjects",
+    label: "主题",
+    options: [
+      ...CATALOG_FILTER_OPTIONS.subjects,
+      "甜宠",
+      "虐恋",
+      "逆袭",
+      "复仇",
+      "萌宝",
+      "赘婿",
+      "神医",
+      "兵王"
+    ]
+  },
+  {
+    id: "settings",
+    label: "情节设定",
+    options: [
+      ...CATALOG_FILTER_OPTIONS.settings,
+      "契约婚姻",
+      "替身",
+      "失忆",
+      "双洁",
+      "追妻火葬场"
+    ]
+  },
+  { id: "backgrounds", label: "时代背景", options: [...CATALOG_FILTER_OPTIONS.backgrounds] },
+  { id: "roles", label: "人物", options: ["总裁", "女强", "大叔", "少年", "反派", "团宠", "女配逆袭"] },
+  { id: "tones", label: "风格", options: ["轻松", "高能", "致郁", "甜虐", "搞笑", "燃"] },
+  { id: "audiences", label: "受众", options: ["男频", "女频"] }
+] as const;
+export const POSTER_FILE_SIZE_MAX_BYTES = 10 * 1024 * 1024;
+export const POSTER_CONTENT_TYPES = ["image/jpeg", "image/png", "image/bmp", "image/x-ms-bmp"] as const;
+export const POSTER_FILE_ACCEPT = ".jpg,.jpeg,.bmp,.png,image/jpeg,image/png,image/bmp";
+export const DRAMA_POSTER_SIZE_HINT = "816×1086px";
+export const PROMO_POSTER_SIZE_HINT = "762×318px";
+
+export function isDramaTypeCategory(value: string): value is DramaTypeCategory {
+  return DRAMA_TYPE_OPTIONS.some((option) => option.category === value);
+}
+
+export function normalizeDramaTypeCategory(value: string): DramaTypeCategory | "" {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed === "数字真人" || trimmed === "AI剧") return "AI 剧";
+  if (trimmed === "真人") return "真人剧";
+  const matched = DRAMA_TYPE_OPTIONS.find(
+    (option) => option.category === trimmed || option.label === trimmed
+  );
+  return matched?.category ?? "";
+}
+
+export function isAllowedPosterContentType(type: string): boolean {
+  return (POSTER_CONTENT_TYPES as readonly string[]).includes(type);
+}
+
+export function isAllowedPosterFileName(fileName: string): boolean {
+  const name = fileName.trim();
+  if (!isAllowedUploadFileName(name)) return false;
+  return /\.(jpe?g|png|bmp)$/i.test(name);
+}
+
+export function isAllowedPosterFileSize(size: number): boolean {
+  return Number.isInteger(size) && size >= 1 && size <= POSTER_FILE_SIZE_MAX_BYTES;
+}
 export const DRAMA_EPISODE_MAX_COUNT = 200;
 export const RECOMMENDATION_RANK_MIN = 0;
 export const RECOMMENDATION_RANK_MAX = 9999;
 export const RECOMMENDATION_RANK_DEFAULT = 0;
 export const EPISODE_TITLE_MAX_LENGTH = 120;
 export const EPISODE_DURATION_SECONDS_MAX = 3600;
+
+export function episodeDisplayTitle(title: string | null | undefined, episodeNumber: number): string {
+  const trimmed = title?.trim() ?? "";
+  return trimmed || `第 ${episodeNumber} 集`;
+}
 export const COVER_URL_MAX_LENGTH = 2048;
 export const DISPLAY_NAME_MIN_LENGTH = 1;
 export const DISPLAY_NAME_MAX_LENGTH = 10;

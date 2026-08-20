@@ -124,7 +124,7 @@ onMounted(load);
 </template>
 
 <style scoped>
-.list-summary { margin: -4px 0 10px; color: var(--color-muted); font-size: 12px; }
-.pager { display: flex; gap: 8px; margin-top: 12px; }
+.list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
+.pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 </style>

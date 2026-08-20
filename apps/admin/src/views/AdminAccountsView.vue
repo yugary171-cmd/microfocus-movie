@@ -467,25 +467,25 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.accounts-page { display: flex; min-height: calc(100dvh - 67px - 40px - 12px - 2 * clamp(20px, 3vw, 34px)); flex-direction: column; }
+.accounts-page { display: flex; min-height: calc(100dvh - 64px - 40px - 16px - 2 * var(--space-4)); flex-direction: column; }
 .accounts-panel { display: flex; flex: 1; min-height: 0; flex-direction: column; }
 .accounts-panel :deep(.page-state) { flex: 1; }
 .accounts-table { flex: 1; min-height: 280px; overflow: auto; }
 .accounts-table table { min-width: 980px; }
-.list-summary { margin: -4px 0 10px; color: var(--color-muted); font-size: 12px; }
-.pager { display: flex; gap: 8px; margin-top: 12px; }
-.account-login-id { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
+.pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.account-login-id { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .account-login-id small { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .copy-login-id { width: 24px; height: 24px; color: var(--color-muted); }
 .copy-login-id:hover { color: var(--color-text); background: rgba(102, 112, 133, 0.1); }
 .account-actions-trigger { padding: 4px 2px; }
-.account-actions-menu { position: fixed; z-index: 81; display: grid; width: 170px; padding: 6px; border: 1px solid var(--color-border); border-radius: 9px; background: #fff; box-shadow: var(--shadow-md); }
-.account-actions-menu button { padding: 8px 9px; border: 0; border-radius: 6px; text-align: left; color: #344054; background: transparent; cursor: pointer; }
+.account-actions-menu { position: fixed; z-index: 81; display: grid; width: 170px; padding: var(--space-1); border: 1px solid var(--color-border); border-radius: 9px; background: #fff; box-shadow: var(--shadow-md); }
+.account-actions-menu button { padding: var(--space-2); border: 0; border-radius: 6px; text-align: left; color: #344054; background: transparent; cursor: pointer; }
 .account-actions-menu button:hover:not(:disabled) { background: #f2f5f9; }
 .account-actions-menu button:disabled { color: #a8b0bc; cursor: not-allowed; }
-.account-dialog { display: grid; gap: 14px; width: min(540px, 100%); max-height: calc(100vh - 36px); overflow-y: auto; }
+.account-dialog { display: grid; gap: var(--space-3); width: min(540px, 100%); max-height: calc(100vh - 36px); overflow-y: auto; }
 .account-dialog h2, .account-dialog p, .setup-link-dialog h2 { margin-bottom: 0; }
-.danger-note { padding: 10px 12px; border-radius: 8px; color: #8f1f34; background: var(--color-danger-soft); font-size: 12px; line-height: 1.6; }
+.danger-note { padding: var(--space-2) var(--space-3); border-radius: 8px; color: #8f1f34; background: var(--color-danger-soft); font-size: 12px; line-height: 1.6; }
 .setup-link-dialog { width: min(600px, 100%); }
 .setup-link-dialog textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
 </style>

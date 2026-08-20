@@ -8,13 +8,18 @@ import {
   DRAMA_TITLE_MAX_LENGTH,
   EPISODE_DURATION_SECONDS_MAX,
   EPISODE_TITLE_MAX_LENGTH,
+  POSTER_FILE_SIZE_MAX_BYTES,
   RIGHTS_DOCUMENT_MAX_LENGTH,
   RIGHTS_HOLDER_MAX_LENGTH,
   RIGHTS_MATERIAL_KEY_MAX_LENGTH,
   UPLOAD_FILE_NAME_MAX_LENGTH,
+  isAllowedPosterContentType,
+  isAllowedPosterFileName,
+  isAllowedPosterFileSize,
   isAllowedUploadFileName,
   isAllowedUploadFileSize,
   isRightsMaterialDigest,
+  normalizeDramaTypeCategory,
   resolveUploadContentType,
 } from "@microfocus/contracts";
 import type { DramaInput } from "@/types/admin";
@@ -38,6 +43,23 @@ export function uploadFileError(file: { name: string; size: number; type?: strin
   return "";
 }
 
+export function posterFileError(file: { name: string; size: number; type?: string }): string {
+  const name = file.name.trim();
+  if (!name) return "文件名不能为空";
+  if (/[/\\\0]/.test(name)) return "文件名不能包含路径分隔符";
+  if (!isAllowedPosterFileName(name)) {
+    if (!isAllowedUploadFileName(name)) return `文件名不能超过 ${UPLOAD_FILE_NAME_MAX_LENGTH} 个字符`;
+    return "仅支持 jpg、jpeg、bmp、png 海报";
+  }
+  if (!isAllowedPosterFileSize(file.size)) {
+    if (!Number.isFinite(file.size) || file.size < 1) return "文件不能为空";
+    return `单个海报不能超过 ${POSTER_FILE_SIZE_MAX_BYTES / (1024 * 1024)}MB`;
+  }
+  const type = file.type ?? "";
+  if (type && !isAllowedPosterContentType(type)) return "仅支持 jpg、jpeg、bmp、png 海报";
+  return "";
+}
+
 export function dramaDraftError(input: DramaInput): string {
   if (input.title.length > DRAMA_TITLE_MAX_LENGTH) {
     return `剧名不能超过 ${DRAMA_TITLE_MAX_LENGTH} 字`;
@@ -46,10 +68,16 @@ export function dramaDraftError(input: DramaInput): string {
     return `简介不能超过 ${DRAMA_SUMMARY_MAX_LENGTH} 字`;
   }
   if (input.category.length > DRAMA_CATEGORY_MAX_LENGTH) {
-    return `分类不能超过 ${DRAMA_CATEGORY_MAX_LENGTH} 字`;
+    return `剧目类型不能超过 ${DRAMA_CATEGORY_MAX_LENGTH} 字`;
+  }
+  if (!normalizeDramaTypeCategory(input.category)) {
+    return "请选择剧目类型";
   }
   if (input.coverUrl.length > COVER_URL_MAX_LENGTH) {
     return `封面 URL 不能超过 ${COVER_URL_MAX_LENGTH} 字`;
+  }
+  if (input.tags.length === 0) {
+    return "请至少选择一个标签";
   }
   if (input.tags.length > DRAMA_TAG_MAX_COUNT) {
     return `标签最多 ${DRAMA_TAG_MAX_COUNT} 个`;

@@ -145,25 +145,25 @@ function ledgerAgeLabel(value: string | null): string {
 </template>
 
 <style scoped>
-.dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr); gap: 18px; }
+.dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr); gap: var(--space-3); }
 .metrics-panel { grid-column: 1 / 2; }
 .callback-panel { grid-column: 1 / -1; }
 .ledger-panel { grid-column: 1 / -1; }
 .callback-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.callback-help { margin: 14px 0 0; color: var(--color-muted); font-size: 12px; line-height: 1.5; }
-.status-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.status-grid div { display: flex; align-items: center; flex-direction: column; padding: 13px 4px; border-radius: 8px; background: var(--color-surface-soft); }
+.callback-help { margin: var(--space-3) 0 0; color: var(--color-muted); font-size: 12px; line-height: 1.5; }
+.status-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); }
+.status-grid div { display: flex; align-items: center; flex-direction: column; padding: var(--space-3) var(--space-1); border-radius: 8px; background: var(--color-surface-soft); }
 .status-grid strong { font-size: 23px; }
 .status-grid span { color: var(--color-muted); font-size: 11px; }
-.text-link { display: inline-flex; gap: 7px; margin-top: 16px; color: var(--color-primary); font-weight: 650; }
-.metric-empty { display: flex; align-items: center; gap: 15px; min-height: 116px; padding: 18px; border: 1px dashed #cad3df; border-radius: 10px; background: #fafbfd; }
+.text-link { display: inline-flex; gap: var(--space-2); margin-top: var(--space-3); color: var(--color-primary); font-weight: 650; }
+.metric-empty { display: flex; align-items: center; gap: var(--space-3); min-height: 116px; padding: var(--space-3); border: 1px dashed #cad3df; border-radius: 10px; background: #fafbfd; }
 .metric-empty > span { display: grid; width: 43px; height: 43px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: var(--color-info); background: var(--color-info-soft); font-size: 20px; }
 .metric-empty p { max-width: 600px; margin: 4px 0 0; color: var(--color-muted); font-size: 12px; }
-.metric-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
-.metric-cards article { display: flex; flex-direction: column; padding: 14px; border-radius: 9px; background: var(--color-surface-soft); }
+.metric-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.metric-cards article { display: flex; flex-direction: column; padding: var(--space-3); border-radius: 9px; background: var(--color-surface-soft); }
 .metric-cards strong { font-size: 25px; }
-.principles-panel ol { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.principles-panel li { display: flex; align-items: center; gap: 11px; }
+.principles-panel ol { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.principles-panel li { display: flex; align-items: center; gap: var(--space-2); }
 .principles-panel li > span { color: #9ba8b9; font-size: 11px; font-weight: 800; }
 .principles-panel li > div { display: flex; flex-direction: column; }
 @media (max-width: 1150px) { .dashboard-grid { grid-template-columns: 1fr; } .metrics-panel, .callback-panel, .ledger-panel { grid-column: auto; } }

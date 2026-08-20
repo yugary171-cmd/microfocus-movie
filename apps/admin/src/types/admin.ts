@@ -58,6 +58,7 @@ export interface DramaRecord {
   category: string;
   tags: string[];
   coverUrl: string;
+  promoCoverUrl: string;
   status: DramaStatus;
   ownerId: string;
   ownerName: string;
@@ -85,6 +86,7 @@ export interface DramaInput {
   category: string;
   tags: string[];
   coverUrl: string;
+  promoCoverUrl: string;
   rightsHolder: string;
   licenseNumber: string;
   rightsValidFrom: string;

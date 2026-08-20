@@ -51,7 +51,7 @@ describe("DramaEditorView", () => {
     });
   });
 
-  it("uses contract field limits and blocks save when the draft is oversized", async () => {
+  it("uses contract field limits and blocks save until type and tags are chosen", async () => {
     const wrapper = mount(DramaEditorView);
     await flushPromises();
 
@@ -61,15 +61,20 @@ describe("DramaEditorView", () => {
       String(RIGHTS_MATERIAL_DIGEST_LENGTH),
     );
     expect(wrapper.text()).toContain(`最多 ${DRAMA_TAG_MAX_COUNT} 个`);
+    expect(wrapper.text()).toContain("剧目类型");
+    expect(wrapper.text()).toContain("剧目海报");
+    expect(wrapper.text()).toContain("推广海报");
+    expect(wrapper.text()).not.toContain("封面 URL");
+    expect(wrapper.find("input[placeholder='使用逗号分隔']").exists()).toBe(false);
+    expect(wrapper.findAll(".required-mark").length).toBeGreaterThan(0);
+    expect(wrapper.get("input[placeholder='rights/…/document.pdf']").attributes("required")).toBeUndefined();
 
-    await wrapper.get("input[placeholder='使用逗号分隔']").setValue(
-      Array.from({ length: DRAMA_TAG_MAX_COUNT + 1 }, (_, index) => `标签${index}`).join("，"),
-    );
+    await wrapper.get("input").setValue("待保存草稿");
     await wrapper.findAll("button").find((button) => button.text() === "保存草稿")?.trigger("click");
     await flushPromises();
 
     expect(saveDrama).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain("标签最多");
+    expect(wrapper.text()).toContain("请选择剧目类型");
     wrapper.unmount();
   });
 
@@ -86,7 +91,7 @@ describe("DramaEditorView", () => {
         episodes: [],
       }),
     );
-    const wrapper = mount(DramaEditorView);
+    const wrapper = mount(DramaEditorView, { attachTo: document.body });
     await flushPromises();
 
     expect(wrapper.get("input").attributes("disabled")).toBeUndefined();
@@ -94,11 +99,31 @@ describe("DramaEditorView", () => {
     expect(wrapper.text()).not.toContain("只能编辑本人负责的剧目");
 
     await wrapper.get("input").setValue("管理员新建剧");
+    await wrapper.get("input[value='真人剧']").setValue();
+    await wrapper.findAll("button").find((button) => button.text() === "选择标签")?.trigger("click");
+    await flushPromises();
+    const search = document.body.querySelector("input[type='search']") as HTMLInputElement | null;
+    expect(search).toBeTruthy();
+    search!.value = "都市";
+    search!.dispatchEvent(new Event("input", { bubbles: true }));
+    await flushPromises();
+    const urban = [...document.body.querySelectorAll("button")].find((button) => button.textContent === "都市");
+    urban?.click();
+    [...document.body.querySelectorAll("button")].find((button) => button.textContent === "完成")?.click();
+    await flushPromises();
+
     const save = wrapper.findAll("button").find((button) => button.text() === "保存草稿");
     expect(save?.attributes("disabled")).toBeUndefined();
     await save?.trigger("click");
     await flushPromises();
-    expect(saveDrama).toHaveBeenCalled();
+    expect(saveDrama).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "管理员新建剧",
+        category: "真人剧",
+        tags: ["都市"],
+      }),
+      undefined,
+    );
     wrapper.unmount();
   });
 });

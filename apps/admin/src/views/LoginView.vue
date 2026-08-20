@@ -137,26 +137,26 @@ async function submit(): Promise<void> {
 <style scoped>
 .login-page { display: grid; min-height: 100vh; grid-template-columns: minmax(360px, .9fr) minmax(440px, 1.1fr); background: #fff; }
 .login-intro { display: flex; min-height: 100vh; justify-content: space-between; flex-direction: column; padding: clamp(34px, 6vw, 74px); color: #eaf0fa; background: radial-gradient(circle at 75% 25%, #274178 0, transparent 38%), linear-gradient(145deg, #111a2d, #172641); }
-.login-brand { display: flex; align-items: center; gap: 12px; font-size: 17px; letter-spacing: .06em; }
+.login-brand { display: flex; align-items: center; gap: var(--space-3); font-size: 17px; letter-spacing: .06em; }
 .login-brand span { display: grid; width: 39px; height: 39px; place-items: center; border-radius: 11px; background: #4268d8; font-weight: 800; }
-.login-intro h1 { max-width: 520px; margin-bottom: 20px; font-size: clamp(40px, 5vw, 63px); line-height: 1.12; letter-spacing: -.05em; }
+.login-intro h1 { max-width: 520px; margin-bottom: var(--space-4); font-size: clamp(40px, 5vw, 63px); line-height: 1.12; letter-spacing: -.05em; }
 .login-intro p:not(.eyebrow) { max-width: 480px; color: #aebbd1; font-size: 16px; }
 .login-intro .eyebrow { color: #88a5fa; }
-.login-features { display: flex; flex-wrap: wrap; gap: 18px; margin: 0; padding: 0; color: #b9c5d7; list-style: none; font-size: 12px; }
-.login-features span { margin-right: 5px; color: #82a1fa; }
-.login-card { align-self: center; width: min(440px, calc(100% - 48px)); margin: auto; padding: 34px; border: 1px solid var(--color-border); border-radius: 16px; background: #fff; box-shadow: var(--shadow-md); }
+.login-features { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: 0; padding: 0; color: #b9c5d7; list-style: none; font-size: 12px; }
+.login-features span { margin-right: var(--space-1); color: #82a1fa; }
+.login-card { align-self: center; width: min(440px, calc(100% - 48px)); margin: auto; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: 16px; background: #fff; box-shadow: var(--shadow-md); }
 .login-card > div:first-child p:last-child { color: var(--color-muted); }
-.login-card form { display: grid; gap: 16px; margin-top: 23px; }
-.login-mock-notice { display: flex; flex-direction: column; margin-top: 20px; padding: 11px 13px; border: 1px solid #f1d18e; border-radius: 8px; color: #71450a; background: #fff8e8; font-size: 12px; }
-.form-error { margin: 0; padding: 9px 11px; border-radius: 7px; color: var(--color-danger); background: var(--color-danger-soft); font-size: 12px; }
-.login-submit { width: 100%; min-height: 44px; margin-top: 2px; }
-.login-footnote { margin: 20px 0 0; color: var(--color-muted); font-size: 11px; text-align: center; }
+.login-card form { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+.login-mock-notice { display: flex; flex-direction: column; margin-top: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid #f1d18e; border-radius: 8px; color: #71450a; background: #fff8e8; font-size: 12px; }
+.form-error { margin: 0; padding: var(--space-2) var(--space-3); border-radius: 7px; color: var(--color-danger); background: var(--color-danger-soft); font-size: 12px; }
+.login-submit { width: 100%; height: var(--control-height); min-height: var(--control-height); margin-top: var(--space-1); }
+.login-footnote { margin: var(--space-3) 0 0; color: var(--color-muted); font-size: 11px; text-align: center; }
 @media (max-width: 800px) {
   .login-page { display: flex; min-height: 100vh; flex-direction: column; background: #f5f7fb; }
-  .login-intro { min-height: 230px; padding: 27px 24px 44px; }
-  .login-intro > div:nth-child(2) { margin-top: 35px; }
-  .login-intro h1 { margin-bottom: 10px; font-size: 35px; }
+  .login-intro { min-height: 230px; padding: var(--space-4); }
+  .login-intro > div:nth-child(2) { margin-top: var(--space-4); }
+  .login-intro h1 { margin-bottom: var(--space-2); font-size: 35px; }
   .login-intro p:not(.eyebrow), .login-features { display: none; }
-  .login-card { width: calc(100% - 28px); margin: -24px auto 20px; padding: 25px 20px; }
+  .login-card { width: calc(100% - 28px); margin: calc(-1 * var(--space-4)) auto var(--space-3); padding: var(--space-4) var(--space-3); }
 }
 </style>

@@ -2,9 +2,11 @@ import { Controller, Get, Module, Param, Query, Req } from "@nestjs/common";
 import {
   API_ROUTES,
   boundListQuery,
+  CATALOG_FILTER_OPTIONS,
   FREE_EPISODE_COUNT,
   SEARCH_MAX_PAGE,
   SEARCH_PAGE_SIZE,
+  episodeDisplayTitle,
   type CatalogResponse,
   type DramaSearchFilters,
   type DramaCard,
@@ -19,11 +21,6 @@ import { catalogCardInclude, toDramaCard } from "./drama-card.js";
 
 const CATALOG_FEATURED_LIMIT = 8;
 const CATALOG_SHELF_LIMIT = 20;
-const FILTER_OPTIONS = {
-  subjects: ["现代", "女性成长", "脑洞", "奇幻", "玄幻", "古言", "战神", "宫斗", "仙侠", "权谋", "悬疑", "喜剧", "青春"],
-  settings: ["打脸虐渣", "大男主", "大女主", "马甲", "重生", "穿越", "系统", "先婚后爱", "家长里短", "破镜重圆", "神豪", "豪门", "强者回归", "异能"],
-  backgrounds: ["现代", "都市", "古代", "乡村", "年代", "架空", "职场", "民国", "校园", "宫廷"]
-} satisfies CatalogResponse["filterOptions"];
 
 @Controller()
 export class CatalogController {
@@ -54,7 +51,11 @@ export class CatalogController {
       latest: latestCards,
       popular: rankedCards,
       categories: [...new Set([...rankedCards, ...latestCards].map((card) => card.category))],
-      filterOptions: FILTER_OPTIONS
+      filterOptions: {
+        subjects: [...CATALOG_FILTER_OPTIONS.subjects],
+        settings: [...CATALOG_FILTER_OPTIONS.settings],
+        backgrounds: [...CATALOG_FILTER_OPTIONS.backgrounds]
+      }
     };
   }
 
@@ -141,7 +142,7 @@ export class CatalogController {
       episodes: drama.episodes.map((episode) => ({
         id: episode.id,
         episodeNumber: episode.episodeNumber,
-        title: episode.title,
+        title: episodeDisplayTitle(episode.title, episode.episodeNumber),
         durationSeconds: episode.durationSeconds,
         isFree: episode.episodeNumber <= FREE_EPISODE_COUNT
       }))

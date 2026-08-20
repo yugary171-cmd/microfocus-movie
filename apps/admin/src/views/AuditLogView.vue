@@ -102,7 +102,7 @@ onMounted(load);
 
 <style scoped>
 .nowrap { white-space: nowrap; }
-code { padding: 3px 6px; border-radius: 5px; color: #445269; background: #f1f3f6; font-size: 11px; }
-.list-summary { margin: -4px 0 10px; color: var(--color-muted); font-size: 12px; }
-.pager { display: flex; gap: 8px; margin-top: 12px; }
+code { padding: var(--space-1) var(--space-2); border-radius: 5px; color: #445269; background: #f1f3f6; font-size: 11px; }
+.list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
+.pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
 </style>

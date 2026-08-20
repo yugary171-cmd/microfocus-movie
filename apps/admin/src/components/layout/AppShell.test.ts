@@ -38,4 +38,17 @@ describe("AppShell", () => {
     wrapper.get('button[aria-label="退出登录"]');
     wrapper.unmount();
   });
+
+  it("renders sidebar icons at the same pixel size", () => {
+    const wrapper = mount(AppShell, {
+      global: {
+        stubs: { ModeBanner: true },
+      },
+    });
+    const icons = wrapper.findAll(".nav-item__icon .app-icon");
+    expect(icons.length).toBeGreaterThan(1);
+    const sizes = icons.map((icon) => [icon.attributes("width"), icon.attributes("height")]);
+    expect(sizes.every(([width, height]) => width === "18" && height === "18")).toBe(true);
+    wrapper.unmount();
+  });
 });

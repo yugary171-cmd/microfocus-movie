@@ -189,33 +189,36 @@ export const adminApi = {
       { value: input.rightsMaterialObjectKey, label: "材料对象键" },
       { value: input.rightsMaterialDigestSha256, label: "材料 SHA-256" },
     ];
-    const missingRights = rightsFields
-      .filter((field) => !field.value.trim())
-      .map((field) => field.label);
-    if (missingRights.length) {
-      throw new Error(`真实保存前请补齐版权资料：${missingRights.join("、")}`);
-    }
-    if (!isRightsMaterialDigest(input.rightsMaterialDigestSha256)) {
-      throw new Error("材料 SHA-256 必须是 64 位十六进制摘要");
-    }
-    if (
-      !input.allowsWechatDistribution ||
-      !input.allowsAdMonetization ||
-      !input.allowsTranscoding ||
-      !input.allowsPromotionalMaterial
-    ) {
-      throw new Error("真实保存前必须逐项确认微信分发、广告变现、转码和宣传材料授权");
+    const hasRightsDraft =
+      rightsFields.some((field) => field.value.trim()) ||
+      input.allowsWechatDistribution ||
+      input.allowsAdMonetization ||
+      input.allowsTranscoding ||
+      input.allowsPromotionalMaterial;
+    if (hasRightsDraft) {
+      const missingRights = rightsFields
+        .filter((field) => !field.value.trim())
+        .map((field) => field.label);
+      if (missingRights.length) {
+        throw new Error(`保存版权资料前请补齐：${missingRights.join("、")}`);
+      }
+      if (!isRightsMaterialDigest(input.rightsMaterialDigestSha256)) {
+        throw new Error("材料 SHA-256 必须是 64 位十六进制摘要");
+      }
+      if (
+        !input.allowsWechatDistribution ||
+        !input.allowsAdMonetization ||
+        !input.allowsTranscoding ||
+        !input.allowsPromotionalMaterial
+      ) {
+        throw new Error("填写版权时必须逐项确认微信分发、广告变现、转码和宣传材料授权");
+      }
     }
     if (!id && input.episodes.length === 0) {
       throw new Error("真实创建至少需要一集内容");
     }
-    if (
-      !id &&
-      input.episodes.some(
-        (episode) => !episode.title.trim() || episode.durationSeconds < 1,
-      )
-    ) {
-      throw new Error("真实创建前请补齐每集标题，并确保时长至少为 1 秒");
+    if (!id && input.episodes.some((episode) => episode.durationSeconds < 1)) {
+      throw new Error("真实创建前请确保每集时长至少为 1 秒");
     }
     if (!input.coverUrl) {
       throw new Error("真实保存需要有效的封面 URL");
@@ -248,24 +251,26 @@ export const adminApi = {
     });
     const saved = normalizeDrama(response);
     const dramaId = id || saved.id;
-    if (!dramaId) throw new Error("剧目已保存但响应缺少 ID，版权资料未写入");
-    await request(encodedRoute(endpoints.rights, dramaId), {
-      method: "POST",
-      body: json({
-        rightsHolder: input.rightsHolder,
-        validFrom: input.rightsValidFrom,
-        validUntil: input.licenseExpiresAt,
-        territory: RIGHTS_TERRITORY,
-        allowsWechatDistribution: input.allowsWechatDistribution,
-        allowsAdMonetization: input.allowsAdMonetization,
-        allowsTranscoding: input.allowsTranscoding,
-        allowsPromotionalMaterial: input.allowsPromotionalMaterial,
-        licenseNumber: input.licenseNumber,
-        reportNumber: input.rightsReportNumber,
-        materialObjectKey: input.rightsMaterialObjectKey,
-        materialDigestSha256: input.rightsMaterialDigestSha256,
-      }),
-    });
+    if (!dramaId) throw new Error("剧目已保存但响应缺少 ID");
+    if (hasRightsDraft) {
+      await request(encodedRoute(endpoints.rights, dramaId), {
+        method: "POST",
+        body: json({
+          rightsHolder: input.rightsHolder,
+          validFrom: input.rightsValidFrom,
+          validUntil: input.licenseExpiresAt,
+          territory: RIGHTS_TERRITORY,
+          allowsWechatDistribution: input.allowsWechatDistribution,
+          allowsAdMonetization: input.allowsAdMonetization,
+          allowsTranscoding: input.allowsTranscoding,
+          allowsPromotionalMaterial: input.allowsPromotionalMaterial,
+          licenseNumber: input.licenseNumber,
+          reportNumber: input.rightsReportNumber,
+          materialObjectKey: input.rightsMaterialObjectKey,
+          materialDigestSha256: input.rightsMaterialDigestSha256,
+        }),
+      });
+    }
     return normalizeDrama(
       await request<unknown>(encodedRoute(endpoints.drama, dramaId)),
     );

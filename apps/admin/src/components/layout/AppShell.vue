@@ -49,7 +49,7 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
           :class="{ 'is-active': isNavigationItemActive(route.path, item.to) }"
           @click="menuOpen = false"
         >
-          <span class="nav-item__icon"><Icon :name="item.icon" /></span>
+          <span class="nav-item__icon"><Icon :name="item.icon" :size="18" /></span>
           <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
         </RouterLink>
       </nav>

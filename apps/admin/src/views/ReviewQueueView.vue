@@ -79,7 +79,7 @@ async function confirmDecision(reason: string): Promise<void> {
       reason,
     );
     notice.value = adminApi.mode === "mock"
-      ? "演示审核结论已记录；未提交真实内容平台。"
+      ? "演示审核结论已记在本机浏览器中；刷新后已退回的剧不会再进待审队列。未提交真实内容平台。"
       : "审核结论已提交。";
     closeDialog();
     await load();
@@ -173,23 +173,23 @@ onMounted(load);
 </template>
 
 <style scoped>
-.list-summary { margin: 0 0 10px; color: var(--color-muted); font-size: 12px; }
-.pager { display: flex; gap: 8px; margin-top: 12px; }
-.review-list { display: grid; gap: 14px; }
-.review-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; }
-.review-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
-.review-card__heading > div { display: flex; align-items: center; gap: 9px; }
+.list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
+.pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.review-list { display: grid; gap: var(--space-3); }
+.review-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4); }
+.review-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.review-card__heading > div { display: flex; align-items: center; gap: var(--space-2); }
 .review-card__heading h2 { margin: 0; }
-dl { display: flex; flex-wrap: wrap; gap: 12px 30px; margin: 15px 0; }
+dl { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4); margin: var(--space-3) 0; }
 dl div { display: flex; flex-direction: column; }
 dt { color: var(--color-muted); font-size: 10px; font-weight: 700; }
-dd { margin: 1px 0 0; font-size: 12px; }
-.risk-flags { padding: 10px 12px; border-left: 3px solid var(--color-warning); border-radius: 6px; color: #71450a; background: var(--color-warning-soft); font-size: 12px; }
-.risk-flags ul { margin: 3px 0 0; padding-left: 18px; }
+dd { margin: var(--space-1) 0 0; font-size: 12px; }
+.risk-flags { padding: var(--space-2) var(--space-3); border-left: 3px solid var(--color-warning); border-radius: 6px; color: #71450a; background: var(--color-warning-soft); font-size: 12px; }
+.risk-flags ul { margin: var(--space-1) 0 0; padding-left: var(--space-3); }
 .risk-clear { color: var(--color-success); font-size: 12px; }
 .review-card__actions { display: flex; align-items: flex-end; justify-content: flex-end; gap: 8px; }
 .review-card__actions small { max-width: 180px; color: var(--color-danger); text-align: right; }
-.review-message { margin-bottom: 14px; padding: 10px 12px; border-radius: 8px; color: var(--color-success); background: var(--color-success-soft); }
+.review-message { margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: 8px; color: var(--color-success); background: var(--color-success-soft); }
 .review-message--error { color: var(--color-danger); background: var(--color-danger-soft); }
 @media (max-width: 720px) { .review-card { grid-template-columns: 1fr; } .review-card__heading { flex-direction: column; } .review-card__actions { align-items: stretch; flex-direction: column-reverse; } }
 </style>

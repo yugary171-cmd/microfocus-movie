@@ -26,5 +26,12 @@
   --radius-md: 12px;
   --radius-lg: 18px;
   --sidebar-width: 248px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --control-height: 32px;
+  --button-font-size: 12px;
+  --button-font-weight: 500;
   --transition: 160ms ease;
 }

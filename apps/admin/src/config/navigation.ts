@@ -4,7 +4,7 @@ export interface NavigationItem {
   to: string;
   label: string;
   description: string;
-  icon: "home" | "grid" | "check" | "settings" | "clock" | "users";
+  icon: "home" | "grid" | "circle-check" | "settings" | "clock" | "users";
   roles?: AdminRole[];
 }
 
@@ -15,7 +15,7 @@ export const navigationItems: NavigationItem[] = [
     to: "/reviews",
     label: "审核队列",
     description: "待审内容与结论",
-    icon: "check",
+    icon: "circle-check",
   },
   {
     to: "/operations",

@@ -8,9 +8,10 @@ describe("mock admin publish path", () => {
     const input: DramaInput = {
       title: "Mock 发布验收剧",
       summary: "用于验证管理端发布主路径。",
-      category: "都市",
+      category: "真人剧",
       tags: ["验收"],
       coverUrl: "",
+      promoCoverUrl: "",
       rightsHolder: "Mock 内容方",
       licenseNumber: "MOCK-2026-001",
       rightsValidFrom: "2026-01-01",
@@ -74,6 +75,16 @@ describe("mock admin publish path", () => {
     });
   });
 
+  it("drops rejected items from the pending review queue", async () => {
+    const pending = (await mockApi.listReviews()).items;
+    const target = pending.find((item) => item.dramaId === "drama-001") ?? pending[0];
+    if (!target) throw new Error("expected a pending review");
+    expect(target.status).toBe("PENDING");
+    await mockApi.review(target.id, false, "资料不完整需要退回");
+    const remaining = (await mockApi.listReviews()).items;
+    expect(remaining.some((item) => item.id === target.id)).toBe(false);
+  });
+
   it("rejects an oversized drama draft before storing mock state", async () => {
     await expect(
       mockApi.saveDrama({
@@ -82,6 +93,7 @@ describe("mock admin publish path", () => {
         category: "都市",
         tags: [],
         coverUrl: "",
+        promoCoverUrl: "",
         rightsHolder: "",
         licenseNumber: "",
         rightsValidFrom: "",

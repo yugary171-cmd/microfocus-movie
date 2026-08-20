@@ -457,26 +457,26 @@ onMounted(load);
 </template>
 
 <style scoped>
-.operation-grid { display: grid; grid-template-columns: minmax(320px, .8fr) minmax(420px, 1.2fr); gap: 18px; align-items: start; }
+.operation-grid { display: grid; grid-template-columns: minmax(320px, .8fr) minmax(420px, 1.2fr); gap: var(--space-3); align-items: start; }
 .panel--wide { grid-column: 1 / -1; }
 .breaker-panel { border-top: 3px solid var(--color-success); }
 .breaker-panel.is-enabled { border-top-color: var(--color-danger); background: linear-gradient(#fff, #fffafa); }
-.breaker-visual { display: flex; align-items: center; gap: 13px; padding: 15px; border-radius: 10px; background: var(--color-success-soft); }
+.breaker-visual { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: 10px; background: var(--color-success-soft); }
 .is-enabled .breaker-visual { color: var(--color-danger); background: var(--color-danger-soft); }
 .breaker-visual > span { display: grid; width: 39px; height: 39px; place-items: center; border-radius: 50%; color: #fff; background: var(--color-success); }
 .is-enabled .breaker-visual > span { background: var(--color-danger); }
 .breaker-visual > div { display: flex; flex-direction: column; }
-.breaker-panel dl { display: grid; gap: 9px; margin: 17px 0; }
-.breaker-panel dl div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
+.breaker-panel dl { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+.breaker-panel dl div { display: grid; grid-template-columns: 110px 1fr; gap: var(--space-2); }
 .breaker-panel dt { color: var(--color-muted); font-size: 11px; }
 .breaker-panel dd { margin: 0; }
-.callback-filter { display: flex; align-items: end; gap: 12px; margin-bottom: 14px; }
-.callback-table { margin-bottom: 18px; }
+.callback-filter { display: flex; align-items: end; gap: var(--space-3); margin-bottom: var(--space-3); }
+.callback-table { margin-bottom: var(--space-3); }
 .callback-table td { vertical-align: top; }
 .callback-table small { display: block; color: var(--color-muted); }
-.compensation-form { display: grid; gap: 14px; }
-.form-help { margin: 0; padding: 9px 11px; border-radius: 7px; color: var(--color-muted); background: var(--color-surface-soft); font-size: 11px; }
-.operation-message { margin-bottom: 14px; padding: 10px 12px; border-radius: 8px; color: var(--color-success); background: var(--color-success-soft); }
+.compensation-form { display: grid; gap: var(--space-3); }
+.form-help { margin: 0; padding: var(--space-2) var(--space-3); border-radius: 7px; color: var(--color-muted); background: var(--color-surface-soft); font-size: 11px; }
+.operation-message { margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: 8px; color: var(--color-success); background: var(--color-success-soft); }
 .operation-message--error { color: var(--color-danger); background: var(--color-danger-soft); }
 @media (max-width: 1040px) { .operation-grid { grid-template-columns: 1fr; } }
 </style>

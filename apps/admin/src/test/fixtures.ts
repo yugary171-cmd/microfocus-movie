@@ -31,6 +31,7 @@ export function createDrama(overrides: Partial<DramaRecord> = {}): DramaRecord {
     category: "测试",
     tags: [],
     coverUrl: "",
+    promoCoverUrl: "",
     status: DramaStatus.READY,
     ownerId: "editor-1",
     ownerName: "内容编辑",
