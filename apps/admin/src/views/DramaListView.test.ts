@@ -1,15 +1,17 @@
 import { AdminRole, DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import DramaDetailDrawer from "@/components/DramaDetailDrawer.vue";
 import DramaListView from "./DramaListView.vue";
 import type { DramaRecord } from "@/types/admin";
 
-const { listDramas } = vi.hoisted(() => ({
+const { getDrama, listDramas } = vi.hoisted(() => ({
+  getDrama: vi.fn(),
   listDramas: vi.fn(),
 }));
 
 vi.mock("@/api/admin", () => ({
-  adminApi: { listDramas },
+  adminApi: { getDrama, listDramas },
 }));
 
 vi.mock("@/stores/auth", () => ({
@@ -52,7 +54,10 @@ function drama(overrides: Partial<DramaRecord> = {}): DramaRecord {
 }
 
 describe("DramaListView", () => {
-  beforeEach(() => listDramas.mockReset());
+  beforeEach(() => {
+    getDrama.mockReset();
+    listDramas.mockReset();
+  });
 
   it("renders a useful empty state when the API returns no dramas", async () => {
     listDramas.mockResolvedValue({ items: [], total: 0 });
@@ -96,5 +101,53 @@ describe("DramaListView", () => {
     await wrapper.get("form").trigger("submit");
     await flushPromises();
     expect(listDramas).toHaveBeenLastCalledWith("微焦", "", 1);
+    wrapper.unmount();
+  });
+
+  it("opens read-only details while keeping edit on the existing route", async () => {
+    const detail = drama({ title: "完整剧目", tags: ["都市"] });
+    listDramas.mockResolvedValue({ items: [drama()], total: 1 });
+    getDrama.mockResolvedValue(detail);
+    const wrapper = mount(DramaListView);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("查看");
+    expect(wrapper.text()).toContain("编辑");
+    expect(wrapper.html()).toContain("/dramas/drama-1");
+
+    await wrapper.get("button.link").trigger("click");
+    await flushPromises();
+
+    expect(getDrama).toHaveBeenCalledWith("drama-1");
+    expect(wrapper.findComponent(DramaDetailDrawer).props("open")).toBe(true);
+    expect(wrapper.text()).toContain("完整剧目");
+    expect(wrapper.text()).toContain("版权与许可");
+
+    wrapper.findComponent(DramaDetailDrawer).vm.$emit("close");
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findComponent(DramaDetailDrawer).props("open")).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("shows a retryable error when loading drama details fails", async () => {
+    listDramas.mockResolvedValue({ items: [drama()], total: 1 });
+    getDrama.mockRejectedValueOnce(new Error("详情接口暂时不可用"));
+    const wrapper = mount(DramaListView);
+
+    await flushPromises();
+    await wrapper.get("button.link").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("详情接口暂时不可用");
+    const retry = wrapper.findAll("button").find((button) => button.text() === "重新加载");
+    expect(retry).toBeTruthy();
+
+    getDrama.mockResolvedValueOnce(drama({ title: "重试成功" }));
+    await retry?.trigger("click");
+    await flushPromises();
+    expect(wrapper.text()).toContain("重试成功");
+    expect(getDrama).toHaveBeenCalledTimes(2);
+    wrapper.unmount();
   });
 });

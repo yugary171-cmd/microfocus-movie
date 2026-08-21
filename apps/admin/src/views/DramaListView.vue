@@ -5,6 +5,7 @@ import { ElInput as ElementInput, ElOption as ElementOption, ElSelect as Element
 import { computed, onMounted, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
+import DramaDetailDrawer from "@/components/DramaDetailDrawer.vue";
 import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { dramaStatusLabels, formatDateTime } from "@/i18n";
@@ -26,6 +27,11 @@ const status = ref("");
 const loading = ref(true);
 const error = ref("");
 const totalPages = computed(() => Math.ceil(total.value / ADMIN_LIST_PAGE_SIZE));
+const detailOpen = ref(false);
+const detailLoading = ref(false);
+const detailError = ref("");
+const selectedDrama = ref<DramaRecord | null>(null);
+let detailRequestId = 0;
 
 const toneByStatus = computed(() => ({
   [DramaStatus.DRAFT]: "neutral",
@@ -68,6 +74,34 @@ function reset(): void {
 function go(next: number): void {
   page.value = next;
   void load();
+}
+
+async function openDetail(drama: DramaRecord): Promise<void> {
+  const requestId = ++detailRequestId;
+  selectedDrama.value = drama;
+  detailOpen.value = true;
+  detailLoading.value = true;
+  detailError.value = "";
+  try {
+    const detail = await adminApi.getDrama(drama.id);
+    if (requestId === detailRequestId) selectedDrama.value = detail;
+  } catch (caught) {
+    if (requestId === detailRequestId) detailError.value = toErrorMessage(caught);
+  } finally {
+    if (requestId === detailRequestId) detailLoading.value = false;
+  }
+}
+
+function closeDetail(): void {
+  detailRequestId += 1;
+  detailOpen.value = false;
+  detailLoading.value = false;
+  detailError.value = "";
+  selectedDrama.value = null;
+}
+
+function retryDetail(): void {
+  if (selectedDrama.value) void openDetail(selectedDrama.value);
 }
 
 onMounted(load);
@@ -114,7 +148,11 @@ onMounted(load);
                 <td>{{ Array.isArray(drama.episodes) ? drama.episodes.length : 0 }}</td>
                 <td><StatusBadge :label="drama.licenseNumber ? '已填写' : '待补齐'" :tone="drama.licenseNumber ? 'success' : 'warning'" /></td>
                 <td>{{ formatDateTime(drama.updatedAt) }}</td>
-                <td><RouterLink class="link" :to="`/dramas/${drama.id}`">查看 / 编辑</RouterLink></td>
+                <td class="drama-actions">
+                  <button class="link" type="button" @click="openDetail(drama)">查看</button>
+                  <span class="drama-actions__divider" aria-hidden="true">|</span>
+                  <RouterLink class="link" :to="`/dramas/${drama.id}`">编辑</RouterLink>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -125,11 +163,21 @@ onMounted(load);
         </div>
       </template>
     </section>
+    <DramaDetailDrawer
+      :open="detailOpen"
+      :drama="selectedDrama"
+      :loading="detailLoading"
+      :error="detailError"
+      @close="closeDetail"
+      @retry="retryDetail"
+    />
   </div>
 </template>
 
 <style scoped>
 .list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
 .pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.drama-actions { white-space: nowrap; }
+.drama-actions__divider { padding: 0 8px; color: var(--sls-normal-color-7); font-size: 12px; font-weight: 500; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 </style>
