@@ -18,7 +18,8 @@ import {
   isOwnedContentRole,
   type AssignableAdminRole,
 } from "@microfocus/contracts";
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { accountManagementMessage } from "@/api/account-errors";
 import { toErrorMessage } from "@/api/client";
@@ -31,6 +32,8 @@ import type {
   AdminAccountRecord,
   AdminSetupLink,
 } from "@/types/admin";
+
+const ElInput = ElementInput as Component;
 
 type DialogMode = "create" | "edit" | "suspend" | "activate" | "invite" | "reset";
 
@@ -370,7 +373,7 @@ onBeforeUnmount(() => {
       <div v-if="error && !dialogMode" class="operation-message operation-message--error" role="alert">{{ error }}</div>
       <section class="panel accounts-panel">
         <form class="toolbar" role="search" @submit.prevent="filter">
-          <label class="field"><span>搜索账号</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="姓名或登录名" /></label>
+          <label class="field"><span>搜索账号</span><el-input v-model="query" class="admin-input" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="姓名或登录名" /></label>
           <label class="field"><span>角色</span><select v-model="roleFilter"><option value="">全部角色</option><option v-for="role in Object.values(AdminRole)" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
           <label class="field"><span>状态</span><select v-model="statusFilter"><option value="">全部状态</option><option value="PENDING_SETUP">待开通</option><option value="ACTIVE">正常</option><option value="SUSPENDED">已停用</option></select></label>
           <button class="button button--secondary" type="submit" :disabled="loading">筛选</button>
@@ -442,14 +445,14 @@ onBeforeUnmount(() => {
           <h2 :id="`${dialogMode}-title`">{{ dialogTitle }}</h2>
           <p v-if="selected">目标账号：{{ selected.displayName }}（{{ selected.email }}）</p>
           <template v-if="dialogMode === 'create' || dialogMode === 'edit'">
-            <label class="field"><span>真实姓名 *</span><input v-model="form.displayName" autocomplete="off" :maxlength="ADMIN_DISPLAY_NAME_MAX_LENGTH" required /></label>
-            <label v-if="dialogMode === 'create'" class="field"><span>登录名 *</span><input v-model="form.email" type="text" autocomplete="off" :maxlength="ADMIN_LOGIN_ID_MAX_LENGTH" :pattern="ADMIN_LOGIN_ID_PATTERN_SOURCE" required placeholder="name 或 name@company.com" /><small>只作登录标识，不会用来收发邮件；已有带 @ 的账号仍可登录。</small></label>
+            <label class="field"><span>真实姓名 *</span><el-input v-model="form.displayName" class="admin-input" autocomplete="off" :maxlength="ADMIN_DISPLAY_NAME_MAX_LENGTH" required /></label>
+            <label v-if="dialogMode === 'create'" class="field"><span>登录名 *</span><el-input v-model="form.email" class="admin-input" type="text" autocomplete="off" :maxlength="ADMIN_LOGIN_ID_MAX_LENGTH" :pattern="ADMIN_LOGIN_ID_PATTERN_SOURCE" required placeholder="name 或 name@company.com" /><small>只作登录标识，不会用来收发邮件；已有带 @ 的账号仍可登录。</small></label>
             <label class="field"><span>角色 *</span><select v-model="form.role"><option v-for="role in ASSIGNABLE_ADMIN_ROLES" :key="role" :value="role">{{ roleLabels[role] }}</option></select></label>
           </template>
-          <label v-if="['create', 'edit', 'suspend', 'activate', 'invite', 'reset'].includes(dialogMode)" class="field"><span>操作原因 *</span><textarea v-model="form.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required /></label>
+          <label v-if="['create', 'edit', 'suspend', 'activate', 'invite', 'reset'].includes(dialogMode)" class="field"><span>操作原因 *</span><el-input v-model="form.reason" class="admin-input" type="textarea" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required /></label>
           <div v-if="dialogMode === 'reset'" class="danger-note">重置后目标账号会立即暂停，旧密码、TOTP 和现有会话全部失效，直到本人通过新链接重新开通。</div>
           <label v-if="needsReplacement" class="field"><span>接替内容编辑（待移交 {{ selected?.ownedDramaCount }} 部剧目）*</span><select v-model="form.replacementEditorId" required><option value="">请选择正常的内容编辑</option><option v-for="editor in activeEditors" :key="editor.id" :value="editor.id">{{ editor.displayName }} · {{ editor.email }}</option></select></label>
-          <label class="field"><span>当前管理员 TOTP 验证码 *</span><input v-model="form.otp" inputmode="numeric" autocomplete="one-time-code" :maxlength="OTP_INPUT_LENGTH" pattern="[0-9]*" required /></label>
+          <label class="field"><span>当前管理员 TOTP 验证码 *</span><el-input v-model="form.otp" class="admin-input" inputmode="numeric" autocomplete="one-time-code" :maxlength="OTP_INPUT_LENGTH" pattern="[0-9]*" required /></label>
           <div v-if="error" class="operation-message operation-message--error" role="alert">{{ error }}</div>
           <div class="dialog__actions"><button class="button button--ghost" type="button" :disabled="busy" @click="closeDialog">取消</button><button class="button" :class="['suspend', 'reset'].includes(dialogMode) ? 'button--danger' : 'button--primary'" type="submit" :disabled="busy">{{ busy ? '处理中…' : '确认' }}</button></div>
         </form>
@@ -459,7 +462,7 @@ onBeforeUnmount(() => {
         <section class="dialog setup-link-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-link-title">
           <h2 id="setup-link-title">一次性{{ setupLink.purpose === 'INVITE' ? '开通' : '凭据重置' }}链接</h2>
           <p>请把链接安全地交给 {{ setupLinkOwner }}。链接关闭后不再显示，新的链接会使旧链接失效。</p>
-          <label class="field"><span>链接（仅本次显示）</span><textarea :value="setupLink.setupUrl" rows="4" readonly @focus="($event.target as HTMLTextAreaElement).select()" /></label>
+          <label class="field"><span>链接（仅本次显示）</span><el-input :model-value="setupLink.setupUrl" class="admin-input" type="textarea" rows="4" readonly @focus="($event.target as HTMLTextAreaElement).select()" /></label>
           <p>有效期至：<strong>{{ formatDateTime(setupLink.expiresAt) }}</strong></p>
           <div class="dialog__actions"><button class="button button--secondary" type="button" @click="copySetupLink">{{ copied ? '已复制' : '复制链接' }}</button><button class="button button--primary" type="button" @click="closeSetupLink">我已安全保存</button></div>
         </section>

@@ -53,6 +53,8 @@ flowchart LR
 
 ### 3.2 管理端身份
 
+- 管理员使用短时 access JWT（当前由 `ADMIN_ACCESS_TOKEN_TTL_SECONDS` 控制）和服务端保存摘要的轮换 refresh session；refresh token 只通过 HttpOnly、Secure（生产）Cookie 传输，不进入响应 JSON、浏览器存储或日志。
+- 管理端收到 access JWT 失效后最多自动刷新并重试一次；刷新失败才清理本地会话并要求重新登录。Refresh session 按 token 摘要、有效期、轮换状态和管理员 `sessionVersion` 校验，检测到重放时撤销同一 token family。
 - EDITOR 可创建剧目、修改本人负责且处于可编辑状态的剧目、审核待审内容（含自己提交的版本）、发布和下架。不能访问运营控制、全局审计和账号管理。
 - 存量 REVIEWER 与 EDITOR 权限相同；新建账号不再提供该角色。
 - ADMIN 具备 EDITOR 的全部内容能力，并可修改任意剧目；同时执行熔断、补偿、审计和账号管理。不能绕过权利、媒体审核或发布闸门。
@@ -71,7 +73,7 @@ flowchart LR
 | 领域 | 核心记录 | 不变量 |
 | --- | --- | --- |
 | 内容 | Drama、Episode、RightsRecord、MediaAsset、Review | 稳定集号不复用；权利和媒体使用版本记录；已发布内容不可原地修改 |
-| 身份 | User、匿名/用户会话、Admin | 用户、匿名 viewer 和管理员令牌不可互换 |
+| 身份 | User、匿名/用户会话、Admin、AdminRefreshSession | 用户、匿名 viewer 和管理员令牌不可互换；管理员 refresh session 只保存摘要并支持轮换/撤销 |
 | 奖励 | RewardChallenge、provider callback event | challenge 一次性；可信验证与幂等约束决定是否发奖 |
 | 权益 | EntitlementGrant、EntitlementDebit/Consumption、EntitlementAdjustment | 发放、消费和纠错事实不可修改；余额可重建且不为负 |
 | 播放 | PlaybackLease、PlaybackReservation、Heartbeat、WatchProgress | 锁定内容单活租约；媒体窗口受服务端预算约束；心跳顺序唯一 |

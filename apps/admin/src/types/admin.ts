@@ -27,6 +27,7 @@ export interface AdminUser {
 
 export interface AdminSession {
   accessToken: string;
+  accessTokenExpiresAt: string;
   user: AdminUser;
 }
 

@@ -240,8 +240,26 @@ model AdminUser {
   handledFeedbacks     UserFeedback[] @relation("FeedbackHandler")
   feedbackReplies      FeedbackReply[] @relation("FeedbackReplier")
   sentUserNotifications UserNotification[] @relation("UserNotificationSender")
+  refreshSessions      AdminRefreshSession[]
 
   @@index([role, active, setupCompletedAt])
+}
+
+model AdminRefreshSession {
+  id              String    @id @default(cuid())
+  adminUserId     String
+  adminUser       AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  familyId        String    @db.VarChar(64)
+  tokenDigest     String    @unique @db.VarChar(64)
+  sessionVersion  Int
+  expiresAt       DateTime
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([adminUserId, revokedAt, expiresAt])
+  @@index([familyId, revokedAt])
+  @@index([expiresAt])
 }
 
 model AdminSetupToken {

@@ -17,6 +17,14 @@ const envSchema = z.object({
   ADMIN_ORIGIN: z.string().url().default("http://localhost:5174"),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32),
+  ADMIN_ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(300).max(3600).default(900),
+  ADMIN_REFRESH_TOKEN_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(3600)
+    .max(90 * 24 * 60 * 60)
+    .default(30 * 24 * 60 * 60),
+  ADMIN_REFRESH_COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),
   ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(12).optional(),
   ADMIN_BOOTSTRAP_TOTP_SECRET: z.string().optional(),

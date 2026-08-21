@@ -1,4 +1,4 @@
-import { Body, Controller, Module, Post, Req } from "@nestjs/common";
+import { Body, Controller, HttpCode, HttpStatus, Module, Post, Req, Res } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import {
   ANONYMOUS_VIEWER_TTL_SECONDS,
@@ -26,6 +26,14 @@ import { WechatProviderService } from "../providers/providers.js";
 import { assertNamedRateLimit, requestIpKey, type SocketRequest } from "../security/rate-limit.js";
 import { TotpService } from "../security/totp.service.js";
 import { toProfile } from "../profile/profile.module.js";
+import {
+  ADMIN_REFRESH_COOKIE_NAME,
+  AdminSessionService,
+  clearRefreshCookie,
+  readCookie,
+  refreshCookie,
+  type CookieResponse
+} from "./admin-session.js";
 
 export class WechatLoginDto {
   @IsString()
@@ -63,13 +71,16 @@ export class AdminLoginDto {
   otp!: string;
 }
 
+type AdminAuthRequest = SocketRequest & { header(name: string): string | undefined };
+
 @Controller()
 export class AuthController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly wechat: WechatProviderService,
-    private readonly totp: TotpService
+    private readonly totp: TotpService,
+    private readonly sessions: AdminSessionService
   ) {}
 
   @Post(controllerPath(API_ROUTES.auth.wechat))
@@ -130,7 +141,8 @@ export class AuthController {
   @Post(controllerPath(API_ROUTES.admin.login))
   async adminLogin(
     @Req() request: SocketRequest,
-    @Body() body: AdminLoginDto
+    @Body() body: AdminLoginDto,
+    @Res({ passthrough: true }) response: CookieResponse
   ): Promise<AdminLoginResponse> {
     const email = body.email.trim().toLowerCase();
     await assertNamedRateLimit(
@@ -161,25 +173,72 @@ export class AuthController {
     if (updated.count !== 1) {
       throw Errors.unauthorized("Administrator account changed during login");
     }
-    return {
-      accessToken: await this.jwt.signAsync(
-        {
-          sub: admin.id,
-          kind: "admin",
-          role: admin.role,
-          sessionVersion: admin.sessionVersion
-        },
-        { expiresIn: "1h" }
-      ),
-      admin: {
+    const issued = await this.sessions.issue({
         id: admin.id,
         email: admin.email,
         displayName: admin.displayName,
-        role: admin.role as AdminRole
-      }
-    };
+        role: admin.role as AdminRole,
+        active: admin.active,
+        setupCompletedAt: admin.setupCompletedAt,
+        sessionVersion: admin.sessionVersion
+      });
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader(
+      "Set-Cookie",
+      refreshCookie(issued.refreshToken, {
+        ...this.sessions.cookieOptions(),
+        maxAgeSeconds: this.sessions.refreshTtlSeconds()
+      })
+    );
+    return issued.response;
+  }
+
+  @Post(controllerPath(API_ROUTES.admin.refresh))
+  @HttpCode(HttpStatus.OK)
+  async adminRefresh(
+    @Req() request: AdminAuthRequest,
+    @Res({ passthrough: true }) response: CookieResponse
+  ): Promise<AdminLoginResponse> {
+    this.sessions.assertTrustedOrigin(request);
+    await assertNamedRateLimit(this.prisma, "adminRefresh", requestIpKey(request));
+    response.setHeader("Cache-Control", "no-store");
+    const refreshToken = readCookie(request, ADMIN_REFRESH_COOKIE_NAME);
+    if (!refreshToken) {
+      response.setHeader("Set-Cookie", clearRefreshCookie(this.sessions.cookieOptions()));
+      throw Errors.unauthorized(
+        "Administrator refresh session is invalid",
+        ERROR_CODES.ADMIN_REFRESH_INVALID
+      );
+    }
+    try {
+      const issued = await this.sessions.rotate(refreshToken);
+      response.setHeader(
+        "Set-Cookie",
+        refreshCookie(issued.refreshToken, {
+          ...this.sessions.cookieOptions(),
+          maxAgeSeconds: this.sessions.refreshTtlSeconds()
+        })
+      );
+      return issued.response;
+    } catch (error) {
+      response.setHeader("Set-Cookie", clearRefreshCookie(this.sessions.cookieOptions()));
+      throw error;
+    }
+  }
+
+  @Post(controllerPath(API_ROUTES.admin.logout))
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async adminLogout(
+    @Req() request: AdminAuthRequest,
+    @Res({ passthrough: true }) response: CookieResponse
+  ): Promise<void> {
+    this.sessions.assertTrustedOrigin(request);
+    response.setHeader("Cache-Control", "no-store");
+    const refreshToken = readCookie(request, ADMIN_REFRESH_COOKIE_NAME);
+    if (refreshToken) await this.sessions.revoke(refreshToken);
+    response.setHeader("Set-Cookie", clearRefreshCookie(this.sessions.cookieOptions()));
   }
 }
 
-@Module({ controllers: [AuthController] })
+@Module({ controllers: [AuthController], providers: [AdminSessionService] })
 export class AuthModule {}

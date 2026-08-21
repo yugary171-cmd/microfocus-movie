@@ -18,10 +18,12 @@ describe("admin API normalizers", () => {
     expect(
       normalizeAdminSession({
         accessToken: "token-for-test",
+        accessTokenExpiresAt: "2026-08-21T13:00:00.000Z",
         admin: { id: "admin-1", displayName: "陈管理员", email: "admin@example.com", role: AdminRole.ADMIN },
       }),
     ).toEqual({
       accessToken: "token-for-test",
+      accessTokenExpiresAt: "2026-08-21T13:00:00.000Z",
       user: {
         id: "admin-1",
         email: "admin@example.com",

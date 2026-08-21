@@ -7,9 +7,13 @@
   --color-sidebar: #131b2e;
   --color-sidebar-muted: #94a3b8;
   --color-text: #162033;
+  --text-color: var(--color-text);
   --color-muted: #667085;
   --color-border: #e3e8ef;
+  --table-head-bg-color: #f8fafc;
+  --sls-normal-color-7: #98a2b3;
   --color-primary: #2952cc;
+  --primary-color: var(--color-primary);
   --color-primary-hover: #1f43ae;
   --color-primary-soft: #edf2ff;
   --color-success: #16794b;

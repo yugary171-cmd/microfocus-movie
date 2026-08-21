@@ -26,6 +26,7 @@ describe("live admin API adapter", () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       success({
         accessToken: "test-access-token",
+        accessTokenExpiresAt: "2026-08-21T13:00:00.000Z",
         admin: { id: "admin-1", email: "admin@example.com", role: "ADMIN" },
       }),
     );

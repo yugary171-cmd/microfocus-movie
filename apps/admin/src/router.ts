@@ -44,8 +44,9 @@ export const router = createRouter({
   ],
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore();
+  if (to.meta.requiresAuth || to.name === "login") await auth.restoreSession();
   if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: "login", query: { redirect: to.fullPath } };
   const roles = Array.isArray(to.meta.roles) ? to.meta.roles : [];
   if (roles.length > 0 && (!auth.user || !roles.includes(auth.user.role))) {

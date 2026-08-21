@@ -36,20 +36,41 @@ describe("administrator login", () => {
     };
     const jwt = { signAsync: vi.fn().mockResolvedValue("admin-jwt") };
     const totp = { verifyAdminOtp: vi.fn().mockReturnValue(true) };
+    const sessions = {
+      issue: vi.fn().mockResolvedValue({
+        response: {
+          accessToken: "admin-jwt",
+          accessTokenExpiresAt: "2026-08-21T13:00:00.000Z",
+          admin: {
+            id: admin.id,
+            email: admin.email,
+            displayName: admin.displayName,
+            role: AdminRole.ADMIN,
+          },
+        },
+        refreshToken: "refresh-token",
+      }),
+      cookieOptions: vi.fn().mockReturnValue({ secure: false, sameSite: "lax" }),
+      refreshTtlSeconds: vi.fn().mockReturnValue(2_592_000),
+    };
     const controller = new AuthController(
       prisma as never,
       jwt as never,
       {} as never,
-      totp as never
+      totp as never,
+      sessions as never
     );
+    const response = { setHeader: vi.fn() };
 
     const result = await controller.adminLogin(
       { socket: { remoteAddress: "10.0.0.1" } },
-      { email: " ADMIN@example.com ", password: "correct-horse-battery", otp: "123456" }
+      { email: " ADMIN@example.com ", password: "correct-horse-battery", otp: "123456" },
+      response
     );
 
     expect(result).toEqual({
       accessToken: "admin-jwt",
+      accessTokenExpiresAt: "2026-08-21T13:00:00.000Z",
       admin: {
         id: admin.id,
         email: admin.email,
@@ -57,15 +78,8 @@ describe("administrator login", () => {
         role: AdminRole.ADMIN
       }
     });
-    expect(jwt.signAsync).toHaveBeenCalledWith(
-      {
-        sub: admin.id,
-        kind: "admin",
-        role: AdminRole.ADMIN,
-        sessionVersion: 5
-      },
-      { expiresIn: "1h" }
-    );
+    expect(sessions.issue).toHaveBeenCalledWith(expect.objectContaining({ id: admin.id, sessionVersion: 5 }));
+    expect(response.setHeader).toHaveBeenCalledWith("Set-Cookie", expect.stringContaining("HttpOnly"));
     expect(prisma.adminUser.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ id: admin.id, sessionVersion: 5 }),
@@ -90,7 +104,8 @@ describe("administrator login", () => {
       prisma as never,
       { signAsync: vi.fn() } as never,
       {} as never,
-      { verifyAdminOtp: vi.fn() } as never
+      { verifyAdminOtp: vi.fn() } as never,
+      { issue: vi.fn() } as never
     );
     await expect(
       controller.adminLogin(

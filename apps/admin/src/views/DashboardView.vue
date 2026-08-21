@@ -153,18 +153,18 @@ function ledgerAgeLabel(value: string | null): string {
 .callback-help { margin: var(--space-3) 0 0; color: var(--color-muted); font-size: 12px; line-height: 1.5; }
 .status-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); }
 .status-grid div { display: flex; align-items: center; flex-direction: column; padding: var(--space-3) var(--space-1); border-radius: 8px; background: var(--color-surface-soft); }
-.status-grid strong { font-size: 23px; }
-.status-grid span { color: var(--color-muted); font-size: 11px; }
+.status-grid strong { font-size: 12px; }
+.status-grid span { color: var(--color-muted); font-size: 12px; }
 .text-link { display: inline-flex; gap: var(--space-2); margin-top: var(--space-3); color: var(--color-primary); font-weight: 650; }
 .metric-empty { display: flex; align-items: center; gap: var(--space-3); min-height: 116px; padding: var(--space-3); border: 1px dashed #cad3df; border-radius: 10px; background: #fafbfd; }
 .metric-empty > span { display: grid; width: 43px; height: 43px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: var(--color-info); background: var(--color-info-soft); font-size: 20px; }
 .metric-empty p { max-width: 600px; margin: 4px 0 0; color: var(--color-muted); font-size: 12px; }
 .metric-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
 .metric-cards article { display: flex; flex-direction: column; padding: var(--space-3); border-radius: 9px; background: var(--color-surface-soft); }
-.metric-cards strong { font-size: 25px; }
+.metric-cards strong { font-size: 12px; }
 .principles-panel ol { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .principles-panel li { display: flex; align-items: center; gap: var(--space-2); }
-.principles-panel li > span { color: #9ba8b9; font-size: 11px; font-weight: 800; }
+.principles-panel li > span { color: #9ba8b9; font-size: 12px; font-weight: 800; }
 .principles-panel li > div { display: flex; flex-direction: column; }
 @media (max-width: 1150px) { .dashboard-grid { grid-template-columns: 1fr; } .metrics-panel, .callback-panel, .ledger-panel { grid-column: auto; } }
 @media (max-width: 580px) { .status-grid, .callback-grid { grid-template-columns: repeat(2, 1fr); } }

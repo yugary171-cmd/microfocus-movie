@@ -8,13 +8,16 @@ import {
   type CatalogTag,
   type CatalogTagGroupId,
 } from "@microfocus/contracts";
-import { computed, onMounted, reactive, ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageState from "@/components/PageState.vue";
 import Icon from "@/components/Icon.vue";
 import { useAuthStore } from "@/stores/auth";
+
+const ElInput = ElementInput as Component;
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -251,7 +254,7 @@ onMounted(load);
         </label>
         <label class="field">
           <span>名称</span>
-          <input v-model="form.name" type="text" :maxlength="DRAMA_TAG_MAX_LENGTH" placeholder="例如：赛博" />
+          <el-input v-model="form.name" class="admin-input" type="text" :maxlength="DRAMA_TAG_MAX_LENGTH" placeholder="例如：赛博" />
         </label>
         <div class="dialog__actions">
           <button class="button button--ghost" type="button" :disabled="busy" @click="createOpen = false">取消</button>

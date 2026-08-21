@@ -17,13 +17,13 @@ const items = computed(() => {
   return navigationItems.filter((item) => !item.roles || (role && item.roles.includes(role)));
 });
 
-function logout(): void {
-  auth.logout();
+async function logout(): Promise<void> {
+  await auth.logout();
   void router.replace({ name: "login" });
 }
 
 function unauthorized(): void {
-  logout();
+  void logout();
 }
 
 onMounted(() => window.addEventListener("admin:unauthorized", unauthorized));

@@ -17,7 +17,7 @@
 
 | 分类 | 变量 | 规则 |
 | --- | --- | --- |
-| API 普通配置 | `NODE_ENV`、`PORT`、`PUBLIC_API_URL`、`ADMIN_ORIGIN` | 可以进入部署清单，但不能由客户端任意覆盖 |
+| API 普通配置 | `NODE_ENV`、`PORT`、`PUBLIC_API_URL`、`ADMIN_ORIGIN`、`ADMIN_ACCESS_TOKEN_TTL_SECONDS`、`ADMIN_REFRESH_TOKEN_TTL_SECONDS`、`ADMIN_REFRESH_COOKIE_SAME_SITE` | 可以进入部署清单，但不能由客户端任意覆盖；access TTL 为 300–3600 秒，refresh TTL 为 3600–7776000 秒，生产 Cookie 由 API 强制 `Secure` |
 | 数据库与签名秘密 | `DATABASE_URL`、`JWT_SECRET`、`TOTP_ENCRYPTION_KEY`、`TOTP_ENCRYPTION_KEY_PREVIOUS`、`CALLBACK_PAYLOAD_ENCRYPTION_KEY`、`VOD_PLAYBACK_KEY` | 只注入 API/受控任务；不得进入浏览器、小程序、日志或错误响应 |
 | 初始化配置与秘密 | `ADMIN_BOOTSTRAP_EMAIL`、`ADMIN_BOOTSTRAP_PASSWORD`、`ADMIN_BOOTSTRAP_TOTP_SECRET` | 只供一次性种子流程使用，初始化后从常驻环境移除密码和 TOTP 明文 |
 | 本地测试配置 | `ADMIN_TEST_OTP`、`DEMO_MEDIA_ORIGIN`、`INTERNAL_CLIENT_ATTESTATION` | 仅限开发或经批准的非生产内部验证 |

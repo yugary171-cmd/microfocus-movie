@@ -1,4 +1,4 @@
-import { AdminRole, SystemNotificationStatus, UserFeedbackStatus } from "@microfocus/contracts";
+import { AdminRole, SystemNotificationStatus, SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE, UserFeedbackStatus } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   AdminNotificationsController,
@@ -72,6 +72,7 @@ describe("admin notifications and feedback", () => {
     };
     const controller = new AdminNotificationsController(prisma as never);
     await expect(controller.listNotifications()).resolves.toMatchObject({ items: [{ createdByAdminName: "陈管理员" }] });
+    expect(prisma.systemNotification.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE }));
     await expect(controller.getNotification("notice-1")).resolves.toMatchObject({ body: "完整正文", createdByAdminName: "陈管理员" });
   });
 

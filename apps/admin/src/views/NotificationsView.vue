@@ -2,36 +2,48 @@
 import {
   AdminRole,
   SYSTEM_NOTIFICATION_BODY_MAX_LENGTH,
+  SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE,
+  SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS,
   SYSTEM_NOTIFICATION_TITLE_MAX_LENGTH,
   SystemNotificationStatus,
+  normalizeSystemNotificationAdminPageSize,
 } from "@microfocus/contracts";
 import {
   ElButton as ElementButton,
   ElDrawer as ElementDrawer,
+  ElInput as ElementInput,
+  ElMessage,
   ElOption as ElementOption,
+  ElPagination as ElementPagination,
   ElSelect as ElementSelect,
-  ElTable as ElementTable,
-  ElTableColumn as ElementTableColumn,
 } from "element-plus";
-import { computed, onMounted, reactive, ref, type Component } from "vue";
+import { Check, CopyDocument } from "@element-plus/icons-vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
+import AdminTable from "@/components/AdminTable.vue";
 import PageState from "@/components/PageState.vue";
 import { useAuthStore } from "@/stores/auth";
 import type { AdminNotificationRecord } from "@/types/admin";
+import type { AdminTableColumn } from "@/components/AdminTable.vue";
 
 // Element Plus 2.14 exposes raw prop-definition types through SFCWithInstall;
 // keep runtime component registration while avoiding false-positive template errors in vue-tsc.
 const ElButton = ElementButton as Component;
 const ElDrawer = ElementDrawer as Component;
+const ElInput = ElementInput as Component;
+const CheckIcon = Check as Component;
+const CopyDocumentIcon = CopyDocument as Component;
 const ElOption = ElementOption as Component;
+const ElPagination = ElementPagination as Component;
 const ElSelect = ElementSelect as Component;
-const ElTable = ElementTable as Component;
-const ElTableColumn = ElementTableColumn as Component;
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
 const items = ref<AdminNotificationRecord[]>([]);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE);
 const loading = ref(true);
 const busy = ref(false);
 const error = ref("");
@@ -41,8 +53,78 @@ const status = ref("ALL");
 const editing = ref<AdminNotificationRecord | null>(null);
 const viewing = ref<AdminNotificationRecord | null>(null);
 const drawerOpen = ref(false);
+const drawerMode = ref<"editor" | "view">("view");
 const viewLoading = ref(false);
 const form = reactive({ title: "", body: "" });
+const copiedNotificationKey = ref("");
+let copiedNotificationTimer: number | undefined;
+const notificationColumns: AdminTableColumn[] = [
+  {
+    key: "title",
+    prop: "title",
+    label: "通知标题",
+    minWidth: 240,
+    showOverflowTooltip: true,
+  },
+  {
+    key: "publisher",
+    label: "发布人",
+    minWidth: 180,
+    showOverflowTooltip: true,
+    formatter: (row) => row.createdByAdminName || "未知管理员",
+  },
+  {
+    key: "status",
+    label: "状态",
+    minWidth: 90,
+    formatter: (row) => statusLabel(row.status),
+  },
+  {
+    key: "createdAt",
+    label: "创建日期",
+    minWidth: 160,
+    formatter: (row) => dateLabel(row.createdAt),
+  },
+];
+const drawerTitle = computed(() =>
+  drawerMode.value === "editor"
+    ? editing.value
+      ? "编辑通知草稿"
+      : "新建通知"
+    : "查看通知",
+);
+
+function clearCopiedNotification() {
+  if (copiedNotificationTimer !== undefined) {
+    window.clearTimeout(copiedNotificationTimer);
+    copiedNotificationTimer = undefined;
+  }
+}
+
+async function copyNotificationValue(key: string, value: string) {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("clipboard_unavailable");
+    await navigator.clipboard.writeText(value);
+    clearCopiedNotification();
+    copiedNotificationKey.value = key;
+    copiedNotificationTimer = window.setTimeout(() => {
+      copiedNotificationKey.value = "";
+      copiedNotificationTimer = undefined;
+    }, 1600);
+    ElMessage({
+      message: "复制成功",
+      type: "success",
+      customClass: "copy-success-message",
+      duration: 1800,
+    });
+  } catch {
+    ElMessage.error("复制失败，请检查浏览器剪贴板权限。");
+  }
+}
+
+onBeforeUnmount(() => {
+  clearCopiedNotification();
+});
 
 async function load() {
   if (!allowed.value) {
@@ -55,9 +137,16 @@ async function load() {
     const result = await adminApi.listNotifications(
       query.value,
       status.value === "ALL" ? "" : status.value,
-      1,
+      page.value,
+      pageSize.value,
     );
-    items.value = result.items;
+    items.value = Array.isArray(result.items) ? result.items : [];
+    total.value = Number.isFinite(result.total) ? result.total : items.value.length;
+    const lastPage = Math.max(1, Math.ceil(total.value / pageSize.value));
+    if (page.value > lastPage) {
+      page.value = lastPage;
+      await load();
+    }
   } catch (caught) {
     error.value = toErrorMessage(caught);
   } finally {
@@ -74,8 +163,15 @@ function startEdit(item: AdminNotificationRecord) {
   form.title = item.title;
   form.body = item.body;
 }
+function openEditor(item?: AdminNotificationRecord) {
+  if (item) startEdit(item);
+  else startCreate();
+  drawerMode.value = "editor";
+  drawerOpen.value = true;
+}
 async function openView(item: AdminNotificationRecord) {
   viewing.value = item;
+  drawerMode.value = "view";
   drawerOpen.value = true;
   viewLoading.value = true;
   try {
@@ -87,8 +183,21 @@ async function openView(item: AdminNotificationRecord) {
     viewLoading.value = false;
   }
 }
-function closeView() {
+function closeDrawer() {
   drawerOpen.value = false;
+}
+function filter() {
+  page.value = 1;
+  void load();
+}
+function go(next: number) {
+  page.value = next;
+  void load();
+}
+function changePageSize(value: number | string) {
+  pageSize.value = normalizeSystemNotificationAdminPageSize(Number(value));
+  page.value = 1;
+  void load();
 }
 function statusLabel(status: SystemNotificationStatus) {
   return status === SystemNotificationStatus.DRAFT
@@ -98,7 +207,11 @@ function statusLabel(status: SystemNotificationStatus) {
       : "已撤回";
 }
 function dateLabel(value: string | null) {
-  return value ? value.slice(0, 10) : "—";
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 async function save() {
   busy.value = true;
@@ -109,6 +222,7 @@ async function save() {
     else await adminApi.createNotification(form.title, form.body);
     notice.value = "通知草稿已保存。";
     startCreate();
+    closeDrawer();
     await load();
   } catch (caught) {
     error.value = toErrorMessage(caught);
@@ -146,7 +260,10 @@ async function deleteDraft(item: AdminNotificationRecord) {
   try {
     await adminApi.deleteNotification(item.id);
     notice.value = "通知草稿已删除。";
-    if (editing.value?.id === item.id) startCreate();
+    if (editing.value?.id === item.id) {
+      startCreate();
+      closeDrawer();
+    }
     await load();
   } catch (caught) {
     error.value = toErrorMessage(caught);
@@ -174,71 +291,43 @@ onMounted(() => {
       type="forbidden"
       message="只有系统管理员可以管理系统通知。"
     />
-    <div v-else class="notification-layout">
-      <section class="panel editor-panel">
-        <div class="section-heading">
-          <div>
-            <h2>{{ editing ? "编辑通知草稿" : "新建通知" }}</h2>
-            <p>纯文本通知，发布后如需修改请新建一条。</p>
-          </div>
-          <el-button text type="info" @click="startCreate">清空</el-button>
-        </div>
-        <div class="field">
-          <span>标题</span
-          ><input
-            v-model="form.title"
-            :maxlength="SYSTEM_NOTIFICATION_TITLE_MAX_LENGTH"
-            placeholder="通知标题"
-          />
-        </div>
-        <div class="field field--body">
-          <span>正文</span
-          ><textarea
-            v-model="form.body"
-            :maxlength="SYSTEM_NOTIFICATION_BODY_MAX_LENGTH"
-            rows="14"
-            placeholder="通知正文"
-          />
-        </div>
-        <div v-if="error" class="operation-message operation-message--error">
-          {{ error }}
-        </div>
-        <div v-if="notice" class="operation-message">{{ notice }}</div>
-        <el-button
-          type="primary"
-          :loading="busy"
-          :disabled="!form.title.trim() || !form.body.trim()"
-          @click="save"
-          >保存草稿</el-button
+    <section v-else class="panel notice-panel">
+      <div v-if="error" class="operation-message operation-message--error">
+        {{ error }}
+      </div>
+      <div v-if="notice" class="operation-message">{{ notice }}</div>
+      <div class="toolbar">
+        <el-button class="toolbar__new" type="primary" @click="openEditor()"
+          >新建通知</el-button
         >
-      </section>
-      <section class="panel notice-panel">
-        <div class="toolbar">
-          <label class="field"
-            ><span>搜索</span
-            ><input
-              v-model="query"
-              placeholder="标题或正文"
-              @keyup.enter="load" /></label
-          ><label class="field"
-            ><span>状态</span
-            ><el-select
-              v-model="status"
-              class="notification-status-select"
-              @change="load"
-              ><el-option label="全部" value="ALL" /><el-option
-                label="草稿"
-                :value="SystemNotificationStatus.DRAFT" /><el-option
-                label="已发布"
-                :value="SystemNotificationStatus.PUBLISHED" /><el-option
-                label="已撤回"
-                :value="
-                  SystemNotificationStatus.RETRACTED
-                " /></el-select></label
-          ><el-button class="toolbar__action" :loading="loading" @click="load"
-            >搜索</el-button
-          >
-        </div>
+        <el-input
+          v-model="query"
+          class="toolbar__search admin-input"
+          aria-label="搜索通知"
+          placeholder="标题或正文"
+          @keyup.enter="filter"
+        />
+        <el-select
+          v-model="status"
+          class="notification-status-select"
+          aria-label="通知状态"
+          @change="filter"
+        >
+          <el-option label="全部" value="ALL" />
+          <el-option label="草稿" :value="SystemNotificationStatus.DRAFT" />
+          <el-option
+            label="已发布"
+            :value="SystemNotificationStatus.PUBLISHED"
+          />
+          <el-option
+            label="已撤回"
+            :value="SystemNotificationStatus.RETRACTED"
+          />
+        </el-select>
+        <el-button class="toolbar__action" :loading="loading" @click="filter"
+          >搜索</el-button
+        >
+      </div>
         <PageState
           v-if="loading"
           type="loading"
@@ -250,149 +339,235 @@ onMounted(() => {
           message="可以先创建一条通知草稿。"
         />
         <div v-else class="notice-list">
-          <el-table
-            :data="items"
-            class="notification-table"
-            table-layout="fixed"
-            border
-            stripe
-            ><el-table-column
-              prop="title"
-              label="通知标题"
-              min-width="160"
-              show-overflow-tooltip
-            /><el-table-column
-              label="发布人"
-              min-width="100"
-              show-overflow-tooltip
-              ><template #default="{ row }">{{
-                row.createdByAdminName || "未知管理员"
-              }}</template></el-table-column
-            ><el-table-column label="状态" width="90"
-              ><template #default="{ row }">{{
-                statusLabel(row.status)
-              }}</template></el-table-column
-            ><el-table-column label="创建日期" width="110"
-              ><template #default="{ row }">{{
-                dateLabel(row.createdAt)
-              }}</template></el-table-column
-            ><el-table-column label="操作" fixed="right" width="250"
-              ><template #default="{ row }"
-                ><div class="actions">
-                  <el-button
-                    size="small"
-                    text
-                    type="primary"
-                    @click="openView(row)"
-                    >查看</el-button
-                  ><el-button
-                    v-if="row.status === SystemNotificationStatus.DRAFT"
-                    size="small"
-                    text
-                    type="primary"
-                    @click="startEdit(row)"
-                    >编辑</el-button
-                  ><el-button
-                    v-if="row.status === SystemNotificationStatus.DRAFT"
-                    size="small"
-                    text
-                    type="success"
-                    :loading="busy"
-                    @click="publish(row)"
-                    >发布</el-button
-                  ><el-button
-                    v-if="row.status === SystemNotificationStatus.DRAFT"
-                    size="small"
-                    text
-                    type="danger"
-                    :loading="busy"
-                    @click="deleteDraft(row)"
-                    >删除</el-button
-                  ><el-button
-                    v-if="row.status === SystemNotificationStatus.PUBLISHED"
-                    size="small"
-                    text
-                    type="danger"
-                    :loading="busy"
-                    @click="retract(row)"
-                    >撤回</el-button
-                  >
-                </div></template
-              ></el-table-column
-            ></el-table
+          <AdminTable
+            :rows="items"
+            :columns="notificationColumns"
+            table-class="notification-table"
+            :action-width="260"
           >
+            <template #cell-title="{ row }">
+              <span class="notification-cell notification-cell--copyable">
+                <span class="notification-cell__text">{{ row.title }}</span>
+                <button
+                  class="notification-copy"
+                  type="button"
+                  :title="copiedNotificationKey === `title:${row.id}` ? '已复制' : '复制通知标题'"
+                  :aria-label="copiedNotificationKey === `title:${row.id}` ? '通知标题已复制' : '复制通知标题'"
+                  @click.stop="copyNotificationValue(`title:${row.id}`, row.title)"
+                >
+                  <component
+                    :is="copiedNotificationKey === `title:${row.id}` ? CheckIcon : CopyDocumentIcon"
+                    aria-hidden="true"
+                  />
+                </button>
+              </span>
+            </template>
+            <template #cell-publisher="{ row }">
+              <span class="notification-cell notification-cell--copyable">
+                <span class="notification-cell__text">{{ row.createdByAdminName || "未知管理员" }}</span>
+                <button
+                  class="notification-copy"
+                  type="button"
+                  :title="copiedNotificationKey === `publisher:${row.id}` ? '已复制' : '复制发布人'"
+                  :aria-label="copiedNotificationKey === `publisher:${row.id}` ? '发布人已复制' : '复制发布人'"
+                  @click.stop="copyNotificationValue(`publisher:${row.id}`, row.createdByAdminName || '未知管理员')"
+                >
+                  <component
+                    :is="copiedNotificationKey === `publisher:${row.id}` ? CheckIcon : CopyDocumentIcon"
+                    aria-hidden="true"
+                  />
+                </button>
+              </span>
+            </template>
+            <template #actions="{ row }">
+              <div class="actions">
+                <el-button size="small" text type="primary" @click="openView(row)">
+                  查看
+                </el-button>
+                <span
+                  v-if="row.status === SystemNotificationStatus.DRAFT || row.status === SystemNotificationStatus.PUBLISHED"
+                  class="actions__divider"
+                  aria-hidden="true"
+                  >|</span
+                >
+                <el-button
+                  v-if="row.status === SystemNotificationStatus.DRAFT"
+                  size="small"
+                  text
+                  type="primary"
+                  @click="openEditor(row)"
+                >
+                  编辑
+                </el-button>
+                <span
+                  v-if="row.status === SystemNotificationStatus.DRAFT"
+                  class="actions__divider"
+                  aria-hidden="true"
+                  >|</span
+                >
+                <el-button
+                  v-if="row.status === SystemNotificationStatus.DRAFT"
+                  size="small"
+                  text
+                  type="primary"
+                  :loading="busy"
+                  @click="publish(row)"
+                >
+                  发布
+                </el-button>
+                <span
+                  v-if="row.status === SystemNotificationStatus.DRAFT"
+                  class="actions__divider"
+                  aria-hidden="true"
+                  >|</span
+                >
+                <el-button
+                  v-if="row.status === SystemNotificationStatus.DRAFT"
+                  size="small"
+                  text
+                  type="primary"
+                  :loading="busy"
+                  @click="deleteDraft(row)"
+                >
+                  删除
+                </el-button>
+                <el-button
+                  v-if="row.status === SystemNotificationStatus.PUBLISHED"
+                  size="small"
+                  text
+                  type="primary"
+                  :loading="busy"
+                  @click="retract(row)"
+                >
+                  撤回
+                </el-button>
+              </div>
+            </template>
+          </AdminTable>
         </div>
-      </section>
-    </div>
+        <div class="notification-pagination">
+          <div class="notification-pagination__size">
+            <span>每页显示：</span>
+            <el-select
+              :model-value="pageSize"
+              class="notification-page-size-select"
+              aria-label="每页显示条数"
+              @change="changePageSize"
+            >
+              <el-option
+                v-for="size in SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS"
+                :key="size"
+                :label="String(size)"
+                :value="size"
+              />
+            </el-select>
+          </div>
+          <el-pagination
+            :current-page="page"
+            :page-size="pageSize"
+            :total="total"
+            :disabled="loading"
+            layout="prev, pager, next"
+            @current-change="go"
+          />
+        </div>
+    </section>
     <el-drawer
       v-model="drawerOpen"
-      title="查看通知"
+      :title="drawerTitle"
       direction="rtl"
-      size="min(520px, 92vw)"
+      size="min(640px, 92vw)"
     >
-      <PageState
-        v-if="viewLoading"
-        type="loading"
-        message="正在读取通知内容…"
-      />
-      <template v-else-if="viewing">
-        <h3>{{ viewing.title }}</h3>
-        <dl class="notice-meta">
-          <div>
-            <dt>发布人</dt>
-            <dd>{{ viewing.createdByAdminName || "未知管理员" }}</dd>
-          </div>
-          <div>
-            <dt>状态</dt>
-            <dd>{{ statusLabel(viewing.status) }}</dd>
-          </div>
-          <div>
-            <dt>创建时间</dt>
-            <dd>{{ dateLabel(viewing.createdAt) }}</dd>
-          </div>
-          <div>
-            <dt>发布时间</dt>
-            <dd>{{ dateLabel(viewing.publishedAt) }}</dd>
-          </div>
-        </dl>
-        <div class="notice-body">
-          <span>正文</span>
-          <p>{{ viewing.body }}</p>
+      <template v-if="drawerMode === 'editor'">
+        <p class="drawer-description">
+          纯文本通知，发布后如需修改请新建一条。
+        </p>
+        <div class="field">
+          <span>标题</span
+          ><el-input
+            v-model="form.title"
+            class="admin-input"
+            :maxlength="SYSTEM_NOTIFICATION_TITLE_MAX_LENGTH"
+            placeholder="通知标题"
+          />
+        </div>
+        <div class="field field--body">
+          <span>正文</span
+          ><el-input
+            v-model="form.body"
+            class="admin-input"
+            type="textarea"
+            :maxlength="SYSTEM_NOTIFICATION_BODY_MAX_LENGTH"
+            rows="14"
+            placeholder="通知正文"
+          />
         </div>
       </template>
-      <template #footer
-        ><el-button @click="closeView">关闭</el-button></template
-      >
+      <template v-else>
+        <PageState
+          v-if="viewLoading"
+          type="loading"
+          message="正在读取通知内容…"
+        />
+        <template v-else-if="viewing">
+          <h3>{{ viewing.title }}</h3>
+          <dl class="notice-meta">
+            <div>
+              <dt>发布人</dt>
+              <dd>{{ viewing.createdByAdminName || "未知管理员" }}</dd>
+            </div>
+            <div>
+              <dt>状态</dt>
+              <dd>{{ statusLabel(viewing.status) }}</dd>
+            </div>
+            <div>
+              <dt>创建时间</dt>
+              <dd>{{ dateLabel(viewing.createdAt) }}</dd>
+            </div>
+            <div>
+              <dt>发布时间</dt>
+              <dd>{{ dateLabel(viewing.publishedAt) }}</dd>
+            </div>
+          </dl>
+          <div class="notice-body">
+            <span>正文</span>
+            <p>{{ viewing.body }}</p>
+          </div>
+        </template>
+      </template>
+      <template #footer>
+        <template v-if="drawerMode === 'editor'">
+          <el-button text type="info" :disabled="busy" @click="startCreate"
+            >清空</el-button
+          >
+          <el-button :disabled="busy" @click="closeDrawer">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="busy"
+            :disabled="!form.title.trim() || !form.body.trim()"
+            @click="save"
+            >保存草稿</el-button
+          >
+        </template>
+        <el-button v-else @click="closeDrawer">关闭</el-button>
+      </template>
     </el-drawer>
   </div>
 </template>
 
 <style scoped>
-.notification-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: var(--space-4);
-  align-items: stretch;
-}
-.editor-panel,
-.notice-panel {
-  min-height: 640px;
-}
 .notice-panel {
   display: flex;
+  min-height: calc(100vh - 260px);
   flex-direction: column;
 }
-.section-heading,
 .actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
-.section-heading {
-  justify-content: space-between;
-}
-.section-heading p {
-  margin: 4px 0 16px;
+.drawer-description {
+  margin: 0 0 var(--space-4);
   color: var(--color-muted);
   font-size: 12px;
 }
@@ -406,33 +581,46 @@ onMounted(() => {
   font-size: 12px;
   color: var(--color-muted);
 }
-.field input,
-.field textarea {
+.field > .admin-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font: inherit;
 }
-.field--body textarea {
+.field--body .admin-input :deep(.el-textarea__inner) {
   min-height: 360px;
-  resize: vertical;
 }
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 180px auto;
-  align-items: end;
+  grid-template-columns: auto minmax(240px, 0.5fr) 180px auto minmax(0, 0.5fr);
+  align-items: center;
   gap: var(--space-2);
 }
-.toolbar .field {
-  margin-bottom: 0;
+.toolbar__new {
+  white-space: nowrap;
 }
+.toolbar__search {
+  width: 100%;
+  min-width: 0;
+}
+.notification-status-select { width: 180px; }
 .toolbar__action {
-  align-self: end;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .toolbar { grid-template-columns: 1fr; }
+  .toolbar__search, .notification-status-select { width: 100%; }
 }
 .notification-status-select {
   width: 100%;
+}
+.notification-status-select :deep(.el-select__wrapper),
+.notification-status-select :deep(.el-select__selected-item),
+.notification-status-select :deep(.el-select__placeholder) {
+  font-size: 12px;
+  font-weight: 400;
+}
+:global(.el-select-dropdown__item) {
+  font-size: 12px;
+  font-weight: 400;
 }
 .notice-list {
   margin-top: var(--space-4);
@@ -441,25 +629,91 @@ onMounted(() => {
 }
 .notification-table {
   width: 100%;
+  --el-table-header-bg-color: var(--table-head-bg-color);
+  --el-table-text-color: var(--text-color);
+  --el-table-header-text-color: var(--text-color);
+  --el-table-border-color: var(--color-border);
+  --el-table-row-hover-bg-color: var(--table-head-bg-color);
 }
 .notification-table :deep(.el-table__cell) {
   padding: 10px 12px;
+  border-right: 0;
+  color: var(--text-color);
+  font-size: 12px;
+  font-weight: 500;
 }
 .notification-table :deep(.el-table__header-wrapper th) {
-  color: var(--color-muted);
-  background: var(--color-surface-soft);
-  font-size: 11px;
+  color: var(--text-color);
+  background: var(--table-head-bg-color);
+  font-size: 12px;
+  font-weight: 500;
+}
+.notification-table :deep(.el-table__inner-wrapper::before),
+.notification-table :deep(.el-table__fixed-right::before) {
+  display: none;
 }
 .notification-table :deep(.el-table__fixed-right) {
-  box-shadow: -8px 0 12px -8px rgba(16, 24, 40, 0.18);
+  box-shadow: none;
 }
 .actions {
   justify-content: flex-start;
   flex-wrap: nowrap;
-  gap: 4px;
+  gap: 0;
 }
 .actions .el-button {
-  padding: 0 6px;
+  padding: 0;
+}
+.actions__divider {
+  padding: 0 8px;
+  color: var(--sls-normal-color-7);
+  font-size: 12px;
+  font-weight: 500;
+}
+.notification-cell {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+.notification-cell__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notification-copy {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: color var(--transition), background var(--transition), opacity var(--transition);
+}
+.notification-copy :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+.notification-cell:hover .notification-copy,
+.notification-copy:focus-visible {
+  opacity: 1;
+  visibility: visible;
+}
+.notification-copy:hover {
+  background: rgba(41, 82, 204, 0.08);
+  color: var(--primary-color);
+}
+.notification-copy:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 1px;
 }
 .notice-title {
   display: block;
@@ -505,32 +759,101 @@ onMounted(() => {
   white-space: pre-wrap;
   line-height: 1.7;
 }
+.notification-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 16px;
+  color: var(--text-color);
+  font-size: 12px;
+  font-weight: 500;
+}
+.notification-pagination__size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.notification-page-size-select {
+  width: 72px;
+}
+.notification-page-size-select :deep(.el-select__wrapper),
+.notification-page-size-select :deep(.el-select__selected-item),
+.notification-page-size-select :deep(.el-select__placeholder) {
+  font-size: 12px;
+  font-weight: 400;
+}
+.notification-pagination :deep(.el-pagination) {
+  --el-pagination-font-size: 12px;
+  --el-pagination-button-size: 32px;
+}
+.notification-pagination :deep(.el-pager li),
+.notification-pagination :deep(.btn-prev),
+.notification-pagination :deep(.btn-next) {
+  font-size: 12px;
+  font-weight: 500;
+}
 .el-drawer :deep(.el-drawer__body) {
   padding: 24px;
 }
 .el-drawer :deep(.el-drawer__footer) {
   padding: 16px 24px;
 }
-@media (max-width: 1400px) {
-  .notification-layout {
-    grid-template-columns: 1fr;
-  }
-  .editor-panel,
-  .notice-panel {
-    min-height: auto;
-  }
+:global(.el-message.copy-success-message) {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: 120px;
+  height: 41px;
+  min-height: 41px;
+  box-sizing: border-box;
+  margin-top: 12px;
+  overflow: hidden;
+  padding: 0 8px 0 12px;
+  border: 1px solid #c9cdd3;
+  border-left: 7px solid #009b45;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
+  color: #242933;
+  font-size: 12px;
+  font-weight: 400;
+}
+:global(.el-message.copy-success-message .el-message__icon) {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  color: #009b45;
+  font-size: 18px;
+}
+:global(.el-message.copy-success-message .el-message__content) {
+  min-width: 0;
+  overflow: hidden;
+  color: #242933;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 @media (max-width: 720px) {
   .toolbar {
     grid-template-columns: 1fr;
   }
+  .toolbar__new,
+  .toolbar__search,
   .toolbar__action {
     width: 100%;
   }
   .notification-table :deep(.el-table__body-wrapper) {
     overflow-x: auto;
   }
-  .el-drawer {
+  .notification-pagination {
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .notification-pagination__size {
+    gap: 4px;
+  }
+  :global(.el-drawer) {
     width: 100% !important;
   }
 }

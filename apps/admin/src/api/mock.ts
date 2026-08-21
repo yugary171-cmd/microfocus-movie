@@ -4,6 +4,7 @@ import {
   AdminSetupPurpose,
   ADMIN_LIST_MAX_PAGE,
   ADMIN_LIST_PAGE_SIZE,
+  SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE,
   CALLBACK_MAX_ATTEMPTS,
   CatalogTagStatus,
   DeletionRequestStatus,
@@ -14,6 +15,7 @@ import {
   isCatalogTagGroupId,
   isOwnedContentRole,
   isRightsMaterialDigest,
+  normalizeSystemNotificationAdminPageSize,
   MediaStatus,
   normalizeCatalogTagName,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
@@ -521,12 +523,12 @@ async function mockDelay<T>(value: T, delay = 160): Promise<T> {
   return clone(value);
 }
 
-function paginate<T>(items: T[], page = 1): PageResult<T> {
+function paginate<T>(items: T[], page = 1, pageSize = ADMIN_LIST_PAGE_SIZE): PageResult<T> {
   const safePage = Number.isInteger(page) && page > 0 ? page : 1;
   if (safePage > ADMIN_LIST_MAX_PAGE) return { items: [], total: 0 };
-  const start = (safePage - 1) * ADMIN_LIST_PAGE_SIZE;
+  const start = (safePage - 1) * pageSize;
   return {
-    items: items.slice(start, start + ADMIN_LIST_PAGE_SIZE),
+    items: items.slice(start, start + pageSize),
     total: items.length,
   };
 }
@@ -597,6 +599,7 @@ export const mockApi = {
     }
     return mockDelay({
       accessToken: `mock-session-${crypto.randomUUID()}`,
+      accessTokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       user: storedAccount
         ? {
             id: storedAccount.id,
@@ -991,10 +994,10 @@ export const mockApi = {
     );
     return mockDelay(paginate(items, page));
   },
-  async listNotifications(query = "", status = "", page = 1): Promise<PageResult<AdminNotificationRecord>> {
+  async listNotifications(query = "", status = "", page = 1, pageSize = SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE): Promise<PageResult<AdminNotificationRecord>> {
     const normalized = query.trim().toLowerCase();
     const items = mockNotifications.filter((item) => (!status || item.status === status) && (!normalized || `${item.title} ${item.body}`.toLowerCase().includes(normalized)));
-    return mockDelay(paginate(items, page));
+    return mockDelay(paginate(items, page, normalizeSystemNotificationAdminPageSize(pageSize)));
   },
   async createNotification(title: string, body: string): Promise<AdminNotificationRecord> {
     const item: AdminNotificationRecord = { id: `notification-${crypto.randomUUID()}`, title: title.trim(), body: body.trim(), status: SystemNotificationStatus.DRAFT, publishedAt: null, createdAt: new Date().toISOString(), createdByAdminId: MOCK_CURRENT_ADMIN_ID, createdByAdminName: "陈管理员" };

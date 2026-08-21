@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ADMIN_REASON_MAX_LENGTH, ADMIN_REASON_MIN_LENGTH } from "@microfocus/contracts";
-import { computed, nextTick, ref, watch } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, nextTick, ref, watch, type Component } from "vue";
 import Icon from "./Icon.vue";
+
+const ElInput = ElementInput as Component;
 
 const props = withDefaults(
   defineProps<{
@@ -72,8 +75,10 @@ function confirm(): void {
         <p :id="`${title}-dialog-description`">{{ message }}</p>
         <label v-if="requireReason" class="field">
           <span>{{ reasonLabel }} <span aria-hidden="true">*</span></span>
-          <textarea
+          <el-input
             v-model="reason"
+            class="admin-input"
+            type="textarea"
             rows="3"
             :minlength="reasonMinLength"
             :maxlength="reasonMaxLength"

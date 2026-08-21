@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ADMIN_LIST_PAGE_SIZE, AdminRole, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
-import { computed, onMounted, ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, onMounted, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import PageState from "@/components/PageState.vue";
@@ -8,6 +9,8 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { formatDateTime, roleLabels } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import type { AuditLog } from "@/types/admin";
+
+const ElInput = ElementInput as Component;
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -82,7 +85,7 @@ onMounted(load);
     <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以查看全局审计日志。" />
     <section v-else class="panel">
       <form class="toolbar" role="search" @submit.prevent="filter">
-        <label class="field"><span>搜索审计记录</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="操作人、动作、目标或请求编号" /></label>
+        <label class="field"><span>搜索审计记录</span><el-input v-model="query" class="admin-input" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="操作人、动作、目标或请求编号" /></label>
         <button class="button button--secondary" type="submit" :disabled="loading">搜索</button>
       </form>
       <PageState v-if="loading" type="loading" message="正在读取审计日志…" />
@@ -121,7 +124,7 @@ onMounted(load);
 
 <style scoped>
 .nowrap { white-space: nowrap; }
-code { padding: var(--space-1) var(--space-2); border-radius: 5px; color: #445269; background: #f1f3f6; font-size: 11px; }
+code { padding: var(--space-1) var(--space-2); border-radius: 5px; color: #445269; background: #f1f3f6; font-size: 12px; }
 .audit-context { display: block; margin-top: 3px; color: var(--color-muted); line-height: 1.4; }
 .list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
 .pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }

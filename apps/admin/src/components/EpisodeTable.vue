@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Icon from "./Icon.vue";
+import { ElInput as ElementInput } from "element-plus";
 import {
   DRAMA_EPISODE_MAX_COUNT,
   EPISODE_DURATION_SECONDS_MAX,
@@ -7,7 +8,7 @@ import {
   MediaStatus,
   UPLOAD_FILE_ACCEPT,
 } from "@microfocus/contracts";
-import { computed, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, onUnmounted, reactive, ref, watch, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import { uploadFileError } from "@/policies/drama-input";
@@ -15,6 +16,8 @@ import { formatDuration, mediaStatusLabels } from "@/i18n";
 import type { EpisodeRecord, UploadProgress } from "@/types/admin";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import StatusBadge from "./StatusBadge.vue";
+
+const ElInput = ElementInput as Component;
 
 const props = defineProps<{
   modelValue: EpisodeRecord[];
@@ -235,7 +238,8 @@ onUnmounted(() => {
           <tr v-for="episode in sortedEpisodes" :key="episode.id">
             <td class="episode-number-cell">{{ String(episode.episodeNumber).padStart(2, "0") }}</td>
             <td>
-              <input
+              <el-input
+                class="admin-input episode-title-input"
                 type="text"
                 :value="episode.title"
                 :disabled="readonly"
@@ -246,7 +250,8 @@ onUnmounted(() => {
             </td>
             <td class="episode-duration-cell">
               <div class="episode-duration">
-                <input
+                <el-input
+                  class="admin-input episode-duration-input"
                   :value="episode.durationSeconds || ''"
                   :disabled="readonly"
                   type="number"
@@ -390,33 +395,17 @@ onUnmounted(() => {
 }
 .episode-table-wrap.table-wrap--sticky-actions thead th:last-child { z-index: 5; }
 .episode-number-cell { width: 48px; color: var(--color-primary); font-weight: 800; }
-.episode-table input[type="text"] {
-  width: 100%;
-  min-width: 120px;
-  height: var(--control-height);
-  padding: 0 var(--space-2);
-  border: 1px solid #cfd7e2;
-  border-radius: 8px;
-  outline: 0;
-  background: #fff;
-  font-weight: 400;
-}
+.episode-title-input { min-width: 120px; }
 .episode-duration-cell { width: 148px; }
 .episode-duration {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
-.episode-duration input[type="number"] {
+.episode-duration-input {
   width: 80px;
   flex: 0 0 80px;
-  height: var(--control-height);
-  padding: 0 var(--space-2);
-  border: 1px solid #cfd7e2;
-  border-radius: 8px;
-  outline: 0;
-  background: #fff;
-  font-weight: 400;
+  min-width: 80px;
 }
 .episode-duration span {
   color: var(--color-muted);
@@ -431,10 +420,10 @@ onUnmounted(() => {
 .upload-progress { display: flex; width: 100%; flex-direction: column; gap: var(--space-1); margin-top: var(--space-1); }
 .upload-progress > span { display: block; width: 100%; height: 4px; overflow: hidden; border-radius: 99px; background: #e7ebf0; }
 .upload-progress i { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); transition: width .15s ease; }
-.upload-success, .upload-error { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-1); font-size: 10px; font-weight: 400; }
+.upload-success, .upload-error { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-1); font-size: 12px; font-weight: 400; }
 .upload-success { color: var(--color-success); }
 .upload-error { color: var(--color-danger); }
-.upload-error .link, .upload-success .link { width: fit-content; font-size: 10px; }
+.upload-error .link, .upload-success .link { width: fit-content; font-size: 12px; }
 @media (max-width: 720px) {
   .episode-drawer { width: 100vw; min-width: 0; }
 }

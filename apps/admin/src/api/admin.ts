@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, CatalogTagStatus, encodedRoute, isRightsMaterialDigest, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, type CatalogTag, type CatalogTagGroupId, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, CatalogTagStatus, encodedRoute, isRightsMaterialDigest, normalizeSystemNotificationAdminPageSize, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE, type CatalogTag, type CatalogTagGroupId, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AdminAccountRecord,
@@ -93,6 +93,18 @@ export const adminApi = {
       body: json({ email, password, otp }),
     });
     return normalizeAdminSession(response);
+  },
+  async refresh(): Promise<AdminSession> {
+    if (isMockMode) throw new Error("Mock 模式不支持跨标签页会话恢复");
+    return normalizeAdminSession(await request<unknown>(endpoints.refresh, {
+      method: "POST",
+    }, { skipAuthRefresh: true }));
+  },
+  async logout(): Promise<void> {
+    if (isMockMode) return;
+    await request<unknown>(endpoints.logout, {
+      method: "POST",
+    }, { skipAuthRefresh: true });
   },
   async dashboard(): Promise<DashboardData> {
     if (isMockMode) return mockApi.dashboard();
@@ -403,12 +415,14 @@ export const adminApi = {
     const items = normalizeAuditList(payload);
     return { items, total: pageTotal(payload, items.length) };
   },
-  async listNotifications(query = "", status = "", page = 1): Promise<PageResult<AdminNotificationRecord>> {
-    if (isMockMode) return mockApi.listNotifications(query, status, page);
+  async listNotifications(query = "", status = "", page = 1, pageSize = SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE): Promise<PageResult<AdminNotificationRecord>> {
+    const safePageSize = normalizeSystemNotificationAdminPageSize(pageSize);
+    if (isMockMode) return mockApi.listNotifications(query, status, page, safePageSize);
     const params = new URLSearchParams();
     if (query.trim()) params.set("query", query.trim());
     if (status) params.set("status", status);
     if (page > 1) params.set("page", String(page));
+    if (safePageSize !== SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE) params.set("pageSize", String(safePageSize));
     return normalizeAdminNotificationList(await request<unknown>(`${endpoints.notifications}?${params}`));
   },
   async getNotification(id: string): Promise<AdminNotificationRecord> {

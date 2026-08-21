@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { ref, type Component } from "vue";
 import Icon from "@/components/Icon.vue";
+
+const ElInput = ElementInput as Component;
 
 const model = defineModel<string>({ required: true });
 
@@ -22,8 +25,9 @@ const visible = ref(false);
 
 <template>
   <div class="password-field">
-    <input
+    <el-input
       v-model="model"
+      class="admin-input"
       :type="visible ? 'text' : 'password'"
       :autocomplete="autocomplete"
       :minlength="minlength"

@@ -22,7 +22,8 @@ import {
   type CatalogTag,
   type ReleaseGateStatus,
 } from "@microfocus/contracts";
-import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, onMounted, onUnmounted, reactive, ref, type Component } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -36,6 +37,8 @@ import { dramaStatusLabels } from "@/i18n";
 import { dramaDraftError, posterFileError } from "@/policies/drama-input";
 import { useAuthStore } from "@/stores/auth";
 import type { DramaInput, DramaRecord, EpisodeRecord } from "@/types/admin";
+
+const ElInput = ElementInput as Component;
 
 const route = useRoute();
 const router = useRouter();
@@ -438,7 +441,8 @@ onUnmounted(() => {
           </div>
           <div class="form-grid">
             <label class="field"><span>剧名<span class="required-mark" aria-hidden="true">*</span></span>
-              <input
+              <el-input
+                class="admin-input"
                 v-model="form.title"
                 :disabled="!canEdit"
                 :maxlength="DRAMA_TITLE_MAX_LENGTH"
@@ -490,8 +494,10 @@ onUnmounted(() => {
               ><span
                 >简介
                 <span class="required-mark" aria-hidden="true">*</span></span
-              ><textarea
+              ><el-input
+                class="admin-input"
                 v-model="form.summary"
+                type="textarea"
                 :disabled="!canEdit"
                 rows="4"
                 :maxlength="DRAMA_SUMMARY_MAX_LENGTH"
@@ -628,42 +634,48 @@ onUnmounted(() => {
           <div class="form-grid">
             <label class="field"
               ><span>权利方</span
-              ><input
+              ><el-input
+                class="admin-input"
                 v-model="form.rightsHolder"
                 :disabled="!canEdit"
                 :maxlength="RIGHTS_HOLDER_MAX_LENGTH"
             /></label>
             <label class="field"
               ><span>许可 / 备案编号</span
-              ><input
+              ><el-input
+                class="admin-input"
                 v-model="form.licenseNumber"
                 :disabled="!canEdit"
                 :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH"
             /></label>
             <label class="field"
               ><span>许可起始日</span
-              ><input
+              ><el-input
+                class="admin-input"
                 v-model="form.rightsValidFrom"
                 :disabled="!canEdit"
                 type="date"
             /></label>
             <label class="field"
               ><span>许可到期日</span
-              ><input
+              ><el-input
+                class="admin-input"
                 v-model="form.licenseExpiresAt"
                 :disabled="!canEdit"
                 type="date"
             /></label>
             <label class="field"
               ><span>报备号</span
-              ><input
+              ><el-input
+                class="admin-input"
                 v-model="form.rightsReportNumber"
                 :disabled="!canEdit"
                 :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH"
             /></label>
             <label class="field"
               ><span>私有材料对象键</span
-              ><input
+              ><el-input
+                class="admin-input"
                 v-model="form.rightsMaterialObjectKey"
                 :disabled="!canEdit"
                 :maxlength="RIGHTS_MATERIAL_KEY_MAX_LENGTH"
@@ -672,7 +684,8 @@ onUnmounted(() => {
             >
             <label class="field field--wide"
               ><span>材料 SHA-256 摘要</span
-              ><input
+              ><el-input
+                class="admin-input"
                 v-model="form.rightsMaterialDigestSha256"
                 :disabled="!canEdit"
                 :minlength="RIGHTS_MATERIAL_DIGEST_LENGTH"
@@ -896,7 +909,7 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--space-2);
   color: #344054;
-  font-size: 13px;
+    font-size: 12px;
 }
 .drama-type__options input {
   width: 16px;

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { CATALOG_TAG_GROUPS, DRAMA_TAG_MAX_COUNT, DRAMA_TAG_MAX_LENGTH } from "@microfocus/contracts";
-import { computed, nextTick, ref, watch } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, nextTick, ref, watch, type Component } from "vue";
 import Icon from "./Icon.vue";
+
+const ElInput = ElementInput as Component;
 
 interface TagPickerOption {
   id: string;
@@ -22,7 +25,7 @@ const emit = defineEmits<{
 
 const query = ref("");
 const draft = ref<string[]>([]);
-const searchInput = ref<HTMLInputElement | null>(null);
+const searchInput = ref<{ focus: () => void } | null>(null);
 
 const libraryGroups = computed(() =>
   (props.groups?.length ? props.groups : CATALOG_TAG_GROUPS.map((group) => ({ ...group, options: [] }))).map(
@@ -108,9 +111,10 @@ function confirm(): void {
         </div>
         <label class="field">
           <span class="visually-hidden">搜索标签</span>
-          <input
+          <el-input
             ref="searchInput"
             v-model="query"
+            class="admin-input"
             type="search"
             placeholder="搜索标签，如：都市、重生、男频"
             :maxlength="DRAMA_TAG_MAX_LENGTH"
@@ -165,10 +169,10 @@ function confirm(): void {
 .tag-dialog__header h2, .tag-dialog__header .eyebrow { margin-bottom: 0; }
 .tag-dialog__count { margin: var(--space-2) 0 0; color: var(--color-muted); font-size: 12px; font-weight: 400; }
 .tag-dialog__body { overflow: auto; display: grid; gap: var(--space-3); margin: var(--space-3) 0; padding-right: var(--space-1); }
-.tag-dialog__empty { color: var(--color-muted); font-size: 13px; }
+.tag-dialog__empty { color: var(--color-muted); font-size: 12px; }
 .tag-dialog__hint { margin: 0; color: var(--color-danger); font-size: 12px; font-weight: 400; }
 .tag-picker__group { display: grid; gap: var(--space-2); }
-.tag-picker__label { margin: 0; color: var(--color-muted); font-size: 11px; font-weight: 650; letter-spacing: 0.04em; }
+.tag-picker__label { margin: 0; color: var(--color-muted); font-size: 12px; font-weight: 650; letter-spacing: 0.04em; }
 .tag-picker__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .tag-chip { padding: var(--space-1) var(--space-2); border: 1px solid var(--color-border); border-radius: 999px; background: #fff; color: #344054; font-size: 12px; line-height: 1.2; }
 .tag-chip:disabled { opacity: 0.45; cursor: not-allowed; }

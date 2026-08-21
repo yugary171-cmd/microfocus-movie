@@ -8,7 +8,8 @@ import {
   ENTITLEMENT_SECONDS_MAX,
   REWARD_SECONDS
 } from "@microfocus/contracts";
-import { computed, onMounted, reactive, ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -18,6 +19,8 @@ import Icon from "@/components/Icon.vue";
 import { formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import type { CircuitBreakerState, CompensationInput, AdjustmentInput, AdminCallbackEvent, CallbackReplayInput, DeletionQueryTokenReissueInput } from "@/types/admin";
+
+const ElInput = ElementInput as Component;
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -359,10 +362,10 @@ onMounted(load);
           <div class="panel__header"><div><p class="eyebrow">ENTITLEMENT</p><h2 id="compensation-title">补偿权益</h2></div><StatusBadge label="人工授予" tone="warning" /></div>
           <form class="compensation-form" @submit.prevent="requestCompensation">
             <div class="form-grid">
-              <label class="field"><span>用户 ID *</span><input v-model="compensation.userId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="用户内部 ID" /></label>
-              <label class="field"><span>剧目 ID *</span><input v-model="compensation.dramaId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="drama-…" /></label>
-              <label class="field"><span>补偿时长（秒）*</span><input v-model.number="compensation.seconds" type="number" :min="COMPENSATION_SECONDS_MIN" :max="ENTITLEMENT_SECONDS_MAX" :step="COMPENSATION_SECONDS_MIN" required /></label>
-              <label class="field field--wide"><span>补偿原因 *</span><textarea v-model="compensation.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单或用户影响" /></label>
+              <label class="field"><span>用户 ID *</span><el-input v-model="compensation.userId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="用户内部 ID" /></label>
+              <label class="field"><span>剧目 ID *</span><el-input v-model="compensation.dramaId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="drama-…" /></label>
+              <label class="field"><span>补偿时长（秒）*</span><el-input v-model.number="compensation.seconds" class="admin-input" type="number" :min="COMPENSATION_SECONDS_MIN" :max="ENTITLEMENT_SECONDS_MAX" :step="COMPENSATION_SECONDS_MIN" required /></label>
+              <label class="field field--wide"><span>补偿原因 *</span><el-input v-model="compensation.reason" class="admin-input" type="textarea" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单或用户影响" /></label>
             </div>
             <p class="form-help">权益授予不可在浏览器中撤回；服务端将验证管理员权限、范围和幂等性。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并授予</button>
@@ -379,11 +382,11 @@ onMounted(load);
                   <option value="WRITE_OFF">核销（不改余额）</option>
                 </select>
               </label>
-              <label class="field"><span>Grant ID *</span><input v-model="adjustment.grantId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="grant-…" /></label>
-              <label class="field"><span>秒数 *</span><input v-model.number="adjustment.seconds" type="number" min="1" :max="ENTITLEMENT_SECONDS_MAX" required /></label>
-              <label v-if="adjustment.type === 'RELEASE_FREEZE'" class="field"><span>原冻结记录 ID *</span><input v-model="adjustment.freezeAdjustmentId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="adjustment-…" /></label>
-              <label class="field field--wide"><span>原因 *</span><textarea v-model="adjustment.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单与为何不能改原 grant/debit" /></label>
-              <label class="field field--wide"><span>审批记录</span><textarea v-model="adjustment.approvalNote" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
+              <label class="field"><span>Grant ID *</span><el-input v-model="adjustment.grantId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="grant-…" /></label>
+              <label class="field"><span>秒数 *</span><el-input v-model.number="adjustment.seconds" class="admin-input" type="number" min="1" :max="ENTITLEMENT_SECONDS_MAX" required /></label>
+              <label v-if="adjustment.type === 'RELEASE_FREEZE'" class="field"><span>原冻结记录 ID *</span><el-input v-model="adjustment.freezeAdjustmentId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="adjustment-…" /></label>
+              <label class="field field--wide"><span>原因 *</span><el-input v-model="adjustment.reason" class="admin-input" type="textarea" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单与为何不能改原 grant/debit" /></label>
+              <label class="field field--wide"><span>审批记录</span><el-input v-model="adjustment.approvalNote" class="admin-input" type="textarea" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
             <p class="form-help">冻结会降低可播放余额；释放冻结必须引用原冻结记录且不超过未释放秒数；核销只记事故，不再次改变用户余额。补偿请用上方独立授予，不要改历史 grant。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并写入纠错</button>
@@ -425,9 +428,9 @@ onMounted(load);
           </div>
           <form class="compensation-form" @submit.prevent="requestReplay">
             <div class="form-grid">
-              <label class="field"><span>回调事件 ID *</span><input v-model="replay.eventId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="provider 事件 ID" /></label>
-              <label class="field field--wide"><span>原因 *</span><textarea v-model="replay.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明修复依据、工单与为何可以重放" /></label>
-              <label class="field field--wide"><span>审批记录</span><textarea v-model="replay.approvalNote" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
+              <label class="field"><span>回调事件 ID *</span><el-input v-model="replay.eventId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="provider 事件 ID" /></label>
+              <label class="field field--wide"><span>原因 *</span><el-input v-model="replay.reason" class="admin-input" type="textarea" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明修复依据、工单与为何可以重放" /></label>
+              <label class="field field--wide"><span>审批记录</span><el-input v-model="replay.approvalNote" class="admin-input" type="textarea" rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
             <p class="form-help">仅可将 RETRYABLE_FAILURE 或 DEAD_LETTER 迁回 PROCESSING，沿用原事件 ID。若事件仍在保留期内且存有加密规范化载荷，服务端会立即用该载荷执行，不复制新的 grant/媒体事实。无载荷或已过保留期时只解锁，等待 provider 再次投递。已处理或已拒绝事件不可重放。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并解锁重放</button>
@@ -437,10 +440,10 @@ onMounted(load);
           <div class="panel__header"><div><p class="eyebrow">PRIVACY</p><h2 id="reissue-title">注销查询令牌补发</h2></div><StatusBadge label="客服核验" tone="warning" /></div>
           <form class="compensation-form" @submit.prevent="requestReissue">
             <div class="form-grid">
-              <label class="field"><span>注销申请 ID *</span><input v-model="reissue.deletionRequestId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="deletion-request-…" /></label>
-              <label class="field"><span>已核验用户 ID *</span><input v-model="reissue.userId" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="必须与申请所属用户一致" /></label>
-              <label class="field field--wide"><span>原因 *</span><textarea v-model="reissue.reason" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明令牌遗失/过期、工单与核验方式" /></label>
-              <label class="field field--wide"><span>审批/核验记录 *</span><textarea v-model="reissue.approvalNote" rows="2" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="审批人、工单号与身份核验结论" /></label>
+              <label class="field"><span>注销申请 ID *</span><el-input v-model="reissue.deletionRequestId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="deletion-request-…" /></label>
+              <label class="field"><span>已核验用户 ID *</span><el-input v-model="reissue.userId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="必须与申请所属用户一致" /></label>
+              <label class="field field--wide"><span>原因 *</span><el-input v-model="reissue.reason" class="admin-input" type="textarea" rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明令牌遗失/过期、工单与核验方式" /></label>
+              <label class="field field--wide"><span>审批/核验记录 *</span><el-input v-model="reissue.approvalNote" class="admin-input" type="textarea" rows="2" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="审批人、工单号与身份核验结论" /></label>
             </div>
             <p class="form-help">旧 JWT 不会恢复。新令牌只在成功响应中出现一次，旧令牌立即失效。必须先核验用户身份，填写的用户 ID 必须与申请一致。Mock 模式只写演示审计。</p>
             <button class="button button--primary" type="submit" :disabled="busy">核对并补发令牌</button>
@@ -468,14 +471,14 @@ onMounted(load);
 .breaker-visual > div { display: flex; flex-direction: column; }
 .breaker-panel dl { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
 .breaker-panel dl div { display: grid; grid-template-columns: 110px 1fr; gap: var(--space-2); }
-.breaker-panel dt { color: var(--color-muted); font-size: 11px; }
+.breaker-panel dt { color: var(--color-muted); font-size: 12px; }
 .breaker-panel dd { margin: 0; }
 .callback-filter { display: flex; align-items: end; gap: var(--space-3); margin-bottom: var(--space-3); }
 .callback-table { margin-bottom: var(--space-3); }
 .callback-table td { vertical-align: top; }
 .callback-table small { display: block; color: var(--color-muted); }
 .compensation-form { display: grid; gap: var(--space-3); }
-.form-help { margin: 0; padding: var(--space-2) var(--space-3); border-radius: 7px; color: var(--color-muted); background: var(--color-surface-soft); font-size: 11px; }
+.form-help { margin: 0; padding: var(--space-2) var(--space-3); border-radius: 7px; color: var(--color-muted); background: var(--color-surface-soft); font-size: 12px; }
 .operation-message { margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: 8px; color: var(--color-success); background: var(--color-success-soft); }
 .operation-message--error { color: var(--color-danger); background: var(--color-danger-soft); }
 @media (max-width: 1040px) { .operation-grid { grid-template-columns: 1fr; } }

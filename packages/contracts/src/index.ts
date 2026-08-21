@@ -340,7 +340,17 @@ export const OTP_INPUT_PATTERN = `[0-9]{${OTP_INPUT_LENGTH}}`;
 export const HEARTBEAT_SEQ_MAX = 1_000_000;
 export const REWARD_NONCE_MAX_LENGTH = 128;
 export const ADMIN_LIST_PAGE_SIZE = 50;
+export const SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE = 20;
+export const SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 export const ADMIN_LIST_MAX_PAGE = 100;
+
+export type SystemNotificationAdminPageSize = (typeof SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS)[number];
+
+export function normalizeSystemNotificationAdminPageSize(value: number): SystemNotificationAdminPageSize {
+  return SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS.includes(value as SystemNotificationAdminPageSize)
+    ? (value as SystemNotificationAdminPageSize)
+    : SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE;
+}
 export const LIST_QUERY_MAX_LENGTH = 100;
 export const UPLOAD_FILE_NAME_MAX_LENGTH = 255;
 export const UPLOAD_FILE_SIZE_MAX_BYTES = 5 * 1024 * 1024 * 1024;
@@ -481,6 +491,7 @@ export const ERROR_CODES = {
   ADMIN_ACCOUNT_PENDING_SETUP: "ADMIN_ACCOUNT_PENDING_SETUP",
   ADMIN_ACCOUNT_SUSPENDED: "ADMIN_ACCOUNT_SUSPENDED",
   ADMIN_SESSION_INVALID: "ADMIN_SESSION_INVALID",
+  ADMIN_REFRESH_INVALID: "ADMIN_REFRESH_INVALID",
   ADMIN_OTP_INVALID: "ADMIN_OTP_INVALID",
   ADMIN_SELF_ACTION_FORBIDDEN: "ADMIN_SELF_ACTION_FORBIDDEN",
   ADMIN_EMAIL_ALREADY_EXISTS: "ADMIN_EMAIL_ALREADY_EXISTS",
@@ -560,6 +571,8 @@ export const API_ROUTES = {
   admin: {
     root: "/v1/admin",
     login: "/v1/admin/auth/login",
+    refresh: "/v1/admin/auth/refresh",
+    logout: "/v1/admin/auth/logout",
     dashboard: "/v1/admin/dashboard",
     accounts: "/v1/admin/accounts",
     account: (adminId: string) => `/v1/admin/accounts/${adminId}`,
@@ -834,6 +847,7 @@ export interface AdminSetupCompleteResponse {
 
 export interface AdminLoginResponse {
   accessToken: string;
+  accessTokenExpiresAt: string;
   admin: {
     id: string;
     email: string;

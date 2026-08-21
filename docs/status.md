@@ -1,10 +1,13 @@
 # 项目状态
 
-- 更新日期：2026-08-20
+- 更新日期：2026-08-21
 - 本文是实现进度的唯一说明；PRD、架构和 API 文档描述目标规则，不代表代码已经具备全部能力
 
+- 2026-08-21：管理端系统通知列表按参考 Table 规范收口：表头使用统一 Token、正文/行项目 12px/500、列间取消竖线、操作文本按钮使用 `|` 分隔符并固定右侧；创建时间显示到秒，通知管理接口和 Mock 默认每页 20 条并提供分页器。仅修改管理端 Web/API/Mock/契约，未修改或验证 `apps/uniapp`、`apps/miniprogram`。
+- 2026-08-21：系统通知复制成功提示改为管理端自定义成功消息样式，标题/发布人复制图标使用 `@element-plus/icons-vue`；通知管理分页默认 20 条，并支持 10/20/50/100 条 pageSize 切换。仅修改管理端 Web/API/Mock/契约，未修改或验证 `apps/uniapp`、`apps/miniprogram`。
+- 2026-08-21：管理员认证改为短时 access JWT + HttpOnly refresh session：新增 `AdminRefreshSession` Prisma 模型和迁移，refresh token 只保存摘要并轮换；管理端 access token 仅保存在内存，401 时单次自动刷新，关闭标签页后可通过 Cookie 恢复；保留 `sessionVersion` 对停用、改角色和凭据重置的强制失效。API 68 个测试文件/325 个测试、管理端 24 个测试文件/112 个测试通过；用户已声明在本机执行 `npm run db:migrate:deploy`，本轮未重复执行或独立核对迁移结果；未修改或验证 `apps/uniapp`、`apps/miniprogram`。
 - 2026-08-20：管理后台补齐上传与审核 Trace 审计：签名申请记录 `SIGN_REQUESTED`，媒体登记记录 `MEDIA_REGISTERED`，内容/媒体审核记录资源上下文、审核结论及前后状态；`GET /v1/admin/audit-logs` 返回可选结构化 `context`，管理端展示并支持按剧目/集/媒体资源 ID 检索。真实 VOD provider 成功/失败回调仍未接入，因此不把签名申请解释为上传成功；未修改或验证原生 `apps/miniprogram`，观看端继续以 `apps/uniapp` 为唯一开发端。
-- 2026-08-20：新增系统通知与用户反馈闭环：通知支持 ADMIN 草稿/发布/撤回，小程序消息读取服务端通知并记录已读；登录用户反馈写入 `UserFeedback`，ADMIN 可查看、改状态、写内部备注和回复，回复事务内创建用户通知。新增 Prisma 迁移但未执行；用户反馈创建以 `OperationalEvent` 记录用户主体，管理员动作写 `AuditLog`。未修改或验证原生 `apps/miniprogram`。
+- 2026-08-20：新增系统通知与用户反馈闭环：通知支持 ADMIN 草稿/发布/撤回，小程序消息读取服务端通知并记录已读；登录用户反馈写入 `UserFeedback`，ADMIN 可查看、改状态、写内部备注和回复，回复事务内创建用户通知。新增 Prisma 迁移；用户后续声明已执行 `npm run db:migrate:deploy`，本轮未独立核对具体迁移列表；用户反馈创建以 `OperationalEvent` 记录用户主体，管理员动作写 `AuditLog`。未修改或验证原生 `apps/miniprogram`。
 
 ## 当前目标
 
@@ -17,7 +20,7 @@
 - PRD、架构、页面/API、配置、运维和发布清单已形成目标设计，但部分目标接口、模型和安全控制尚未实现。
 - `packages/contracts` 覆盖已落地的 `/v1` 路径（含社交）；[pages-and-apis.md](./pages-and-apis.md) 仍可能含后续目标，不能只凭文档推断客户端 UI 已接上。
 - API、管理后台、uni-app 和原生过渡小程序已形成首轮内部 Mock 实现。2026-08-14 已将当时工作区收成 Git 快照 `17babc1`（不含 `.env`、本机 Demo origin、微信私有配置和 `旧内容/`）。
-- 当前仅允许 Mock 内部体验；真实外部发布仍受资质、备案、微信类目、广告能力和逐剧内容权利闸门约束。系统通知/用户反馈链路已接入 API，但数据库迁移尚未执行。
+- 当前仅允许 Mock 内部体验；真实外部发布仍受资质、备案、微信类目、广告能力和逐剧内容权利闸门约束。系统通知/用户反馈链路已接入 API；数据库迁移是否已在当前环境应用，以环境负责人执行的 `db:migrate:deploy` 结果为准，本轮未独立核对。
 - 微信 `code2session` 登录适配已实现；腾讯云 VOD 上传/播放签名和微信激励广告可信服务端验证仍为 fail-closed。发布闸门会返回 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`，生产进程也会拒绝启动，直到企业账号完成真实实现与端到端验收。
 - 外部构建还受配置链路约束：内部 Mock 构建允许空 API 地址并注入 Demo 媒体；外部包必须 `MICROFOCUS_CLIENT_MODE=live` 且公开 HTTPS API 地址合法，产物不得含 Demo 媒体。真实 Live provider 和发布证据仍未完成。边界见 [configuration.md](./configuration.md)。
 - 2026-08-15 当前工作区执行 `npm run check` 通过；该结果覆盖 typecheck、单元/组件测试和构建，不等于 HTTP E2E、真实 MySQL 并发、真机或真实 provider 验收。
@@ -272,5 +275,6 @@
 - 2026-08-20：修复通知/反馈管理控制器缺少 `/v1/admin` 前缀导致运行时 `Cannot GET /v1/admin/feedback`；重启 Nest watch 后管理路由已正确映射，未修改 `apps/miniprogram`。当前 `20260820140000_notifications_feedback` 迁移尚未应用，Live API 要实际读写通知/反馈前仍需由环境负责人执行迁移。
 - 2026-08-20：系统通知管理页扩大左侧草稿编辑区，右侧改为结构化列表并修正筛选按钮对齐；新增仅草稿可用的删除接口与审计动作 `SYSTEM_NOTIFICATION_DELETED`，已发布/已撤回通知仍不可删除。
 - 2026-08-20：系统通知列表进一步收口为标题、发布人、状态、创建日期和操作；新增 `GET /v1/admin/notifications/:id` 详情接口，发布人使用 `AdminUser.displayName`，管理端以右侧抽屉展示正文；未新增字段或迁移。
+- 2026-08-21：管理端文本、数字、日期和多行输入统一改用 Element Plus `ElInput`，新增 `admin-input` 全局样式；系统通知搜索框改为响应式约半宽，窄屏回落为整行。文件选择、radio、checkbox 和 Select 未误改为文本 Input。未修改或验证 `apps/uniapp`、`apps/miniprogram`。
 - 2026-08-19：新建/编辑剧目草稿的版权与许可改为选填；标签改为目录筛选项多选且至少 1 个。提交审核与发布仍须版权资料齐全。必填星号使用危险色。
 - 2026-08-19：剧目编辑把原分类改为剧目类型（真人/数字真人/漫剧，分别写入真人剧/AI 剧/漫剧）；标签改为分类弹窗+搜索；封面 URL 改为剧目海报，并增加选填推广海报。海报文件仅 Mock 本地预览，Live 图片存储未接入。推广海报只存在管理端记录，观看端卡片仍只用 coverUrl。

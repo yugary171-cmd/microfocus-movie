@@ -5,12 +5,15 @@ import {
   OTP_INPUT_LENGTH,
   AdminSetupPurpose,
 } from "@microfocus/contracts";
-import { computed, onMounted, ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, onMounted, ref, type Component } from "vue";
 import { useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
 import PasswordField from "@/components/PasswordField.vue";
 import { roleLabels, formatDateTime } from "@/i18n";
 import type { AdminAccountSetupInfo } from "@/types/admin";
+
+const ElInput = ElementInput as Component;
 
 const router = useRouter();
 const state = ref<"loading" | "ready" | "invalid" | "success">("loading");
@@ -140,7 +143,7 @@ onMounted(inspect);
               <code v-if="showManualKey">{{ info.manualKey }}</code>
             </div>
           </div>
-          <label class="field"><span>验证器验证码 *</span><input v-model="otp" inputmode="numeric" autocomplete="one-time-code" :maxlength="OTP_INPUT_LENGTH" pattern="[0-9]*" required /><small>输入验证器当前显示的 {{ OTP_INPUT_LENGTH }} 位数字。</small></label>
+          <label class="field"><span>验证器验证码 *</span><el-input v-model="otp" class="admin-input" inputmode="numeric" autocomplete="one-time-code" :maxlength="OTP_INPUT_LENGTH" pattern="[0-9]*" required /><small>输入验证器当前显示的 {{ OTP_INPUT_LENGTH }} 位数字。</small></label>
         </section>
 
         <div v-if="error" class="setup-error" role="alert">{{ error }}</div>
@@ -170,7 +173,7 @@ onMounted(inspect);
 .setup-section > div:first-child { display: flex; align-items: center; gap: var(--space-2); }
 .setup-section h2, .setup-section p { margin-bottom: 0; }
 .setup-section p { color: var(--color-muted); }
-.step-number { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; color: #fff; background: var(--color-primary); font-size: 13px; font-weight: 800; }
+.step-number { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; color: #fff; background: var(--color-primary); font-size: 12px; font-weight: 800; }
 .totp-box { display: grid; grid-template-columns: 240px 1fr; gap: var(--space-4); align-items: center; padding: var(--space-3); border: 1px solid #dfe5ed; border-radius: 12px; }
 .totp-box img { display: block; border-radius: 8px; }
 .totp-box > div { display: grid; gap: var(--space-2); align-content: center; }

@@ -182,7 +182,7 @@ onMounted(load);
 .review-card__heading h2 { margin: 0; }
 dl { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4); margin: var(--space-3) 0; }
 dl div { display: flex; flex-direction: column; }
-dt { color: var(--color-muted); font-size: 10px; font-weight: 700; }
+dt { color: var(--color-muted); font-size: 12px; font-weight: 700; }
 dd { margin: var(--space-1) 0 0; font-size: 12px; }
 .risk-flags { padding: var(--space-2) var(--space-3); border-left: 3px solid var(--color-warning); border-radius: 6px; color: #71450a; background: var(--color-warning-soft); font-size: 12px; }
 .risk-flags ul { margin: var(--space-1) 0 0; padding-left: var(--space-3); }

@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, Module, Param, Patch, Post, Query, UseGu
 import {
   ADMIN_LIST_MAX_PAGE,
   ADMIN_LIST_PAGE_SIZE,
+  SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE,
+  normalizeSystemNotificationAdminPageSize,
   API_ROUTES,
   ENTITY_ID_MAX_LENGTH,
   FEEDBACK_BODY_MAX_LENGTH,
@@ -246,9 +248,10 @@ export class AdminNotificationsController {
   private readonly creatorInclude = { createdByAdmin: { select: { displayName: true } } } as const;
 
   @Get(adminPath(API_ROUTES.admin.notifications))
-  async listNotifications(@Query("query") query = "", @Query("status") status = "", @Query("page") pageValue = "1") {
-    const window = boundedListWindow({ page: parsePage(pageValue), pageSize: ADMIN_LIST_PAGE_SIZE, maxPage: ADMIN_LIST_MAX_PAGE });
-    if (window.exceeded) return emptyBoundedPage(window.page, ADMIN_LIST_PAGE_SIZE);
+  async listNotifications(@Query("query") query = "", @Query("status") status = "", @Query("page") pageValue = "1", @Query("pageSize") pageSizeValue = String(SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE)) {
+    const pageSize = normalizeSystemNotificationAdminPageSize(Number.parseInt(pageSizeValue, 10));
+    const window = boundedListWindow({ page: parsePage(pageValue), pageSize, maxPage: ADMIN_LIST_MAX_PAGE });
+    if (window.exceeded) return emptyBoundedPage(window.page, pageSize);
     const where = {
       ...(Object.values(SystemNotificationStatus).includes(status as SystemNotificationStatus) ? { status: status as SystemNotificationStatus } : {}),
       ...(query.trim() ? { OR: [{ title: { contains: query.trim().slice(0, 100) } }, { body: { contains: query.trim().slice(0, 100) } }] } : {})

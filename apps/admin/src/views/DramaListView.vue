@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import Icon from "@/components/Icon.vue";
 import { ADMIN_LIST_PAGE_SIZE, DramaStatus, LIST_QUERY_MAX_LENGTH, isContentOperator } from "@microfocus/contracts";
-import { computed, onMounted, ref } from "vue";
+import { ElInput as ElementInput } from "element-plus";
+import { computed, onMounted, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import PageState from "@/components/PageState.vue";
@@ -9,6 +10,8 @@ import StatusBadge from "@/components/StatusBadge.vue";
 import { dramaStatusLabels, formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import type { DramaRecord } from "@/types/admin";
+
+const ElInput = ElementInput as Component;
 
 const auth = useAuthStore();
 const canCreateDrama = computed(() => Boolean(auth.user && isContentOperator(auth.user.role)));
@@ -80,7 +83,7 @@ onMounted(load);
     </header>
     <section class="panel">
       <form class="toolbar" role="search" @submit.prevent="filter">
-        <label class="field"><span>关键词</span><input v-model="query" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="搜索剧名或负责人" /></label>
+        <label class="field"><span>关键词</span><el-input v-model="query" class="admin-input" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="搜索剧名或负责人" /></label>
         <label class="field"><span>内容状态</span><select v-model="status"><option value="">全部状态</option><option v-for="item in DramaStatus" :key="item" :value="item">{{ dramaStatusLabels[item] }}</option></select></label>
         <button class="button button--secondary" type="submit" :disabled="loading">筛选</button>
         <button class="button button--ghost" type="button" :disabled="loading" @click="reset">重置</button>

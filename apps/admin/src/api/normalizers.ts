@@ -115,14 +115,16 @@ export function normalizeAdminSession(value: unknown): AdminSession {
   const source = record(value);
   const admin = record(source.admin);
   const accessToken = text(source.accessToken);
+  const accessTokenExpiresAt = dateText(source.accessTokenExpiresAt);
   const id = text(admin.id);
   const email = text(admin.email);
   const role = enumValue(admin.role, Object.values(AdminRole), "" as AdminRole);
-  if (!accessToken || !id || !email || !role) {
+  if (!accessToken || !accessTokenExpiresAt || !id || !email || !role) {
     throw new Error("登录响应缺少有效的管理员会话信息");
   }
   return {
     accessToken,
+    accessTokenExpiresAt,
     user: {
       id,
       email,

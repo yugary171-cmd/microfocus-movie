@@ -138,7 +138,7 @@ flowchart LR
 ### 4.1 响应与认证
 
 - 成功响应统一为 `{ data, requestId }`，错误响应统一为 `{ code, message, requestId }`。`requestId` 最长 128（`REQUEST_ID_MAX_LENGTH`）；入站 `x-request-id` 须匹配 `REQUEST_ID_PATTERN`，否则服务端签发 UUID。审计写入与访问日志按该上限截断。访问日志去掉查询串后，path 最长 `REQUEST_LOG_PATH_MAX_LENGTH`（256），method 最长 `REQUEST_LOG_METHOD_MAX_LENGTH`（16），actorKind 最长 `REQUEST_LOG_ACTOR_KIND_MAX_LENGTH`（32），module/code/actorId 最长 `REQUEST_LOG_LABEL_MAX_LENGTH`（64）。不记录 Authorization、请求体或健康检查。
-- 观看端使用 `Authorization: Bearer <viewer token>`：匿名 viewer token 只能申请和维护免费集租约，用户 JWT 才能访问锁定集、权益、奖励、历史和进度。管理员使用独立管理员 JWT，三种令牌不可互换。Bearer 令牌最长 4096，超长直接拒绝，不验签。
+- 观看端使用 `Authorization: Bearer <viewer token>`：匿名 viewer token 只能申请和维护免费集租约，用户 JWT 才能访问锁定集、权益、奖励、历史和进度。管理员使用独立管理员 access JWT，三种令牌不可互换。Bearer 令牌最长 4096，超长直接拒绝，不验签。管理端 access JWT 为短时令牌；refresh token 不返回 JSON，只通过 HttpOnly Cookie 传输。
 - 公开接口仅限匿名 viewer 会话创建、微信登录、公开目录、搜索和已发布剧目详情。
 - `Content-Type` 为 `application/json`；JSON 与 urlencoded 请求体最长 `JSON_BODY_LIMIT`（64kb）；时间使用 ISO 8601 UTC 字符串；秒数使用非负整数。
 - 未发布、下架、权利过期或不存在的公开内容统一返回 404，避免泄露内容状态。
@@ -151,7 +151,7 @@ flowchart LR
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
-- 管理端剧目列表与审计日志 `page` 默认 1，`pageSize` 固定 50 且客户端不可修改，最多 100 页；剧目关键词 `q`、审计关键词 `query` 最长 100（`LIST_QUERY_MAX_LENGTH`），超过页上限返回空结果，不执行大 OFFSET。审核队列共用同一分页上限，但不接受 `q`/`query`，只返回待审剧目。权益摘要不按页截断 grant。
+- 管理端剧目列表、审核队列和审计日志 `page` 默认 1，`pageSize` 固定 50 且客户端不可修改；系统通知管理列表 `pageSize` 默认 20，客户端可从受控选项 10/20/50/100 中调整；上述列表最多 100 页。剧目关键词 `q`、审计关键词 `query` 最长 100（`LIST_QUERY_MAX_LENGTH`），超过页上限返回空结果，不执行大 OFFSET。审核队列不接受 `q`/`query`，只返回待审剧目。权益摘要不按页截断 grant。
 - 路径与查询中的实体 ID（剧目、剧集、租约、challenge、回调事件、注销申请、熔断 provider）最长 191；超长返回 `INVALID_ENTITY_ID`，不执行数据库查找。公开详情、权益摘要、播放和注销查询仍先占限频桶。
 - 限频桶主键最长 `RATE_LIMIT_BUCKET_ID_MAX_LENGTH`（128），与 Prisma `RateLimitBucket.id` 对齐；可读 scope 前缀最长 `RATE_LIMIT_SCOPE_MAX_LENGTH`（32），连接 IP 写入哈希前最长 `RATE_LIMIT_CLIENT_KEY_MAX_LENGTH`（128）。哈希仍覆盖完整 scope 与主体键（如 IP+邮箱），避免截断碰撞。不信任 `X-Forwarded-For`。
 - 搜索默认按 `recommendationRank DESC, publishedAt DESC`；`latest` 必须按 `publishedAt DESC`；同值时以稳定 ID 作次级排序。
@@ -162,7 +162,7 @@ flowchart LR
 | HTTP | 稳定错误码 | 可重试性与客户端行为 |
 | --- | --- | --- |
 | 400 | `INVALID_CHALLENGE_NONCE`、`IDEMPOTENCY_KEY_REQUIRED`、`AD_NOT_COMPLETED`、`INVALID_ENTITY_ID` | 终态；严禁自动重试同一错误请求 |
-| 401 | `UNAUTHORIZED` | 会话失效；清理令牌并由用户重新触发登录，严禁自动重试 |
+| 401 | `UNAUTHORIZED` | 管理端对 access JWT 失效最多调用一次 refresh 并重试原请求；refresh 失败后清理令牌并要求重新登录。其它客户端仍不得自动重试 |
 | 401 | `ANONYMOUS_SESSION_EXPIRED` | 清理匿名 token 并重新创建匿名会话，不触发微信登录授权 |
 | 403 | `FORBIDDEN`、`USER_TOKEN_REQUIRED` | 终态；展示登录或无权限状态，严禁自动重试 |
 | 403 | `ENTITLEMENT_REQUIRED` | 用户可操作；展示广告权益拦截 |
@@ -210,11 +210,13 @@ flowchart LR
 
 ### 5.2 管理端
 
-除登录接口外，所有管理接口均需管理员 JWT；表中角色是服务端必须执行的最小权限。写操作（POST/PATCH/PUT/DELETE）和只读 GET 分别按认证管理员身份限频，分桶计数；管理员 ID 写入哈希前最长 `RATE_LIMIT_CLIENT_KEY_MAX_LENGTH`（128），不使用可伪造的客户端字段。登录仍单独按 IP+登录名限频，该键完整哈希。
+除登录、刷新和退出接口外，所有管理接口均需管理员 JWT；表中角色是服务端必须执行的最小权限。写操作（POST/PATCH/PUT/DELETE）和只读 GET 分别按认证管理员身份限频，分桶计数；管理员 ID 写入哈希前最长 `RATE_LIMIT_CLIENT_KEY_MAX_LENGTH`（128），不使用可伪造的客户端字段。登录仍单独按 IP+登录名限频，该键完整哈希；刷新按连接 IP 限频并校验管理端 Origin。
 
 | 方法与路径 | 角色 | 所有权/状态约束 | 用途 |
 | --- | --- | --- | --- |
-| `POST /v1/admin/auth/login` | 公开、按连接 IP + 登录名限频 | 登录名最长 254（`ADMIN_LOGIN_ID_MAX_LENGTH`，API 字段仍为 `email`，不作 SMTP）；允许 `stellan` 或既有 `name@domain`；密码 `PASSWORD_MIN_LENGTH`–`PASSWORD_MAX_LENGTH`（8–128）；OTP 服务端 6–8（`OTP_MIN_LENGTH`/`OTP_MAX_LENGTH`）；管理端登录表单登录名/密码 min/maxlength 与之共用，验证码输入仍为 `OTP_INPUT_LENGTH=6` 位 TOTP；成功写入 `lastLoginAt` | 换管理员 JWT（含 `sessionVersion`） |
+| `POST /v1/admin/auth/login` | 公开、按连接 IP + 登录名限频 | 登录名最长 254（`ADMIN_LOGIN_ID_MAX_LENGTH`，API 字段仍为 `email`，不作 SMTP）；允许 `stellan` 或既有 `name@domain`；密码 `PASSWORD_MIN_LENGTH`–`PASSWORD_MAX_LENGTH`（8–128）；OTP 服务端 6–8（`OTP_MIN_LENGTH`/`OTP_MAX_LENGTH`）；管理端登录表单登录名/密码 min/maxlength 与之共用，验证码输入仍为 `OTP_INPUT_LENGTH=6` 位 TOTP；成功写入 `lastLoginAt` 并签发 refresh session Cookie | 短时管理员 access JWT（含 `sessionVersion`）和 `accessTokenExpiresAt`；不返回 refresh token |
+| `POST /v1/admin/auth/refresh` | 管理端 Origin + refresh session Cookie；按连接 IP 限频 | Cookie 必须未过期、未撤销，token 摘要、token family、管理员状态和 `sessionVersion` 必须匹配；轮换期间旧 token 立即失效，重放会撤销同一 family | 新 access JWT 和轮换后的 HttpOnly refresh Cookie；不返回 refresh token |
+| `POST /v1/admin/auth/logout` | 管理端 Origin + refresh session Cookie | 撤销当前 refresh session；即使 access JWT 已过期也允许退出 | 清理 refresh Cookie；管理端同时清理内存 access token |
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
 | `GET /v1/admin/accounts` | ADMIN | `query` 最长 100；按姓名/登录名、角色、状态分页，每页 50，最多 100 页 | 管理员账号列表 |
 | `POST /v1/admin/accounts` | ADMIN + 当前管理员 OTP | 姓名、登录名必填；登录名转小写唯一（字段仍为 `email`）；不生成可用密码 | 创建待开通账号并返回 24 小时一次性开通链接（明文只出现一次） |
@@ -240,7 +242,7 @@ flowchart LR
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | EDITOR / REVIEWER / ADMIN | 允许自审；EDITOR/REVIEWER 只能处理本人负责剧目的内容和媒体审核，ADMIN 可处理全库；结论进入审计；内容审核 `notes` 可选、最长 2000（`REVIEW_NOTES_MAX_LENGTH`），退回时管理端必填；媒体审核 `notes` 仍为 6–500（`MEDIA_REVIEW_NOTES_*`），不与内容审核混用 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | EDITOR / REVIEWER / ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
 | `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId`、操作人邮箱及结构化 `dramaId`/`episodeId`/`mediaAssetId` 过滤；响应保留 `detail` 并增加可选 `context`，旧记录可无 context；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联；上传/审核可追查剧目、集号、版本、阶段和状态变化 |
-| `GET/POST/PATCH /v1/admin/notifications`、`GET/DELETE .../:id`、`POST .../:id/publish`、`POST .../:id/retract` | ADMIN | 通知支持草稿/已发布/已撤回；列表返回标题、发布人、状态和时间，详情返回完整正文；只有草稿可编辑或删除，已发布内容不可直接修改；标题/正文纯文本且受契约长度限制；创建、删除、发布和撤回写审计 | 全量系统通知管理 |
+| `GET/POST/PATCH /v1/admin/notifications`、`GET/DELETE .../:id`、`POST .../:id/publish`、`POST .../:id/retract` | ADMIN | 通知支持草稿/已发布/已撤回；列表按固定 20 条分页并返回标题、发布人、状态和时间，详情返回完整正文；只有草稿可编辑或删除，已发布内容不可直接修改；标题/正文纯文本且受契约长度限制；创建、删除、发布和撤回写审计 | 全量系统通知管理 |
 | `GET /v1/admin/feedback`、`GET/PATCH .../:id`、`POST .../:id/replies` | ADMIN | 按状态/关键词分页；可查看反馈、修改待处理/处理中/已解决、写内部备注和回复；回复在事务内生成用户通知；审计不保存完整反馈正文 | 用户反馈收件箱 |
 | `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；原因 6–300 字；`targetId` 限长 191；`updatedBy` 为管理员 ID 或 `system:*` 作业标识，写入最长 `CIRCUIT_UPDATED_BY_MAX_LENGTH`（128）；自动打开的 provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH`（32） | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key`（trim、最长 128）；写 Guard 仍先占桶 | 用户/剧目 ID 限长 191，管理端表单 maxlength 与之共用；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |
