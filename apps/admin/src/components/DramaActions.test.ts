@@ -24,7 +24,7 @@ describe("DramaActions", () => {
     },
   );
 
-  it("renders a disabled publish button and the gate reason", () => {
+  it("renders a disabled publish button and moves the gate reason into a hover tooltip", () => {
     const wrapper = mount(DramaActions, {
       props: {
         user: createUser(AdminRole.ADMIN),
@@ -35,7 +35,9 @@ describe("DramaActions", () => {
 
     const publish = wrapper.findAll("button").find((button) => button.text() === "发布剧目");
     expect(publish?.attributes("disabled")).toBeDefined();
-    expect(wrapper.text()).toContain("合规发布闸门尚未通过");
+    expect(wrapper.findAll(".action-button-tooltip-target")).toHaveLength(3);
+    expect(wrapper.findAll(".action-help-trigger")).toHaveLength(0);
+    expect(wrapper.findAll(".action-with-help small")).toHaveLength(0);
   });
 
   it("lets administrators publish a ready drama and keeps offline disabled", () => {

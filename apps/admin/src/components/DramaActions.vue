@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { isContentOperator, type ReleaseGateStatus } from "@microfocus/contracts";
-import { computed } from "vue";
+import { ElTooltip as ElementTooltip } from "element-plus";
+import { computed, type Component } from "vue";
 import { canOffline, canSubmitReview, publishDecision } from "@/policies/admin";
 import type { AdminUser, DramaRecord } from "@/types/admin";
+
+const ElTooltip = ElementTooltip as Component;
 
 const props = defineProps<{
   user: AdminUser;
@@ -23,16 +26,46 @@ const offline = computed(() => canOffline(props.user, props.drama));
 <template>
   <div v-if="showActions" class="action-cluster" aria-label="剧目操作">
     <span class="action-with-help">
-      <button class="button button--primary" type="button" :disabled="busy || !submit.allowed" @click="$emit('submit')">提交审核</button>
-      <small v-if="!submit.allowed">{{ submit.reason }}</small>
+      <el-tooltip
+        :content="submit.reason"
+        :disabled="submit.allowed"
+        effect="light"
+        placement="bottom"
+        :show-after="120"
+        trigger="hover"
+      >
+        <span class="action-button-tooltip-target">
+          <button class="button button--primary" type="button" :disabled="busy || !submit.allowed" @click="$emit('submit')">提交审核</button>
+        </span>
+      </el-tooltip>
     </span>
     <span class="action-with-help">
-      <button class="button button--primary" type="button" :disabled="busy || !publish.allowed" @click="$emit('publish')">发布剧目</button>
-      <small v-if="!publish.allowed">{{ publish.reason }}</small>
+      <el-tooltip
+        :content="publish.reason"
+        :disabled="publish.allowed"
+        effect="light"
+        placement="bottom"
+        :show-after="120"
+        trigger="hover"
+      >
+        <span class="action-button-tooltip-target">
+          <button class="button button--primary" type="button" :disabled="busy || !publish.allowed" @click="$emit('publish')">发布剧目</button>
+        </span>
+      </el-tooltip>
     </span>
     <span class="action-with-help">
-      <button class="button button--danger" type="button" :disabled="busy || !offline.allowed" @click="$emit('offline')">下架剧目</button>
-      <small v-if="!offline.allowed">{{ offline.reason }}</small>
+      <el-tooltip
+        :content="offline.reason"
+        :disabled="offline.allowed"
+        effect="light"
+        placement="bottom"
+        :show-after="120"
+        trigger="hover"
+      >
+        <span class="action-button-tooltip-target">
+          <button class="button button--danger" type="button" :disabled="busy || !offline.allowed" @click="$emit('offline')">下架剧目</button>
+        </span>
+      </el-tooltip>
     </span>
   </div>
 </template>

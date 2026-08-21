@@ -79,7 +79,7 @@ function confirm(): void {
             v-model="reason"
             class="admin-input"
             type="textarea"
-            rows="3"
+            :rows="3"
             :minlength="reasonMinLength"
             :maxlength="reasonMaxLength"
             :disabled="busy"

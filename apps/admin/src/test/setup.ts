@@ -7,7 +7,6 @@ config.global.stubs = {
     template: "<a :href='typeof to === \"string\" ? to : \"#\"'><slot /></a>",
   },
   RouterView: { template: "<div />" },
-  Teleport: true,
 };
 
 afterEach(() => {

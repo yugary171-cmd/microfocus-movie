@@ -41,6 +41,7 @@ import type {
   DashboardData,
   DramaInput,
   DramaRecord,
+  PosterUploadRefs,
   PageResult,
   AdminCallbackEvent,
   AdminAccountRecord,
@@ -866,7 +867,7 @@ export const mockApi = {
     if (!drama) throw new Error("未找到该剧目");
     return mockDelay(drama);
   },
-  async saveDrama(input: DramaInput, id?: string): Promise<DramaRecord> {
+  async saveDrama(input: DramaInput, id?: string, _posterUploads?: PosterUploadRefs): Promise<DramaRecord> {
     const validation = dramaDraftError(
       input,
       new Set(catalogTags.filter((tag) => tag.status === CatalogTagStatus.ACTIVE).map((tag) => tag.id)),
@@ -974,6 +975,7 @@ export const mockApi = {
   async signUpload(file: File, dramaId: string, episodeId: string): Promise<UploadSignature> {
     writeAudit("签发上传签名", dramaId, `剧集 ${episodeId}`);
     return mockDelay({
+      provider: "MOCK",
       uploadUrl: "mock://vod-upload",
       headers: {},
       uploadId: `mock-upload-${crypto.randomUUID()}`,
@@ -983,6 +985,28 @@ export const mockApi = {
       dramaId,
       episodeId,
     } as UploadSignature);
+  },
+  async uploadCapabilities() {
+    return mockDelay({
+      posterStorageReady: true,
+      vodUploadReady: true,
+      reasons: {},
+    });
+  },
+  async uploadPoster(
+    dramaId: string,
+    kind: "cover" | "promo",
+    _file: File,
+    onProgress: (value: number) => void,
+  ): Promise<{ assetUrl: string; uploadId: string }> {
+    for (const progress of [25, 50, 75, 100]) {
+      await new Promise((resolve) => window.setTimeout(resolve, 60));
+      onProgress(progress);
+    }
+    return {
+      assetUrl: `https://images.example.com/mock/${encodeURIComponent(dramaId)}/${kind}.jpg`,
+      uploadId: `mock-poster-${crypto.randomUUID()}`,
+    };
   },
   async listAuditLogs(query = "", page = 1): Promise<PageResult<AuditLog>> {
     const normalized = query.trim().toLowerCase();

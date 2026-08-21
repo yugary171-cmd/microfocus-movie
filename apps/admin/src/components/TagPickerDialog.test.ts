@@ -11,6 +11,11 @@ describe("TagPickerDialog", () => {
         selected: ["ctag_042", "draft"],
         groups: [{ id: "backgrounds", label: "时代背景", options: [{ id: "ctag_042", name: "都市" }] }],
       },
+      global: {
+        stubs: {
+          Teleport: { template: "<div><slot /></div>" },
+        },
+      },
     });
     await flushPromises();
     expect(wrapper.text()).toContain("都市");

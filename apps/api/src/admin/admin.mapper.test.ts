@@ -10,6 +10,7 @@ function fixture() {
     category: "Urban",
     tagsJson: ["tag"],
     coverUrl: "https://example.invalid/cover.jpg",
+    promoCoverUrl: "https://example.invalid/promo.jpg",
     status: "READY",
     contentVersion: 3,
     editorId: "editor",
@@ -60,6 +61,7 @@ describe("admin drama mapper", () => {
     expect(result).toMatchObject({
       contentApproved: true,
       wechatApproved: true,
+      promoCoverUrl: "https://example.invalid/promo.jpg",
       rightsValidFrom: "2026-01-01T00:00:00.000Z",
       rightsValidUntil: "2027-01-01T00:00:00.000Z",
       rightsReportNumber: "report",

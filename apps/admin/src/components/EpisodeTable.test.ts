@@ -25,7 +25,10 @@ async function openDrawer(wrapper: VueWrapper): Promise<void> {
 describe("EpisodeTable Mock upload path", () => {
   it("moves a selected file from simulated upload to ready media", async () => {
     const upload = vi.spyOn(adminApi, "uploadEpisode").mockImplementation(
-      async (_dramaId, _episodeId, _file, onProgress) => onProgress(100),
+      async (_dramaId, _episodeId, _file, onProgress) => {
+        onProgress(100);
+        return { fileId: "mock-file-id" };
+      },
     );
     const wrapper = mount(EpisodeTable, {
       props: { modelValue: [episode], dramaId: "drama-upload-test" },

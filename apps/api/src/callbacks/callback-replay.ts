@@ -10,7 +10,7 @@ import { Errors } from "../common/app-error.js";
 import { normalizeIdempotencyKey } from "../admin/admin.compensate.js";
 import type { PrismaService } from "../prisma/prisma.service.js";
 import { applyRewardCallback } from "../rewards/late-completion.js";
-import { applyVodCallback } from "./callback-apply-vod.js";
+import { applyVodCallback, applyVodUploadCallback } from "./callback-apply-vod.js";
 import {
   CALLBACK_PAYLOAD_REWARD_V1,
   CALLBACK_PAYLOAD_VOD_V1,
@@ -186,10 +186,12 @@ async function dispatchStoredCallback(
 ): Promise<string> {
   if (stored.schema === CALLBACK_PAYLOAD_VOD_V1) {
     const body = stored.body as VodCallbackBody;
-    if (!body.fileId || !body.mediaStatus) {
+    if (!body.fileId || (body.kind !== "UPLOAD_COMPLETED" && !body.mediaStatus)) {
       throw Errors.conflict(ERROR_CODES.CALLBACK_PAYLOAD_UNAVAILABLE, "Stored VOD payload is incomplete");
     }
-    return applyVodCallback(prisma, body);
+    return body.kind === "UPLOAD_COMPLETED"
+      ? applyVodUploadCallback(prisma, body)
+      : applyVodCallback(prisma, body);
   }
   if (stored.schema === CALLBACK_PAYLOAD_REWARD_V1) {
     const body = stored.body as RewardCallbackBody;

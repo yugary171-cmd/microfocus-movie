@@ -9,9 +9,19 @@ export const CALLBACK_PAYLOAD_REWARD_V1 = "reward.v1";
 export type VodCallbackBody = {
   eventId: string;
   fileId: string;
-  mediaStatus: "READY" | "FAILED";
-  transcodeStatus: "READY" | "FAILED";
-  machineReviewStatus: "APPROVED" | "REJECTED";
+  kind?: "UPLOAD_COMPLETED" | "STATE_CHANGED";
+  sourceContext?: string;
+  mediaStatus?:
+    | "CREATED"
+    | "UPLOADING"
+    | "PROCESSING"
+    | "REVIEW_REJECTED"
+    | "PENDING_MANUAL_REVIEW"
+    | "PENDING_WECHAT"
+    | "READY"
+    | "FAILED";
+  transcodeStatus?: "PENDING" | "PROCESSING" | "READY" | "FAILED";
+  machineReviewStatus?: "PENDING" | "APPROVED" | "REJECTED";
 };
 
 export type RewardCallbackBody = {

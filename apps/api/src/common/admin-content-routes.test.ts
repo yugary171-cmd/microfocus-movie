@@ -70,6 +70,18 @@ describe("admin content Nest routes follow contracts", () => {
       path: adminMethod(API_ROUTES.admin.uploadSign),
       method: RequestMethod.POST
     });
+    expect(routeOf(AdminController.prototype.posterUploadSign)).toEqual({
+      path: adminMethod(API_ROUTES.admin.posterUploadSign),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(AdminController.prototype.posterUploadComplete)).toEqual({
+      path: adminMethod(API_ROUTES.admin.posterUploadComplete),
+      method: RequestMethod.POST
+    });
+    expect(routeOf(AdminController.prototype.uploadCapabilities)).toEqual({
+      path: adminMethod(API_ROUTES.admin.uploadCapabilities),
+      method: RequestMethod.GET
+    });
     expect(routeOf(AdminController.prototype.reviewMedia)).toEqual({
       path: adminMethod(API_ROUTES.admin.mediaReview(":assetId")),
       method: RequestMethod.PATCH

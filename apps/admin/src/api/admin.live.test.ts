@@ -317,15 +317,14 @@ describe("live admin API adapter", () => {
   it("sends the upload signing metadata contract", async () => {
     vi.useFakeTimers();
     vi.mocked(fetch).mockResolvedValueOnce(
-      success({ uploadUrl: "http://api.test/mock-upload", headers: {}, mock: true }),
-    );
+      success({ provider: "MOCK", uploadUrl: "http://api.test/mock-upload", headers: {}, uploadId: "upload-1", mock: true }),
+    ).mockResolvedValueOnce(success({}));
     const { adminApi } = await import("./admin");
     const file = new File(["video"], "episode.mp4", { type: "video/mp4" });
 
     const upload = adminApi.uploadEpisode("drama-1", "episode-1", file, vi.fn());
-    const rejection = expect(upload).rejects.toThrow("fileId 注册链路尚未配置");
     await vi.runAllTimersAsync();
-    await rejection;
+    await expect(upload).resolves.toMatchObject({ fileId: expect.any(String) });
 
     expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe("http://api.test/v1/admin/uploads/sign");
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toEqual({
@@ -335,6 +334,7 @@ describe("live admin API adapter", () => {
       size: 5,
       contentType: "video/mp4",
     });
+    expect(String(vi.mocked(fetch).mock.calls[1]?.[0])).toBe("http://api.test/v1/admin/dramas/drama-1/media-assets");
   });
 
   it("does not request an upload signature for an oversized file name", async () => {
@@ -363,15 +363,14 @@ describe("live admin API adapter", () => {
   it("maps an empty file type to application/octet-stream", async () => {
     vi.useFakeTimers();
     vi.mocked(fetch).mockResolvedValueOnce(
-      success({ uploadUrl: "http://api.test/mock-upload", headers: {}, mock: true }),
-    );
+      success({ provider: "MOCK", uploadUrl: "http://api.test/mock-upload", headers: {}, uploadId: "upload-2", mock: true }),
+    ).mockResolvedValueOnce(success({}));
     const { adminApi } = await import("./admin");
     const file = new File(["video"], "episode.mp4", { type: "" });
 
     const upload = adminApi.uploadEpisode("drama-1", "episode-1", file, vi.fn());
-    const rejection = expect(upload).rejects.toThrow("fileId 注册链路尚未配置");
     await vi.runAllTimersAsync();
-    await rejection;
+    await expect(upload).resolves.toMatchObject({ fileId: expect.any(String) });
 
     expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body))).toMatchObject({
       contentType: "application/octet-stream",

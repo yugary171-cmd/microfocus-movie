@@ -16,6 +16,8 @@ import type {
   UserFeedbackStatus,
   AdminFeedbackView,
   AdminNotificationView,
+  PosterUploadAuthorization,
+  UploadCapabilities,
 } from "@microfocus/contracts";
 
 export interface AdminUser {
@@ -111,6 +113,11 @@ export interface DramaInput {
   episodes: Array<Pick<EpisodeRecord, "id" | "episodeNumber" | "title" | "durationSeconds" | "mediaStatus">>;
 }
 
+export interface PosterUploadRefs {
+  coverUploadId?: string;
+  promoUploadId?: string;
+}
+
 export interface DashboardCallbackOps {
   deadLetterCount: number;
   retryableCount: number;
@@ -146,13 +153,18 @@ export interface ReviewItem {
   status: "PENDING" | "APPROVED" | "REJECTED";
 }
 
-export interface UploadSignature {
+export interface UploadSignature extends Omit<PosterUploadAuthorization, "objectKey" | "assetUrl"> {
+  provider: "MOCK" | "TENCENT_VOD";
+  signature?: string;
   uploadUrl: string;
   headers: Record<string, string>;
   uploadId: string;
   expiresAt: string;
   mock: boolean;
 }
+
+export type PosterUpload = PosterUploadAuthorization;
+export type AdminUploadCapabilities = UploadCapabilities;
 
 export interface UploadProgress {
   state: "idle" | "signing" | "uploading" | "confirming" | "success" | "error";

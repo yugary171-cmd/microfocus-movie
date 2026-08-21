@@ -19,10 +19,11 @@ import {
   RIGHTS_HOLDER_MAX_LENGTH,
   RIGHTS_MATERIAL_DIGEST_LENGTH,
   RIGHTS_TERRITORY,
+  POSTER_FILE_SIZE_MAX_BYTES,
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES
 } from "@microfocus/contracts";
-import { CreateCatalogTagDto, PatchCatalogTagDto, AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, MediaReviewDto, OfflineDto, ReviewDto, RightsDto, UploadSignDto } from "./admin.module.js";
+import { CreateCatalogTagDto, PatchCatalogTagDto, AdjustEntitlementDto, CircuitCollectionDto, CompensateDto, CreateDramaDto, MediaReviewDto, OfflineDto, PosterUploadSignDto, ReviewDto, RightsDto, UploadSignDto } from "./admin.module.js";
 
 function validDrama(overrides: Record<string, unknown> = {}) {
   return {
@@ -38,6 +39,32 @@ function validDrama(overrides: Record<string, unknown> = {}) {
 }
 
 describe("admin content input limits", () => {
+  it("accepts a new-drama cover upload reference and bounds poster inputs", async () => {
+    const drama = await validate(
+      plainToInstance(CreateDramaDto, validDrama({ coverUrl: undefined, coverUploadId: "upload-1" }))
+    );
+    expect(drama).toEqual([]);
+
+    const validPoster = await validate(
+      plainToInstance(PosterUploadSignDto, {
+        kind: "cover",
+        fileName: "cover.png",
+        size: POSTER_FILE_SIZE_MAX_BYTES,
+        contentType: "image/png"
+      })
+    );
+    expect(validPoster).toEqual([]);
+    const invalidPoster = await validate(
+      plainToInstance(PosterUploadSignDto, {
+        kind: "cover",
+        fileName: "cover.gif",
+        size: POSTER_FILE_SIZE_MAX_BYTES + 1,
+        contentType: "image/gif"
+      })
+    );
+    expect(invalidPoster.some((error) => ["fileName", "size", "contentType"].includes(error.property))).toBe(true);
+  });
+
   it("accepts a bounded drama create payload", async () => {
     const dto = plainToInstance(CreateDramaDto, validDrama());
     expect(await validate(dto)).toEqual([]);

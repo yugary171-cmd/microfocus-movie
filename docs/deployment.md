@@ -1,7 +1,7 @@
 # 部署与运行组件
 
 - 文档用途：说明数据库、服务器与各端的关系，以及本地开发与目标生产部署形态
-- 更新日期：2026-08-14
+- 更新日期：2026-08-21
 - 本文描述目标部署拓扑和运行边界；工程实现进度与阻塞项见 [status.md](./status.md)，环境变量明细见 [configuration.md](./configuration.md)，上线勾选见 [release-checklist.md](./release-checklist.md)
 
 ## 1. 核心结论
@@ -11,7 +11,7 @@
 | 数据库给谁用？ | **仅 NestJS API**（`apps/api`）通过 `DATABASE_URL` 连接 MySQL；小程序和管理后台**不直连数据库** |
 | 微信小程序要不要服务器？ | 小程序本身**不需要**再搭一套业务服务器，但**必须**能 HTTPS 访问统一的 NestJS API |
 | 管理后台要不要服务器？ | 需要**静态站点托管**（HTML/JS/CSS）；业务逻辑仍走同一套 API |
-| 是否共用？ | **是**。观看端与管理端共用**一个模块化单体 API** 和**一个 MySQL**；视频走腾讯云 VOD/CDN，不在 API 机器上长期存片 |
+| 是否共用？ | **是**。观看端与管理端共用**一个模块化单体 API** 和**一个 MySQL**；视频走腾讯云 VOD/CDN、海报走腾讯云 COS，不在 API 机器上长期存文件 |
 
 权益、播放许可、奖励、审核和审计的**唯一事实来源**是 API + MySQL。客户端不能修改余额，不能持有长期媒体地址或数据库连接串。
 
@@ -24,6 +24,7 @@
 | Vue 管理后台 | `apps/admin` | 浏览器 + 静态托管 | 否 | 例如 `https://admin.example.com` |
 | NestJS API | `apps/api` | 云主机 / 容器 / PaaS | **是** | 例如 `https://api.example.com` |
 | MySQL | Prisma schema | 云数据库或自建实例 | — | 仅 API 内网或受限网络可达 |
+| 腾讯云 COS | 外部 | 腾讯云 | 否 | 例如 `https://image.example.com` |
 | 腾讯云 VOD/CDN | 外部 | 腾讯云 | 否 | 例如 `https://media.example.com` |
 | 微信登录与激励广告 | 外部 | 腾讯微信 | 否 | API 服务端调用；AppSecret 只在 API |
 
@@ -47,6 +48,7 @@ flowchart TB
 
   subgraph data [数据与外部服务]
     DB[("MySQL")]
+    COS["腾讯云 COS / CDN"]
     VOD["腾讯云 VOD / CDN"]
     WX["微信开放平台"]
   end
@@ -55,10 +57,11 @@ flowchart TB
   ADMIN --> STATIC
   ADMIN -->|HTTPS + 管理员 JWT| API
   API --> DB
+  ADMIN -->|COS 短期签名直传| COS
   API -->|jscode2session / 广告验证| WX
   API -->|回调 / 签名| VOD
   MP -->|短期播放凭证 + download 合法域名| VOD
-  ADMIN -->|短期上传签名直传| VOD
+  ADMIN -->|VOD SDK 短期签名直传| VOD
 ```
 
 典型域名分工（示例，实际以发布工单为准）：
@@ -141,11 +144,11 @@ Live 构建命令见 [configuration.md](./configuration.md) §4.1。外部灰度
 
 一次外部发布通常涉及以下动作（具体勾选见 [release-checklist.md](./release-checklist.md)）：
 
-1. **API**：从同一 Git commit 构建，注入生产环境变量（含 `DATABASE_URL`、JWT/TOTP/VOD/微信秘密），部署并执行 `db:migrate:deploy`。
+1. **API**：从同一 Git commit 构建，注入生产环境变量（含 `DATABASE_URL`、JWT/TOTP/COS/VOD/微信秘密），部署并执行 `db:migrate:deploy`。
 2. **管理后台**：构建静态资源，部署到 `admin` 域名；构建时写入 `VITE_API_BASE_URL=https://api.example.com`。
 3. **微信小程序**：构建 uni-app 生产包，写入合法 `apiBaseUrl`，上传微信后台审核/发布。
 4. **MySQL**：独立托管，不与 API 公网暴露；备份与恢复策略写入发布工单。
-5. **微信 / VOD**：配置合法域名、回调 URL、广告位；秘密只进 API 环境。
+5. **COS / 微信 / VOD**：配置 COS CORS 和自定义域名、VOD 合法域名与回调 URL、广告位；秘密只进 API 环境。
 
 同一发布记录应保存：Git commit、构建编号、非秘密环境快照（API 地址、admin Origin、AppID、VOD 子应用 ID、媒体域名），便于排查环境串用。
 

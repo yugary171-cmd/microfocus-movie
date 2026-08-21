@@ -498,7 +498,7 @@ onMounted(() => {
             class="admin-input"
             type="textarea"
             :maxlength="SYSTEM_NOTIFICATION_BODY_MAX_LENGTH"
-            rows="14"
+            :rows="14"
             placeholder="通知正文"
           />
         </div>

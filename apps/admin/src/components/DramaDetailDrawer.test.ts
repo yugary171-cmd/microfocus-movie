@@ -53,6 +53,8 @@ describe("DramaDetailDrawer", () => {
     expect(wrapper.text()).toContain("发布状态");
     expect(wrapper.text()).toContain("编辑剧目");
     expect(wrapper.text()).toContain("关闭");
+    expect(wrapper.find(".drama-detail-header").text()).toBe("剧目详情");
+    expect(wrapper.find(".drama-detail-header__meta").exists()).toBe(false);
     expect(wrapper.find(".drama-detail-header a").exists()).toBe(false);
     expect(wrapper.find(".drama-detail-footer a").exists()).toBe(true);
     expect(wrapper.find(".drama-detail-footer button").text()).toBe("关闭");

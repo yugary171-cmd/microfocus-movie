@@ -18,6 +18,10 @@ const failedBody = {
 
 function vodStore(asset: Record<string, unknown> | null) {
   const tx = {
+    uploadSession: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue({})
+    },
     mediaAsset: {
       findUnique: vi.fn().mockResolvedValue(asset),
       update: vi.fn().mockResolvedValue({})

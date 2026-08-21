@@ -13,19 +13,19 @@ describe("ConfirmDialog", () => {
         requireReason: true,
       },
       global: {
-        stubs: { Teleport: true },
+        stubs: {
+          Teleport: { template: "<div><slot /></div>" },
+        },
       },
     });
-    const textarea = wrapper.get("textarea");
+    expect(wrapper.get("textarea").attributes("minlength")).toBe(String(ADMIN_REASON_MIN_LENGTH));
+    expect(wrapper.get("textarea").attributes("maxlength")).toBe(String(ADMIN_REASON_MAX_LENGTH));
 
-    expect(textarea.attributes("minlength")).toBe(String(ADMIN_REASON_MIN_LENGTH));
-    expect(textarea.attributes("maxlength")).toBe(String(ADMIN_REASON_MAX_LENGTH));
-
-    await textarea.setValue("短");
+    await wrapper.get("textarea").setValue("短");
     await wrapper.findAll("button").find((button) => button.text() === "确认")?.trigger("click");
     expect(wrapper.emitted("confirm")).toBeUndefined();
 
-    await textarea.setValue("事故下架说明");
+    await wrapper.get("textarea").setValue("事故下架说明");
     await wrapper.findAll("button").find((button) => button.text() === "确认")?.trigger("click");
     expect(wrapper.emitted("confirm")?.[0]).toEqual(["事故下架说明"]);
     wrapper.unmount();

@@ -57,8 +57,17 @@ import {
   UPLOAD_FILE_NAME_MAX_LENGTH,
   UPLOAD_FILE_SIZE_MAX_BYTES,
   UPLOAD_CONTENT_TYPES,
+  POSTER_CONTENT_TYPES,
+  POSTER_FILE_SIZE_MAX_BYTES,
+  POSTER_UPLOAD_KINDS,
+  UPLOAD_SESSION_ID_MAX_LENGTH,
+  isAllowedPosterContentType,
+  isAllowedPosterFileName,
+  isAllowedPosterFileSize,
   type CreateEntitlementAdjustmentRequest,
   type AdminAuditContext,
+  type PosterUploadKind,
+  type UploadCapabilities,
   type ReplayCallbackEventRequest,
   type ReissueDeletionQueryTokenRequest,
   type ReleaseGateStatus
@@ -89,6 +98,7 @@ import { AppConfigService } from "../config/config.service.js";
 import { publicationBlockers, releaseGateStatus } from "../domain/policies.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import {
+  CosProviderService,
   LIVE_PROVIDER_IMPLEMENTATIONS_READY,
   VodProviderService,
   WechatProviderService
@@ -119,6 +129,7 @@ import { listAdminCallbackEvents } from "../callbacks/callback-list.js";
 import { resolvePayloadEncryptionKey, withEncryptionKey } from "../callbacks/callback-payload.js";
 import { lookupAdminDeletionRequest, reissueDeletionQueryToken as issueDeletionQueryToken } from "../privacy/deletion.js";
 import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { toCatalogTag, catalogTagNameMap, resolvedTagNames, rewriteDramaTagIds } from "../catalog/catalog-tags.js";
 import { tryOfflinePublishedDrama } from "../catalog/offline-drama.js";
 import { boundedListWindow, emptyBoundedPage, parsePage } from "../common/list-pagination.js";
@@ -148,7 +159,10 @@ export class EpisodeInput {
 export class CreateDramaDto {
   @IsString() @MinLength(1) @MaxLength(DRAMA_TITLE_MAX_LENGTH) title!: string;
   @IsString() @MaxLength(DRAMA_SUMMARY_MAX_LENGTH) summary!: string;
-  @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) coverUrl!: string;
+  @IsOptional() @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) coverUrl?: string;
+  @IsOptional() @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) promoCoverUrl?: string;
+  @IsOptional() @IsString() @Length(1, UPLOAD_SESSION_ID_MAX_LENGTH) coverUploadId?: string;
+  @IsOptional() @IsString() @Length(1, UPLOAD_SESSION_ID_MAX_LENGTH) promoUploadId?: string;
   @IsString() @MinLength(1) @MaxLength(DRAMA_CATEGORY_MAX_LENGTH) category!: string;
   @IsArray()
   @ArrayMinSize(1)
@@ -169,6 +183,9 @@ export class UpdateDramaDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(DRAMA_TITLE_MAX_LENGTH) title?: string;
   @IsOptional() @IsString() @MaxLength(DRAMA_SUMMARY_MAX_LENGTH) summary?: string;
   @IsOptional() @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) coverUrl?: string;
+  @IsOptional() @IsUrl() @MaxLength(COVER_URL_MAX_LENGTH) promoCoverUrl?: string;
+  @IsOptional() @IsString() @Length(1, UPLOAD_SESSION_ID_MAX_LENGTH) coverUploadId?: string;
+  @IsOptional() @IsString() @Length(1, UPLOAD_SESSION_ID_MAX_LENGTH) promoUploadId?: string;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(DRAMA_CATEGORY_MAX_LENGTH) category?: string;
   @IsOptional()
   @IsArray()
@@ -198,6 +215,7 @@ export class RightsDto {
 class MediaAssetDto {
   @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) episodeId!: string;
   @IsString() @MinLength(1) @MaxLength(ENTITY_ID_MAX_LENGTH) fileId!: string;
+  @IsOptional() @IsString() @Length(1, UPLOAD_SESSION_ID_MAX_LENGTH) uploadId?: string;
 }
 
 export class ReviewDto {
@@ -226,6 +244,36 @@ export class UploadSignDto {
   @IsInt() @Min(1) @Max(UPLOAD_FILE_SIZE_MAX_BYTES) size!: number;
   @IsIn([...UPLOAD_CONTENT_TYPES])
   contentType!: string;
+}
+
+export class PosterUploadSignDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(ENTITY_ID_MAX_LENGTH)
+  dramaId?: string;
+
+  @IsIn([...POSTER_UPLOAD_KINDS])
+  kind!: PosterUploadKind;
+
+  @IsString()
+  @Length(1, UPLOAD_FILE_NAME_MAX_LENGTH)
+  @Matches(/^[^/\\\0]+$/)
+  fileName!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(POSTER_FILE_SIZE_MAX_BYTES)
+  size!: number;
+
+  @IsIn([...POSTER_CONTENT_TYPES])
+  contentType!: string;
+}
+
+export class PosterUploadCompleteDto {
+  @IsString()
+  @Length(1, UPLOAD_SESSION_ID_MAX_LENGTH)
+  uploadId!: string;
 }
 
 export class OfflineDto {
@@ -354,7 +402,8 @@ export class AdminController {
     private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
     private readonly vod: VodProviderService,
-    private readonly wechat: WechatProviderService
+    private readonly wechat: WechatProviderService,
+    private readonly cos: CosProviderService = undefined as never
   ) {}
 
   @Get(adminPath(API_ROUTES.admin.dashboard))
@@ -651,6 +700,12 @@ export class AdminController {
     const admin = requireAdmin(principal);
     assertUniqueEpisodeNumbers(body.episodes);
     await requireActiveCatalogTagIds(this.prisma, body.tags);
+    const coverUpload = await this.resolvePosterUpload(admin, body.coverUploadId, "cover", null);
+    const promoUpload = await this.resolvePosterUpload(admin, body.promoUploadId, "promo", null);
+    const coverUrl = coverUpload?.assetUrl ?? body.coverUrl;
+    if (!coverUrl) {
+      throw Errors.badRequest("COVER_REQUIRED", "A cover URL or completed cover upload is required");
+    }
     const drama = await this.prisma.$transaction(async (tx) => {
       await lockHealthyAdminRows(tx);
       await lockAdminRow(tx, admin.sub);
@@ -669,11 +724,14 @@ export class AdminController {
           "Administrator account is no longer available for content operations"
         );
       }
-      return tx.drama.create({
+      const created = await tx.drama.create({
         data: {
           title: body.title,
           summary: body.summary,
-          coverUrl: body.coverUrl,
+          coverUrl,
+          ...(promoUpload?.assetUrl ?? body.promoCoverUrl
+            ? { promoCoverUrl: promoUpload?.assetUrl ?? body.promoCoverUrl }
+            : {}),
           category: body.category,
           tagsJson: body.tags,
           recommendationRank: body.recommendationRank,
@@ -681,6 +739,9 @@ export class AdminController {
           episodes: { create: body.episodes }
         }
       });
+      if (coverUpload) await bindPosterSession(tx, coverUpload.sessionId, created.id);
+      if (promoUpload) await bindPosterSession(tx, promoUpload.sessionId, created.id);
+      return created;
     });
     await this.audit(admin.sub, "DRAMA_CREATED", "Drama", drama.id);
     return this.loadDramaView(drama.id, admin);
@@ -702,27 +763,44 @@ export class AdminController {
     @Body() body: UpdateDramaDto
   ) {
     const admin = requireAdmin(principal);
-    await this.requireOwnedUnpublishedDrama(requireEntityId(dramaId, "dramaId"), admin);
+    dramaId = requireEntityId(dramaId, "dramaId");
+    await this.requireOwnedUnpublishedDrama(dramaId, admin);
+    const coverUpload = await this.resolvePosterUpload(admin, body.coverUploadId, "cover", dramaId);
+    const promoUpload = await this.resolvePosterUpload(admin, body.promoUploadId, "promo", dramaId);
     if (body.tags !== undefined) {
       await requireActiveCatalogTagIds(this.prisma, body.tags);
     }
-    const updated = await this.prisma.drama.updateMany({
-      where: {
-        ...ownedDramaWriteWhere(dramaId, admin),
-        status: { in: ["DRAFT", "READY", "OFFLINE"] }
-      },
-      data: {
-        ...(body.title !== undefined ? { title: body.title } : {}),
-        ...(body.summary !== undefined ? { summary: body.summary } : {}),
-        ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl } : {}),
-        ...(body.category !== undefined ? { category: body.category } : {}),
-        ...(body.tags !== undefined ? { tagsJson: body.tags } : {}),
-        ...(body.recommendationRank !== undefined
-          ? { recommendationRank: body.recommendationRank }
-          : {}),
-        contentVersion: { increment: 1 },
-        status: "DRAFT"
-      }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.drama.updateMany({
+        where: {
+          ...ownedDramaWriteWhere(dramaId, admin),
+          status: { in: ["DRAFT", "READY", "OFFLINE"] }
+        },
+        data: {
+          ...(body.title !== undefined ? { title: body.title } : {}),
+          ...(body.summary !== undefined ? { summary: body.summary } : {}),
+          ...(coverUpload?.assetUrl
+            ? { coverUrl: coverUpload.assetUrl }
+            : body.coverUrl !== undefined
+              ? { coverUrl: body.coverUrl }
+              : {}),
+          ...(promoUpload?.assetUrl
+            ? { promoCoverUrl: promoUpload.assetUrl }
+            : body.promoCoverUrl !== undefined
+              ? { promoCoverUrl: body.promoCoverUrl }
+              : {}),
+          ...(body.category !== undefined ? { category: body.category } : {}),
+          ...(body.tags !== undefined ? { tagsJson: body.tags } : {}),
+          ...(body.recommendationRank !== undefined
+            ? { recommendationRank: body.recommendationRank }
+            : {}),
+          contentVersion: { increment: 1 },
+          status: "DRAFT"
+        }
+      });
+      if (result.count && coverUpload) await bindPosterSession(tx, coverUpload.sessionId, dramaId);
+      if (result.count && promoUpload) await bindPosterSession(tx, promoUpload.sessionId, dramaId);
+      return result;
     });
     if (!updated.count) throw Errors.conflict("DRAMA_NOT_EDITABLE", "Drama is not editable");
     await this.audit(admin.sub, "DRAMA_UPDATED", "Drama", dramaId);
@@ -782,15 +860,58 @@ export class AdminController {
       where: { id: body.episodeId, dramaId }
     });
     if (!episode) throw Errors.notFound("Episode");
-    const latest = await this.prisma.mediaAsset.aggregate({
-      where: { episodeId: body.episodeId },
-      _max: { version: true }
-    });
+    const vodMode = this.config?.env?.VOD_MODE ?? "mock";
+    if (vodMode === "live" && !body.uploadId) {
+      throw Errors.badRequest("UPLOAD_SESSION_REQUIRED", "A VOD upload session is required");
+    }
+    const uploadSession = body.uploadId
+      ? await this.requireVodUploadSession(admin, body.uploadId, dramaId, episode.id, body.fileId)
+      : null;
+    let createdNewAsset = false;
     const asset = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.mediaAsset.findFirst({
+        where: { episodeId: episode.id, fileId: body.fileId }
+      });
+      if (existing) {
+        if (uploadSession) {
+          await tx.uploadSession.updateMany({
+            where: {
+              id: uploadSession.id,
+              provider: "VOD",
+              kind: "VOD_MEDIA",
+              adminId: admin.sub,
+              dramaId,
+              episodeId: episode.id,
+              OR: [{ fileId: null }, { fileId: body.fileId }]
+            },
+            data: { fileId: body.fileId, status: "UPLOADED" }
+          });
+        }
+        return existing;
+      }
+      const latest = await tx.mediaAsset.aggregate({
+        where: { episodeId: body.episodeId },
+        _max: { version: true }
+      });
+      if (uploadSession) {
+        await tx.uploadSession.updateMany({
+          where: {
+            id: uploadSession.id,
+            provider: "VOD",
+            kind: "VOD_MEDIA",
+            adminId: admin.sub,
+            dramaId,
+            episodeId: episode.id,
+            OR: [{ fileId: null }, { fileId: body.fileId }]
+          },
+          data: { fileId: body.fileId, status: "UPLOADED" }
+        });
+      }
       await tx.mediaAsset.updateMany({
         where: { episodeId: body.episodeId, isCurrent: true },
         data: { isCurrent: false }
       });
+      createdNewAsset = true;
       return tx.mediaAsset.create({
         data: {
           episodeId: body.episodeId,
@@ -808,15 +929,17 @@ export class AdminController {
         return created;
       });
     });
-    await this.audit(admin.sub, "MEDIA_VERSION_CREATED", "MediaAsset", asset.id, {
-      dramaId,
-      episodeId: episode.id,
-      episodeNumber: episode.episodeNumber,
-      mediaAssetId: asset.id,
-      mediaVersion: asset.version,
-      fileId: asset.fileId,
-      uploadPhase: "MEDIA_REGISTERED"
-    });
+    if (createdNewAsset) {
+      await this.audit(admin.sub, "MEDIA_REGISTERED", "MediaAsset", asset.id, {
+        dramaId,
+        episodeId: episode.id,
+        episodeNumber: episode.episodeNumber,
+        mediaAssetId: asset.id,
+        mediaVersion: asset.version,
+        fileId: asset.fileId,
+        uploadPhase: "MEDIA_REGISTERED"
+      });
+    }
     return asset;
   }
 
@@ -973,15 +1096,173 @@ export class AdminController {
     if (!episode) throw Errors.notFound("Episode");
     assertEditorOwns(episode.drama, admin);
     assertNotPublished(episode.drama.status);
-    const signed = await this.vod.createUploadAuthorization(body.fileName);
+    const signed = await this.vod.createUploadAuthorization({
+      filename: body.fileName,
+      size: body.size,
+      contentType: body.contentType,
+      dramaId: body.dramaId,
+      episodeId: body.episodeId,
+      uploadId: randomUUID()
+    });
+    await this.prisma.uploadSession.create({
+      data: {
+        provider: "VOD",
+        kind: "VOD_MEDIA",
+        status: "ISSUED",
+        adminId: admin.sub,
+        dramaId: body.dramaId,
+        episodeId: body.episodeId,
+        uploadId: signed.uploadId,
+        fileName: body.fileName,
+        contentType: body.contentType,
+        size: BigInt(body.size),
+        expiresAt: new Date(signed.expiresAt)
+      }
+    });
     await this.audit(admin.sub, "UPLOAD_SIGNED", "Episode", body.episodeId, {
       dramaId: body.dramaId,
       episodeId: episode.id,
       episodeNumber: episode.episodeNumber,
       fileName: body.fileName,
+      size: body.size,
+      contentType: body.contentType,
+      uploadId: signed.uploadId,
       uploadPhase: "SIGN_REQUESTED"
     });
     return signed;
+  }
+
+  @Post(adminPath(API_ROUTES.admin.posterUploadSign))
+  @Roles(...CONTENT_OPERATOR_ROLES)
+  async posterUploadSign(
+    @CurrentPrincipal() principal: Principal,
+    @Body() body: PosterUploadSignDto
+  ) {
+    const admin = requireAdmin(principal);
+    assertPosterUploadInput(body);
+    const dramaId = body.dramaId?.trim();
+    if (dramaId) {
+      const drama = await this.prisma.drama.findUnique({
+        where: { id: dramaId },
+        select: { id: true, editorId: true, status: true }
+      });
+      const ownedDrama = assertEditorOwns(drama, admin);
+      assertNotPublished(ownedDrama.status);
+    }
+    const signed = await this.cos.createPosterUploadAuthorization({
+      ...(dramaId ? { dramaId } : {}),
+      kind: body.kind,
+      fileName: body.fileName.trim(),
+      contentType: body.contentType,
+      uploadId: randomUUID()
+    });
+    await this.prisma.uploadSession.create({
+      data: {
+        provider: "COS",
+        kind: posterUploadKind(body.kind),
+        status: "ISSUED",
+        adminId: admin.sub,
+        dramaId: dramaId ?? null,
+        uploadId: signed.uploadId,
+        objectKey: signed.objectKey,
+        fileName: body.fileName.trim(),
+        contentType: body.contentType,
+        size: BigInt(body.size),
+        expiresAt: new Date(signed.expiresAt)
+      }
+    });
+    await this.audit(admin.sub, "POSTER_UPLOAD_SIGNED", "UploadSession", signed.uploadId, {
+      ...(dramaId ? { dramaId } : {}),
+      fileName: body.fileName.trim(),
+      contentType: body.contentType,
+      size: body.size,
+      uploadPhase: "SIGN_REQUESTED"
+    });
+    return signed;
+  }
+
+  @Post(adminPath(API_ROUTES.admin.posterUploadComplete))
+  @Roles(...CONTENT_OPERATOR_ROLES)
+  async posterUploadComplete(
+    @CurrentPrincipal() principal: Principal,
+    @Body() body: PosterUploadCompleteDto
+  ) {
+    const admin = requireAdmin(principal);
+    const uploadId = body.uploadId.trim();
+    const session = await this.prisma.uploadSession.findUnique({ where: { uploadId } });
+    if (!session) throw Errors.notFound("UploadSession");
+    if (session.adminId !== admin.sub) {
+      throw Errors.forbidden("UPLOAD_SESSION_OWNERSHIP_REQUIRED", "Upload session is not owned by this administrator");
+    }
+    if (session.provider !== "COS" || !session.objectKey) {
+      throw Errors.badRequest("INVALID_UPLOAD_SESSION", "Upload session is not a poster session");
+    }
+    if (session.dramaId) {
+      const drama = await this.prisma.drama.findUnique({
+        where: { id: session.dramaId },
+        select: { id: true, editorId: true, status: true }
+      });
+      const ownedDrama = assertEditorOwns(drama, admin);
+      assertNotPublished(ownedDrama.status);
+    }
+    if (session.status === "COMPLETED") {
+      return {
+        uploadId,
+        assetUrl: this.cos.assetUrlForObjectKey(session.objectKey)
+      };
+    }
+    const now = new Date();
+    if (session.expiresAt.getTime() <= now.getTime()) {
+      await this.prisma.uploadSession.updateMany({
+        where: { id: session.id, status: { in: ["ISSUED", "UPLOADED"] } },
+        data: { status: "EXPIRED" }
+      });
+      throw Errors.conflict("UPLOAD_SESSION_EXPIRED", "Upload session has expired");
+    }
+    const object = await this.cos.inspectObject(session.objectKey);
+    if (!object) throw Errors.conflict("POSTER_OBJECT_NOT_FOUND", "Poster object was not uploaded");
+    if (object.contentLength !== null && object.contentLength !== Number(session.size)) {
+      throw Errors.conflict("POSTER_SIZE_MISMATCH", "Uploaded poster size does not match the signed size");
+    }
+    if (
+      object.contentType !== null &&
+      object.contentType.split(";", 1)[0]!.trim().toLowerCase() !== session.contentType.toLowerCase()
+    ) {
+      throw Errors.conflict("POSTER_CONTENT_TYPE_MISMATCH", "Uploaded poster content type does not match the signed type");
+    }
+    const completed = await this.prisma.uploadSession.updateMany({
+      where: {
+        id: session.id,
+        status: { in: ["ISSUED", "UPLOADED"] },
+        expiresAt: { gt: now }
+      },
+      data: { status: "COMPLETED", completedAt: now }
+    });
+    if (!completed.count) {
+      const current = await this.prisma.uploadSession.findUnique({ where: { uploadId } });
+      if (current?.status !== "COMPLETED") {
+        throw Errors.conflict("UPLOAD_SESSION_STATE_CHANGED", "Upload session is no longer completable");
+      }
+    }
+    await this.audit(admin.sub, "POSTER_UPLOAD_COMPLETED", "UploadSession", uploadId, {
+      ...(session.dramaId ? { dramaId: session.dramaId } : {}),
+      uploadPhase: "PROVIDER_SUCCEEDED"
+    });
+    return { uploadId, assetUrl: this.cos.assetUrlForObjectKey(session.objectKey) };
+  }
+
+  @Get(adminPath(API_ROUTES.admin.uploadCapabilities))
+  async uploadCapabilities(): Promise<UploadCapabilities> {
+    const posterStorageReady = this.cos.isUploadReady();
+    const vodUploadReady = this.vod.isUploadReady();
+    return {
+      posterStorageReady,
+      vodUploadReady,
+      reasons: {
+        ...(posterStorageReady ? {} : { posterStorage: "Poster storage is not configured" }),
+        ...(vodUploadReady ? {} : { vodUpload: "VOD upload signing is not configured" })
+      }
+    };
   }
 
   @Patch(adminPath(API_ROUTES.admin.mediaReview(":assetId")))
@@ -1402,6 +1683,69 @@ export class AdminController {
     });
   }
 
+  private async resolvePosterUpload(
+    admin: AdminPrincipal,
+    uploadId: string | undefined,
+    kind: "cover" | "promo",
+    dramaId: string | null
+  ): Promise<{ sessionId: string; assetUrl: string } | null> {
+    if (!uploadId) return null;
+    const session = await this.prisma.uploadSession.findUnique({
+      where: { uploadId: uploadId.trim() }
+    });
+    if (!session) throw Errors.notFound("UploadSession");
+    if (session.adminId !== admin.sub) {
+      throw Errors.forbidden("UPLOAD_SESSION_OWNERSHIP_REQUIRED", "Upload session is not owned by this administrator");
+    }
+    if (
+      session.provider !== "COS" ||
+      session.kind !== posterUploadKind(kind) ||
+      session.status !== "COMPLETED" ||
+      !session.objectKey
+    ) {
+      throw Errors.conflict("UPLOAD_SESSION_NOT_COMPLETED", "Poster upload session is not completed");
+    }
+    if (session.dramaId !== null && session.dramaId !== dramaId) {
+      throw Errors.forbidden("UPLOAD_SESSION_DRAMA_MISMATCH", "Upload session is bound to another drama");
+    }
+    return {
+      sessionId: session.id,
+      assetUrl: this.cos.assetUrlForObjectKey(session.objectKey)
+    };
+  }
+
+  private async requireVodUploadSession(
+    admin: AdminPrincipal,
+    uploadId: string,
+    dramaId: string,
+    episodeId: string,
+    fileId: string
+  ) {
+    const session = await this.prisma.uploadSession.findUnique({ where: { uploadId: uploadId.trim() } });
+    if (!session) throw Errors.notFound("UploadSession");
+    if (session.adminId !== admin.sub) {
+      throw Errors.forbidden("UPLOAD_SESSION_OWNERSHIP_REQUIRED", "Upload session is not owned by this administrator");
+    }
+    if (
+      session.provider !== "VOD" ||
+      session.kind !== "VOD_MEDIA" ||
+      session.dramaId !== dramaId ||
+      session.episodeId !== episodeId
+    ) {
+      throw Errors.conflict("UPLOAD_SESSION_SCOPE_MISMATCH", "VOD upload session does not match the episode");
+    }
+    if (session.expiresAt.getTime() <= Date.now() && session.status !== "COMPLETED") {
+      throw Errors.conflict("UPLOAD_SESSION_EXPIRED", "Upload session has expired");
+    }
+    if (!["ISSUED", "UPLOADED", "COMPLETED"].includes(session.status)) {
+      throw Errors.conflict("UPLOAD_SESSION_NOT_USABLE", "VOD upload session is not usable");
+    }
+    if (session.fileId && session.fileId !== fileId) {
+      throw Errors.conflict("UPLOAD_SESSION_FILE_MISMATCH", "VOD upload session is bound to another file");
+    }
+    return session;
+  }
+
   private async audit(
     adminId: string,
     action: string,
@@ -1485,6 +1829,7 @@ export function toAdminDrama(
   category: string;
   tagsJson: unknown;
   coverUrl: string;
+  promoCoverUrl?: string | null;
   status: string;
   contentVersion: number;
   editorId: string;
@@ -1533,6 +1878,7 @@ export function toAdminDrama(
     tagIds,
     tags: resolvedTagNames(drama.tagsJson, nameById),
     coverUrl: drama.coverUrl,
+    promoCoverUrl: drama.promoCoverUrl ?? null,
     status: drama.status,
     ownerId: drama.editorId,
     ownerName: drama.editor?.email ?? "",
@@ -1663,6 +2009,44 @@ function assertUniqueEpisodeNumbers(episodes: EpisodeInput[]): void {
       "INVALID_EPISODES",
       "At least one episode with a unique stable episode number is required"
     );
+  }
+}
+
+function assertPosterUploadInput(body: PosterUploadSignDto): void {
+  if (!POSTER_UPLOAD_KINDS.includes(body.kind)) {
+    throw Errors.badRequest("INVALID_POSTER_KIND", "Poster kind is not supported");
+  }
+  if (!isAllowedPosterFileName(body.fileName)) {
+    throw Errors.badRequest("INVALID_POSTER_FILE_NAME", "Poster file name must use a supported extension");
+  }
+  if (!isAllowedPosterContentType(body.contentType)) {
+    throw Errors.badRequest("INVALID_POSTER_CONTENT_TYPE", "Poster content type is not supported");
+  }
+  if (!isAllowedPosterFileSize(body.size)) {
+    throw Errors.badRequest("INVALID_POSTER_FILE_SIZE", "Poster file size is out of bounds");
+  }
+}
+
+function posterUploadKind(kind: PosterUploadKind): "POSTER_COVER" | "POSTER_PROMO" {
+  return kind === "cover" ? "POSTER_COVER" : "POSTER_PROMO";
+}
+
+async function bindPosterSession(
+  tx: Prisma.TransactionClient,
+  sessionId: string,
+  dramaId: string
+): Promise<void> {
+  const bound = await tx.uploadSession.updateMany({
+    where: {
+      id: sessionId,
+      provider: "COS",
+      status: "COMPLETED",
+      OR: [{ dramaId: null }, { dramaId }]
+    },
+    data: { dramaId }
+  });
+  if (!bound.count) {
+    throw Errors.conflict("UPLOAD_SESSION_BIND_FAILED", "Completed poster upload could not be bound");
   }
 }
 

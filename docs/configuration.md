@@ -1,7 +1,7 @@
 # 环境配置与外部服务接入
 
 - 文档用途：定义配置来源、暴露边界、环境差异、生产闸门和秘密生命周期
-- 更新日期：2026-08-14
+- 更新日期：2026-08-21
 - 本文不保存任何真实账号、域名、密钥或审批结果
 
 ## 1. 配置事实来源与加载规则
@@ -23,7 +23,8 @@
 | 本地测试配置 | `ADMIN_TEST_OTP`、`DEMO_MEDIA_ORIGIN`、`INTERNAL_CLIENT_ATTESTATION` | 仅限开发或经批准的非生产内部验证 |
 | 合规闸门 | `COMPLIANCE_ENTITY_APPROVED`、`COMPLIANCE_MINIPROGRAM_FILING`、`COMPLIANCE_WECHAT_CATEGORY`、`COMPLIANCE_ADS_APPROVED` | 只由获授权负责人依据有效证据变更；不是普通功能开关 |
 | 微信配置 | `WECHAT_MODE`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET`、`WECHAT_REWARDED_AD_UNIT_ID`、`WECHAT_REWARD_VERIFICATION`、`WECHAT_CALLBACK_SECRET` | AppID/广告位 ID 可公开给对应客户端；AppSecret 和回调秘密只能在服务端 |
-| VOD 配置 | `VOD_MODE`、`TENCENTCLOUD_SECRET_ID`、`TENCENTCLOUD_SECRET_KEY`、`TENCENTCLOUD_VOD_SUB_APP_ID`、`TENCENTCLOUD_VOD_PROCEDURE`、`TENCENTCLOUD_VOD_CALLBACK_SECRET`、`VOD_MEDIA_HOST` | 云密钥和回调秘密只在服务端；媒体域名和子应用标识不授予访问权限 |
+| COS 海报配置 | `POSTER_STORAGE_MODE`、`TENCENTCLOUD_COS_SECRET_ID`、`TENCENTCLOUD_COS_SECRET_KEY`、`TENCENTCLOUD_COS_BUCKET`、`TENCENTCLOUD_COS_REGION`、`TENCENTCLOUD_COS_PUBLIC_ORIGIN`、`TENCENTCLOUD_COS_PREFIX` | COS 云密钥只在服务端；浏览器只拿短期单对象上传授权；访问地址使用配置的 HTTPS 自定义域名 |
+| VOD 配置 | `VOD_MODE`、`TENCENTCLOUD_SECRET_ID`、`TENCENTCLOUD_SECRET_KEY`、`TENCENTCLOUD_VOD_REGION`、`TENCENTCLOUD_VOD_SUB_APP_ID`、`TENCENTCLOUD_VOD_PROCEDURE`、`TENCENTCLOUD_VOD_CALLBACK_SECRET`、`VOD_MEDIA_HOST` | 云密钥和回调秘密只在服务端；媒体域名和子应用标识不授予访问权限 |
 
 `RELEASE_GATE_ENABLED` 当前会被 API 解析，但不是生产安全校验的旁路开关。生产检查在 `NODE_ENV=production` 时无条件执行；不得通过将该值改为 `false` 尝试上线。
 
@@ -110,7 +111,7 @@ INTERNAL_CLIENT_ATTESTATION=false
 2. 创建 VOD 子应用、转码/截图/内容审核任务流和微信小程序视频发布配置。
 3. 配置媒体域名、HTTPS、Key 防盗链和回调地址。
 4. 浏览器上传签名只由 API 短期签发，并限制子应用、文件类型、任务流和有效期。
-5. VOD 回调校验签名和唯一事件 ID；官方协议支持可信时间戳时同时启用时间窗与重放校验。不得根据浏览器上报直接标记媒体 READY。
+5. VOD 回调校验腾讯云 `Sign`/`T`（`Sign = MD5(SignKey + T)`）和唯一事件 ID；同时启用时间窗与重放校验。不得根据浏览器上报直接标记媒体 READY。
 6. `VOD_PLAYBACK_KEY` 只用于短期播放授权，不与 VOD 回调秘密或云 API 密钥复用。
 7. 锁定内容按架构文档要求使用租约绑定的短媒体窗口；120 秒外层凭证不能暴露整集可连续下载地址。
 
@@ -125,9 +126,26 @@ VOD_PLAYBACK_KEY=secret-manager-reference
 VOD_MEDIA_HOST=media.example.com
 ```
 
+## 6.1 腾讯云 COS 海报 Live 接入
+
+1. 使用独立子账号和最小权限策略，仅允许目标桶内剧目海报前缀的上传、读取和必要的对象元数据校验。
+2. 配置管理端 Origin 的 COS CORS；浏览器只使用 API 签发的短期单对象 PUT 授权，不接触 COS SecretKey。
+3. `TENCENTCLOUD_COS_PUBLIC_ORIGIN` 使用 HTTPS 自定义域名或 CDN 域名，不能把临时上传 URL 当作长期海报地址。
+4. 上传会话绑定管理员、剧目、海报类型和过期时间；API 完成 HEAD 校验后才允许保存 `coverUrl` 或 `promoCoverUrl`。
+
+```dotenv
+POSTER_STORAGE_MODE=live
+TENCENTCLOUD_COS_SECRET_ID=secret-manager-reference
+TENCENTCLOUD_COS_SECRET_KEY=secret-manager-reference
+TENCENTCLOUD_COS_BUCKET=microfocus-1234567890
+TENCENTCLOUD_COS_REGION=ap-guangzhou
+TENCENTCLOUD_COS_PUBLIC_ORIGIN=https://image.example.com
+TENCENTCLOUD_COS_PREFIX=microfocus/dramas
+```
+
 ## 7. 生产启动闸门
 
-当前代码中的腾讯云 VOD 上传/播放与微信激励广告服务端验证尚未接入真实账号，因此 `NODE_ENV=production` 会在完成其他校验后无条件安全拒启，release gate 也会包含 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`。以下条件是完成真实 provider 后仍必须保留的第二层闸门，不是把模式改成 `live` 即可绕过的开关。
+真实 COS 海报上传和 VOD 媒体上传完成后，仍不能直接解除生产启动拒绝。VOD 播放签名、微信激励广告服务端验证和合规证据仍由独立闸门控制；`NODE_ENV=production` 仍会在这些条件未完成时安全拒启，release gate 也会保留 `LIVE_PROVIDER_IMPLEMENTATION_REQUIRED`。以下条件是完成真实 provider 后仍必须保留的第二层闸门，不是把模式改成 `live` 即可绕过的开关。
 
 `NODE_ENV=production` 的目标启动校验包括：
 

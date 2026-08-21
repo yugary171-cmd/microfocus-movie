@@ -235,6 +235,10 @@ export const POSTER_CONTENT_TYPES = ["image/jpeg", "image/png", "image/bmp", "im
 export const POSTER_FILE_ACCEPT = ".jpg,.jpeg,.bmp,.png,image/jpeg,image/png,image/bmp";
 export const DRAMA_POSTER_SIZE_HINT = "816×1086px";
 export const PROMO_POSTER_SIZE_HINT = "762×318px";
+export const POSTER_UPLOAD_TTL_SECONDS = 15 * 60;
+export const UPLOAD_SESSION_ID_MAX_LENGTH = 128;
+export const POSTER_UPLOAD_KINDS = ["cover", "promo"] as const;
+export type PosterUploadKind = (typeof POSTER_UPLOAD_KINDS)[number];
 
 export function isDramaTypeCategory(value: string): value is DramaTypeCategory {
   return DRAMA_TYPE_OPTIONS.some((option) => option.category === value);
@@ -594,6 +598,9 @@ export const API_ROUTES = {
     publish: (dramaId: string) => `/v1/admin/dramas/${dramaId}/publish`,
     offline: (dramaId: string) => `/v1/admin/dramas/${dramaId}/offline`,
     uploadSign: "/v1/admin/uploads/sign",
+    posterUploadSign: "/v1/admin/poster-uploads/sign",
+    posterUploadComplete: "/v1/admin/poster-uploads/complete",
+    uploadCapabilities: "/v1/admin/upload-capabilities",
     mediaReview: (assetId: string) => `/v1/admin/media-assets/${assetId}/review`,
     reviews: "/v1/admin/reviews",
     auditLogs: "/v1/admin/audit-logs",
@@ -652,6 +659,35 @@ export interface AdminAuditContext {
   fromWechatReviewStatus?: string;
   toWechatReviewStatus?: string;
   uploadPhase?: "SIGN_REQUESTED" | "MEDIA_REGISTERED" | "PROVIDER_SUCCEEDED" | "PROVIDER_FAILED";
+}
+
+export interface UploadCapabilities {
+  posterStorageReady: boolean;
+  vodUploadReady: boolean;
+  reasons: {
+    posterStorage?: string;
+    vodUpload?: string;
+  };
+}
+
+export interface PosterUploadAuthorization {
+  uploadId: string;
+  uploadUrl: string;
+  headers: Record<string, string>;
+  objectKey: string;
+  assetUrl: string;
+  expiresAt: string;
+  mock: boolean;
+}
+
+export interface VodUploadAuthorization {
+  provider: "MOCK" | "TENCENT_VOD";
+  uploadId: string;
+  signature?: string;
+  uploadUrl?: string;
+  headers?: Record<string, string>;
+  expiresAt: string;
+  mock: boolean;
 }
 
 /** URL-encode a path entity id before interpolating `API_ROUTES`. */

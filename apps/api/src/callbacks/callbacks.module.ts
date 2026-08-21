@@ -7,9 +7,13 @@ import { controllerPath } from "../common/http.js";
 import { assertCircuitsClosed, openProviderCircuit } from "../domain/circuit.js";
 import { AppConfigService } from "../config/config.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { verifyWebhookSignature, WechatProviderService } from "../providers/providers.js";
+import {
+  verifyTencentVodCallbackSignature,
+  verifyWebhookSignature,
+  WechatProviderService
+} from "../providers/providers.js";
 import { assertNamedRateLimit, requestIpKey } from "../security/rate-limit.js";
-import { applyVodCallback } from "./callback-apply-vod.js";
+import { applyVodCallback, applyVodUploadCallback } from "./callback-apply-vod.js";
 import {
   buildStoredEnvelope,
   CALLBACK_PAYLOAD_REWARD_V1,
@@ -18,6 +22,8 @@ import {
   withEncryptionKey,
   type StoredCallbackEnvelope
 } from "./callback-payload.js";
+import type { VodCallbackBody } from "./callback-payload.js";
+import { normalizeVodCallback } from "./vod-callback-normalizer.js";
 
 const CALLBACK_LEASE_MS = 30_000;
 
@@ -50,25 +56,22 @@ export class CallbacksController {
   async vod(
     @Req() request: RawBodyRequest,
     @Headers("x-provider-signature") signature: string | undefined,
-    @Body() body: VodCallbackDto
+    @Body() body: unknown
   ) {
     await assertNamedRateLimit(this.prisma, "callbackVod", requestIpKey(request));
-    this.assertSignature(
-      request.rawBody,
-      signature,
-      this.config.env.TENCENTCLOUD_VOD_CALLBACK_SECRET
-    );
-    assertValidVodState(body);
+    this.assertVodSignature(request.rawBody, signature);
+    const normalized = normalizeVodCallback(body, request.rawBody);
+    assertValidVodState(normalized);
     const claim = await claimCallbackEvent(
       this.prisma,
-      body.eventId,
+      normalized.eventId,
       "VOD",
       "MEDIA_UPDATED",
       buildStoredEnvelope({
         ...withEncryptionKey(resolvePayloadEncryptionKey(this.config.env)),
         ...(request.rawBody ? { rawBody: request.rawBody } : {}),
         schema: CALLBACK_PAYLOAD_VOD_V1,
-        body
+        body: normalized
       })
     );
     if (claim === "processed") return { accepted: true, duplicate: true };
@@ -83,11 +86,13 @@ export class CallbacksController {
     }
 
     try {
-      const outcome = await applyVodCallback(this.prisma, body);
-      await finishCallbackEvent(this.prisma, body.eventId, outcome);
+      const outcome = normalized.kind === "UPLOAD_COMPLETED"
+        ? await applyVodUploadCallback(this.prisma, normalized)
+        : await applyVodCallback(this.prisma, normalized);
+      await finishCallbackEvent(this.prisma, normalized.eventId, outcome);
       return { accepted: true, duplicate: false };
     } catch (error) {
-      await releaseCallbackEvent(this.prisma, body.eventId, "RETRYABLE_FAILURE");
+      await releaseCallbackEvent(this.prisma, normalized.eventId, "RETRYABLE_FAILURE");
       throw error;
     }
   }
@@ -159,6 +164,17 @@ export class CallbacksController {
     if (
       this.config.env.NODE_ENV === "production" &&
       (!rawBody || !verifyWebhookSignature(rawBody.toString("utf8"), signature, secret))
+    ) {
+      throw Errors.unauthorized("Invalid callback signature");
+    }
+  }
+
+  private assertVodSignature(rawBody: Buffer | undefined, signature: string | undefined): void {
+    if (this.config.env.NODE_ENV !== "production") return;
+    const secret = this.config.env.TENCENTCLOUD_VOD_CALLBACK_SECRET;
+    if (
+      !verifyTencentVodCallbackSignature(rawBody, secret) &&
+      !verifyWebhookSignature(rawBody?.toString("utf8") ?? "", signature, secret)
     ) {
       throw Errors.unauthorized("Invalid callback signature");
     }
@@ -278,7 +294,7 @@ export async function releaseCallbackEvent(
   }
 }
 
-function assertValidVodState(body: VodCallbackDto): void {
+function assertValidVodState(body: VodCallbackBody): void {
   if (
     body.mediaStatus === "READY" &&
     (body.transcodeStatus !== "READY" || body.machineReviewStatus !== "APPROVED")

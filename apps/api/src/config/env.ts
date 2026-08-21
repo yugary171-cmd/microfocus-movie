@@ -45,9 +45,17 @@ const envSchema = z.object({
     .enum(["server_verified", "client_attestation"])
     .default("client_attestation"),
   INTERNAL_CLIENT_ATTESTATION: booleanString,
+  POSTER_STORAGE_MODE: z.enum(["mock", "live"]).default("mock"),
+  TENCENTCLOUD_COS_SECRET_ID: z.string().optional(),
+  TENCENTCLOUD_COS_SECRET_KEY: z.string().optional(),
+  TENCENTCLOUD_COS_BUCKET: z.string().optional(),
+  TENCENTCLOUD_COS_REGION: z.string().optional(),
+  TENCENTCLOUD_COS_PUBLIC_ORIGIN: z.string().url().optional(),
+  TENCENTCLOUD_COS_PREFIX: z.string().default("microfocus/dramas"),
   VOD_MODE: z.enum(["mock", "live"]).default("mock"),
   TENCENTCLOUD_SECRET_ID: z.string().optional(),
   TENCENTCLOUD_SECRET_KEY: z.string().optional(),
+  TENCENTCLOUD_VOD_REGION: z.string().default("ap-guangzhou"),
   TENCENTCLOUD_VOD_SUB_APP_ID: z.string().optional(),
   TENCENTCLOUD_VOD_PROCEDURE: z.string().optional(),
   TENCENTCLOUD_VOD_CALLBACK_SECRET: z.string().optional(),
@@ -132,6 +140,15 @@ export function assertProductionSafety(env: AppEnv): void {
     env.WECHAT_CALLBACK_SECRET,
     env.TENCENTCLOUD_SECRET_ID,
     env.TENCENTCLOUD_SECRET_KEY,
+    ...(env.POSTER_STORAGE_MODE === "live"
+      ? [
+          env.TENCENTCLOUD_COS_SECRET_ID,
+          env.TENCENTCLOUD_COS_SECRET_KEY,
+          env.TENCENTCLOUD_COS_BUCKET,
+          env.TENCENTCLOUD_COS_REGION,
+          env.TENCENTCLOUD_COS_PUBLIC_ORIGIN
+        ]
+      : []),
     env.TENCENTCLOUD_VOD_SUB_APP_ID,
     env.TENCENTCLOUD_VOD_PROCEDURE,
     env.TENCENTCLOUD_VOD_CALLBACK_SECRET,

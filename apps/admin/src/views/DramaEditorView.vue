@@ -36,7 +36,7 @@ import TagPickerDialog from "@/components/TagPickerDialog.vue";
 import { dramaStatusLabels } from "@/i18n";
 import { dramaDraftError, posterFileError } from "@/policies/drama-input";
 import { useAuthStore } from "@/stores/auth";
-import type { DramaInput, DramaRecord, EpisodeRecord } from "@/types/admin";
+import type { AdminUploadCapabilities, DramaInput, DramaRecord, EpisodeRecord } from "@/types/admin";
 
 const ElInput = ElementInput as Component;
 
@@ -104,6 +104,22 @@ const rightsFilled = computed(() =>
   Boolean(form.licenseNumber.trim() && form.rightsHolder.trim()),
 );
 const localPosterUrls = reactive({ cover: "", promo: "" });
+const posterUploadIds = reactive({ cover: "", promo: "" });
+const posterUploadProgress = reactive({ cover: 0, promo: 0 });
+const uploadCapabilities = ref<AdminUploadCapabilities>({
+  posterStorageReady: false,
+  vodUploadReady: false,
+  reasons: {
+    posterStorage: "上传能力尚未加载",
+    vodUpload: "上传能力尚未加载",
+  },
+});
+
+const unavailableUploadCapabilities = (reason: string): AdminUploadCapabilities => ({
+  posterStorageReady: false,
+  vodUploadReady: false,
+  reasons: { posterStorage: reason, vodUpload: reason },
+});
 
 const canEdit = computed(() => {
   if (!auth.user) return false;
@@ -152,7 +168,7 @@ function revokeLocalUrl(kind: "cover" | "promo"): void {
   localPosterUrls[kind] = "";
 }
 
-function choosePoster(kind: "cover" | "promo", event: Event): void {
+async function choosePoster(kind: "cover" | "promo", event: Event): Promise<void> {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   input.value = "";
@@ -163,7 +179,30 @@ function choosePoster(kind: "cover" | "promo", event: Event): void {
     return;
   }
   if (adminApi.mode === "live") {
-    error.value = "真实环境尚未接入海报对象存储，不能用本地文件代替封面。";
+    if (!uploadCapabilities.value.posterStorageReady) {
+      error.value = uploadCapabilities.value.reasons.posterStorage || "海报对象存储尚未配置";
+      return;
+    }
+    posterUploadProgress[kind] = 1;
+    error.value = "";
+    try {
+      const uploaded = await adminApi.uploadPoster(
+        id.value,
+        kind,
+        file,
+        (progress) => { posterUploadProgress[kind] = progress; },
+      );
+      revokeLocalUrl(kind);
+      posterUploadIds[kind] = uploaded.uploadId;
+      if (kind === "cover") form.coverUrl = uploaded.assetUrl;
+      else form.promoCoverUrl = uploaded.assetUrl;
+      inputChanged();
+      notice.value = kind === "cover" ? "剧目海报已上传。" : "推广海报已上传。";
+    } catch (caught) {
+      error.value = toErrorMessage(caught);
+    } finally {
+      posterUploadProgress[kind] = 0;
+    }
     return;
   }
   revokeLocalUrl(kind);
@@ -179,6 +218,7 @@ function clearPoster(kind: "cover" | "promo"): void {
   revokeLocalUrl(kind);
   if (kind === "cover") form.coverUrl = "";
   else form.promoCoverUrl = "";
+  posterUploadIds[kind] = "";
   inputChanged();
 }
 
@@ -209,12 +249,19 @@ async function load(): Promise<void> {
   error.value = "";
   loading.value = !isNew.value;
   try {
-    const [gateResult, dramaResult, tagsResult] = await Promise.all([
+    const uploadCapabilitiesPromise = typeof adminApi.uploadCapabilities === "function"
+      ? adminApi.uploadCapabilities().catch((caught): AdminUploadCapabilities => {
+          return unavailableUploadCapabilities(toErrorMessage(caught));
+        })
+      : Promise.resolve(unavailableUploadCapabilities("上传能力检查接口尚未接入"));
+    const [gateResult, dramaResult, tagsResult, uploadCapabilitiesResult] = await Promise.all([
       adminApi.releaseGate(),
       isNew.value ? Promise.resolve(null) : adminApi.getDrama(id.value),
       adminApi.listCatalogTags(),
+      uploadCapabilitiesPromise,
     ]);
     gate.value = gateResult;
+    uploadCapabilities.value = uploadCapabilitiesResult;
     tagLibrary.value = Array.isArray(tagsResult.items) ? tagsResult.items : [];
     if (dramaResult) applyDrama(dramaResult);
   } catch (caught) {
@@ -270,7 +317,13 @@ async function save(): Promise<DramaRecord | null> {
   }
   saving.value = true;
   try {
-    const saved = await adminApi.saveDrama(payload, id.value || undefined);
+    const posterUploads = {
+      ...(posterUploadIds.cover ? { coverUploadId: posterUploadIds.cover } : {}),
+      ...(posterUploadIds.promo ? { promoUploadId: posterUploadIds.promo } : {}),
+    };
+    const saved = Object.keys(posterUploads).length > 0
+      ? await adminApi.saveDrama(payload, id.value || undefined, posterUploads)
+      : await adminApi.saveDrama(payload, id.value || undefined);
     applyDrama(saved);
     notice.value =
       adminApi.mode === "mock"
@@ -499,7 +552,7 @@ onUnmounted(() => {
                 v-model="form.summary"
                 type="textarea"
                 :disabled="!canEdit"
-                rows="4"
+                :rows="4"
                 :maxlength="DRAMA_SUMMARY_MAX_LENGTH"
                 required
               />
@@ -617,117 +670,121 @@ onUnmounted(() => {
             </div>
           </div>
         </section>
-        <section class="panel" aria-labelledby="rights-title">
-          <div class="panel__header">
-            <div>
-              <p class="eyebrow">RIGHTS & LICENSE</p>
-              <h2 id="rights-title">版权与许可</h2>
+        <div class="editor-grid__right">
+          <EpisodeTable
+            :model-value="form.episodes as EpisodeRecord[]"
+            :drama-id="drama?.id ?? ''"
+            :readonly="!canEdit || (adminApi.mode === 'live' && !isNew)"
+            :upload-ready="uploadCapabilities.vodUploadReady"
+            :upload-reason="uploadCapabilities.reasons.vodUpload || ''"
+            @update:model-value="updateEpisodes"
+          />
+          <section class="panel" aria-labelledby="rights-title">
+            <div class="panel__header">
+              <div>
+                <p class="eyebrow">RIGHTS & LICENSE</p>
+                <h2 id="rights-title">版权与许可</h2>
+              </div>
+              <StatusBadge
+                :label="rightsFilled ? '资料已填写' : '待补齐'"
+                :tone="rightsFilled ? 'success' : 'warning'"
+              />
             </div>
-            <StatusBadge
-              :label="rightsFilled ? '资料已填写' : '待补齐'"
-              :tone="rightsFilled ? 'success' : 'warning'"
-            />
-          </div>
-          <p class="rights-hint">
-            草稿可暂不填写。提交审核或发布前须补齐权利方、许可、材料与全部授权范围。
-          </p>
-          <div class="form-grid">
-            <label class="field"
-              ><span>权利方</span
-              ><el-input
-                class="admin-input"
-                v-model="form.rightsHolder"
-                :disabled="!canEdit"
-                :maxlength="RIGHTS_HOLDER_MAX_LENGTH"
-            /></label>
-            <label class="field"
-              ><span>许可 / 备案编号</span
-              ><el-input
-                class="admin-input"
-                v-model="form.licenseNumber"
-                :disabled="!canEdit"
-                :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH"
-            /></label>
-            <label class="field"
-              ><span>许可起始日</span
-              ><el-input
-                class="admin-input"
-                v-model="form.rightsValidFrom"
-                :disabled="!canEdit"
-                type="date"
-            /></label>
-            <label class="field"
-              ><span>许可到期日</span
-              ><el-input
-                class="admin-input"
-                v-model="form.licenseExpiresAt"
-                :disabled="!canEdit"
-                type="date"
-            /></label>
-            <label class="field"
-              ><span>报备号</span
-              ><el-input
-                class="admin-input"
-                v-model="form.rightsReportNumber"
-                :disabled="!canEdit"
-                :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH"
-            /></label>
-            <label class="field"
-              ><span>私有材料对象键</span
-              ><el-input
-                class="admin-input"
-                v-model="form.rightsMaterialObjectKey"
-                :disabled="!canEdit"
-                :maxlength="RIGHTS_MATERIAL_KEY_MAX_LENGTH"
-                placeholder="rights/…/document.pdf"
-              /><small>仅填写私有对象存储键，不使用公开 URL</small></label
-            >
-            <label class="field field--wide"
-              ><span>材料 SHA-256 摘要</span
-              ><el-input
-                class="admin-input"
-                v-model="form.rightsMaterialDigestSha256"
-                :disabled="!canEdit"
-                :minlength="RIGHTS_MATERIAL_DIGEST_LENGTH"
-                :maxlength="RIGHTS_MATERIAL_DIGEST_LENGTH"
-                :pattern="RIGHTS_MATERIAL_DIGEST_INPUT_PATTERN"
-                spellcheck="false"
-                autocomplete="off"
-                placeholder="64 位十六进制摘要"
-            /></label>
-            <fieldset class="rights-scope field--wide" :disabled="!canEdit">
-              <legend>授权范围（填写版权时须逐项确认）</legend>
-              <label
-                ><input
-                  v-model="form.allowsWechatDistribution"
-                  type="checkbox"
-                />
-                允许微信分发</label
+            <p class="rights-hint">
+              草稿可暂不填写。提交审核或发布前须补齐权利方、许可、材料与全部授权范围。
+            </p>
+            <div class="form-grid">
+              <label class="field"
+                ><span>权利方</span
+                ><el-input
+                  class="admin-input"
+                  v-model="form.rightsHolder"
+                  :disabled="!canEdit"
+                  :maxlength="RIGHTS_HOLDER_MAX_LENGTH"
+              /></label>
+              <label class="field"
+                ><span>许可 / 备案编号</span
+                ><el-input
+                  class="admin-input"
+                  v-model="form.licenseNumber"
+                  :disabled="!canEdit"
+                  :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH"
+              /></label>
+              <label class="field"
+                ><span>许可起始日</span
+                ><el-input
+                  class="admin-input"
+                  v-model="form.rightsValidFrom"
+                  :disabled="!canEdit"
+                  type="date"
+              /></label>
+              <label class="field"
+                ><span>许可到期日</span
+                ><el-input
+                  class="admin-input"
+                  v-model="form.licenseExpiresAt"
+                  :disabled="!canEdit"
+                  type="date"
+              /></label>
+              <label class="field"
+                ><span>报备号</span
+                ><el-input
+                  class="admin-input"
+                  v-model="form.rightsReportNumber"
+                  :disabled="!canEdit"
+                  :maxlength="RIGHTS_DOCUMENT_MAX_LENGTH"
+              /></label>
+              <label class="field"
+                ><span>私有材料对象键</span
+                ><el-input
+                  class="admin-input"
+                  v-model="form.rightsMaterialObjectKey"
+                  :disabled="!canEdit"
+                  :maxlength="RIGHTS_MATERIAL_KEY_MAX_LENGTH"
+                  placeholder="rights/…/document.pdf"
+                /><small>仅填写私有对象存储键，不使用公开 URL</small></label
               >
-              <label
-                ><input v-model="form.allowsAdMonetization" type="checkbox" />
-                允许广告变现</label
-              >
-              <label
-                ><input v-model="form.allowsTranscoding" type="checkbox" />
-                允许媒体转码</label
-              >
-              <label
-                ><input
-                  v-model="form.allowsPromotionalMaterial"
-                  type="checkbox"
-                />
-                允许制作宣传材料</label
-              >
-            </fieldset>
-          </div>
-        </section>
-        <EpisodeTable
-          :model-value="form.episodes as EpisodeRecord[]"
-          :drama-id="drama?.id ?? ''"
-          :readonly="!canEdit || (adminApi.mode === 'live' && !isNew)"
-          @update:model-value="updateEpisodes"
-        />
+              <label class="field field--wide"
+                ><span>材料 SHA-256 摘要</span
+                ><el-input
+                  class="admin-input"
+                  v-model="form.rightsMaterialDigestSha256"
+                  :disabled="!canEdit"
+                  :minlength="RIGHTS_MATERIAL_DIGEST_LENGTH"
+                  :maxlength="RIGHTS_MATERIAL_DIGEST_LENGTH"
+                  :pattern="RIGHTS_MATERIAL_DIGEST_INPUT_PATTERN"
+                  spellcheck="false"
+                  autocomplete="off"
+                  placeholder="64 位十六进制摘要"
+              /></label>
+              <fieldset class="rights-scope field--wide" :disabled="!canEdit">
+                <legend>授权范围（填写版权时须逐项确认）</legend>
+                <label
+                  ><input
+                    v-model="form.allowsWechatDistribution"
+                    type="checkbox"
+                  />
+                  允许微信分发</label
+                >
+                <label
+                  ><input v-model="form.allowsAdMonetization" type="checkbox" />
+                  允许广告变现</label
+                >
+                <label
+                  ><input v-model="form.allowsTranscoding" type="checkbox" />
+                  允许媒体转码</label
+                >
+                <label
+                  ><input
+                    v-model="form.allowsPromotionalMaterial"
+                    type="checkbox"
+                  />
+                  允许制作宣传材料</label
+                >
+              </fieldset>
+            </div>
+          </section>
+        </div>
       </div>
     </template>
     <ConfirmDialog
@@ -780,8 +837,11 @@ onUnmounted(() => {
   display: grid;
   gap: var(--space-3);
 }
-.editor-grid > .episode-panel {
-  grid-column: 1 / -1;
+.editor-grid__right {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--space-3);
 }
 .inline-message {
   margin-bottom: var(--space-3);

@@ -1,7 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { AppConfigService } from "./config/config.service.js";
-import { VodProviderService, WechatProviderService } from "./providers/providers.js";
+import { CosProviderService, VodProviderService, WechatProviderService } from "./providers/providers.js";
 import { AdminRolesGuard, JwtAuthGuard, OptionalJwtAuthGuard } from "./security/security.js";
 import { TotpService } from "./security/totp.service.js";
 
@@ -15,6 +15,7 @@ import { TotpService } from "./security/totp.service.js";
   ],
   providers: [
     AppConfigService,
+    CosProviderService,
     WechatProviderService,
     VodProviderService,
     JwtAuthGuard,
@@ -25,6 +26,7 @@ import { TotpService } from "./security/totp.service.js";
   exports: [
     JwtModule,
     AppConfigService,
+    CosProviderService,
     WechatProviderService,
     VodProviderService,
     JwtAuthGuard,

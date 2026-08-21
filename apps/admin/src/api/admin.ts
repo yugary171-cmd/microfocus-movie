@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, CatalogTagStatus, encodedRoute, isRightsMaterialDigest, normalizeSystemNotificationAdminPageSize, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE, type CatalogTag, type CatalogTagGroupId, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, API_ROUTES, CatalogTagStatus, encodedRoute, isRightsMaterialDigest, normalizeSystemNotificationAdminPageSize, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE, type CatalogTag, type CatalogTagGroupId, type PosterUploadKind, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AdminAccountRecord,
@@ -26,6 +26,7 @@ import type {
   PageResult,
   ReviewItem,
   UploadSignature,
+  PosterUploadRefs,
 } from "@/types/admin";
 import { apiBaseUrl, getSessionToken, getSessionUser, isMockMode, request } from "./client";
 import { mockApi } from "./mock";
@@ -49,6 +50,8 @@ import {
   normalizeReleaseGate,
   normalizeReviewList,
   normalizeUploadSignature,
+  normalizePosterUpload,
+  normalizeUploadCapabilities,
   pageTotal,
 } from "./normalizers";
 
@@ -56,28 +59,46 @@ const endpoints = API_ROUTES.admin;
 
 const json = (value: unknown): string => JSON.stringify(value);
 
-async function uploadDirect(signature: UploadSignature, file: File, onProgress: (value: number) => void): Promise<void> {
+async function uploadDirect(signature: UploadSignature, file: File, onProgress: (value: number) => void): Promise<string> {
   if (signature.mock || isMockMode) {
     for (const progress of [12, 28, 47, 68, 86, 100]) {
       await new Promise((resolve) => window.setTimeout(resolve, 120));
       onProgress(progress);
     }
-    return;
+    return `mock-vod-${crypto.randomUUID()}`;
   }
+  if (!signature.signature) throw new Error("VOD 上传签名缺失，请联系管理员完成 Provider 配置");
+  const { default: TcVod } = await import("vod-js-sdk-v6");
+  const tcVod = new TcVod({ getSignature: async () => signature.signature ?? "" });
+  const uploader = tcVod.upload({ mediaFile: file, mediaName: file.name, enableResume: true });
+  uploader.on("media_progress", (info: { percent?: number }) => {
+    if (typeof info.percent === "number") onProgress(Math.max(0, Math.min(100, Math.round(info.percent))));
+  });
+  const result = await uploader.done() as { fileId?: unknown };
+  if (typeof result.fileId !== "string" || !result.fileId) {
+    throw new Error("VOD 上传完成但未返回 fileId");
+  }
+  return result.fileId;
+}
 
+async function uploadObject(
+  authorization: { uploadUrl: string; headers: Record<string, string> },
+  file: File,
+  onProgress: (value: number) => void,
+): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", signature.uploadUrl);
-    for (const [key, value] of Object.entries(signature.headers)) xhr.setRequestHeader(key, value);
+    xhr.open("PUT", authorization.uploadUrl);
+    for (const [key, value] of Object.entries(authorization.headers)) xhr.setRequestHeader(key, value);
     xhr.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
     });
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`VOD 上传失败（HTTP ${xhr.status}）`));
+      else reject(new Error(`海报上传失败（HTTP ${xhr.status}）`));
     });
-    xhr.addEventListener("error", () => reject(new Error("VOD 上传网络中断，请重试")));
-    xhr.addEventListener("abort", () => reject(new Error("VOD 上传已取消")));
+    xhr.addEventListener("error", () => reject(new Error("海报上传网络中断，请重试")));
+    xhr.addEventListener("abort", () => reject(new Error("海报上传已取消")));
     xhr.send(file);
   });
 }
@@ -182,6 +203,10 @@ export const adminApi = {
     if (isMockMode) return mockApi.releaseGate();
     return normalizeReleaseGate(await request<unknown>(endpoints.releaseGate));
   },
+  async uploadCapabilities() {
+    if (isMockMode) return mockApi.uploadCapabilities();
+    return normalizeUploadCapabilities(await request<unknown>(endpoints.uploadCapabilities));
+  },
   async listCatalogTags(includeArchived = false): Promise<{ items: CatalogTag[] }> {
     if (isMockMode) return mockApi.listCatalogTags(includeArchived);
     const suffix = includeArchived ? "?includeArchived=1" : "";
@@ -237,7 +262,37 @@ export const adminApi = {
     if (isMockMode) return mockApi.getDrama(id);
     return normalizeDrama(await request<unknown>(encodedRoute(endpoints.drama, id)));
   },
-  async saveDrama(input: DramaInput, id?: string): Promise<DramaRecord> {
+  async uploadPoster(
+    dramaId: string,
+    kind: PosterUploadKind,
+    file: File,
+    onProgress: (value: number) => void,
+  ): Promise<{ assetUrl: string; uploadId: string }> {
+    if (isMockMode) return mockApi.uploadPoster(dramaId, kind, file, onProgress);
+    const authorization = normalizePosterUpload(
+      await request<unknown>(endpoints.posterUploadSign, {
+        method: "POST",
+        body: json({
+          ...(dramaId ? { dramaId } : {}),
+          kind,
+          fileName: file.name.trim(),
+          size: file.size,
+          contentType: file.type || "application/octet-stream",
+        }),
+      }),
+    );
+    await uploadObject(authorization, file, onProgress);
+    const completed = await request<unknown>(endpoints.posterUploadComplete, {
+      method: "POST",
+      body: json({ uploadId: authorization.uploadId }),
+    });
+    const assetUrl = typeof completed === "object" && completed !== null && "assetUrl" in completed
+      ? (completed as { assetUrl?: unknown }).assetUrl
+      : undefined;
+    if (typeof assetUrl !== "string" || !assetUrl) throw new Error("海报上传完成但未返回访问地址");
+    return { assetUrl, uploadId: authorization.uploadId };
+  },
+  async saveDrama(input: DramaInput, id?: string, posterUploads: PosterUploadRefs = {}): Promise<DramaRecord> {
     if (isMockMode) return mockApi.saveDrama(input, id);
     const rightsFields: Array<{ value: string; label: string }> = [
       { value: input.rightsHolder, label: "权利方" },
@@ -287,17 +342,23 @@ export const adminApi = {
           title: input.title,
           summary: input.summary,
           coverUrl: input.coverUrl,
+          promoCoverUrl: input.promoCoverUrl || undefined,
           category: input.category,
           tags: input.tagIds,
           recommendationRank: RECOMMENDATION_RANK_DEFAULT,
+          ...(posterUploads.coverUploadId ? { coverUploadId: posterUploads.coverUploadId } : {}),
+          ...(posterUploads.promoUploadId ? { promoUploadId: posterUploads.promoUploadId } : {}),
         }
       : {
           title: input.title,
           summary: input.summary,
           coverUrl: input.coverUrl,
+          promoCoverUrl: input.promoCoverUrl || undefined,
           category: input.category,
           tags: input.tagIds,
           recommendationRank: RECOMMENDATION_RANK_DEFAULT,
+          ...(posterUploads.coverUploadId ? { coverUploadId: posterUploads.coverUploadId } : {}),
+          ...(posterUploads.promoUploadId ? { promoUploadId: posterUploads.promoUploadId } : {}),
           episodes: input.episodes.map((episode) => ({
             episodeNumber: episode.episodeNumber,
             title: episode.title,
@@ -378,7 +439,7 @@ export const adminApi = {
     episodeId: string,
     file: File,
     onProgress: (value: number) => void,
-  ): Promise<void> {
+  ): Promise<{ fileId: string }> {
     const fileError = uploadFileError(file);
     if (fileError) throw new Error(fileError);
     const fileName = file.name.trim();
@@ -398,12 +459,14 @@ export const adminApi = {
             }),
           }),
         );
+    const fileId = await uploadDirect(signature, file, onProgress);
     if (!isMockMode) {
-      throw new Error(
-        "腾讯云 VOD 直传 SDK 与 fileId 注册链路尚未配置，未上传文件。请联系管理员完成 Provider 配置。",
-      );
+      await request<unknown>(encodedRoute(endpoints.mediaAssets, dramaId), {
+        method: "POST",
+        body: json({ episodeId, fileId, uploadId: signature.uploadId }),
+      });
     }
-    await uploadDirect(signature, file, onProgress);
+    return { fileId };
   },
   async listAuditLogs(query = "", page = 1): Promise<PageResult<AuditLog>> {
     if (isMockMode) return mockApi.listAuditLogs(query, page);

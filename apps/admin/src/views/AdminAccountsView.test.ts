@@ -1,5 +1,5 @@
 import { AdminAccountStatus, AdminRole, ERROR_CODES } from "@microfocus/contracts";
-import { flushPromises, mount } from "@vue/test-utils";
+import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "@/api/client";
 import AdminAccountsView from "./AdminAccountsView.vue";
@@ -50,8 +50,34 @@ async function openRowAction(
 ): Promise<void> {
   await wrapper.findAll(".account-actions-trigger")[rowIndex]!.trigger("click");
   await flushPromises();
-  const button = wrapper.findAll(".account-actions-menu button").find((item) => item.text() === label);
+  const menu = bodyGetLast(".account-actions-menu");
+  const button = menu.findAll("button").find((item) => item.text() === label);
   await button?.trigger("click");
+  await flushPromises();
+}
+
+function bodyGet(selector: string): DOMWrapper<Element> {
+  const element = document.body.querySelector(selector);
+  if (!element) throw new Error(`Unable to find ${selector} in document.body`);
+  return new DOMWrapper(element);
+}
+
+function bodyGetLast(selector: string): DOMWrapper<Element> {
+  const elements = document.body.querySelectorAll(selector);
+  const element = elements.item(elements.length - 1);
+  if (!element) throw new Error(`Unable to find ${selector} in document.body`);
+  return new DOMWrapper(element);
+}
+
+async function chooseSelect(root: ReturnType<typeof mount> | DOMWrapper<Element>, label: string, option: string): Promise<void> {
+  const select = root.findAll(".el-select").find((item) => item.find(`[aria-label="${label}"]`).exists());
+  if (!select) throw new Error(`Unable to find select ${label}`);
+  await select.trigger("click");
+  await flushPromises();
+  const optionElement = [...document.body.querySelectorAll(".el-select-dropdown__item")]
+    .find((item) => item.textContent?.trim() === option);
+  if (!optionElement) throw new Error(`Unable to find option ${option}`);
+  await new DOMWrapper(optionElement).trigger("click");
   await flushPromises();
 }
 
@@ -79,8 +105,8 @@ describe("AdminAccountsView", () => {
     const wrapper = mount(AdminAccountsView);
     await flushPromises();
     await wrapper.get("input[type='search']").setValue("林");
-    await wrapper.get("select").setValue(AdminRole.EDITOR);
-    await wrapper.findAll("select")[1]!.setValue(AdminAccountStatus.ACTIVE);
+    await chooseSelect(wrapper, "角色", "内容编辑");
+    await chooseSelect(wrapper, "状态", "正常");
     await wrapper.get("form.toolbar").trigger("submit");
     await flushPromises();
     expect(api.listAccounts).toHaveBeenLastCalledWith("林", AdminRole.EDITOR, AdminAccountStatus.ACTIVE, 1);
@@ -95,7 +121,7 @@ describe("AdminAccountsView", () => {
     wrapper.get(".table-wrap--sticky-actions");
 
     await openRowAction(wrapper, "停用");
-    expect(wrapper.text()).toContain("待移交 2 部剧目");
+    expect(bodyGet(".account-dialog").text()).toContain("待移交 2 部剧目");
     expect(api.listAccounts).toHaveBeenLastCalledWith("", AdminRole.EDITOR, "ACTIVE", 1);
   });
 
@@ -125,13 +151,13 @@ describe("AdminAccountsView", () => {
 
     const create = wrapper.findAll("button").find((button) => button.text() === "新增账号");
     await create?.trigger("click");
-    const dialog = wrapper.get(".account-dialog");
+    const dialog = bodyGet(".account-dialog");
     const inputs = dialog.findAll("input");
     await inputs[0]!.setValue("王审核");
     await inputs[1]!.setValue("Reviewer@Example.com");
-    await dialog.get("select").setValue(AdminRole.EDITOR);
+    await chooseSelect(dialog, "角色", "内容编辑");
     await dialog.get("textarea").setValue("新增同事负责短剧内容");
-    await inputs[2]!.setValue("123456");
+    await dialog.get("input[autocomplete='one-time-code']").setValue("123456");
     await dialog.trigger("submit");
     await flushPromises();
 
@@ -142,13 +168,13 @@ describe("AdminAccountsView", () => {
       otp: "123456",
       reason: "新增同事负责短剧内容",
     });
-    expect(wrapper.text()).toContain("仅本次显示");
-    expect((wrapper.get("textarea[readonly]").element as HTMLTextAreaElement).value).toContain("only-once");
+    expect(bodyGet(".setup-link-dialog").text()).toContain("仅本次显示");
+    expect((bodyGet("textarea[readonly]").element as HTMLTextAreaElement).value).toContain("only-once");
 
-    await wrapper.get(".setup-link-dialog .button--secondary").trigger("click");
+    await bodyGet(".setup-link-dialog .button--secondary").trigger("click");
     expect(writeText).toHaveBeenCalledWith("http://localhost:5174/account-setup#token=only-once");
-    await wrapper.get(".setup-link-dialog .button--primary").trigger("click");
-    expect(wrapper.find(".setup-link-dialog").exists()).toBe(false);
+    await bodyGet(".setup-link-dialog .button--primary").trigger("click");
+    expect(document.body.querySelector(".setup-link-dialog")).toBeNull();
   });
 
   it("does not submit an unchanged role when editing an account profile", async () => {
@@ -156,10 +182,10 @@ describe("AdminAccountsView", () => {
     const wrapper = mount(AdminAccountsView);
     await flushPromises();
     await openRowAction(wrapper, "编辑资料/角色");
-    const dialog = wrapper.get(".account-dialog");
+    const dialog = bodyGet(".account-dialog");
     await dialog.find("input").setValue("新姓名");
     await dialog.get("textarea").setValue("更新管理员展示姓名");
-    await dialog.findAll("input").at(-1)!.setValue("123456");
+    await dialog.get("input[autocomplete='one-time-code']").setValue("123456");
     await dialog.trigger("submit");
     await flushPromises();
 
@@ -178,8 +204,9 @@ describe("AdminAccountsView", () => {
     const wrapper = mount(AdminAccountsView);
     await flushPromises();
     await wrapper.get(".account-actions-trigger").trigger("click");
-    const suspend = wrapper.findAll(".account-actions-menu button").find((button) => button.text() === "停用");
-    const reset = wrapper.findAll(".account-actions-menu button").find((button) => button.text() === "重置登录凭据");
+    const menu = bodyGet(".account-actions-menu");
+    const suspend = menu.findAll("button").find((button) => button.text() === "停用");
+    const reset = menu.findAll("button").find((button) => button.text() === "重置登录凭据");
     expect(suspend?.attributes("disabled")).toBeDefined();
     expect(reset?.attributes("disabled")).toBeDefined();
 
@@ -195,12 +222,12 @@ describe("AdminAccountsView", () => {
     const other = mount(AdminAccountsView);
     await flushPromises();
     await openRowAction(other, "停用");
-    const form = other.get(".account-dialog");
+    const form = bodyGet(".account-dialog");
     await form.get("textarea").setValue("管理员离职需要停用账号");
-    await form.findAll("input").at(-1)!.setValue("123456");
+    await form.get("input[autocomplete='one-time-code']").setValue("123456");
     await form.trigger("submit");
     await flushPromises();
-    expect(other.text()).toContain("必须至少保留一个正常的系统管理员");
+    expect(bodyGet(".account-dialog").text()).toContain("必须至少保留一个正常的系统管理员");
     wrapper.unmount();
     other.unmount();
   });
@@ -222,9 +249,9 @@ describe("AdminAccountsView", () => {
     const wrapper = mount(AdminAccountsView);
     await flushPromises();
     await openRowAction(wrapper, "启用");
-    const form = wrapper.get(".account-dialog");
+    const form = bodyGet(".account-dialog");
     await form.get("textarea").setValue("账号重新启用用于审核");
-    await form.findAll("input").at(-1)!.setValue("123456");
+    await form.get("input[autocomplete='one-time-code']").setValue("123456");
     await form.trigger("submit");
     await flushPromises();
     expect(api.activateAccount).toHaveBeenCalledWith("reviewer-9", {
@@ -254,9 +281,9 @@ describe("AdminAccountsView", () => {
     const pending = mount(AdminAccountsView);
     await flushPromises();
     await openRowAction(pending, "重发开通链接");
-    const invite = pending.get(".account-dialog");
+    const invite = bodyGet(".account-dialog");
     await invite.get("textarea").setValue("同事未收到开通邮件改用链接");
-    await invite.findAll("input").at(-1)!.setValue("123456");
+    await invite.get("input[autocomplete='one-time-code']").setValue("123456");
     await invite.trigger("submit");
     await flushPromises();
     expect(api.createAccountSetupLink).toHaveBeenCalledWith("pending-1", {
@@ -264,7 +291,7 @@ describe("AdminAccountsView", () => {
       reason: "同事未收到开通邮件改用链接",
       otp: "123456",
     });
-    expect(pending.text()).toContain("仅本次显示");
+    expect(bodyGet(".setup-link-dialog").text()).toContain("仅本次显示");
     wrapper.unmount();
     pending.unmount();
   });
@@ -281,15 +308,16 @@ describe("AdminAccountsView", () => {
     await flushPromises();
     const triggers = wrapper.findAll(".account-actions-trigger");
     await triggers[0]!.trigger("click");
-    expect(wrapper.findAll(".account-actions-menu")).toHaveLength(1);
-    expect(wrapper.get(".account-actions-menu").text()).toContain("停用");
+    expect(document.body.querySelectorAll(".account-actions-menu")).toHaveLength(1);
+    expect(bodyGet(".account-actions-menu").text()).toContain("停用");
 
     await triggers[1]!.trigger("click");
-    expect(wrapper.findAll(".account-actions-menu")).toHaveLength(1);
+    expect(document.body.querySelectorAll(".account-actions-menu")).toHaveLength(1);
 
-    document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    document.dispatchEvent(new Event("pointerdown"));
     await flushPromises();
-    expect(wrapper.find(".account-actions-menu").exists()).toBe(false);
+    await wrapper.vm.$nextTick();
+    expect(document.body.querySelector(".account-actions-menu")).toBeNull();
     wrapper.unmount();
   });
 });

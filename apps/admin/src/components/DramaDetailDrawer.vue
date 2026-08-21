@@ -116,15 +116,7 @@ function mediaLabel(status: MediaStatus): string {
   >
     <template #header>
       <div class="drama-detail-header">
-        <div class="drama-detail-header__copy">
-          <h2>剧目详情</h2>
-          <div v-if="drama" class="drama-detail-header__meta">
-            <strong>{{ drama.title || "未命名剧目" }}</strong>
-            <StatusBadge :label="statusLabel(drama.status)" :tone="dramaStatusTone(drama.status)" />
-            <span>{{ drama.ownerName || "未分配负责人" }}</span>
-          </div>
-          <p v-else>只读模式</p>
-        </div>
+        <h2>剧目详情</h2>
       </div>
     </template>
 
@@ -249,25 +241,25 @@ function mediaLabel(status: MediaStatus): string {
 
     <template #footer>
       <div class="drama-detail-footer">
-        <button class="button button--secondary" type="button" @click="emit('close')">关闭</button>
         <RouterLink v-if="drama" class="button button--primary" :to="`/dramas/${drama.id}`">
           编辑剧目
         </RouterLink>
+        <button class="button button--secondary" type="button" @click="emit('close')">关闭</button>
       </div>
     </template>
   </el-drawer>
 </template>
 
 <style scoped>
-.drama-detail-drawer :deep(.el-drawer__header) {
-  margin-bottom: 0;
-  padding: var(--space-4);
+:global(.drama-detail-drawer .el-drawer__header) {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--color-border);
 }
-.drama-detail-drawer :deep(.el-drawer__body) {
+:global(.drama-detail-drawer .el-drawer__body) {
   padding: 0;
 }
-.drama-detail-drawer :deep(.el-drawer__footer) {
+:global(.drama-detail-drawer .el-drawer__footer) {
   flex: 0 0 auto;
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border);
@@ -277,36 +269,14 @@ function mediaLabel(status: MediaStatus): string {
 .drama-detail-header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
   width: 100%;
   min-width: 0;
 }
-.drama-detail-header__copy {
-  min-width: 0;
-}
 .drama-detail-header h2 {
-  margin: 0 0 var(--space-2);
+  margin: 0;
   color: var(--text-color);
   font-size: 20px;
   line-height: 1.25;
-}
-.drama-detail-header__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  color: var(--color-muted);
-  font-size: 12px;
-}
-.drama-detail-header__meta strong {
-  color: var(--text-color);
-  font-size: 14px;
-}
-.drama-detail-header__copy > p {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 12px;
 }
 .drama-detail-footer {
   display: flex;

@@ -119,6 +119,25 @@ enum UserAccountStatus {
   DELETION_PENDING
 }
 
+enum UploadSessionProvider {
+  COS
+  VOD
+}
+
+enum UploadSessionKind {
+  POSTER_COVER
+  POSTER_PROMO
+  VOD_MEDIA
+}
+
+enum UploadSessionStatus {
+  ISSUED
+  UPLOADED
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
 enum DeletionRequestStatus {
   PENDING
   PROCESSING
@@ -311,6 +330,7 @@ model Drama {
   title              String
   summary            String        @db.Text
   coverUrl           String
+  promoCoverUrl      String?
   category           String
   tagsJson           Json // CatalogTag ids
   recommendationRank Int           @default(0)
@@ -334,6 +354,30 @@ model Drama {
 
   @@index([status, recommendationRank])
   @@index([category, status])
+}
+
+model UploadSession {
+  id            String               @id @default(cuid())
+  provider      UploadSessionProvider
+  kind          UploadSessionKind
+  status        UploadSessionStatus  @default(ISSUED)
+  adminId       String
+  dramaId       String?
+  episodeId     String?
+  uploadId      String               @unique
+  objectKey     String?
+  fileId        String?
+  fileName      String
+  contentType   String
+  size          BigInt
+  expiresAt     DateTime
+  completedAt   DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([dramaId, status, expiresAt])
+  @@index([episodeId, status])
+  @@index([provider, fileId])
 }
 
 model RightsRecord {

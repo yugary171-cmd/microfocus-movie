@@ -9,6 +9,8 @@ import {
   type CatalogTag,
   type ReleaseGateStatus,
   type AdminAuditContext,
+  type PosterUploadAuthorization,
+  type UploadCapabilities,
 } from "@microfocus/contracts";
 import type {
   AdminSession,
@@ -522,11 +524,42 @@ export function normalizeUploadSignature(value: unknown): UploadSignature {
     Object.entries(rawHeaders).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
   );
   return {
+    provider: text(source.provider) === "TENCENT_VOD" ? "TENCENT_VOD" : "MOCK",
+    ...(text(source.signature) ? { signature: text(source.signature) } : {}),
     uploadUrl: text(source.uploadUrl),
     headers,
     uploadId: text(source.uploadId),
     expiresAt: dateText(source.expiresAt),
     mock: source.mock === true,
+  };
+}
+
+export function normalizePosterUpload(value: unknown): PosterUploadAuthorization {
+  const source = record(value);
+  const rawHeaders = record(source.headers);
+  return {
+    uploadId: text(source.uploadId),
+    uploadUrl: text(source.uploadUrl),
+    headers: Object.fromEntries(
+      Object.entries(rawHeaders).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    ),
+    objectKey: text(source.objectKey),
+    assetUrl: text(source.assetUrl),
+    expiresAt: dateText(source.expiresAt),
+    mock: source.mock === true,
+  };
+}
+
+export function normalizeUploadCapabilities(value: unknown): UploadCapabilities {
+  const source = record(value);
+  const reasons = record(source.reasons);
+  return {
+    posterStorageReady: source.posterStorageReady === true,
+    vodUploadReady: source.vodUploadReady === true,
+    reasons: {
+      ...(text(reasons.posterStorage) ? { posterStorage: text(reasons.posterStorage) } : {}),
+      ...(text(reasons.vodUpload) ? { vodUpload: text(reasons.vodUpload) } : {}),
+    },
   };
 }
 

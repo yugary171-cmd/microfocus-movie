@@ -23,6 +23,8 @@ const props = defineProps<{
   modelValue: EpisodeRecord[];
   dramaId: string;
   readonly?: boolean;
+  uploadReady?: boolean;
+  uploadReason?: string;
 }>();
 
 const emit = defineEmits<{ "update:modelValue": [value: EpisodeRecord[]] }>();
@@ -90,15 +92,21 @@ async function startUpload(episode: EpisodeRecord): Promise<void> {
   state.state = "signing";
   state.progress = 0;
   state.error = "";
+  if (adminApi.mode === "live" && !props.dramaId) {
+    state.state = "error";
+    state.error = "请先保存剧目草稿，再上传视频";
+    update(episode.id, { mediaStatus: MediaStatus.FAILED });
+    return;
+  }
   update(episode.id, { mediaStatus: MediaStatus.UPLOADING });
   try {
     state.state = "uploading";
-    await adminApi.uploadEpisode(props.dramaId || "unsaved-draft", episode.id, file, (progress) => {
+    const uploaded = await adminApi.uploadEpisode(props.dramaId, episode.id, file, (progress) => {
       state.progress = progress;
     });
     state.state = "success";
     state.progress = 100;
-    update(episode.id, { mediaStatus: MediaStatus.PROCESSING, updatedAt: new Date().toISOString() });
+    update(episode.id, { mediaStatus: MediaStatus.PROCESSING, vodFileId: uploaded.fileId, updatedAt: new Date().toISOString() });
   } catch (caught) {
     state.state = "error";
     state.error = toErrorMessage(caught);
@@ -184,8 +192,11 @@ onUnmounted(() => {
     <div v-if="adminApi.mode === 'mock'" class="upload-mode" role="status">
       <strong>模拟直传</strong> 进度和处理状态仅用于演示，不代表云端已收到或完成转码。
     </div>
+    <div v-else-if="props.uploadReady !== false" class="upload-mode" role="status">
+      <strong>真实直传</strong> 文件由浏览器直传腾讯云 VOD，处理和审核状态由回调更新。
+    </div>
     <div v-else class="upload-mode upload-mode--blocked" role="alert">
-      <strong>真实上传未配置</strong> 腾讯云 VOD 直传 SDK 与 fileId 注册链路尚未接通；本页不会上传文件或显示虚假成功。
+      <strong>真实上传未配置</strong> {{ props.uploadReason || "腾讯云 VOD 上传能力尚未配置" }}
     </div>
     <p class="episode-summary">{{ summaryText }}</p>
   </section>
@@ -277,7 +288,7 @@ onUnmounted(() => {
                   <small>{{ uploads[episode.id]?.state === "signing" ? "正在获取签名…" : `上传 ${uploads[episode.id]?.progress ?? 0}%` }}</small>
                 </div>
                 <div v-else-if="uploads[episode.id]?.state === 'success'" class="upload-success" role="status">
-                  <span>已完成模拟直传，等待媒体处理</span>
+                  <span>{{ adminApi.mode === "mock" ? "已完成模拟直传，等待媒体处理" : "已上传，等待媒体处理" }}</span>
                   <button
                     v-if="adminApi.mode === 'mock' && episode.mediaStatus !== MediaStatus.READY"
                     class="link"
