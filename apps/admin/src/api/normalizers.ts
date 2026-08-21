@@ -8,6 +8,7 @@ import {
   isCatalogTagGroupId,
   type CatalogTag,
   type ReleaseGateStatus,
+  type AdminAuditContext,
 } from "@microfocus/contracts";
 import type {
   AdminSession,
@@ -16,6 +17,8 @@ import type {
   CompensationInput,
   AdjustmentInput,
   AdminCallbackEvent,
+  AdminFeedbackRecord,
+  AdminNotificationRecord,
   AdminAccountRecord,
   AdminAccountSetupInfo,
   AdminSetupLink,
@@ -374,6 +377,7 @@ export function normalizeAuditList(value: unknown): AuditLog[] {
   return collection(value)
     .map((item) => {
       const source = record(item);
+      const context = normalizeAuditContext(source.context);
       return {
         id: text(source.id),
         createdAt: dateText(source.createdAt),
@@ -394,9 +398,70 @@ export function normalizeAuditList(value: unknown): AuditLog[] {
         ),
         requestId: text(source.requestId),
         detail: text(source.detail),
+        ...(context ? { context } : {}),
       };
     })
     .filter((item) => item.id.length > 0);
+}
+
+export function normalizeAdminNotificationList(value: unknown): PageResult<AdminNotificationRecord> {
+  const source = record(value);
+  const items = collection(value).map((item) => {
+    const row = record(item);
+    return {
+      id: text(row.id),
+      title: text(row.title),
+      body: text(row.body),
+      status: enumValue(row.status, ["DRAFT", "PUBLISHED", "RETRACTED"] as const, "DRAFT"),
+      publishedAt: dateText(row.publishedAt) || null,
+      createdAt: dateText(row.createdAt),
+      createdByAdminId: text(row.createdByAdminId),
+      createdByAdminName: text(row.createdByAdminName) || "未知管理员",
+    } as AdminNotificationRecord;
+  }).filter((item) => item.id.length > 0);
+  return { items, total: finiteNumber(source.total) || items.length };
+}
+
+export function normalizeAdminFeedbackList(value: unknown): PageResult<AdminFeedbackRecord> {
+  const source = record(value);
+  const items = collection(value).map((item) => {
+    const row = record(item);
+    return {
+      id: text(row.id),
+      body: text(row.body),
+      status: enumValue(row.status, ["NEW", "PROCESSING", "RESOLVED"] as const, "NEW"),
+      internalNote: typeof row.internalNote === "string" ? row.internalNote : null,
+      createdAt: dateText(row.createdAt),
+      updatedAt: dateText(row.updatedAt),
+      replies: Array.isArray(row.replies) ? row.replies.map((reply) => {
+        const item = record(reply);
+        return { id: text(item.id), body: text(item.body), createdAt: dateText(item.createdAt) };
+      }) : [],
+      userId: text(row.userId),
+      userName: text(row.userName),
+      ...(text(row.userEmail) ? { userEmail: text(row.userEmail) } : {}),
+      handledByAdminId: text(row.handledByAdminId) || null,
+    } as AdminFeedbackRecord;
+  }).filter((item) => item.id.length > 0);
+  return { items, total: finiteNumber(source.total) || items.length };
+}
+
+function normalizeAuditContext(value: unknown): AdminAuditContext | undefined {
+  const source = record(value);
+  const context: AdminAuditContext = {};
+  const stringKeys = [
+    "dramaId", "episodeId", "mediaAssetId", "fileId", "fileName", "fromStatus", "toStatus",
+    "reviewStatus", "manualReviewStatus", "wechatReviewStatus", "fromManualReviewStatus",
+    "toManualReviewStatus", "fromWechatReviewStatus", "toWechatReviewStatus", "uploadPhase"
+  ] as const;
+  for (const key of stringKeys) {
+    if (typeof source[key] === "string") Object.assign(context, { [key]: source[key] });
+  }
+  const numberKeys = ["episodeNumber", "mediaVersion", "contentVersion"] as const;
+  for (const key of numberKeys) {
+    if (typeof source[key] === "number" && Number.isFinite(source[key])) Object.assign(context, { [key]: source[key] });
+  }
+  return Object.keys(context).length ? context : undefined;
 }
 
 export function normalizeCallbackEventList(value: unknown): PageResult<AdminCallbackEvent> {

@@ -76,7 +76,7 @@ flowchart LR
 | 权益 | EntitlementGrant、EntitlementDebit/Consumption、EntitlementAdjustment | 发放、消费和纠错事实不可修改；余额可重建且不为负 |
 | 播放 | PlaybackLease、PlaybackReservation、Heartbeat、WatchProgress | 锁定内容单活租约；媒体窗口受服务端预算约束；心跳顺序唯一 |
 | 社交与片库 | UserFollow、Comment（`DRAMA`/`USER`）、CommentLike、DirectConversation、DirectMessage、DramaFavorite、DramaLike、WatchEpisodeProgress | 列表不进 User 行；计数可重建；墙与剧评同表；私信须先关注；整剧看完由每集完成态派生。详见 [social-library-model.md](./social-library-model.md) |
-| 运营 | CircuitBreaker、AuditLog、OperationalEvent | 熔断和管理动作必须记录原因、操作者、时间和对象 |
+| 运营 | CircuitBreaker、AuditLog、OperationalEvent、SystemNotification、UserFeedback | 熔断和管理动作必须记录原因、操作者、时间和对象；系统通知是可撤回的公共内容，反馈和管理员回复是用户服务事实；用户反馈创建使用 OperationalEvent 记录用户主体，管理员处理使用追加式 AuditLog，不把完整正文写入审计 |
 
 ## 5. 事务、并发与幂等
 

@@ -15,6 +15,9 @@ import type {
   CompensationInput,
   AdjustmentInput,
   AdminCallbackEvent,
+  AdminNotificationRecord,
+  AdminFeedbackRecord,
+  FeedbackStatus,
   CallbackReplayInput,
   DeletionQueryTokenReissueInput,
   DashboardData,
@@ -24,7 +27,7 @@ import type {
   ReviewItem,
   UploadSignature,
 } from "@/types/admin";
-import { apiBaseUrl, getSessionToken, isMockMode, request } from "./client";
+import { apiBaseUrl, getSessionToken, getSessionUser, isMockMode, request } from "./client";
 import { mockApi } from "./mock";
 import { uploadFileError } from "@/policies/drama-input";
 import {
@@ -34,6 +37,8 @@ import {
   normalizeAdminAccountSetupInfo,
   normalizeAdminSetupLink,
   normalizeAuditList,
+  normalizeAdminNotificationList,
+  normalizeAdminFeedbackList,
   normalizeCallbackEventList,
   normalizeCatalogTag,
   normalizeCatalogTagList,
@@ -322,7 +327,7 @@ export const adminApi = {
     return request(encodedRoute(endpoints.submitReview, id), { method: "POST" });
   },
   async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
-    if (isMockMode) return mockApi.listReviews(page);
+    if (isMockMode) return mockApi.listReviews(page, getSessionUser());
     const suffix = page > 1 ? `?page=${page}` : "";
     const payload = await request<unknown>(`${endpoints.reviews}${suffix}`);
     const items = normalizeReviewList(payload);
@@ -336,7 +341,7 @@ export const adminApi = {
     if (!approved && !notes) {
       return Promise.reject(new Error("请填写退回原因"));
     }
-    if (isMockMode) return mockApi.review(reviewId, approved, notes);
+    if (isMockMode) return mockApi.review(reviewId, approved, notes, getSessionUser());
     return request(encodedRoute(endpoints.review, dramaId), {
       method: "POST",
       body: json({
@@ -397,6 +402,58 @@ export const adminApi = {
     const payload = await request<unknown>(`${endpoints.auditLogs}${suffix}`);
     const items = normalizeAuditList(payload);
     return { items, total: pageTotal(payload, items.length) };
+  },
+  async listNotifications(query = "", status = "", page = 1): Promise<PageResult<AdminNotificationRecord>> {
+    if (isMockMode) return mockApi.listNotifications(query, status, page);
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    if (status) params.set("status", status);
+    if (page > 1) params.set("page", String(page));
+    return normalizeAdminNotificationList(await request<unknown>(`${endpoints.notifications}?${params}`));
+  },
+  async getNotification(id: string): Promise<AdminNotificationRecord> {
+    if (isMockMode) return mockApi.getNotification(id);
+    return normalizeAdminNotificationList({ items: [await request<unknown>(encodedRoute(endpoints.notification, id))] }).items[0]!;
+  },
+  async createNotification(title: string, body: string): Promise<AdminNotificationRecord> {
+    if (isMockMode) return mockApi.createNotification(title, body);
+    return normalizeAdminNotificationList({ items: [await request<unknown>(endpoints.notifications, { method: "POST", body: json({ title, body }) })] }).items[0]!;
+  },
+  async updateNotification(id: string, input: { title?: string; body?: string }): Promise<AdminNotificationRecord> {
+    if (isMockMode) return mockApi.updateNotification(id, input);
+    return normalizeAdminNotificationList({ items: [await request<unknown>(encodedRoute(endpoints.notification, id), { method: "PATCH", body: json(input) })] }).items[0]!;
+  },
+  async deleteNotification(id: string): Promise<void> {
+    if (isMockMode) return mockApi.deleteNotification(id);
+    await request(encodedRoute(endpoints.notificationDelete, id), { method: "DELETE" });
+  },
+  async publishNotification(id: string): Promise<AdminNotificationRecord> {
+    if (isMockMode) return mockApi.publishNotification(id);
+    return normalizeAdminNotificationList({ items: [await request<unknown>(encodedRoute(endpoints.notificationPublish, id), { method: "POST" })] }).items[0]!;
+  },
+  async retractNotification(id: string): Promise<AdminNotificationRecord> {
+    if (isMockMode) return mockApi.retractNotification(id);
+    return normalizeAdminNotificationList({ items: [await request<unknown>(encodedRoute(endpoints.notificationRetract, id), { method: "POST" })] }).items[0]!;
+  },
+  async listFeedback(query = "", status = "", page = 1): Promise<PageResult<AdminFeedbackRecord>> {
+    if (isMockMode) return mockApi.listFeedback(query, status, page);
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("query", query.trim());
+    if (status) params.set("status", status);
+    if (page > 1) params.set("page", String(page));
+    return normalizeAdminFeedbackList(await request<unknown>(`${endpoints.feedback}?${params}`));
+  },
+  async getFeedback(id: string): Promise<AdminFeedbackRecord> {
+    if (isMockMode) return mockApi.getFeedback(id);
+    return normalizeAdminFeedbackList({ items: [await request<unknown>(encodedRoute(endpoints.feedbackItem, id))] }).items[0]!;
+  },
+  async updateFeedback(id: string, input: { status?: FeedbackStatus; internalNote?: string }): Promise<AdminFeedbackRecord> {
+    if (isMockMode) return mockApi.updateFeedback(id, input);
+    return normalizeAdminFeedbackList({ items: [await request<unknown>(encodedRoute(endpoints.feedbackItem, id), { method: "PATCH", body: json(input) })] }).items[0]!;
+  },
+  async replyFeedback(id: string, body: string): Promise<void> {
+    if (isMockMode) return mockApi.replyFeedback(id, body);
+    await request(encodedRoute(endpoints.feedbackReplies, id), { method: "POST", body: json({ body }) });
   },
   async listCallbackEvents(status = "BACKLOG"): Promise<PageResult<AdminCallbackEvent>> {
     if (isMockMode) return mockApi.listCallbackEvents(status);

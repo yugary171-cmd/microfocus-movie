@@ -25,7 +25,7 @@ describe("admin list pagination", () => {
       total: 0,
       totalPages: 0
     });
-    await expect(api.reviews(page)).resolves.toMatchObject({
+    await expect(api.reviews(admin, page)).resolves.toMatchObject({
       items: [],
       page: ADMIN_LIST_MAX_PAGE + 1,
       total: 0
@@ -50,13 +50,30 @@ describe("admin list pagination", () => {
         count: vi.fn().mockResolvedValue(0)
       }
     };
-    await controller(prisma).reviews("1");
+    await controller(prisma).reviews(editor, "1");
     expect(prisma.drama.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         skip: 0,
         take: ADMIN_LIST_PAGE_SIZE,
-        where: { status: "PENDING_REVIEW" }
+        where: { editorId: "editor-1", status: "PENDING_REVIEW" }
       })
+    );
+    expect(prisma.drama.count).toHaveBeenCalledWith({
+      where: { editorId: "editor-1", status: "PENDING_REVIEW" }
+    });
+  });
+
+  it("leaves the review queue unscoped for ADMIN", async () => {
+    const prisma = {
+      $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+      drama: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0)
+      }
+    };
+    await controller(prisma).reviews(admin, "1");
+    expect(prisma.drama.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: "PENDING_REVIEW" } })
     );
     expect(prisma.drama.count).toHaveBeenCalledWith({ where: { status: "PENDING_REVIEW" } });
   });
@@ -120,13 +137,16 @@ describe("admin list pagination", () => {
         skip: ADMIN_LIST_PAGE_SIZE,
         take: ADMIN_LIST_PAGE_SIZE,
         where: {
-          OR: [
+          OR: expect.arrayContaining([
             { action: { contains: "admin@example.com" } },
             { targetType: { contains: "admin@example.com" } },
             { targetId: { contains: "admin@example.com" } },
             { requestId: { contains: "admin@example.com" } },
+            { metadataJson: { path: "$.dramaId", string_contains: "admin@example.com" } },
+            { metadataJson: { path: "$.episodeId", string_contains: "admin@example.com" } },
+            { metadataJson: { path: "$.mediaAssetId", string_contains: "admin@example.com" } },
             { admin: { email: { contains: "admin@example.com" } } }
-          ]
+          ])
         }
       })
     );
@@ -150,6 +170,51 @@ describe("admin list pagination", () => {
         }
       })
     );
+  });
+
+  it("returns structured audit context while keeping legacy detail fields", async () => {
+    const prisma = {
+      $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+      auditLog: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "audit-1",
+            createdAt: new Date("2026-08-20T00:00:00.000Z"),
+            admin: { email: "admin@example.com", role: AdminRole.ADMIN },
+            action: "MEDIA_REVIEWED",
+            targetType: "MediaAsset",
+            targetId: "asset-1",
+            requestId: "request-1",
+            metadataJson: {
+              dramaId: "drama-1",
+              episodeId: "episode-1",
+              episodeNumber: 7,
+              mediaVersion: 3,
+              fromStatus: "PENDING",
+              toStatus: "APPROVED",
+              reason: "审核通过",
+              Authorization: "must-not-leak"
+            }
+          }
+        ]),
+        count: vi.fn().mockResolvedValue(1)
+      }
+    };
+    const result = await controller(prisma).auditLogs("", "1");
+
+    expect(result.items[0]).toMatchObject({
+      action: "MEDIA_REVIEWED",
+      detail: "审核通过",
+      context: {
+        dramaId: "drama-1",
+        episodeId: "episode-1",
+        episodeNumber: 7,
+        mediaVersion: 3,
+        fromStatus: "PENDING",
+        toStatus: "APPROVED"
+      }
+    });
+    expect(JSON.stringify(result)).not.toContain("must-not-leak");
   });
 
   it("rejects an oversized drama id without a database lookup", async () => {

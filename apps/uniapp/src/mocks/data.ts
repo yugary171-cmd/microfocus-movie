@@ -14,7 +14,11 @@ import {
   type DramaDetail,
   type EntitlementSummary,
   type AuthenticatedUser,
-  type WatchHistoryItem
+  type WatchHistoryItem,
+  SystemNotificationStatus,
+  UserFeedbackStatus,
+  type NotificationPage,
+  type UserFeedbackView
 } from "@microfocus/contracts";
 import { HOME_DRAMA_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../constants/runtime";
 import { pickDemoVideoUrl } from "../config/demo-media";
@@ -86,6 +90,19 @@ const seedDramas: DramaDetail[] = [
     }))
   }
 ];
+
+const mockNotifications: Array<{
+  id: string; title: string; body: string; status: SystemNotificationStatus; publishedAt: string; createdAt: string; readBy: Set<string>;
+}> = [{
+  id: "mock-notification-1",
+  title: "系统通知",
+  body: "隐私政策及用户服务协议修订通知",
+  status: SystemNotificationStatus.PUBLISHED,
+  publishedAt: new Date().toISOString(),
+  createdAt: new Date().toISOString(),
+  readBy: new Set()
+}];
+const mockFeedbacks = new Map<string, UserFeedbackView[]>();
 
 const extraSeedSpecs = [
   { id: "demo-d4", title: "归途第一季", category: "重生", tags: ["重生", "悬疑"], episodeCount: 36, rank: 70 },
@@ -305,5 +322,35 @@ export const mockApi: ClientApi = {
       tokenExpiresAt: new Date(Date.now() + DELETION_QUERY_TOKEN_TTL_SECONDS * 1000).toISOString(),
       reason: null
     }),
+  getNotifications: (page = 1): Promise<NotificationPage> => {
+    const userId = requireMockProfile().id;
+    const items = mockNotifications.filter((item) => item.status === SystemNotificationStatus.PUBLISHED).map((item) => ({
+      id: item.id,
+      title: item.title,
+      body: item.body,
+      status: item.status,
+      publishedAt: item.publishedAt,
+      createdAt: item.createdAt,
+      readAt: item.readBy.has(userId) ? item.createdAt : null
+    }));
+    return delay({ items, page, hasMore: false, unreadCount: items.filter((item) => !item.readAt).length });
+  },
+  markNotificationRead: (notificationId) => {
+    const notification = mockNotifications.find((item) => item.id === notificationId);
+    if (notification) notification.readBy.add(requireMockProfile().id);
+    return delay(undefined);
+  },
+  listFeedback: (page = 1) => delay({ items: mockFeedbacks.get(requireMockProfile().id) ?? [], page, hasMore: false }),
+  createFeedback: (input) => {
+    const userId = requireMockProfile().id;
+    const item: UserFeedbackView = { id: `mock-feedback-${Date.now()}`, body: input.body.trim(), status: UserFeedbackStatus.NEW, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), replies: [] };
+    mockFeedbacks.set(userId, [item, ...(mockFeedbacks.get(userId) ?? [])]);
+    return delay(item);
+  },
+  getFeedback: (feedbackId) => {
+    const item = (mockFeedbacks.get(requireMockProfile().id) ?? []).find((feedback) => feedback.id === feedbackId);
+    if (!item) return Promise.reject(new Error("未找到反馈"));
+    return delay(item);
+  },
   social: createMockSocialApi()
 };

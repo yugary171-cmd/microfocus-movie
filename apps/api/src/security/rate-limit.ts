@@ -36,7 +36,10 @@ export const RATE_LIMITS = {
   profileWrite: { limit: 20, windowMs: 60_000 },
   socialRead: { limit: 60, windowMs: 60_000 },
   socialWrite: { limit: 40, windowMs: 60_000 },
-  socialMessageWrite: { limit: 20, windowMs: 60_000 }
+  socialMessageWrite: { limit: 20, windowMs: 60_000 },
+  notificationRead: { limit: 60, windowMs: 60_000 },
+  feedbackRead: { limit: 30, windowMs: 60_000 },
+  feedbackCreate: { limit: 5, windowMs: 10 * 60_000 }
 } as const;
 
 export type RateLimitStore = {

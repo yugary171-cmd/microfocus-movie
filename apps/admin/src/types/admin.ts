@@ -12,6 +12,10 @@ import type {
   MediaStatus,
   ReleaseGateStatus,
   UpdateAdminAccountRequest,
+  SystemNotificationStatus,
+  UserFeedbackStatus,
+  AdminFeedbackView,
+  AdminNotificationView,
 } from "@microfocus/contracts";
 
 export interface AdminUser {
@@ -36,6 +40,10 @@ export type UpdateAdminAccountInput = UpdateAdminAccountRequest;
 export type SuspendAdminAccountInput = AdminAccountSensitiveActionRequest;
 export type ActivateAdminAccountInput = AdminAccountSensitiveActionRequest;
 export type CreateAdminSetupLinkInput = CreateAdminSetupLinkRequest;
+export type AdminNotificationRecord = AdminNotificationView;
+export type AdminFeedbackRecord = AdminFeedbackView;
+export type NotificationStatus = SystemNotificationStatus;
+export type FeedbackStatus = UserFeedbackStatus;
 
 export interface EpisodeRecord {
   id: string;
@@ -212,6 +220,7 @@ export interface AuditLog {
   result: "SUCCESS" | "DENIED" | "FAILED" | "UNKNOWN";
   requestId: string;
   detail: string;
+  context?: import("@microfocus/contracts").AdminAuditContext;
 }
 
 export interface PageResult<T> {

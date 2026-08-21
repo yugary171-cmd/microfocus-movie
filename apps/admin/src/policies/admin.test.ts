@@ -79,4 +79,26 @@ describe("publishDecision", () => {
       true,
     );
   });
+
+  it("blocks an editor from reviewing another editor's pending item but lets ADMIN review it", () => {
+    const item = {
+      id: "review-2",
+      dramaId: "drama-other",
+      dramaTitle: "他人剧目",
+      submitterId: "editor-2",
+      submitterName: "另一位编辑",
+      submittedAt: "2026-08-14T00:00:00.000Z",
+      riskFlags: [],
+      status: "PENDING" as const,
+    };
+    expect(canReview(createUser(AdminRole.EDITOR), item)).toEqual({
+      allowed: false,
+      reason: "只能审核本人负责的剧目",
+    });
+    expect(canReview(createUser(AdminRole.REVIEWER), item)).toEqual({
+      allowed: false,
+      reason: "只能审核本人负责的剧目",
+    });
+    expect(canReview(createUser(AdminRole.ADMIN), item)).toEqual({ allowed: true, reason: "" });
+  });
 });

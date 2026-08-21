@@ -30,6 +30,8 @@ export const router = createRouter({
         },
         { path: "operations", name: "operations", component: () => import("@/views/OperationsView.vue") },
         { path: "audit", name: "audit", component: () => import("@/views/AuditLogView.vue") },
+        { path: "notifications", name: "notifications", component: () => import("@/views/NotificationsView.vue"), meta: { roles: [AdminRole.ADMIN] } },
+        { path: "feedback", name: "feedback", component: () => import("@/views/FeedbackView.vue"), meta: { roles: [AdminRole.ADMIN] } },
         {
           path: "accounts",
           name: "accounts",

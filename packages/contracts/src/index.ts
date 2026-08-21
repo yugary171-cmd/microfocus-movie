@@ -26,6 +26,10 @@ export const SOCIAL_LIST_PAGE_SIZE = 20;
 export const SOCIAL_LIST_MAX_PAGE = 100;
 export const COMMENT_BODY_MAX_LENGTH = 500;
 export const MESSAGE_BODY_MAX_LENGTH = 1000;
+export const SYSTEM_NOTIFICATION_TITLE_MAX_LENGTH = 120;
+export const SYSTEM_NOTIFICATION_BODY_MAX_LENGTH = 5000;
+export const FEEDBACK_BODY_MAX_LENGTH = 1000;
+export const FEEDBACK_NOTE_MAX_LENGTH = 1000;
 /** Seconds from episode end that still count as watched through. v0 default, not a growth lever. */
 export const EPISODE_COMPLETE_TOLERANCE_SECONDS = 3;
 export const COMMENT_TARGET_TYPES = ["DRAMA", "USER"] as const;
@@ -527,6 +531,11 @@ export const API_ROUTES = {
   meComments: "/v1/me/comments",
   meCommentInbox: "/v1/me/comment-inbox",
   meReceivedCommentLikes: "/v1/me/received-comment-likes",
+  notifications: "/v1/me/notifications",
+  notification: (notificationId: string) => `/v1/me/notifications/${notificationId}`,
+  notificationRead: (notificationId: string) => `/v1/me/notifications/${notificationId}/read`,
+  feedback: "/v1/me/feedback",
+  feedbackItem: (feedbackId: string) => `/v1/me/feedback/${feedbackId}`,
   meConversations: "/v1/me/conversations",
   meConversation: (conversationId: string) => `/v1/me/conversations/${conversationId}`,
   meConversationMessages: (conversationId: string) =>
@@ -575,6 +584,14 @@ export const API_ROUTES = {
     mediaReview: (assetId: string) => `/v1/admin/media-assets/${assetId}/review`,
     reviews: "/v1/admin/reviews",
     auditLogs: "/v1/admin/audit-logs",
+    notifications: "/v1/admin/notifications",
+    notification: (notificationId: string) => `/v1/admin/notifications/${notificationId}`,
+    notificationDelete: (notificationId: string) => `/v1/admin/notifications/${notificationId}`,
+    notificationPublish: (notificationId: string) => `/v1/admin/notifications/${notificationId}/publish`,
+    notificationRetract: (notificationId: string) => `/v1/admin/notifications/${notificationId}/retract`,
+    feedback: "/v1/admin/feedback",
+    feedbackItem: (feedbackId: string) => `/v1/admin/feedback/${feedbackId}`,
+    feedbackReplies: (feedbackId: string) => `/v1/admin/feedback/${feedbackId}/replies`,
     circuitBreakers: "/v1/admin/circuit-breakers",
     circuitBreaker: (provider: string) => `/v1/admin/circuit-breakers/${provider}`,
     compensate: "/v1/admin/entitlements/compensate",
@@ -602,6 +619,27 @@ export const API_ROUTES = {
     ready: "/health/ready"
   }
 } as const;
+
+export interface AdminAuditContext {
+  dramaId?: string;
+  episodeId?: string;
+  episodeNumber?: number;
+  mediaAssetId?: string;
+  mediaVersion?: number;
+  fileId?: string;
+  fileName?: string;
+  contentVersion?: number;
+  fromStatus?: string;
+  toStatus?: string;
+  reviewStatus?: string;
+  manualReviewStatus?: string;
+  wechatReviewStatus?: string;
+  fromManualReviewStatus?: string;
+  toManualReviewStatus?: string;
+  fromWechatReviewStatus?: string;
+  toWechatReviewStatus?: string;
+  uploadPhase?: "SIGN_REQUESTED" | "MEDIA_REGISTERED" | "PROVIDER_SUCCEEDED" | "PROVIDER_FAILED";
+}
 
 /** URL-encode a path entity id before interpolating `API_ROUTES`. */
 export function encodedRoute(build: (id: string) => string, id: string): string {
@@ -833,6 +871,70 @@ export enum DeletionRequestStatus {
   PROCESSING = "PROCESSING",
   COMPLETED = "COMPLETED",
   REJECTED = "REJECTED"
+}
+
+export enum SystemNotificationStatus {
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
+  RETRACTED = "RETRACTED"
+}
+
+export enum UserFeedbackStatus {
+  NEW = "NEW",
+  PROCESSING = "PROCESSING",
+  RESOLVED = "RESOLVED"
+}
+
+export interface SystemNotificationView {
+  id: string;
+  title: string;
+  body: string;
+  status: SystemNotificationStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  readAt?: string | null;
+}
+
+export interface UserNotificationView {
+  id: string;
+  title: string;
+  body: string;
+  sourceType: string;
+  sourceId: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export type NotificationItem = SystemNotificationView | UserNotificationView;
+
+export interface NotificationPage extends SocialPage<NotificationItem> {
+  unreadCount: number;
+}
+
+export interface CreateFeedbackRequest {
+  body: string;
+}
+
+export interface UserFeedbackView {
+  id: string;
+  body: string;
+  status: UserFeedbackStatus;
+  internalNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  replies: Array<{ id: string; body: string; createdAt: string }>;
+}
+
+export interface AdminNotificationView extends SystemNotificationView {
+  createdByAdminId: string;
+  createdByAdminName: string;
+}
+
+export interface AdminFeedbackView extends UserFeedbackView {
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  handledByAdminId: string | null;
 }
 
 export enum EntitlementAdjustmentType {

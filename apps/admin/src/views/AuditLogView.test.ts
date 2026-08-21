@@ -65,4 +65,35 @@ describe("AuditLogView", () => {
     await flushPromises();
     expect(listAuditLogs).toHaveBeenLastCalledWith("request-9", 1);
   });
+
+  it("renders structured resource context and keeps old records readable", async () => {
+    listAuditLogs.mockResolvedValue({
+      items: [
+        audit({
+          action: "MEDIA_REVIEWED",
+          context: {
+            dramaId: "drama-1",
+            episodeNumber: 7,
+            mediaVersion: 3,
+            uploadPhase: "MEDIA_REGISTERED",
+            fromStatus: "PENDING",
+            toStatus: "APPROVED",
+            reviewStatus: "APPROVED"
+          }
+        }),
+        audit({ id: "audit-2", detail: "旧记录" })
+      ],
+      total: 2
+    });
+    const wrapper = mount(AuditLogView);
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("剧目 drama-1");
+    expect(wrapper.text()).toContain("第 7 集");
+    expect(wrapper.text()).toContain("媒体 v3");
+    expect(wrapper.text()).toContain("状态 PENDING → APPROVED");
+    expect(wrapper.text()).toContain("结论 APPROVED");
+    expect(wrapper.text()).toContain("旧记录");
+  });
 });

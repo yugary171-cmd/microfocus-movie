@@ -22,6 +22,9 @@ export function isRightsActive(validFrom: string, expiresAt: string, now = Date.
 export function canReview(user: AdminUser, item: ReviewItem): ActionDecision {
   if (!isContentOperator(user.role)) return { allowed: false, reason: "当前角色不能审核" };
   if (item.status !== "PENDING") return { allowed: false, reason: "该任务已经处理" };
+  if (isOwnedContentRole(user.role) && item.submitterId !== user.id) {
+    return { allowed: false, reason: "只能审核本人负责的剧目" };
+  }
   return { allowed: true, reason: "" };
 }
 

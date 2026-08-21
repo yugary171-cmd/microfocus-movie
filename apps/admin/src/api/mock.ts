@@ -25,6 +25,8 @@ import {
   type CatalogTagGroupId,
   type ReissueDeletionQueryTokenResponse,
   type ReleaseGateStatus,
+  SystemNotificationStatus,
+  UserFeedbackStatus,
 } from "@microfocus/contracts";
 import type {
   AdminSession,
@@ -47,8 +49,12 @@ import type {
   SuspendAdminAccountInput,
   ActivateAdminAccountInput,
   CreateAdminSetupLinkInput,
+  AdminUser,
   ReviewItem,
   UploadSignature,
+  AdminNotificationRecord,
+  AdminFeedbackRecord,
+  FeedbackStatus,
 } from "@/types/admin";
 import { isRightsActive } from "@/policies/admin";
 import { dramaDraftError } from "@/policies/drama-input";
@@ -490,6 +496,15 @@ let auditLogs: AuditLog[] = [
   },
 ];
 
+let mockNotifications: AdminNotificationRecord[] = [{
+  id: "notification-001", title: "内部体验通知", body: "这是后台发布的系统通知示例。", status: SystemNotificationStatus.PUBLISHED,
+  publishedAt: isoHoursAgo(2), createdAt: isoHoursAgo(3), createdByAdminId: MOCK_CURRENT_ADMIN_ID, createdByAdminName: "陈管理员"
+}];
+let mockFeedback: AdminFeedbackRecord[] = [{
+  id: "feedback-001", body: "希望增加更多短剧分类。", status: UserFeedbackStatus.NEW, internalNote: null,
+  createdAt: isoHoursAgo(4), updatedAt: isoHoursAgo(4), replies: [], userId: "user-demo-1", userName: "内部体验用户", handledByAdminId: null
+}];
+
 let circuitBreaker: CircuitBreakerState = {
   enabled: false,
   reason: "",
@@ -905,12 +920,20 @@ export const mockApi = {
     persistMockContent();
     return mockDelay(undefined);
   },
-  async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
-    return mockDelay(paginate(reviews.filter((item) => item.status === "PENDING"), page));
+  async listReviews(page = 1, actor?: AdminUser | null): Promise<PageResult<ReviewItem>> {
+    const pending = reviews.filter(
+      (item) =>
+        item.status === "PENDING" &&
+        (!actor || actor.role === AdminRole.ADMIN || item.submitterId === actor.id),
+    );
+    return mockDelay(paginate(pending, page));
   },
-  async review(id: string, approved: boolean, reason: string): Promise<void> {
+  async review(id: string, approved: boolean, reason: string, actor?: AdminUser | null): Promise<void> {
     const review = reviews.find((item) => item.id === id);
     if (!review) throw new Error("未找到审核任务");
+    if (actor && isOwnedContentRole(actor.role) && review.submitterId !== actor.id) {
+      throw new Error("只能审核本人负责的剧目");
+    }
     review.status = approved ? "APPROVED" : "REJECTED";
     const drama = dramas.find((item) => item.id === review.dramaId);
     if (drama) {
@@ -967,6 +990,82 @@ export const mockApi = {
         .includes(normalized),
     );
     return mockDelay(paginate(items, page));
+  },
+  async listNotifications(query = "", status = "", page = 1): Promise<PageResult<AdminNotificationRecord>> {
+    const normalized = query.trim().toLowerCase();
+    const items = mockNotifications.filter((item) => (!status || item.status === status) && (!normalized || `${item.title} ${item.body}`.toLowerCase().includes(normalized)));
+    return mockDelay(paginate(items, page));
+  },
+  async createNotification(title: string, body: string): Promise<AdminNotificationRecord> {
+    const item: AdminNotificationRecord = { id: `notification-${crypto.randomUUID()}`, title: title.trim(), body: body.trim(), status: SystemNotificationStatus.DRAFT, publishedAt: null, createdAt: new Date().toISOString(), createdByAdminId: MOCK_CURRENT_ADMIN_ID, createdByAdminName: "陈管理员" };
+    mockNotifications.unshift(item);
+    writeAudit("SYSTEM_NOTIFICATION_CREATED", item.id, "系统通知草稿");
+    return mockDelay(item);
+  },
+  async getNotification(id: string): Promise<AdminNotificationRecord> {
+    const item = mockNotifications.find((row) => row.id === id);
+    if (!item) throw new Error("未找到通知");
+    return mockDelay(item);
+  },
+  async updateNotification(id: string, input: { title?: string; body?: string }): Promise<AdminNotificationRecord> {
+    const item = mockNotifications.find((row) => row.id === id);
+    if (!item) throw new Error("未找到通知");
+    if (item.status !== SystemNotificationStatus.DRAFT) throw new Error("只有草稿通知可以编辑");
+    Object.assign(item, input);
+    return mockDelay(item);
+  },
+  async deleteNotification(id: string): Promise<void> {
+    const index = mockNotifications.findIndex((row) => row.id === id);
+    if (index < 0) throw new Error("未找到通知");
+    if (mockNotifications[index]!.status !== SystemNotificationStatus.DRAFT) throw new Error("只有草稿通知可以删除");
+    const [item] = mockNotifications.splice(index, 1);
+    writeAudit("SYSTEM_NOTIFICATION_DELETED", item!.id, "系统通知草稿");
+    persistMockContent();
+    return mockDelay(undefined);
+  },
+  async publishNotification(id: string): Promise<AdminNotificationRecord> {
+    const item = mockNotifications.find((row) => row.id === id);
+    if (!item) throw new Error("未找到通知");
+    item.status = SystemNotificationStatus.PUBLISHED;
+    item.publishedAt = new Date().toISOString();
+    writeAudit("SYSTEM_NOTIFICATION_PUBLISHED", item.id, item.title);
+    return mockDelay(item);
+  },
+  async retractNotification(id: string): Promise<AdminNotificationRecord> {
+    const item = mockNotifications.find((row) => row.id === id);
+    if (!item) throw new Error("未找到通知");
+    item.status = SystemNotificationStatus.RETRACTED;
+    writeAudit("SYSTEM_NOTIFICATION_RETRACTED", item.id, item.title);
+    return mockDelay(item);
+  },
+  async listFeedback(query = "", status = "", page = 1): Promise<PageResult<AdminFeedbackRecord>> {
+    const normalized = query.trim().toLowerCase();
+    const items = mockFeedback.filter((item) => (!status || item.status === status) && (!normalized || `${item.userId} ${item.userName} ${item.body}`.toLowerCase().includes(normalized)));
+    return mockDelay(paginate(items, page));
+  },
+  async getFeedback(id: string): Promise<AdminFeedbackRecord> {
+    const item = mockFeedback.find((row) => row.id === id);
+    if (!item) throw new Error("未找到反馈");
+    return mockDelay(item);
+  },
+  async updateFeedback(id: string, input: { status?: FeedbackStatus; internalNote?: string }): Promise<AdminFeedbackRecord> {
+    const item = mockFeedback.find((row) => row.id === id);
+    if (!item) throw new Error("未找到反馈");
+    if (input.status) item.status = input.status;
+    if (input.internalNote !== undefined) item.internalNote = input.internalNote;
+    item.handledByAdminId = MOCK_CURRENT_ADMIN_ID;
+    item.updatedAt = new Date().toISOString();
+    writeAudit("FEEDBACK_STATUS_CHANGED", item.id, item.status);
+    return mockDelay(item);
+  },
+  async replyFeedback(id: string, body: string): Promise<void> {
+    const item = mockFeedback.find((row) => row.id === id);
+    if (!item) throw new Error("未找到反馈");
+    item.replies.push({ id: crypto.randomUUID(), body: body.trim(), createdAt: new Date().toISOString() });
+    item.status = UserFeedbackStatus.PROCESSING;
+    item.updatedAt = new Date().toISOString();
+    writeAudit("FEEDBACK_REPLIED", item.id, "已发送管理员回复");
+    await mockDelay(undefined);
   },
   async getCircuitBreaker(): Promise<CircuitBreakerState> {
     return mockDelay(circuitBreaker);

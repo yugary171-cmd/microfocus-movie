@@ -24,6 +24,9 @@ import type {
   WatchHistoryItem,
   DeleteWatchHistoryRequest,
   DeleteWatchHistoryResponse
+  ,NotificationPage,
+  UserFeedbackView,
+  CreateFeedbackRequest
 } from "@microfocus/contracts";
 import type { SocialClientApi } from "./social-api";
 
@@ -66,5 +69,10 @@ export interface ClientApi {
   closePlaybackLease(leaseId: string): Promise<void>;
   createDeletionRequest(input: CreateDeletionRequest): Promise<CreateDeletionRequestResponse>;
   getDeletionRequest(deletionRequestId: string, queryToken: string): Promise<DeletionRequestView>;
+  getNotifications(page?: number): Promise<NotificationPage>;
+  markNotificationRead(notificationId: string): Promise<void>;
+  listFeedback(page?: number): Promise<{ items: UserFeedbackView[]; page: number; hasMore: boolean }>;
+  createFeedback(input: CreateFeedbackRequest): Promise<UserFeedbackView>;
+  getFeedback(feedbackId: string): Promise<UserFeedbackView>;
   social: SocialClientApi;
 }

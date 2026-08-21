@@ -260,6 +260,11 @@ const realApi: ClientApi = {
       { "X-Deletion-Query-Token": queryToken },
       false
     ),
+  getNotifications: (page = 1) => request(API_ROUTES.notifications, "GET", undefined, { page }),
+  markNotificationRead: (notificationId) => request(encodedRoute(API_ROUTES.notificationRead, notificationId), "POST").then(() => undefined),
+  listFeedback: (page = 1) => request(API_ROUTES.feedback, "GET", undefined, { page }),
+  createFeedback: (input) => request(API_ROUTES.feedback, "POST", input),
+  getFeedback: (feedbackId) => request(encodedRoute(API_ROUTES.feedbackItem, feedbackId)),
   social: createRealSocialApi(request)
 };
 

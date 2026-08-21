@@ -39,6 +39,20 @@ export const navigationItems: NavigationItem[] = [
     roles: [AdminRole.ADMIN],
   },
   {
+    to: "/notifications",
+    label: "系统通知",
+    description: "发布全量公告",
+    icon: "clock",
+    roles: [AdminRole.ADMIN],
+  },
+  {
+    to: "/feedback",
+    label: "用户反馈",
+    description: "处理用户意见",
+    icon: "users",
+    roles: [AdminRole.ADMIN],
+  },
+  {
     to: "/accounts",
     label: "账号管理",
     description: "管理员、角色与开通",

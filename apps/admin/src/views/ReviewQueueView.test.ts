@@ -82,6 +82,30 @@ describe("ReviewQueueView", () => {
     wrapper.unmount();
   });
 
+  it("does not offer an editor review controls for another editor's submission", async () => {
+    listReviews.mockResolvedValue({
+      items: [
+        {
+          id: "review-other",
+          dramaId: "drama-2",
+          dramaTitle: "他人剧目",
+          submitterId: "editor-2",
+          submitterName: "另一位编辑",
+          submittedAt: "2026-08-14T00:00:00.000Z",
+          riskFlags: [],
+          status: "PENDING",
+        },
+      ],
+      total: 1,
+    });
+    const wrapper = mount(ReviewQueueView);
+    await flushPromises();
+
+    expect(wrapper.findAll("button").some((button) => button.text() === "审核通过")).toBe(false);
+    expect(wrapper.text()).toContain("只能审核本人负责的剧目");
+    wrapper.unmount();
+  });
+
   it("caps reject notes to the content-review contract limit", async () => {
     listReviews.mockResolvedValue({
       items: [

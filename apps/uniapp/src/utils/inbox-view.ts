@@ -60,6 +60,7 @@ export type InboxItemView = {
   meta: string;
   icon: string;
   tone: InboxTone;
+  unread?: boolean;
 };
 
 export const INBOX_MOCK_LABEL = "内部体验消息摘要";
@@ -81,6 +82,9 @@ function inboxMeta(iso: string | undefined): string {
 export function applyInboxLatest(
   items: InboxItemView[],
   latest: {
+    systemPreview?: string;
+    systemAt?: string;
+    systemUnread?: boolean;
     fansName?: string;
     fansAt?: string;
     commentPreview?: string;
@@ -92,6 +96,11 @@ export function applyInboxLatest(
   }
 ): InboxItemView[] {
   return items.map((item) => {
+    if (item.id === "system") {
+      return latest.systemPreview
+        ? { ...item, preview: clipInboxPreview(latest.systemPreview), meta: inboxMeta(latest.systemAt), ...(latest.systemUnread !== undefined ? { unread: latest.systemUnread } : {}) }
+        : { ...item, ...(latest.systemUnread !== undefined ? { unread: latest.systemUnread } : {}) };
+    }
     if (item.id === "fans") {
       return latest.fansName
         ? { ...item, preview: clipInboxPreview(`${latest.fansName} 关注了你`), meta: inboxMeta(latest.fansAt) }

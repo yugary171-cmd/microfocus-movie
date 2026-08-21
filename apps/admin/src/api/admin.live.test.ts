@@ -95,6 +95,16 @@ describe("live admin API adapter", () => {
     );
   });
 
+  it("loads an admin notification detail through the contract route", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(success({
+      id: "notice-1", title: "标题", body: "正文", status: "PUBLISHED", createdAt: "2026-08-20T00:00:00.000Z",
+      publishedAt: "2026-08-20T00:00:00.000Z", createdByAdminId: "admin-1", createdByAdminName: "陈管理员"
+    }));
+    const { adminApi } = await import("./admin");
+    await expect(adminApi.getNotification("notice-1")).resolves.toMatchObject({ createdByAdminName: "陈管理员" });
+    expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe("http://api.test/v1/admin/notifications/notice-1");
+  });
+
   it("lists and patches catalog tags through the admin contract routes", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(success({ items: [{ id: "ctag-1", group: "subjects", name: "都市", status: "ACTIVE", sortOrder: 1 }] }))

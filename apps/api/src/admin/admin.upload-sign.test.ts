@@ -33,6 +33,7 @@ describe("admin upload sign audit", () => {
         findFirst: vi.fn().mockResolvedValue({
           id: "ep-1",
           dramaId: "drama-1",
+          episodeNumber: 7,
           drama: { status: "DRAFT", editorId: "editor-1" }
         })
       },
@@ -56,7 +57,13 @@ describe("admin upload sign audit", () => {
         action: "UPLOAD_SIGNED",
         targetType: "Episode",
         targetId: "ep-1",
-        metadataJson: { dramaId: "drama-1" }
+        metadataJson: {
+          dramaId: "drama-1",
+          episodeId: "ep-1",
+          episodeNumber: 7,
+          fileName: "episode.mp4",
+          uploadPhase: "SIGN_REQUESTED"
+        }
       }
     });
     expect(JSON.stringify(prisma.auditLog.create.mock.calls)).not.toContain("secret.example");
@@ -87,5 +94,49 @@ describe("admin upload sign audit", () => {
       } as never)
     ).rejects.toThrow("Tencent Cloud VOD upload signing");
     expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("audits media registration with the episode and version context", async () => {
+    const prisma = {
+      drama: {
+        findUnique: vi.fn().mockResolvedValue({ id: "drama-1", editorId: "editor-1", status: "DRAFT", contentVersion: 1 }),
+        update: vi.fn().mockResolvedValue({})
+      },
+      episode: {
+        findFirst: vi.fn().mockResolvedValue({ id: "ep-1", episodeNumber: 7 }),
+      },
+      mediaAsset: {
+        aggregate: vi.fn().mockResolvedValue({ _max: { version: 2 } }),
+        updateMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({
+          id: "asset-1",
+          episodeId: "ep-1",
+          version: 3,
+          fileId: "vod-file-1"
+        })
+      },
+      $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma)),
+      auditLog: { create: vi.fn().mockResolvedValue({}) }
+    };
+    const result = await controller(prisma, {}).addMedia(editor, "drama-1", {
+      episodeId: "ep-1",
+      fileId: "vod-file-1"
+    } as never);
+
+    expect(result).toMatchObject({ id: "asset-1", version: 3 });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "MEDIA_VERSION_CREATED",
+        metadataJson: {
+          dramaId: "drama-1",
+          episodeId: "ep-1",
+          episodeNumber: 7,
+          mediaAssetId: "asset-1",
+          mediaVersion: 3,
+          fileId: "vod-file-1",
+          uploadPhase: "MEDIA_REGISTERED"
+        }
+      })
+    });
   });
 });

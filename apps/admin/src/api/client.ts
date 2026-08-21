@@ -1,7 +1,10 @@
+import { AdminRole } from "@microfocus/contracts";
 import type { ApiError, ApiSuccess } from "@microfocus/contracts";
+import type { AdminUser } from "@/types/admin";
 import { isAdminSessionInvalidCode } from "./account-errors";
 
 const SESSION_TOKEN_KEY = "microfocus.admin.access-token";
+const SESSION_USER_KEY = "microfocus.admin.user";
 
 export const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 export const isMockMode = apiBaseUrl.length === 0;
@@ -22,6 +25,22 @@ export class ApiClientError extends Error {
 
 export function getSessionToken(): string | null {
   return sessionStorage.getItem(SESSION_TOKEN_KEY);
+}
+
+export function getSessionUser(): AdminUser | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(SESSION_USER_KEY) ?? "null") as Partial<AdminUser> | null;
+    if (
+      !value ||
+      typeof value.id !== "string" ||
+      typeof value.name !== "string" ||
+      typeof value.email !== "string" ||
+      !Object.values(AdminRole).includes(value.role as AdminRole)
+    ) return null;
+    return value as AdminUser;
+  } catch {
+    return null;
+  }
 }
 
 export function setSessionToken(token: string): void {

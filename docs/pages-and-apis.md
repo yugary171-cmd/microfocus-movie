@@ -76,7 +76,7 @@ flowchart LR
 | 短剧详情 | `apps/uniapp/src/pages/drama/index.vue` | 封面、标题、类型标签、可展开剧情简介和底部收藏入口；详情与卡片只展示词库中对用户开放的分组（主题/设定/背景）；人物/风格/受众可打在剧上并用于搜索，但不铺开展示；详情页不展示选集、演员、剧评、写剧评入口或备案/权益卡片，保留播放/登录/解锁处理逻辑；Live 下可生成微信原生分享卡片 | `GET /v1/dramas/:dramaId`；登录后可读权益、收藏 |
 | 播放器 | `apps/uniapp/src/pages/player/index.vue` | 租约、短凭证、心跳、广告拦截、进度和异常恢复；登录后可读收藏/点赞态并切换；评论底栏有 `dramaId` 时走剧评 API | 播放、奖励、权益、进度及 `GET/PUT/DELETE /v1/me/favorites`、`GET/PUT/DELETE /v1/me/liked-dramas`、剧评读写 |
 | 权益明细 | `apps/uniapp/src/pages/entitlements/index.vue` | 展示本剧余额、不可变批次和过期时间 | `GET /v1/entitlements/:dramaId` |
-| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（微信 `uni.login` 换取登录 code，不依赖已废弃的 `getUserProfile` 授权窗）、点击头像通过 `chooseAvatar` 更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 经 `getApi().social` 拉列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑与历史相同；Mock 读写内存片库，Live 走 Nest（需已 migrate）；「消息」Tab 登录后拉粉丝/评论收件/我的评论/获赞摘要，不跳转、不接私信写接口，系统通知仍本地 | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile`、`GET /v1/me/favorites`、`GET /v1/me/liked-dramas`、`GET /v1/users/:userId`、`GET /v1/me/followers`、`GET /v1/me/comment-inbox`、`GET /v1/me/comments`、`GET /v1/me/received-comment-likes` |
+| 我的 | `apps/uniapp/src/pages/my/index.vue` | 显式登录（微信 `uni.login` 换取登录 code，不依赖已废弃的 `getUserProfile` 授权窗）、点击头像通过 `chooseAvatar` 更换头像、个人信息编辑入口、观看历史和继续观看；历史筛选抽屉按体裁/已播时长/更新时间在本地过滤当前列表；历史搜索按剧名本地过滤当前列表，不新增搜索 API；历史「编辑」进入全部历史多选页，确认后 `DELETE /v1/me/history`；收藏/点赞 Tab 经 `getApi().social` 拉列表，筛选项为全部/真人剧/漫剧/AI 剧，搜索与编辑与历史相同；消息 Tab 登录后拉系统通知、反馈回复及粉丝/评论收件/我的评论/获赞摘要，系统通知已读状态走服务端 | `POST /v1/auth/wechat`、`GET /v1/me/history`、`DELETE /v1/me/history`、`GET/PATCH /v1/me/profile`、`GET /v1/me/notifications`、`POST /v1/me/notifications/:id/read`、`GET/POST /v1/me/feedback`、`GET /v1/me/feedback/:id`、社交消息接口 |
 | 全部历史 | `apps/uniapp/src/pages/history/edit.vue` | 多选观看历史、收藏或点赞；未选中时删除禁用，选中后高亮；历史确认删除后调用删除接口；收藏/点赞确认后走 `DELETE /v1/me/favorites/:dramaId` 或 `DELETE /v1/me/liked-dramas/:dramaId` | 历史：`GET /v1/me/history`、`DELETE /v1/me/history`；收藏/点赞：`GET/DELETE /v1/me/favorites`、`GET/DELETE /v1/me/liked-dramas` |
 | 法律与隐私 | `apps/uniapp/src/pages/legal/index.vue` | 用户协议、隐私指引、广告权益、注销、投诉说明和广告未到账核验包 | 静态内容或受控内容服务；不得依赖 Mock 文案发布 |
 
@@ -114,7 +114,7 @@ flowchart LR
 | 工作台 | `/` | EDITOR / REVIEWER / ADMIN | 内容状态和发布闸门摘要 |
 | 剧目列表 | `/dramas` | EDITOR / REVIEWER / ADMIN | 按权限查看和筛选剧目；列表由服务端分页
 | 新建/编辑剧 | `/dramas/new`、`/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 编辑本人负责的剧目；ADMIN 可改任意剧；均可提交审核、发布、下架 |
-| 审核队列 | `/reviews` | EDITOR / REVIEWER / ADMIN | 通过或驳回；允许审核本人创建或编辑的版本 |
+| 审核队列 | `/reviews` | EDITOR / REVIEWER / ADMIN | 通过或驳回；EDITOR/REVIEWER 只能审核本人负责的版本，ADMIN 可审核全库 |
 | 标签库 | `/tags` | ADMIN | 按六组维护启用/停用词；可新增、停用；删除无引用词，或先替换成同组启用词再删；不可改名；内容编辑只能在剧目编辑里勾选启用词 |
 | 运营控制 | `/operations` | ADMIN | 熔断、人工补偿、账本纠错、回调积压列表/重放、注销查询令牌补发 |
 | 审计日志 | `/audit` | ADMIN | 查询关键操作与系统事件 |
@@ -234,12 +234,14 @@ flowchart LR
 | `POST /v1/admin/dramas` | EDITOR / REVIEWER / ADMIN | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`tags` 至少 1 个且必须全部是当前启用词的 **id**；未知或已停用返回 `CATALOG_TAG_NOT_IN_LIBRARY`；管理端剧目类型写入 `category` 为 `真人剧` / `AI 剧` / `漫剧`；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件；版权资料走独立 rights 接口，草稿可不写；`coverUrl` 仍是剧目海报地址，推广海报尚无独立 API 字段 | 创建草稿 |
 | `PATCH /v1/admin/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责且可编辑状态；ADMIN 可改未发布剧；字段上限与创建一致；更新 `tags` 时同样校验启用 id | 修改元数据 |
 | `POST .../:id/rights` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；新版本使内容回到待审链路；权利人/证号/材料键限长；`territory` 必须是 `RIGHTS_TERRITORY=CN`，管理端 live 保存发送该值，编辑页不提供地域控件；`materialDigestSha256` 必须是 64 位十六进制（`RIGHTS_MATERIAL_DIGEST_LENGTH`），管理端输入 maxlength/pattern 与之共用 | 写入不可覆盖的权利版本 |
-| `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；禁止修改已发布内容；签发成功写入审计，不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL；`size` 1–`UPLOAD_FILE_SIZE_MAX_BYTES`（5×1024³ 字节）；`contentType` 仅 `UPLOAD_CONTENT_TYPES`（mp4/quicktime/webm，空类型回退 `application/octet-stream`）；管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |
+| `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；禁止修改已发布内容；`UPLOAD_SIGNED` 只表示申请签名，`MEDIA_VERSION_CREATED` 表示服务端登记媒体版本；两者均写入结构化审计上下文（剧目、集号、版本/文件、阶段），不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL；`size` 1–`UPLOAD_FILE_SIZE_MAX_BYTES`（5×1024³ 字节）；`contentType` 仅 `UPLOAD_CONTENT_TYPES`（mp4/quicktime/webm，空类型回退 `application/octet-stream`）；管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |
 | `POST .../:id/submit-review` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可提交任意剧；材料完整 | 提交审核 |
-| `GET /v1/admin/reviews` | EDITOR / REVIEWER / ADMIN | 只返回待审内容；`page` 默认 1，每页 50，最多 100 页；无 `q`/`query`，不按标题或提交人过滤；超过页上限返回空结果 | 审核队列 |
-| `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | EDITOR / REVIEWER / ADMIN | 允许自审，结论进入审计；内容审核 `notes` 可选、最长 2000（`REVIEW_NOTES_MAX_LENGTH`），退回时管理端必填；媒体审核 `notes` 仍为 6–500（`MEDIA_REVIEW_NOTES_*`），不与内容审核混用 | 内容和媒体审核 |
+| `GET /v1/admin/reviews` | EDITOR / REVIEWER / ADMIN | 只返回待审内容；EDITOR/REVIEWER 只返回本人负责的剧目，ADMIN 返回全库；`page` 默认 1，每页 50，最多 100 页；无 `q`/`query`，不按标题或提交人过滤；超过页上限返回空结果 | 审核队列 |
+| `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | EDITOR / REVIEWER / ADMIN | 允许自审；EDITOR/REVIEWER 只能处理本人负责剧目的内容和媒体审核，ADMIN 可处理全库；结论进入审计；内容审核 `notes` 可选、最长 2000（`REVIEW_NOTES_MAX_LENGTH`），退回时管理端必填；媒体审核 `notes` 仍为 6–500（`MEDIA_REVIEW_NOTES_*`），不与内容审核混用 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | EDITOR / REVIEWER / ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
-| `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId` 和操作人邮箱过滤；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联 |
+| `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId`、操作人邮箱及结构化 `dramaId`/`episodeId`/`mediaAssetId` 过滤；响应保留 `detail` 并增加可选 `context`，旧记录可无 context；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联；上传/审核可追查剧目、集号、版本、阶段和状态变化 |
+| `GET/POST/PATCH /v1/admin/notifications`、`GET/DELETE .../:id`、`POST .../:id/publish`、`POST .../:id/retract` | ADMIN | 通知支持草稿/已发布/已撤回；列表返回标题、发布人、状态和时间，详情返回完整正文；只有草稿可编辑或删除，已发布内容不可直接修改；标题/正文纯文本且受契约长度限制；创建、删除、发布和撤回写审计 | 全量系统通知管理 |
+| `GET /v1/admin/feedback`、`GET/PATCH .../:id`、`POST .../:id/replies` | ADMIN | 按状态/关键词分页；可查看反馈、修改待处理/处理中/已解决、写内部备注和回复；回复在事务内生成用户通知；审计不保存完整反馈正文 | 用户反馈收件箱 |
 | `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；原因 6–300 字；`targetId` 限长 191；`updatedBy` 为管理员 ID 或 `system:*` 作业标识，写入最长 `CIRCUIT_UPDATED_BY_MAX_LENGTH`（128）；自动打开的 provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH`（32） | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key`（trim、最长 128）；写 Guard 仍先占桶 | 用户/剧目 ID 限长 191，管理端表单 maxlength 与之共用；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |
 | `POST /v1/admin/entitlements/adjustments` | ADMIN + `Idempotency-Key`（trim、最长 128）；空白或超长在 handler 拒绝，写 Guard 仍先占桶 | grant/事实 ID 限长；秒数 1–86400；原因/审批记录 6–300 字（`ADMIN_REASON_MAX_LENGTH`），写入时按该上限截断 | 在账本锁定边界内追加冻结、释放冻结或核销事实；禁止直接改 grant/debit |

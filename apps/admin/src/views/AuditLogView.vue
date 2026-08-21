@@ -57,6 +57,22 @@ function resultTone(result: AuditLog["result"]): "neutral" | "success" | "warnin
         : "neutral";
 }
 
+function contextDetail(item: AuditLog): string {
+  const context = item.context;
+  if (!context) return "";
+  const parts = [
+    context.dramaId ? `剧目 ${context.dramaId}` : "",
+    context.episodeNumber !== undefined ? `第 ${context.episodeNumber} 集` : context.episodeId ? `集 ${context.episodeId}` : "",
+    context.mediaVersion !== undefined ? `媒体 v${context.mediaVersion}` : "",
+    context.uploadPhase ? `阶段 ${context.uploadPhase}` : "",
+    context.fromStatus || context.toStatus ? `状态 ${context.fromStatus || "—"} → ${context.toStatus || "—"}` : "",
+    context.reviewStatus ? `结论 ${context.reviewStatus}` : "",
+    context.manualReviewStatus ? `人工 ${context.manualReviewStatus}` : "",
+    context.wechatReviewStatus ? `微信 ${context.wechatReviewStatus}` : ""
+  ];
+  return parts.filter(Boolean).join(" · ");
+}
+
 onMounted(load);
 </script>
 
@@ -86,7 +102,10 @@ onMounted(load);
                 <td>{{ item.target }}</td>
                 <td><StatusBadge :label="item.result === 'SUCCESS' ? '成功' : item.result === 'DENIED' ? '已拒绝' : item.result === 'FAILED' ? '失败' : '未返回'" :tone="resultTone(item.result)" /></td>
                 <td><code>{{ item.requestId || "—" }}</code></td>
-                <td>{{ item.detail || "—" }}</td>
+                <td>
+                  <div>{{ item.detail || "—" }}</div>
+                  <small v-if="contextDetail(item)" class="audit-context">{{ contextDetail(item) }}</small>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -103,6 +122,7 @@ onMounted(load);
 <style scoped>
 .nowrap { white-space: nowrap; }
 code { padding: var(--space-1) var(--space-2); border-radius: 5px; color: #445269; background: #f1f3f6; font-size: 11px; }
+.audit-context { display: block; margin-top: 3px; color: var(--color-muted); line-height: 1.4; }
 .list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
 .pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
 </style>

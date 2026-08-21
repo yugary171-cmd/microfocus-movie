@@ -85,6 +85,9 @@ const timeOptions = HISTORY_TIME_OPTIONS;
 const historySearchOpen = ref(false);
 const historyQuery = ref("");
 const queryMaxLength = LIST_QUERY_MAX_LENGTH;
+function openSystemNotifications() {
+  uni.navigateTo({ url: "/pages/notifications/index" });
+}
 const sheetFilterActive = computed(() => !isDefaultHistorySheetFilter(appliedSheetFilter.value));
 const isFormatTab = computed(() => isFormatLibraryTab(activeHistoryTab.value));
 const sourceItems = computed(() => {
@@ -356,10 +359,12 @@ async function openHistory(id: string) {
           v-for="item in inboxItems"
           :key="item.id"
           class="inbox-row"
+          :class="{ unread: item.unread }"
+          @tap="item.id === 'system' ? openSystemNotifications() : undefined"
         >
           <view class="inbox-icon" :class="item.tone">{{ item.icon }}</view>
           <view class="inbox-copy">
-            <view class="inbox-title">{{ item.title }}</view>
+            <view class="inbox-title">{{ item.title }}<text v-if="item.unread" class="inbox-unread-dot">未读</text></view>
             <view class="inbox-preview">{{ item.preview }}</view>
           </view>
           <text v-if="item.meta" class="inbox-meta">{{ item.meta }}</text>

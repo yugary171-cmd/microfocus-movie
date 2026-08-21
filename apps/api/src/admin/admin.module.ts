@@ -58,6 +58,7 @@ import {
   UPLOAD_FILE_SIZE_MAX_BYTES,
   UPLOAD_CONTENT_TYPES,
   type CreateEntitlementAdjustmentRequest,
+  type AdminAuditContext,
   type ReplayCallbackEventRequest,
   type ReissueDeletionQueryTokenRequest,
   type ReleaseGateStatus
@@ -807,7 +808,15 @@ export class AdminController {
         return created;
       });
     });
-    await this.audit(admin.sub, "MEDIA_VERSION_CREATED", "MediaAsset", asset.id);
+    await this.audit(admin.sub, "MEDIA_VERSION_CREATED", "MediaAsset", asset.id, {
+      dramaId,
+      episodeId: episode.id,
+      episodeNumber: episode.episodeNumber,
+      mediaAssetId: asset.id,
+      mediaVersion: asset.version,
+      fileId: asset.fileId,
+      uploadPhase: "MEDIA_REGISTERED"
+    });
     return asset;
   }
 
@@ -818,13 +827,19 @@ export class AdminController {
     @Param("dramaId") dramaId: string
   ) {
     const admin = requireAdmin(principal);
-    await this.requireOwnedDrama(requireEntityId(dramaId, "dramaId"), admin);
+    dramaId = requireEntityId(dramaId, "dramaId");
+    const drama = await this.requireOwnedDrama(dramaId, admin);
     const updated = await this.prisma.drama.updateMany({
       where: { ...ownedDramaWriteWhere(dramaId, admin), status: { in: ["DRAFT", "READY"] } },
       data: { status: "PENDING_REVIEW" }
     });
     if (!updated.count) throw Errors.conflict("INVALID_DRAMA_STATE", "Drama cannot be submitted");
-    await this.audit(admin.sub, "DRAMA_SUBMITTED", "Drama", dramaId);
+    await this.audit(admin.sub, "DRAMA_SUBMITTED", "Drama", dramaId, {
+      dramaId,
+      contentVersion: drama.contentVersion,
+      fromStatus: drama.status,
+      toStatus: "PENDING_REVIEW"
+    });
     return { status: "PENDING_REVIEW" };
   }
 
@@ -839,6 +854,7 @@ export class AdminController {
     dramaId = requireEntityId(dramaId, "dramaId");
     const drama = await this.prisma.drama.findUnique({ where: { id: dramaId } });
     if (!drama) throw Errors.notFound("Drama");
+    assertEditorOwns(drama, admin);
     if (drama.status !== "PENDING_REVIEW") {
       throw Errors.conflict("INVALID_DRAMA_STATE", "Only pending dramas can be reviewed");
     }
@@ -851,11 +867,19 @@ export class AdminController {
         ...(body.notes !== undefined ? { notes: body.notes } : {})
       }
     });
+    const nextDramaStatus = body.status === "APPROVED" ? "READY" : "DRAFT";
     await this.prisma.drama.update({
       where: { id: dramaId },
-      data: { status: body.status === "APPROVED" ? "READY" : "DRAFT" }
+      data: { status: nextDramaStatus }
     });
-    await this.audit(admin.sub, `DRAMA_${body.status}`, "Drama", dramaId);
+    await this.audit(admin.sub, `DRAMA_${body.status}`, "Drama", dramaId, {
+      dramaId,
+      contentVersion: drama.contentVersion,
+      reviewStatus: body.status,
+      fromStatus: drama.status,
+      toStatus: nextDramaStatus,
+      ...(body.notes !== undefined ? { reason: body.notes } : {})
+    });
     return review;
   }
 
@@ -951,7 +975,11 @@ export class AdminController {
     assertNotPublished(episode.drama.status);
     const signed = await this.vod.createUploadAuthorization(body.fileName);
     await this.audit(admin.sub, "UPLOAD_SIGNED", "Episode", body.episodeId, {
-      dramaId: body.dramaId
+      dramaId: body.dramaId,
+      episodeId: episode.id,
+      episodeNumber: episode.episodeNumber,
+      fileName: body.fileName,
+      uploadPhase: "SIGN_REQUESTED"
     });
     return signed;
   }
@@ -973,6 +1001,7 @@ export class AdminController {
       include: { episode: { include: { drama: true } } }
     });
     if (!asset) throw Errors.notFound("Current media asset");
+    assertEditorOwns(asset.episode.drama, admin);
     if (asset.episode.drama.status === "PUBLISHED") {
       throw Errors.conflict("PUBLISHED_DRAMA_IMMUTABLE", "Offline the drama before reviewing media");
     }
@@ -987,11 +1016,34 @@ export class AdminController {
           : {})
       }
     });
+    const nextManualReviewStatus = body.manualReviewStatus ?? asset.manualReviewStatus;
+    const nextWechatReviewStatus = body.wechatReviewStatus ?? asset.wechatReviewStatus;
     await this.prisma.drama.update({
       where: { id: asset.episode.dramaId },
       data: { contentVersion: { increment: 1 }, status: "DRAFT" }
     });
     await this.audit(admin.sub, "MEDIA_REVIEWED", "MediaAsset", asset.id, {
+      dramaId: asset.episode.dramaId,
+      episodeId: asset.episodeId,
+      episodeNumber: asset.episode.episodeNumber,
+      mediaAssetId: asset.id,
+      mediaVersion: asset.version,
+      fromStatus: `manual:${asset.manualReviewStatus};wechat:${asset.wechatReviewStatus}`,
+      toStatus: `manual:${nextManualReviewStatus};wechat:${nextWechatReviewStatus}`,
+      ...(body.manualReviewStatus
+        ? {
+            fromManualReviewStatus: asset.manualReviewStatus,
+            toManualReviewStatus: body.manualReviewStatus,
+            manualReviewStatus: body.manualReviewStatus
+          }
+        : {}),
+      ...(body.wechatReviewStatus
+        ? {
+            fromWechatReviewStatus: asset.wechatReviewStatus,
+            toWechatReviewStatus: body.wechatReviewStatus,
+            wechatReviewStatus: body.wechatReviewStatus
+          }
+        : {}),
       reason: body.notes
     });
     return updated;
@@ -999,7 +1051,11 @@ export class AdminController {
 
   @Get(adminPath(API_ROUTES.admin.reviews))
   @Roles(...CONTENT_OPERATOR_ROLES)
-  async reviews(@Query("page") pageValue = "1") {
+  async reviews(
+    @CurrentPrincipal() principal: Principal,
+    @Query("page") pageValue = "1"
+  ) {
+    const admin = requireAdmin(principal);
     const pageSize = ADMIN_LIST_PAGE_SIZE;
     const window = boundedListWindow({
       page: parsePage(pageValue),
@@ -1009,7 +1065,10 @@ export class AdminController {
     if (window.exceeded) {
       return emptyBoundedPage(window.page, pageSize);
     }
-    const where = { status: "PENDING_REVIEW" as const };
+    const where = {
+      ...editorScope(admin),
+      status: "PENDING_REVIEW" as const
+    };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.drama.findMany({
         where,
@@ -1058,6 +1117,9 @@ export class AdminController {
             { targetType: { contains: normalized } },
             { targetId: { contains: normalized } },
             { requestId: { contains: normalized } },
+            { metadataJson: { path: "$.dramaId", string_contains: normalized } },
+            { metadataJson: { path: "$.episodeId", string_contains: normalized } },
+            { metadataJson: { path: "$.mediaAssetId", string_contains: normalized } },
             { admin: { email: { contains: normalized } } }
           ]
         }
@@ -1082,7 +1144,8 @@ export class AdminController {
         target: `${log.targetType}:${log.targetId}`,
         result: "SUCCESS" as const,
         requestId: log.requestId ?? "",
-        detail: auditDetail(log.metadataJson)
+        detail: auditDetail(log.metadataJson),
+        ...(auditContext(log.metadataJson) ? { context: auditContext(log.metadataJson) } : {})
       })),
       page: window.page,
       pageSize,
@@ -1344,7 +1407,7 @@ export class AdminController {
     action: string,
     targetType: string,
     targetId: string,
-    metadata?: Record<string, string>
+    metadata?: AuditMetadata
   ): Promise<void> {
     const requestId = currentRequestId().slice(0, REQUEST_ID_MAX_LENGTH);
     await this.prisma.auditLog.create({
@@ -1375,7 +1438,7 @@ export class AdminController {
   private async requireOwnedDrama(dramaId: string, admin: AdminPrincipal) {
     const drama = await this.prisma.drama.findUnique({
       where: { id: dramaId },
-      select: { id: true, editorId: true, status: true }
+      select: { id: true, editorId: true, status: true, contentVersion: true }
     });
     return assertEditorOwns(drama, admin);
   }
@@ -1391,6 +1454,27 @@ function auditDetail(value: unknown): string {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return "";
   const reason = (value as Record<string, unknown>)["reason"];
   return typeof reason === "string" ? reason : "";
+}
+
+type AuditMetadata = Record<string, string | number>;
+
+function auditContext(value: unknown): AdminAuditContext | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  const context: AdminAuditContext = {};
+  const stringKeys = [
+    "dramaId", "episodeId", "mediaAssetId", "fileId", "fileName", "fromStatus", "toStatus",
+    "reviewStatus", "manualReviewStatus", "wechatReviewStatus", "fromManualReviewStatus",
+    "toManualReviewStatus", "fromWechatReviewStatus", "toWechatReviewStatus", "uploadPhase"
+  ] as const;
+  for (const key of stringKeys) {
+    if (typeof source[key] === "string") Object.assign(context, { [key]: source[key] });
+  }
+  const numberKeys = ["episodeNumber", "mediaVersion", "contentVersion"] as const;
+  for (const key of numberKeys) {
+    if (typeof source[key] === "number" && Number.isFinite(source[key])) Object.assign(context, { [key]: source[key] });
+  }
+  return Object.keys(context).length ? context : undefined;
 }
 
 export function toAdminDrama(

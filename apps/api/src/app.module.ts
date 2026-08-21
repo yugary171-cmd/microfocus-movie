@@ -13,6 +13,7 @@ import { PlaybackModule } from "./playback/playback.module.js";
 import { PrivacyModule } from "./privacy/privacy.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { RewardsModule } from "./rewards/rewards.module.js";
+import { NotificationsModule } from "./notifications/notifications.module.js";
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { RewardsModule } from "./rewards/rewards.module.js";
     PrivacyModule,
     CallbacksModule,
     AdminModule,
-    OperationsModule
+    OperationsModule,
+    NotificationsModule
   ]
 })
 export class AppModule {}
