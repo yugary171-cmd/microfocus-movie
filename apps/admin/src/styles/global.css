@@ -79,11 +79,11 @@ input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba
 .status-badge--danger { color: var(--color-danger); background: var(--color-danger-soft); }
 .field { display: grid; gap: var(--space-2); min-width: 0; align-content: start; color: #344054; font-size: 12px; font-weight: 650; }
 .field > span, .field legend { margin: 0; padding: 0; line-height: 1.25; }
-.field input, .field select, .field textarea { width: 100%; padding: var(--space-2); border: 1px solid #cfd7e2; border-radius: 8px; outline: 0; background: #fff; font-weight: 400; transition: border var(--transition), box-shadow var(--transition); }
-.field input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):not([type="hidden"]),
-.field select { height: var(--control-height); min-height: var(--control-height); padding: 0 var(--space-2); line-height: 1.25; }
-.field textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(41,82,204,.12); }
+.field > input, .field > select, .field > textarea { width: 100%; padding: var(--space-2); border: 1px solid #cfd7e2; border-radius: 8px; outline: 0; background: #fff; font-weight: 400; transition: border var(--transition), box-shadow var(--transition); }
+.field > input:not([type="radio"]):not([type="checkbox"]):not([type="file"]):not([type="hidden"]),
+.field > select { height: var(--control-height); min-height: var(--control-height); padding: 0 var(--space-2); line-height: 1.25; }
+.field > textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
+.field > input:focus, .field > select:focus, .field > textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(41,82,204,.12); }
 .field input[type="radio"]:focus,
 .field input[type="checkbox"]:focus,
 .field input[type="file"]:focus { border-color: transparent; box-shadow: none; }
@@ -91,7 +91,7 @@ input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba
 .field input[type="checkbox"]:focus-visible { box-shadow: 0 0 0 3px rgba(41, 82, 204, 0.28); }
 .field small { font-weight: 400; }
 .required-mark { color: var(--color-danger); font-weight: 800; }
-.field--error input, .field--error select, .field--error textarea { border-color: var(--color-danger); }
+.field--error > input, .field--error > select, .field--error > textarea { border-color: var(--color-danger); }
 .admin-input { width: 100%; min-width: 0; font-size: 12px; font-weight: 400; }
 .admin-input .el-input__wrapper { min-height: var(--control-height); padding: 0 var(--space-2); border-radius: 8px; box-shadow: 0 0 0 1px #cfd7e2 inset; background: #fff; transition: box-shadow var(--transition); }
 .admin-input .el-input__wrapper:hover { box-shadow: 0 0 0 1px #98a2b3 inset; }
@@ -102,6 +102,11 @@ input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba
 .admin-input .el-textarea__inner:focus { box-shadow: 0 0 0 1px var(--color-primary) inset, 0 0 0 3px rgba(41,82,204,.12); }
 .admin-input.is-disabled .el-input__wrapper, .admin-input.is-disabled .el-textarea__inner { background: #f5f7fa; }
 .field--error .admin-input .el-input__wrapper, .field--error .admin-input .el-textarea__inner { box-shadow: 0 0 0 1px var(--color-danger) inset; }
+.admin-select { min-width: 0; font-size: 12px; font-weight: 400; }
+.admin-select .el-select__wrapper,
+.admin-select .el-select__selected-item,
+.admin-select .el-select__placeholder { font-size: 12px; font-weight: 400; }
+.el-select-dropdown__item { font-size: 12px; font-weight: 400; }
 .password-field { position: relative; }
 .password-field input { padding-right: 42px; }
 .password-field .admin-input .el-input__inner { padding-right: 42px; }

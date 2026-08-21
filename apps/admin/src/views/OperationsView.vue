@@ -8,7 +8,7 @@ import {
   ENTITLEMENT_SECONDS_MAX,
   REWARD_SECONDS
 } from "@microfocus/contracts";
-import { ElInput as ElementInput } from "element-plus";
+import { ElInput as ElementInput, ElOption as ElementOption, ElSelect as ElementSelect } from "element-plus";
 import { computed, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -21,6 +21,8 @@ import { useAuthStore } from "@/stores/auth";
 import type { CircuitBreakerState, CompensationInput, AdjustmentInput, AdminCallbackEvent, CallbackReplayInput, DeletionQueryTokenReissueInput } from "@/types/admin";
 
 const ElInput = ElementInput as Component;
+const ElOption = ElementOption as Component;
+const ElSelect = ElementSelect as Component;
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -376,11 +378,11 @@ onMounted(load);
           <form class="compensation-form" @submit.prevent="requestAdjustment">
             <div class="form-grid">
               <label class="field"><span>类型 *</span>
-                <select v-model="adjustment.type">
-                  <option value="FREEZE_REMAINDER">冻结剩余</option>
-                  <option value="RELEASE_FREEZE">释放冻结</option>
-                  <option value="WRITE_OFF">核销（不改余额）</option>
-                </select>
+                <el-select v-model="adjustment.type" class="admin-select" aria-label="类型">
+                  <el-option label="冻结剩余" value="FREEZE_REMAINDER" />
+                  <el-option label="释放冻结" value="RELEASE_FREEZE" />
+                  <el-option label="核销（不改余额）" value="WRITE_OFF" />
+                </el-select>
               </label>
               <label class="field"><span>Grant ID *</span><el-input v-model="adjustment.grantId" class="admin-input" required autocomplete="off" :maxlength="ENTITY_ID_MAX_LENGTH" placeholder="grant-…" /></label>
               <label class="field"><span>秒数 *</span><el-input v-model.number="adjustment.seconds" class="admin-input" type="number" min="1" :max="ENTITLEMENT_SECONDS_MAX" required /></label>
@@ -396,13 +398,13 @@ onMounted(load);
           <div class="panel__header"><div><p class="eyebrow">CALLBACKS</p><h2 id="replay-title">死信重放</h2></div><StatusBadge label="受审计解锁" tone="warning" /></div>
           <form class="callback-filter" @submit.prevent="refreshCallbacks">
             <label class="field"><span>状态</span>
-              <select v-model="callbackFilter">
-                <option value="BACKLOG">积压（默认）</option>
-                <option value="DEAD_LETTER">死信</option>
-                <option value="RETRYABLE_FAILURE">可重试失败</option>
-                <option value="PROCESSING">处理中</option>
-                <option value="RECEIVED">已接收</option>
-              </select>
+              <el-select v-model="callbackFilter" class="admin-select" aria-label="状态">
+                <el-option label="积压（默认）" value="BACKLOG" />
+                <el-option label="死信" value="DEAD_LETTER" />
+                <el-option label="可重试失败" value="RETRYABLE_FAILURE" />
+                <el-option label="处理中" value="PROCESSING" />
+                <el-option label="已接收" value="RECEIVED" />
+              </el-select>
             </label>
             <button class="button button--secondary" type="submit" :disabled="busy">刷新列表</button>
           </form>

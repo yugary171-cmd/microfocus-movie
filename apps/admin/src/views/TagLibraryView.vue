@@ -8,7 +8,7 @@ import {
   type CatalogTag,
   type CatalogTagGroupId,
 } from "@microfocus/contracts";
-import { ElInput as ElementInput } from "element-plus";
+import { ElInput as ElementInput, ElOption as ElementOption, ElSelect as ElementSelect } from "element-plus";
 import { computed, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -18,6 +18,8 @@ import Icon from "@/components/Icon.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const ElInput = ElementInput as Component;
+const ElOption = ElementOption as Component;
+const ElSelect = ElementSelect as Component;
 
 const auth = useAuthStore();
 const allowed = computed(() => auth.user?.role === AdminRole.ADMIN);
@@ -248,9 +250,9 @@ onMounted(load);
         <p>名称在同一分组内不可重复。不能改名；删除前若仍有剧目引用，必须替换成同组其他启用词。</p>
         <label class="field">
           <span>分组</span>
-          <select v-model="form.group">
-            <option v-for="group in CATALOG_TAG_GROUPS" :key="group.id" :value="group.id">{{ group.label }}</option>
-          </select>
+          <el-select v-model="form.group" class="admin-select" aria-label="分组">
+            <el-option v-for="group in CATALOG_TAG_GROUPS" :key="group.id" :label="group.label" :value="group.id" />
+          </el-select>
         </label>
         <label class="field">
           <span>名称</span>
@@ -298,10 +300,10 @@ onMounted(load);
         </fieldset>
         <label v-if="inspectAction === 'delete' && inUse" class="field">
           <span>替换为</span>
-          <select v-model="replacementTagId">
-            <option value="">请选择同组启用词</option>
-            <option v-for="tag in replacementOptions" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
-          </select>
+          <el-select v-model="replacementTagId" class="admin-select" aria-label="替换为">
+            <el-option label="请选择同组启用词" value="" />
+            <el-option v-for="tag in replacementOptions" :key="tag.id" :label="tag.name" :value="tag.id" />
+          </el-select>
         </label>
         <p v-if="inspectAction === 'delete' && inUse && !replacementOptions.length" class="tag-library__empty">
           同组没有其他启用词，无法替换删除。

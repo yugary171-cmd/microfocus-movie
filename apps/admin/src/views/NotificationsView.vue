@@ -309,7 +309,7 @@ onMounted(() => {
         />
         <el-select
           v-model="status"
-          class="notification-status-select"
+          class="admin-select notification-status-select"
           aria-label="通知状态"
           @change="filter"
         >
@@ -324,7 +324,7 @@ onMounted(() => {
             :value="SystemNotificationStatus.RETRACTED"
           />
         </el-select>
-        <el-button class="toolbar__action" :loading="loading" @click="filter"
+        <el-button class="toolbar__action" @click="filter"
           >搜索</el-button
         >
       </div>
@@ -450,7 +450,7 @@ onMounted(() => {
             <span>每页显示：</span>
             <el-select
               :model-value="pageSize"
-              class="notification-page-size-select"
+              class="admin-select notification-page-size-select"
               aria-label="每页显示条数"
               @change="changePageSize"
             >
@@ -612,16 +612,6 @@ onMounted(() => {
 .notification-status-select {
   width: 100%;
 }
-.notification-status-select :deep(.el-select__wrapper),
-.notification-status-select :deep(.el-select__selected-item),
-.notification-status-select :deep(.el-select__placeholder) {
-  font-size: 12px;
-  font-weight: 400;
-}
-:global(.el-select-dropdown__item) {
-  font-size: 12px;
-  font-weight: 400;
-}
 .notice-list {
   margin-top: var(--space-4);
   flex: 1;
@@ -777,12 +767,6 @@ onMounted(() => {
 }
 .notification-page-size-select {
   width: 72px;
-}
-.notification-page-size-select :deep(.el-select__wrapper),
-.notification-page-size-select :deep(.el-select__selected-item),
-.notification-page-size-select :deep(.el-select__placeholder) {
-  font-size: 12px;
-  font-weight: 400;
 }
 .notification-pagination :deep(.el-pagination) {
   --el-pagination-font-size: 12px;
