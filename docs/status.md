@@ -3,6 +3,7 @@
 - 更新日期：2026-08-21
 - 本文是实现进度的唯一说明；PRD、架构和 API 文档描述目标规则，不代表代码已经具备全部能力
 
+- 2026-08-21：剧目管理查看/编辑交互已拆分：查看使用 Element Plus `ElDrawer` 只读展示详情，编辑继续进入 `/dramas/:id` 全页编辑器；抽屉顶部保留系统关闭图标，关闭与编辑动作固定在底部操作栏，桌面端右对齐、移动端双列。管理端 typecheck/build 和本地 Mock 浏览器验收通过，Vitest 未运行；这不代表真实 provider 或发布验收完成。
 - 2026-08-21：管理端系统通知列表按参考 Table 规范收口：表头使用统一 Token、正文/行项目 12px/500、列间取消竖线、操作文本按钮使用 `|` 分隔符并固定右侧；创建时间显示到秒，通知管理接口和 Mock 默认每页 20 条并提供分页器。仅修改管理端 Web/API/Mock/契约，未修改或验证 `apps/uniapp`、`apps/miniprogram`。
 - 2026-08-21：系统通知复制成功提示改为管理端自定义成功消息样式，标题/发布人复制图标使用 `@element-plus/icons-vue`；通知管理分页默认 20 条，并支持 10/20/50/100 条 pageSize 切换。仅修改管理端 Web/API/Mock/契约，未修改或验证 `apps/uniapp`、`apps/miniprogram`。
 - 2026-08-21：管理员认证改为短时 access JWT + HttpOnly refresh session：新增 `AdminRefreshSession` Prisma 模型和迁移，refresh token 只保存摘要并轮换；管理端 access token 仅保存在内存，401 时单次自动刷新，关闭标签页后可通过 Cookie 恢复；保留 `sessionVersion` 对停用、改角色和凭据重置的强制失效。API 68 个测试文件/325 个测试、管理端 24 个测试文件/112 个测试通过；用户已声明在本机执行 `npm run db:migrate:deploy`，本轮未重复执行或独立核对迁移结果；未修改或验证 `apps/uniapp`、`apps/miniprogram`。

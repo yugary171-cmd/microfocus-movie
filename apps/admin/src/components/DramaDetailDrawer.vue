@@ -125,9 +125,6 @@ function mediaLabel(status: MediaStatus): string {
           </div>
           <p v-else>只读模式</p>
         </div>
-        <RouterLink v-if="drama" class="button button--primary" :to="`/dramas/${drama.id}`">
-          编辑剧目
-        </RouterLink>
       </div>
     </template>
 
@@ -249,6 +246,15 @@ function mediaLabel(status: MediaStatus): string {
         <p class="drama-detail-note">发布和下架操作请进入编辑页，并由服务端再次校验权限与发布闸门。</p>
       </section>
     </div>
+
+    <template #footer>
+      <div class="drama-detail-footer">
+        <button class="button button--secondary" type="button" @click="emit('close')">关闭</button>
+        <RouterLink v-if="drama" class="button button--primary" :to="`/dramas/${drama.id}`">
+          编辑剧目
+        </RouterLink>
+      </div>
+    </template>
   </el-drawer>
 </template>
 
@@ -260,6 +266,13 @@ function mediaLabel(status: MediaStatus): string {
 }
 .drama-detail-drawer :deep(.el-drawer__body) {
   padding: 0;
+}
+.drama-detail-drawer :deep(.el-drawer__footer) {
+  flex: 0 0 auto;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: #fff;
+  box-shadow: 0 -6px 14px -12px rgba(16, 24, 40, 0.28);
 }
 .drama-detail-header {
   display: flex;
@@ -295,8 +308,13 @@ function mediaLabel(status: MediaStatus): string {
   color: var(--color-muted);
   font-size: 12px;
 }
-.drama-detail-header .button {
-  flex: 0 0 auto;
+.drama-detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.drama-detail-footer .button {
+  min-width: 96px;
   white-space: nowrap;
 }
 .drama-detail-content {
@@ -523,12 +541,9 @@ function mediaLabel(status: MediaStatus): string {
   line-height: 1.55;
 }
 @media (max-width: 560px) {
-  .drama-detail-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .drama-detail-header .button {
-    width: 100%;
+  .drama-detail-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .drama-detail-grid,
   .drama-detail-permissions {
