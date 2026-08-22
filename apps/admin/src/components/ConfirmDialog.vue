@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ADMIN_REASON_MAX_LENGTH, ADMIN_REASON_MIN_LENGTH } from "@microfocus/contracts";
-import { ElInput as ElementInput } from "element-plus";
+import { ElButton as ElementButton, ElInput as ElementInput } from "element-plus";
 import { computed, nextTick, ref, watch, type Component } from "vue";
 import Icon from "./Icon.vue";
 
 const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
 
 const props = withDefaults(
   defineProps<{
@@ -36,7 +37,7 @@ const emit = defineEmits<{
 }>();
 
 const reason = ref("");
-const cancelButton = ref<HTMLButtonElement | null>(null);
+const cancelButton = ref<{ focus: () => void } | null>(null);
 const reasonReady = computed(() => {
   if (!props.requireReason) return true;
   const length = reason.value.trim().length;
@@ -88,16 +89,16 @@ function confirm(): void {
           />
         </label>
         <div class="dialog__actions">
-          <button ref="cancelButton" class="button button--ghost" type="button" :disabled="busy" @click="$emit('close')">取消</button>
-          <button
+          <el-button ref="cancelButton" class="button button--ghost" native-type="button" :disabled="busy" @click="$emit('close')">取消</el-button>
+          <el-button
             class="button"
             :class="tone === 'danger' ? 'button--danger' : 'button--primary'"
-            type="button"
+            native-type="button"
             :disabled="busy || !reasonReady"
             @click="confirm"
           >
             {{ busy ? "处理中…" : confirmLabel }}
-          </button>
+          </el-button>
         </div>
       </section>
     </div>

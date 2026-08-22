@@ -1,5 +1,5 @@
 import {
-  ADMIN_LIST_PAGE_SIZE,
+  ADMIN_WEB_PAGE_SIZE,
   ERROR_CODES,
   AdminAccountStatus,
   AdminRole,
@@ -106,7 +106,7 @@ describe("administrator account listing and creation", () => {
     });
     expect(result).toMatchObject({
       page: 1,
-      pageSize: ADMIN_LIST_PAGE_SIZE,
+      pageSize: ADMIN_WEB_PAGE_SIZE,
       total: 1,
       items: [
         {
@@ -127,7 +127,7 @@ describe("administrator account listing and creation", () => {
             { displayName: { contains: "target" } }
           ]
         },
-        take: ADMIN_LIST_PAGE_SIZE
+        take: ADMIN_WEB_PAGE_SIZE
       })
     );
   });

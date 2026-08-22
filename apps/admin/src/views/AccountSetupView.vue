@@ -5,7 +5,7 @@ import {
   OTP_INPUT_LENGTH,
   AdminSetupPurpose,
 } from "@microfocus/contracts";
-import { ElInput as ElementInput } from "element-plus";
+import { ElButton as ElementButton, ElInput as ElementInput } from "element-plus";
 import { computed, onMounted, ref, type Component } from "vue";
 import { useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
@@ -14,6 +14,7 @@ import { roleLabels, formatDateTime } from "@/i18n";
 import type { AdminAccountSetupInfo } from "@/types/admin";
 
 const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
 
 const router = useRouter();
 const state = ref<"loading" | "ready" | "invalid" | "success">("loading");
@@ -108,14 +109,14 @@ onMounted(inspect);
         <div class="setup-state__icon setup-state__icon--warning" aria-hidden="true">!</div>
         <h1>这个链接已无法使用</h1>
         <p>链接可能已过期、已完成使用，或已被新链接替代。为保护账号安全，本页不会确认账号是否存在。</p>
-        <button class="button button--secondary" type="button" @click="goToLogin">返回登录页</button>
+        <el-button class="button button--secondary" native-type="button" @click="goToLogin">返回登录页</el-button>
       </div>
 
       <div v-else-if="state === 'success'" class="setup-state">
         <div class="setup-state__icon setup-state__icon--success" aria-hidden="true">✓</div>
         <h1>账号已完成开通</h1>
         <p>密码和 TOTP 验证器已生效。请使用邮箱、新密码和验证器验证码登录。</p>
-        <button class="button button--primary" type="button" @click="goToLogin">前往登录</button>
+        <el-button class="button button--primary" native-type="button" @click="goToLogin">前往登录</el-button>
       </div>
 
       <form v-else-if="info" class="setup-form" @submit.prevent="complete">
@@ -147,7 +148,7 @@ onMounted(inspect);
         </section>
 
         <div v-if="error" class="setup-error" role="alert">{{ error }}</div>
-        <button class="button button--primary setup-submit" type="submit" :disabled="busy">{{ busy ? '正在安全开通…' : '完成开通' }}</button>
+        <el-button class="button button--primary setup-submit" native-type="submit" :disabled="busy">{{ busy ? '正在安全开通…' : '完成开通' }}</el-button>
       </form>
     </section>
   </main>

@@ -8,7 +8,7 @@ import {
   ENTITLEMENT_SECONDS_MAX,
   REWARD_SECONDS
 } from "@microfocus/contracts";
-import { ElInput as ElementInput, ElOption as ElementOption, ElSelect as ElementSelect } from "element-plus";
+import { ElButton as ElementButton, ElInput as ElementInput, ElOption as ElementOption, ElSelect as ElementSelect } from "element-plus";
 import { computed, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -21,6 +21,7 @@ import { useAuthStore } from "@/stores/auth";
 import type { CircuitBreakerState, CompensationInput, AdjustmentInput, AdminCallbackEvent, CallbackReplayInput, DeletionQueryTokenReissueInput } from "@/types/admin";
 
 const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
 const ElOption = ElementOption as Component;
 const ElSelect = ElementSelect as Component;
 
@@ -358,7 +359,7 @@ onMounted(load);
             <div><dt>最后更新时间</dt><dd>{{ formatDateTime(breaker.updatedAt) }}</dd></div>
             <div><dt>原因</dt><dd>{{ breaker.reason || "无" }}</dd></div>
           </dl>
-          <button class="button" :class="breaker.enabled ? 'button--secondary' : 'button--danger'" type="button" @click="breakerDialogOpen = true">{{ breaker.enabled ? "申请恢复播放" : "立即开启熔断" }}</button>
+          <el-button class="button" :class="breaker.enabled ? 'button--secondary' : 'button--danger'" native-type="button" @click="breakerDialogOpen = true">{{ breaker.enabled ? "申请恢复播放" : "立即开启熔断" }}</el-button>
         </section>
         <section class="panel" aria-labelledby="compensation-title">
           <div class="panel__header"><div><p class="eyebrow">ENTITLEMENT</p><h2 id="compensation-title">补偿权益</h2></div><StatusBadge label="人工授予" tone="warning" /></div>
@@ -370,7 +371,7 @@ onMounted(load);
               <label class="field field--wide"><span>补偿原因 *</span><el-input v-model="compensation.reason" class="admin-input" type="textarea" :rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="说明事故、工单或用户影响" /></label>
             </div>
             <p class="form-help">权益授予不可在浏览器中撤回；服务端将验证管理员权限、范围和幂等性。</p>
-            <button class="button button--primary" type="submit" :disabled="busy">核对并授予</button>
+            <el-button class="button button--primary" native-type="submit" :disabled="busy">核对并授予</el-button>
           </form>
         </section>
         <section class="panel panel--wide" aria-labelledby="adjustment-title">
@@ -391,7 +392,7 @@ onMounted(load);
               <label class="field field--wide"><span>审批记录</span><el-input v-model="adjustment.approvalNote" class="admin-input" type="textarea" :rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
             <p class="form-help">冻结会降低可播放余额；释放冻结必须引用原冻结记录且不超过未释放秒数；核销只记事故，不再次改变用户余额。补偿请用上方独立授予，不要改历史 grant。</p>
-            <button class="button button--primary" type="submit" :disabled="busy">核对并写入纠错</button>
+            <el-button class="button button--primary" native-type="submit" :disabled="busy">核对并写入纠错</el-button>
           </form>
         </section>
         <section class="panel panel--wide" aria-labelledby="replay-title">
@@ -406,7 +407,7 @@ onMounted(load);
                 <el-option label="已接收" value="RECEIVED" />
               </el-select>
             </label>
-            <button class="button button--secondary" type="submit" :disabled="busy">刷新列表</button>
+            <el-button class="button button--secondary" native-type="submit" :disabled="busy">刷新列表</el-button>
           </form>
           <PageState v-if="callbackEvents.length === 0" type="empty" title="当前没有匹配的回调积压" message="死信与可重试失败会显示在此；列表不含加密载荷。" />
           <div v-else class="table-wrap callback-table">
@@ -421,7 +422,7 @@ onMounted(load);
                   <td class="nowrap">{{ formatDateTime(event.receivedAt) }}</td>
                   <td>{{ event.payloadAvailable ? "可立即执行" : "需等待再投递" }}</td>
                   <td>
-                    <button v-if="event.replayable" class="button button--secondary" type="button" :disabled="busy" @click="fillReplay(event)">填入重放</button>
+                    <el-button v-if="event.replayable" class="button button--secondary" native-type="button" :disabled="busy" @click="fillReplay(event)">填入重放</el-button>
                     <span v-else>—</span>
                   </td>
                 </tr>
@@ -435,7 +436,7 @@ onMounted(load);
               <label class="field field--wide"><span>审批记录</span><el-input v-model="replay.approvalNote" class="admin-input" type="textarea" :rows="2" :maxlength="ADMIN_REASON_MAX_LENGTH" placeholder="可选：审批人/工单号" /></label>
             </div>
             <p class="form-help">仅可将 RETRYABLE_FAILURE 或 DEAD_LETTER 迁回 PROCESSING，沿用原事件 ID。若事件仍在保留期内且存有加密规范化载荷，服务端会立即用该载荷执行，不复制新的 grant/媒体事实。无载荷或已过保留期时只解锁，等待 provider 再次投递。已处理或已拒绝事件不可重放。</p>
-            <button class="button button--primary" type="submit" :disabled="busy">核对并解锁重放</button>
+            <el-button class="button button--primary" native-type="submit" :disabled="busy">核对并解锁重放</el-button>
           </form>
         </section>
         <section class="panel panel--wide" aria-labelledby="reissue-title">
@@ -448,7 +449,7 @@ onMounted(load);
               <label class="field field--wide"><span>审批/核验记录 *</span><el-input v-model="reissue.approvalNote" class="admin-input" type="textarea" :rows="2" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required placeholder="审批人、工单号与身份核验结论" /></label>
             </div>
             <p class="form-help">旧 JWT 不会恢复。新令牌只在成功响应中出现一次，旧令牌立即失效。必须先核验用户身份，填写的用户 ID 必须与申请一致。Mock 模式只写演示审计。</p>
-            <button class="button button--primary" type="submit" :disabled="busy">核对并补发令牌</button>
+            <el-button class="button button--primary" native-type="submit" :disabled="busy">核对并补发令牌</el-button>
           </form>
         </section>
       </div>

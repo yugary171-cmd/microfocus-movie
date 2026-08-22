@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { Bell, ChatDotRound, CollectionTag, DocumentChecked, Finished, House, Operation, UserFilled, VideoCamera } from "@element-plus/icons-vue";
+import { computed, onBeforeUnmount, onMounted, ref, type Component } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { isNavigationItemActive, navigationItems } from "@/config/navigation";
+import { isNavigationItemActive, navigationItems, type NavigationIcon } from "@/config/navigation";
 import { roleLabels } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import ModeBanner from "@/components/ModeBanner.vue";
@@ -11,6 +12,17 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const menuOpen = ref(false);
+const navigationIcons: Record<NavigationIcon, Component> = {
+  home: House,
+  dramas: VideoCamera,
+  reviews: Finished,
+  tags: CollectionTag,
+  operations: Operation,
+  audit: DocumentChecked,
+  notifications: Bell,
+  feedback: ChatDotRound,
+  accounts: UserFilled,
+};
 
 const items = computed(() => {
   const role = auth.user?.role;
@@ -49,7 +61,7 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
           :class="{ 'is-active': isNavigationItemActive(route.path, item.to) }"
           @click="menuOpen = false"
         >
-          <span class="nav-item__icon"><Icon :name="item.icon" :size="18" /></span>
+          <span class="nav-item__icon"><component :is="navigationIcons[item.icon]" aria-hidden="true" /></span>
           <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
         </RouterLink>
       </nav>

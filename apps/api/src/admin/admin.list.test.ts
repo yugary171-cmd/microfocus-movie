@@ -1,4 +1,4 @@
-import { ADMIN_LIST_MAX_PAGE, ADMIN_LIST_PAGE_SIZE, AdminRole, ENTITY_ID_MAX_LENGTH, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_LIST_MAX_PAGE, ADMIN_WEB_PAGE_SIZE, AdminRole, DRAMA_ADMIN_PAGE_SIZE, ENTITY_ID_MAX_LENGTH, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { AdminController } from "./admin.module.js";
 
@@ -21,7 +21,7 @@ describe("admin list pagination", () => {
     await expect(api.dramas(admin, undefined, "", page)).resolves.toEqual({
       items: [],
       page: ADMIN_LIST_MAX_PAGE + 1,
-      pageSize: ADMIN_LIST_PAGE_SIZE,
+      pageSize: DRAMA_ADMIN_PAGE_SIZE,
       total: 0,
       totalPages: 0
     });
@@ -33,7 +33,7 @@ describe("admin list pagination", () => {
     await expect(api.auditLogs("", page)).resolves.toEqual({
       items: [],
       page: ADMIN_LIST_MAX_PAGE + 1,
-      pageSize: ADMIN_LIST_PAGE_SIZE,
+      pageSize: ADMIN_WEB_PAGE_SIZE,
       total: 0,
       totalPages: 0
     });
@@ -54,7 +54,7 @@ describe("admin list pagination", () => {
     expect(prisma.drama.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         skip: 0,
-        take: ADMIN_LIST_PAGE_SIZE,
+        take: ADMIN_WEB_PAGE_SIZE,
         where: { editorId: "editor-1", status: "PENDING_REVIEW" }
       })
     );
@@ -89,8 +89,8 @@ describe("admin list pagination", () => {
     await controller(prisma).dramas(editor, "DRAFT", "微焦", "2");
     expect(prisma.drama.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        skip: ADMIN_LIST_PAGE_SIZE,
-        take: ADMIN_LIST_PAGE_SIZE,
+        skip: DRAMA_ADMIN_PAGE_SIZE,
+        take: DRAMA_ADMIN_PAGE_SIZE,
         where: expect.objectContaining({
           editorId: "editor-1",
           status: "DRAFT",
@@ -123,6 +123,20 @@ describe("admin list pagination", () => {
     );
   });
 
+  it("uses a supported drama page size from the query", async () => {
+    const prisma = {
+      $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+      drama: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0)
+      }
+    };
+    await controller(prisma).dramas(editor, undefined, "", "2", "20");
+    expect(prisma.drama.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 20 })
+    );
+  });
+
   it("queries a bounded audit page and searches actor email", async () => {
     const prisma = {
       $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
@@ -134,8 +148,8 @@ describe("admin list pagination", () => {
     await controller(prisma).auditLogs("admin@example.com", "2");
     expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        skip: ADMIN_LIST_PAGE_SIZE,
-        take: ADMIN_LIST_PAGE_SIZE,
+        skip: ADMIN_WEB_PAGE_SIZE,
+        take: ADMIN_WEB_PAGE_SIZE,
         where: {
           OR: expect.arrayContaining([
             { action: { contains: "admin@example.com" } },

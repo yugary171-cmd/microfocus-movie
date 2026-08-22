@@ -22,7 +22,7 @@ import {
   type CatalogTag,
   type ReleaseGateStatus,
 } from "@microfocus/contracts";
-import { ElInput as ElementInput } from "element-plus";
+import { ElButton as ElementButton, ElInput as ElementInput, ElPopover as ElementPopover } from "element-plus";
 import { computed, onMounted, onUnmounted, reactive, ref, type Component } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { adminApi } from "@/api/admin";
@@ -39,6 +39,8 @@ import { useAuthStore } from "@/stores/auth";
 import type { AdminUploadCapabilities, DramaInput, DramaRecord, EpisodeRecord } from "@/types/admin";
 
 const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
+const ElPopover = ElementPopover as Component;
 
 const route = useRoute();
 const router = useRouter();
@@ -425,14 +427,14 @@ onUnmounted(() => {
       </div>
       <div class="page-header__actions" aria-label="剧目操作">
         <span v-if="canEdit" class="action-with-help">
-          <button
+          <el-button
             class="button button--secondary"
-            type="button"
+            native-type="button"
             :disabled="saving || !dirty"
             @click="save"
           >
             {{ saving ? "保存中…" : "保存草稿" }}
-          </button>
+          </el-button>
         </span>
         <DramaActions
           v-if="auth.user && drama"
@@ -563,14 +565,14 @@ onUnmounted(() => {
                   >标签分类
                   <span class="required-mark" aria-hidden="true">*</span></span
                 >
-                <button
+                <el-button
                   class="button button--secondary button--small"
-                  type="button"
+                  native-type="button"
                   :disabled="!canEdit"
                   @click="tagPickerOpen = true"
                 >
                   选择标签
-                </button>
+                </el-button>
               </div>
               <div class="tag-summary">
                 <div v-if="selectedTagChips.length" class="tag-picker__chips">
@@ -612,26 +614,45 @@ onUnmounted(() => {
                     @change="choosePoster('cover', $event)"
                   />
                 </label>
-                <button
+                <el-popover
+                  v-if="form.coverUrl"
+                  placement="right-start"
+                  :width="248"
+                  trigger="click"
+                  :teleported="true"
+                  popper-class="poster-preview-popover"
+                >
+                  <template #reference>
+                    <el-button
+                      class="button button--secondary button--small"
+                      native-type="button"
+                      aria-label="预览剧目海报"
+                    >
+                      预览
+                    </el-button>
+                  </template>
+                  <div class="poster-preview-popover__content">
+                    <img
+                      class="poster-preview-popover__image poster-preview-popover__image--drama"
+                      :src="form.coverUrl"
+                      alt="剧目海报预览"
+                    />
+                  </div>
+                </el-popover>
+                <el-button
                   v-if="form.coverUrl"
                   class="button button--ghost button--small"
-                  type="button"
+                  native-type="button"
                   :disabled="!canEdit"
                   @click="clearPoster('cover')"
                 >
                   移除
-                </button>
+                </el-button>
               </div>
               <p>
                 支持 jpg .jpeg .bmp .png 格式，单个文件大小不超过
                 10MB（建议海报尺寸 {{ DRAMA_POSTER_SIZE_HINT }}）
               </p>
-              <img
-                v-if="form.coverUrl"
-                class="poster-preview poster-preview--drama"
-                :src="form.coverUrl"
-                alt="剧目海报预览"
-              />
             </div>
             <div class="field field--wide poster-row">
               <div class="field-head">
@@ -647,26 +668,45 @@ onUnmounted(() => {
                     @change="choosePoster('promo', $event)"
                   />
                 </label>
-                <button
+                <el-popover
+                  v-if="form.promoCoverUrl"
+                  placement="right-start"
+                  :width="368"
+                  trigger="click"
+                  :teleported="true"
+                  popper-class="poster-preview-popover"
+                >
+                  <template #reference>
+                    <el-button
+                      class="button button--secondary button--small"
+                      native-type="button"
+                      aria-label="预览推广海报"
+                    >
+                      预览
+                    </el-button>
+                  </template>
+                  <div class="poster-preview-popover__content">
+                    <img
+                      class="poster-preview-popover__image poster-preview-popover__image--promo"
+                      :src="form.promoCoverUrl"
+                      alt="推广海报预览"
+                    />
+                  </div>
+                </el-popover>
+                <el-button
                   v-if="form.promoCoverUrl"
                   class="button button--ghost button--small"
-                  type="button"
+                  native-type="button"
                   :disabled="!canEdit"
                   @click="clearPoster('promo')"
                 >
                   移除
-                </button>
+                </el-button>
               </div>
               <p>
                 选填，支持 jpg .jpeg .bmp .png 格式，单个文件大小不超过
                 10MB（建议海报尺寸 {{ PROMO_POSTER_SIZE_HINT }}）
               </p>
-              <img
-                v-if="form.promoCoverUrl"
-                class="poster-preview poster-preview--promo"
-                :src="form.promoCoverUrl"
-                alt="推广海报预览"
-              />
             </div>
           </div>
         </section>
@@ -1009,20 +1049,32 @@ onUnmounted(() => {
   opacity: 0;
   cursor: pointer;
 }
-.poster-preview {
-  width: 100%;
-  max-width: 180px;
+.poster-preview-popover__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.poster-preview-popover__image {
+  display: block;
+  max-width: 100%;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
   background: #f5f7fa;
 }
-.poster-preview--drama {
-  aspect-ratio: 816 / 1086;
+.poster-preview-popover__image--drama {
+  width: auto;
+  max-width: 220px;
+  max-height: 320px;
 }
-.poster-preview--promo {
-  max-width: 280px;
+.poster-preview-popover__image--promo {
+  width: 344px;
+  max-width: 100%;
+  max-height: 220px;
   aspect-ratio: 762 / 318;
+}
+:global(.poster-preview-popover) {
+  padding: 12px;
 }
 @media (min-width: 1180px) {
   .editor-grid {
@@ -1033,6 +1085,13 @@ onUnmounted(() => {
 @media (max-width: 560px) {
   .rights-scope {
     grid-template-columns: 1fr;
+  }
+  :global(.poster-preview-popover) {
+    max-width: calc(100vw - 32px);
+  }
+  .poster-preview-popover__image--drama,
+  .poster-preview-popover__image--promo {
+    max-width: calc(100vw - 64px);
   }
 }
 </style>

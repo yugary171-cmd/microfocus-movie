@@ -1,4 +1,4 @@
-import { AdminAccountStatus, AdminRole, ERROR_CODES } from "@microfocus/contracts";
+import { ADMIN_WEB_PAGE_SIZE, AdminAccountStatus, AdminRole, ERROR_CODES } from "@microfocus/contracts";
 import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "@/api/client";
@@ -109,7 +109,7 @@ describe("AdminAccountsView", () => {
     await chooseSelect(wrapper, "状态", "正常");
     await wrapper.get("form.toolbar").trigger("submit");
     await flushPromises();
-    expect(api.listAccounts).toHaveBeenLastCalledWith("林", AdminRole.EDITOR, AdminAccountStatus.ACTIVE, 1);
+    expect(api.listAccounts).toHaveBeenLastCalledWith("林", AdminRole.EDITOR, AdminAccountStatus.ACTIVE, 1, ADMIN_WEB_PAGE_SIZE);
   });
 
   it("renders account state and requires an editor handoff before suspension", async () => {
@@ -118,11 +118,11 @@ describe("AdminAccountsView", () => {
 
     expect(wrapper.text()).toContain("林编辑");
     expect(wrapper.text()).toContain("已绑定");
-    wrapper.get(".table-wrap--sticky-actions");
+    wrapper.get(".admin-table-wrap.accounts-table");
 
     await openRowAction(wrapper, "停用");
     expect(bodyGet(".account-dialog").text()).toContain("待移交 2 部剧目");
-    expect(api.listAccounts).toHaveBeenLastCalledWith("", AdminRole.EDITOR, "ACTIVE", 1);
+    expect(api.listAccounts).toHaveBeenLastCalledWith("", AdminRole.EDITOR, "ACTIVE", 1, ADMIN_WEB_PAGE_SIZE);
   });
 
   it("copies the login id from the account list", async () => {

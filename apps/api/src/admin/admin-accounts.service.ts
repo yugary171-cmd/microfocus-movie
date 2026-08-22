@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import {
   ADMIN_DISPLAY_NAME_MAX_LENGTH,
   ADMIN_LIST_MAX_PAGE,
-  ADMIN_LIST_PAGE_SIZE,
+  ADMIN_WEB_PAGE_SIZE,
   ADMIN_REASON_MAX_LENGTH,
   ADMIN_REASON_MIN_LENGTH,
   ERROR_CODES,
@@ -15,6 +15,7 @@ import {
   isAdminLoginId,
   isAssignableAdminRole,
   isOwnedContentRole,
+  normalizeAdminWebPageSize,
   type AdminAccountListResponse,
   type AdminAccountView,
   type AdminSetupLinkResponse,
@@ -54,8 +55,9 @@ export class AdminAccountsService {
     role?: AdminRole;
     status?: AdminAccountStatus;
     page?: string;
+    pageSize?: string;
   }): Promise<AdminAccountListResponse> {
-    const pageSize = ADMIN_LIST_PAGE_SIZE;
+    const pageSize = normalizeAdminWebPageSize(Number.parseInt(input.pageSize ?? "", 10));
     const window = boundedListWindow({
       page: parsePage(input.page),
       pageSize,

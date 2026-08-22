@@ -8,7 +8,7 @@ import {
   type CatalogTag,
   type CatalogTagGroupId,
 } from "@microfocus/contracts";
-import { ElInput as ElementInput, ElOption as ElementOption, ElSelect as ElementSelect } from "element-plus";
+import { ElButton as ElementButton, ElInput as ElementInput, ElOption as ElementOption, ElSelect as ElementSelect } from "element-plus";
 import { computed, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
@@ -18,6 +18,7 @@ import Icon from "@/components/Icon.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
 const ElOption = ElementOption as Component;
 const ElSelect = ElementSelect as Component;
 
@@ -192,7 +193,7 @@ onMounted(load);
         <p>维护启用词，可停用或删除。人物、风格、受众不出现在观看端卡片。</p>
       </div>
       <div v-if="allowed" class="page-header__actions">
-        <button class="button button--primary" type="button" @click="createOpen = true">新增标签</button>
+        <el-button class="button button--primary" native-type="button" @click="createOpen = true">新增标签</el-button>
       </div>
     </header>
     <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以维护标签库。" />
@@ -259,8 +260,8 @@ onMounted(load);
           <el-input v-model="form.name" class="admin-input" type="text" :maxlength="DRAMA_TAG_MAX_LENGTH" placeholder="例如：赛博" />
         </label>
         <div class="dialog__actions">
-          <button class="button button--ghost" type="button" :disabled="busy" @click="createOpen = false">取消</button>
-          <button class="button button--primary" type="button" :disabled="busy || !form.name.trim()" @click="createTag">保存</button>
+          <el-button class="button button--ghost" native-type="button" :disabled="busy" @click="createOpen = false">取消</el-button>
+          <el-button class="button button--primary" native-type="button" :disabled="busy || !form.name.trim()" @click="createTag">保存</el-button>
         </div>
       </section>
     </div>
@@ -309,16 +310,16 @@ onMounted(load);
           同组没有其他启用词，无法替换删除。
         </p>
         <div class="dialog__actions">
-          <button class="button button--ghost" type="button" :disabled="busy" @click="closeInspect">取消</button>
-          <button
+          <el-button class="button button--ghost" native-type="button" :disabled="busy" @click="closeInspect">取消</el-button>
+          <el-button
             class="button"
             :class="inspectAction === 'delete' ? 'button--danger' : 'button--primary'"
-            type="button"
+            native-type="button"
             :disabled="inspectConfirmDisabled"
             @click="confirmInspect"
           >
             确认
-          </button>
+          </el-button>
         </div>
       </section>
     </div>

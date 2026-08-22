@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DramaStatus, MediaStatus } from "@microfocus/contracts";
-import { ElDrawer as ElementDrawer } from "element-plus";
+import { ElButton as ElementButton, ElDrawer as ElementDrawer } from "element-plus";
 import { computed, ref, watch, type Component } from "vue";
 import Icon from "@/components/Icon.vue";
 import PageState from "@/components/PageState.vue";
@@ -9,6 +9,7 @@ import { dramaStatusLabels, formatDateTime, formatDuration, mediaStatusLabels } 
 import type { DramaRecord } from "@/types/admin";
 
 const ElDrawer = ElementDrawer as Component;
+const ElButton = ElementButton as Component;
 
 const props = withDefaults(
   defineProps<{
@@ -244,7 +245,7 @@ function mediaLabel(status: MediaStatus): string {
         <RouterLink v-if="drama" class="button button--primary" :to="`/dramas/${drama.id}`">
           编辑剧目
         </RouterLink>
-        <button class="button button--secondary" type="button" @click="emit('close')">关闭</button>
+        <el-button class="button button--secondary" native-type="button" @click="emit('close')">关闭</el-button>
       </div>
     </template>
   </el-drawer>

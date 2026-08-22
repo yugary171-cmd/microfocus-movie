@@ -1,4 +1,4 @@
-import { AdminRole, API_ROUTES, CatalogTagStatus, encodedRoute, isRightsMaterialDigest, normalizeSystemNotificationAdminPageSize, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE, type CatalogTag, type CatalogTagGroupId, type PosterUploadKind, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
+import { AdminRole, ADMIN_WEB_PAGE_SIZE, API_ROUTES, CatalogTagStatus, DRAMA_ADMIN_PAGE_SIZE, encodedRoute, isRightsMaterialDigest, normalizeAdminWebPageSize, normalizeDramaAdminPageSize, normalizeSystemNotificationAdminPageSize, RECOMMENDATION_RANK_DEFAULT, resolveUploadContentType, REVIEW_NOTES_MAX_LENGTH, REWARD_TTL_SECONDS, RIGHTS_TERRITORY, SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE, type CatalogTag, type CatalogTagGroupId, type PosterUploadKind, type ReissueDeletionQueryTokenResponse, type ReleaseGateStatus } from "@microfocus/contracts";
 import type {
   AdminSession,
   AdminAccountRecord,
@@ -140,13 +140,16 @@ export const adminApi = {
     role: AdminRole | "" = "",
     status: AdminAccountStatus | "" = "",
     page = 1,
+    pageSize = ADMIN_WEB_PAGE_SIZE,
   ): Promise<PageResult<AdminAccountRecord>> {
-    if (isMockMode) return mockApi.listAccounts(query, role, status, page);
+    const safePageSize = normalizeAdminWebPageSize(pageSize);
+    if (isMockMode) return mockApi.listAccounts(query, role, status, page, safePageSize);
     const params = new URLSearchParams();
     if (query.trim()) params.set("query", query.trim());
     if (role) params.set("role", role);
     if (status) params.set("status", status);
     if (page > 1) params.set("page", String(page));
+    if (safePageSize !== ADMIN_WEB_PAGE_SIZE) params.set("pageSize", String(safePageSize));
     const suffix = params.size ? `?${params}` : "";
     return normalizeAdminAccountList(await request<unknown>(`${endpoints.accounts}${suffix}`));
   },
@@ -247,12 +250,14 @@ export const adminApi = {
       body: json(replacementTagId ? { replacementTagId } : {}),
     });
   },
-  async listDramas(query = "", status = "", page = 1): Promise<PageResult<DramaRecord>> {
-    if (isMockMode) return mockApi.listDramas(query, status, page);
+  async listDramas(query = "", status = "", page = 1, pageSize = DRAMA_ADMIN_PAGE_SIZE): Promise<PageResult<DramaRecord>> {
+    const safePageSize = normalizeDramaAdminPageSize(pageSize);
+    if (isMockMode) return mockApi.listDramas(query, status, page, safePageSize);
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (query.trim()) params.set("q", query.trim());
     if (page > 1) params.set("page", String(page));
+    if (safePageSize !== DRAMA_ADMIN_PAGE_SIZE) params.set("pageSize", String(safePageSize));
     const suffix = params.size ? `?${params}` : "";
     const payload = await request<unknown>(`${endpoints.dramas}${suffix}`);
     const items = normalizeDramaList(payload);
@@ -399,9 +404,13 @@ export const adminApi = {
     if (isMockMode) return mockApi.submitReview(id);
     return request(encodedRoute(endpoints.submitReview, id), { method: "POST" });
   },
-  async listReviews(page = 1): Promise<PageResult<ReviewItem>> {
-    if (isMockMode) return mockApi.listReviews(page, getSessionUser());
-    const suffix = page > 1 ? `?page=${page}` : "";
+  async listReviews(page = 1, pageSize = ADMIN_WEB_PAGE_SIZE): Promise<PageResult<ReviewItem>> {
+    const safePageSize = normalizeAdminWebPageSize(pageSize);
+    if (isMockMode) return mockApi.listReviews(page, getSessionUser(), safePageSize);
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    if (safePageSize !== ADMIN_WEB_PAGE_SIZE) params.set("pageSize", String(safePageSize));
+    const suffix = params.size ? `?${params}` : "";
     const payload = await request<unknown>(`${endpoints.reviews}${suffix}`);
     const items = normalizeReviewList(payload);
     return { items, total: pageTotal(payload, items.length) };
@@ -468,11 +477,13 @@ export const adminApi = {
     }
     return { fileId };
   },
-  async listAuditLogs(query = "", page = 1): Promise<PageResult<AuditLog>> {
-    if (isMockMode) return mockApi.listAuditLogs(query, page);
+  async listAuditLogs(query = "", page = 1, pageSize = ADMIN_WEB_PAGE_SIZE): Promise<PageResult<AuditLog>> {
+    const safePageSize = normalizeAdminWebPageSize(pageSize);
+    if (isMockMode) return mockApi.listAuditLogs(query, page, safePageSize);
     const params = new URLSearchParams();
     if (query.trim()) params.set("query", query.trim());
     if (page > 1) params.set("page", String(page));
+    if (safePageSize !== ADMIN_WEB_PAGE_SIZE) params.set("pageSize", String(safePageSize));
     const suffix = params.size ? `?${params}` : "";
     const payload = await request<unknown>(`${endpoints.auditLogs}${suffix}`);
     const items = normalizeAuditList(payload);

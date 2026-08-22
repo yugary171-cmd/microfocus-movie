@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Icon from "./Icon.vue";
-import { ElInput as ElementInput } from "element-plus";
+import { ElButton as ElementButton, ElInput as ElementInput } from "element-plus";
 import {
   DRAMA_EPISODE_MAX_COUNT,
   EPISODE_DURATION_SECONDS_MAX,
@@ -18,6 +18,7 @@ import ConfirmDialog from "./ConfirmDialog.vue";
 import StatusBadge from "./StatusBadge.vue";
 
 const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
 
 const props = defineProps<{
   modelValue: EpisodeRecord[];
@@ -187,7 +188,7 @@ onUnmounted(() => {
         <h2 id="episodes-title">剧集与媒体</h2>
         <p>先获取上传签名，再由浏览器直传 VOD；应用服务不转发视频文件。</p>
       </div>
-      <button class="button button--secondary" type="button" @click="openDrawer">管理剧集</button>
+      <el-button class="button button--secondary" native-type="button" @click="openDrawer">管理剧集</el-button>
     </div>
     <div v-if="adminApi.mode === 'mock'" class="upload-mode" role="status">
       <strong>模拟直传</strong> 进度和处理状态仅用于演示，不代表云端已收到或完成转码。
@@ -215,15 +216,15 @@ onUnmounted(() => {
         <p>{{ summaryText }}，最多 {{ DRAMA_EPISODE_MAX_COUNT }} 集。</p>
       </div>
       <div class="episode-drawer__actions">
-        <button
+        <el-button
           v-if="!readonly"
           class="button button--secondary"
-          type="button"
+          native-type="button"
           :disabled="modelValue.length >= DRAMA_EPISODE_MAX_COUNT"
           @click="addEpisode"
         >
           <Icon name="add" />添加剧集
-        </button>
+        </el-button>
         <button class="icon-button" type="button" aria-label="关闭" @click="requestClose">
           <Icon name="close" />
         </button>
@@ -310,14 +311,14 @@ onUnmounted(() => {
                   选择视频
                   <input type="file" :accept="UPLOAD_FILE_ACCEPT" @change="chooseFile(episode, $event)" />
                 </label>
-                <button
+                <el-button
                   class="button button--ghost button--small"
-                  type="button"
+                  native-type="button"
                   :disabled="uploads[episode.id]?.state === 'uploading'"
                   @click="removeEpisode(episode.id)"
                 >
                   移除
-                </button>
+                </el-button>
               </div>
             </td>
           </tr>

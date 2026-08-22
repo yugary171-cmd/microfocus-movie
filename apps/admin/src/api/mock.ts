@@ -2,6 +2,7 @@ import {
   AdminAccountStatus,
   AdminRole,
   AdminSetupPurpose,
+  ADMIN_WEB_PAGE_SIZE,
   ADMIN_LIST_MAX_PAGE,
   ADMIN_LIST_PAGE_SIZE,
   SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE,
@@ -10,11 +11,14 @@ import {
   DeletionRequestStatus,
   DELETION_QUERY_TOKEN_TTL_SECONDS,
   DramaStatus,
+  DRAMA_ADMIN_PAGE_SIZE,
   isAdminLoginId,
   isAssignableAdminRole,
   isCatalogTagGroupId,
   isOwnedContentRole,
   isRightsMaterialDigest,
+  normalizeDramaAdminPageSize,
+  normalizeAdminWebPageSize,
   normalizeSystemNotificationAdminPageSize,
   MediaStatus,
   normalizeCatalogTagName,
@@ -621,6 +625,7 @@ export const mockApi = {
     role: AdminRole | "" = "",
     status: AdminAccountStatus | "" = "",
     page = 1,
+    pageSize = ADMIN_WEB_PAGE_SIZE,
   ): Promise<PageResult<AdminAccountRecord>> {
     refreshOwnedDramaCounts();
     const normalized = query.trim().toLowerCase();
@@ -631,7 +636,7 @@ export const mockApi = {
         (!status || account.status === status),
       )
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-    return mockDelay(paginate(items, page));
+    return mockDelay(paginate(items, page, normalizeAdminWebPageSize(pageSize)));
   },
   async createAccount(input: CreateAdminAccountInput): Promise<AdminSetupLink> {
     requireMockOtp(input.otp);
@@ -851,7 +856,7 @@ export const mockApi = {
     persistMockContent();
     writeAudit("删除标签", existing.name, replacementId || existing.group);
   },
-  async listDramas(query = "", status = "", page = 1): Promise<PageResult<DramaRecord>> {
+  async listDramas(query = "", status = "", page = 1, pageSize = DRAMA_ADMIN_PAGE_SIZE): Promise<PageResult<DramaRecord>> {
     const normalized = query.trim().toLowerCase();
     const items = dramas.filter(
       (drama) =>
@@ -860,7 +865,7 @@ export const mockApi = {
           drama.ownerName.toLowerCase().includes(normalized)) &&
         (!status || drama.status === status),
     );
-    return mockDelay(paginate(items, page));
+    return mockDelay(paginate(items, page, normalizeDramaAdminPageSize(pageSize)));
   },
   async getDrama(id: string): Promise<DramaRecord> {
     const drama = dramas.find((item) => item.id === id);
@@ -924,13 +929,13 @@ export const mockApi = {
     persistMockContent();
     return mockDelay(undefined);
   },
-  async listReviews(page = 1, actor?: AdminUser | null): Promise<PageResult<ReviewItem>> {
+  async listReviews(page = 1, actor?: AdminUser | null, pageSize = ADMIN_WEB_PAGE_SIZE): Promise<PageResult<ReviewItem>> {
     const pending = reviews.filter(
       (item) =>
         item.status === "PENDING" &&
         (!actor || actor.role === AdminRole.ADMIN || item.submitterId === actor.id),
     );
-    return mockDelay(paginate(pending, page));
+    return mockDelay(paginate(pending, page, normalizeAdminWebPageSize(pageSize)));
   },
   async review(id: string, approved: boolean, reason: string, actor?: AdminUser | null): Promise<void> {
     const review = reviews.find((item) => item.id === id);
@@ -1008,7 +1013,7 @@ export const mockApi = {
       uploadId: `mock-poster-${crypto.randomUUID()}`,
     };
   },
-  async listAuditLogs(query = "", page = 1): Promise<PageResult<AuditLog>> {
+  async listAuditLogs(query = "", page = 1, pageSize = ADMIN_WEB_PAGE_SIZE): Promise<PageResult<AuditLog>> {
     const normalized = query.trim().toLowerCase();
     const items = auditLogs.filter((item) =>
       [item.actorName, item.action, item.target, item.requestId]
@@ -1016,7 +1021,7 @@ export const mockApi = {
         .toLowerCase()
         .includes(normalized),
     );
-    return mockDelay(paginate(items, page));
+    return mockDelay(paginate(items, page, normalizeAdminWebPageSize(pageSize)));
   },
   async listNotifications(query = "", status = "", page = 1, pageSize = SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE): Promise<PageResult<AdminNotificationRecord>> {
     const normalized = query.trim().toLowerCase();

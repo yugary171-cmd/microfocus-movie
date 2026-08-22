@@ -1,4 +1,4 @@
-import { AdminRole, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_WEB_PAGE_SIZE, AdminRole, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AuditLogView from "./AuditLogView.vue";
@@ -52,18 +52,18 @@ describe("AuditLogView", () => {
     const wrapper = mount(AuditLogView);
     await flushPromises();
 
-    expect(listAuditLogs).toHaveBeenCalledWith("", 1);
-    expect(wrapper.text()).toContain("第 1 页");
-    expect(wrapper.text()).toContain("共 51 条记录");
+    expect(listAuditLogs).toHaveBeenCalledWith("", 1, ADMIN_WEB_PAGE_SIZE);
+    expect(wrapper.text()).toContain("每页显示：");
+    expect(wrapper.find(".admin-pagination").exists()).toBe(true);
 
-    await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
+    await wrapper.get(".admin-pagination .btn-next").trigger("click");
     await flushPromises();
-    expect(listAuditLogs).toHaveBeenLastCalledWith("", 2);
+    expect(listAuditLogs).toHaveBeenLastCalledWith("", 2, ADMIN_WEB_PAGE_SIZE);
 
     await wrapper.get("input[type='search']").setValue("request-9");
     await wrapper.get("form").trigger("submit");
     await flushPromises();
-    expect(listAuditLogs).toHaveBeenLastCalledWith("request-9", 1);
+    expect(listAuditLogs).toHaveBeenLastCalledWith("request-9", 1, ADMIN_WEB_PAGE_SIZE);
   });
 
   it("renders structured resource context and keeps old records readable", async () => {

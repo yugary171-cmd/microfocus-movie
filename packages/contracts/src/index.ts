@@ -344,11 +344,32 @@ export const OTP_INPUT_PATTERN = `[0-9]{${OTP_INPUT_LENGTH}}`;
 export const HEARTBEAT_SEQ_MAX = 1_000_000;
 export const REWARD_NONCE_MAX_LENGTH = 128;
 export const ADMIN_LIST_PAGE_SIZE = 50;
-export const SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE = 20;
-export const SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+export const ADMIN_LIST_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+export const ADMIN_WEB_PAGE_SIZE = 20;
+export const DRAMA_ADMIN_PAGE_SIZE = ADMIN_WEB_PAGE_SIZE;
+export const SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE = ADMIN_WEB_PAGE_SIZE;
+export const SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS = ADMIN_LIST_PAGE_SIZE_OPTIONS;
 export const ADMIN_LIST_MAX_PAGE = 100;
 
-export type SystemNotificationAdminPageSize = (typeof SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS)[number];
+export type AdminListPageSize = (typeof ADMIN_LIST_PAGE_SIZE_OPTIONS)[number];
+export type SystemNotificationAdminPageSize = AdminListPageSize;
+export type AdminWebPageSize = AdminListPageSize;
+
+export function normalizeAdminListPageSize(value: number): AdminListPageSize {
+  return ADMIN_LIST_PAGE_SIZE_OPTIONS.includes(value as AdminListPageSize)
+    ? (value as AdminListPageSize)
+    : ADMIN_LIST_PAGE_SIZE;
+}
+
+export function normalizeDramaAdminPageSize(value: number): AdminListPageSize {
+  return normalizeAdminWebPageSize(value);
+}
+
+export function normalizeAdminWebPageSize(value: number): AdminWebPageSize {
+  return ADMIN_LIST_PAGE_SIZE_OPTIONS.includes(value as AdminWebPageSize)
+    ? (value as AdminWebPageSize)
+    : ADMIN_WEB_PAGE_SIZE;
+}
 
 export function normalizeSystemNotificationAdminPageSize(value: number): SystemNotificationAdminPageSize {
   return SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS.includes(value as SystemNotificationAdminPageSize)

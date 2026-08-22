@@ -1,4 +1,4 @@
-import { AdminRole, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
+import { ADMIN_WEB_PAGE_SIZE, AdminRole, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ReviewQueueView from "./ReviewQueueView.vue";
@@ -49,14 +49,14 @@ describe("ReviewQueueView", () => {
     const wrapper = mount(ReviewQueueView);
     await flushPromises();
 
-    expect(listReviews).toHaveBeenCalledWith(1);
+    expect(listReviews).toHaveBeenCalledWith(1, ADMIN_WEB_PAGE_SIZE);
     expect(wrapper.find("input[type='search']").exists()).toBe(false);
-    expect(wrapper.text()).toContain("第 1 页");
-    expect(wrapper.text()).toContain("共 51 条待审");
+    expect(wrapper.text()).toContain("每页显示：");
+    expect(wrapper.find(".admin-pagination").exists()).toBe(true);
 
-    await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
+    await wrapper.get(".admin-pagination .btn-next").trigger("click");
     await flushPromises();
-    expect(listReviews).toHaveBeenLastCalledWith(2);
+    expect(listReviews).toHaveBeenLastCalledWith(2, ADMIN_WEB_PAGE_SIZE);
   });
 
   it("lets an editor approve their own pending submission", async () => {
@@ -150,7 +150,7 @@ describe("ReviewQueueView", () => {
     const wrapper = mount(ReviewQueueView);
     await flushPromises();
 
-    await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
+    await wrapper.get(".admin-pagination .btn-next").trigger("click");
     await flushPromises();
 
     expect(listReviews.mock.calls.map((call) => call[0])).toEqual([1, 2, 1]);

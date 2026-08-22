@@ -40,9 +40,13 @@ import {
   CATALOG_TAG_GROUP_IDS,
   CATALOG_TAG_GROUPS,
   CatalogTagStatus,
+  ADMIN_WEB_PAGE_SIZE,
   ERROR_CODES,
   boundCircuitUpdatedBy,
+  DRAMA_ADMIN_PAGE_SIZE,
   normalizeCatalogTagName,
+  normalizeAdminWebPageSize,
+  normalizeDramaAdminPageSize,
   type CatalogTagGroupId,
   boundListQuery,
   EPISODE_DURATION_SECONDS_MAX,
@@ -501,11 +505,12 @@ export class AdminController {
     @CurrentPrincipal() principal: Principal,
     @Query("status") status?: string,
     @Query("q") query = "",
-    @Query("page") pageValue = "1"
+    @Query("page") pageValue = "1",
+    @Query("pageSize") pageSizeValue = String(DRAMA_ADMIN_PAGE_SIZE)
   ) {
     const admin = requireAdmin(principal);
     const allowed = ["DRAFT", "PENDING_REVIEW", "READY", "PUBLISHED", "OFFLINE"];
-    const pageSize = ADMIN_LIST_PAGE_SIZE;
+    const pageSize = normalizeDramaAdminPageSize(Number.parseInt(pageSizeValue, 10));
     const window = boundedListWindow({
       page: parsePage(pageValue),
       pageSize,
@@ -1334,10 +1339,11 @@ export class AdminController {
   @Roles(...CONTENT_OPERATOR_ROLES)
   async reviews(
     @CurrentPrincipal() principal: Principal,
-    @Query("page") pageValue = "1"
+    @Query("page") pageValue = "1",
+    @Query("pageSize") pageSizeValue = String(ADMIN_WEB_PAGE_SIZE)
   ) {
     const admin = requireAdmin(principal);
-    const pageSize = ADMIN_LIST_PAGE_SIZE;
+    const pageSize = normalizeAdminWebPageSize(Number.parseInt(pageSizeValue, 10));
     const window = boundedListWindow({
       page: parsePage(pageValue),
       pageSize,
@@ -1380,8 +1386,12 @@ export class AdminController {
 
   @Get(adminPath(API_ROUTES.admin.auditLogs))
   @Roles(AdminRole.ADMIN)
-  async auditLogs(@Query("query") query = "", @Query("page") pageValue = "1") {
-    const pageSize = ADMIN_LIST_PAGE_SIZE;
+  async auditLogs(
+    @Query("query") query = "",
+    @Query("page") pageValue = "1",
+    @Query("pageSize") pageSizeValue = String(ADMIN_WEB_PAGE_SIZE)
+  ) {
+    const pageSize = normalizeAdminWebPageSize(Number.parseInt(pageSizeValue, 10));
     const window = boundedListWindow({
       page: parsePage(pageValue),
       pageSize,

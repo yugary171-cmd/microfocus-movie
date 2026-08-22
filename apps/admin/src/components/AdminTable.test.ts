@@ -30,6 +30,7 @@ describe("AdminTable", () => {
     });
 
     const columnsInDom = wrapper.findAll(".column-stub");
+    expect(wrapper.find(".admin-table-wrap").exists()).toBe(true);
     expect(columnsInDom).toHaveLength(3);
     expect(columnsInDom[0]!.attributes("data-label")).toBe("通知标题");
     expect(columnsInDom[1]!.attributes("data-label")).toBe("状态");

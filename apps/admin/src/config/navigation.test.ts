@@ -25,4 +25,9 @@ describe("admin navigation active state", () => {
     const tags = navigationItems.find((item) => item.to === "/tags");
     expect(tags).toMatchObject({ label: "标签库", roles: [AdminRole.ADMIN] });
   });
+
+  it("assigns a unique semantic icon to every navigation item", () => {
+    const icons = navigationItems.map((item) => item.icon);
+    expect(new Set(icons).size).toBe(icons.length);
+  });
 });

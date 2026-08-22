@@ -1,4 +1,4 @@
-import { AdminRole, DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
+import { AdminRole, DRAMA_ADMIN_PAGE_SIZE, DramaStatus, LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DramaDetailDrawer from "@/components/DramaDetailDrawer.vue";
@@ -79,7 +79,6 @@ describe("DramaListView", () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain("API 暂时不可用");
-    expect(wrapper.get("button.button--secondary").text()).toMatch(/重新加载|筛选/);
     expect(wrapper.findAll("button").some((button) => button.text() === "重新加载")).toBe(true);
     wrapper.unmount();
   });
@@ -89,18 +88,26 @@ describe("DramaListView", () => {
     const wrapper = mount(DramaListView);
     await flushPromises();
 
-    expect(listDramas).toHaveBeenCalledWith("", "", 1);
-    expect(wrapper.text()).toContain("第 1 页");
-    expect(wrapper.text()).toContain("共 51 部剧目");
+    expect(listDramas).toHaveBeenCalledWith("", "", 1, DRAMA_ADMIN_PAGE_SIZE);
+    expect(wrapper.find(".list-summary").exists()).toBe(false);
+    expect(wrapper.find(".drama-pagination").exists()).toBe(true);
+    expect(wrapper.text()).toContain("每页显示：");
+    expect(wrapper.find(".admin-pagination__size-select").exists()).toBe(true);
+    expect(wrapper.find(".drama-toolbar button[type='submit']").exists()).toBe(false);
+    expect(wrapper.get(".drama-toolbar button[type='button']").classes()).toContain("button--secondary");
 
-    await wrapper.findAll("button").find((button) => button.text() === "下一页")?.trigger("click");
+    await wrapper.get(".drama-pagination .btn-next").trigger("click");
     await flushPromises();
-    expect(listDramas).toHaveBeenLastCalledWith("", "", 2);
+    expect(listDramas).toHaveBeenLastCalledWith("", "", 2, DRAMA_ADMIN_PAGE_SIZE);
+
+    wrapper.get(".admin-pagination").findComponent({ name: "ElSelect" }).vm.$emit("change", 20);
+    await flushPromises();
+    expect(listDramas).toHaveBeenLastCalledWith("", "", 1, 20);
 
     await wrapper.get("input[type='search']").setValue("微焦");
     await wrapper.get("form").trigger("submit");
     await flushPromises();
-    expect(listDramas).toHaveBeenLastCalledWith("微焦", "", 1);
+    expect(listDramas).toHaveBeenLastCalledWith("微焦", "", 1, 20);
     wrapper.unmount();
   });
 

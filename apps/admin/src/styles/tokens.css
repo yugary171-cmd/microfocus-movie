@@ -4,6 +4,8 @@
   --color-bg: #f4f6fa;
   --color-surface: #ffffff;
   --color-surface-soft: #f8fafc;
+  --color-control-icon-bg: #fafafa;
+  --color-icon-muted: #595959;
   --color-sidebar: #131b2e;
   --color-sidebar-muted: #94a3b8;
   --color-text: #162033;
@@ -15,6 +17,9 @@
   --color-primary: #2952cc;
   --primary-color: var(--color-primary);
   --color-primary-hover: #1f43ae;
+  --admin-text-action-color: var(--color-primary);
+  --admin-text-action-hover-color: var(--color-primary-hover);
+  --admin-list-search-width: 390px;
   --color-primary-soft: #edf2ff;
   --color-success: #16794b;
   --color-success-soft: #eaf8f0;

@@ -151,7 +151,7 @@ flowchart LR
 - Provider 回调必须携带稳定事件 ID 并验证签名；重复事件不得重复改变状态。
 - 搜索参数为 `q`、`category`、`page`；`page` 默认 1，`pageSize` 固定 20 且客户端不可修改，响应包含 `items/page/pageSize/total/totalPages`。
 - 为防止恶意遍历拉爆数据库，公开搜索最大允许访问的页数上限为 100（即最多返回前 2000 条结果），超过上限视为空结果。
-- 管理端剧目列表、审核队列和审计日志 `page` 默认 1，`pageSize` 固定 50 且客户端不可修改；系统通知管理列表 `pageSize` 默认 20，客户端可从受控选项 10/20/50/100 中调整；上述列表最多 100 页。剧目关键词 `q`、审计关键词 `query` 最长 100（`LIST_QUERY_MAX_LENGTH`），超过页上限返回空结果，不执行大 OFFSET。审核队列不接受 `q`/`query`，只返回待审剧目。权益摘要不按页截断 grant。
+- 管理端账号、剧目、审核队列、审计日志和系统通知列表的 `page` 默认 1，`pageSize` 默认 20，均可从受控选项 10/20/50/100 中调整；所有这些 Web 列表最多 100 页。剧目关键词 `q`、审计关键词 `query` 最长 100（`LIST_QUERY_MAX_LENGTH`），超过页上限返回空结果，不执行大 OFFSET。审核队列不接受 `q`/`query`，只返回待审剧目。权益摘要不按页截断 grant。
 - 路径与查询中的实体 ID（剧目、剧集、租约、challenge、回调事件、注销申请、熔断 provider）最长 191；超长返回 `INVALID_ENTITY_ID`，不执行数据库查找。公开详情、权益摘要、播放和注销查询仍先占限频桶。
 - 限频桶主键最长 `RATE_LIMIT_BUCKET_ID_MAX_LENGTH`（128），与 Prisma `RateLimitBucket.id` 对齐；可读 scope 前缀最长 `RATE_LIMIT_SCOPE_MAX_LENGTH`（32），连接 IP 写入哈希前最长 `RATE_LIMIT_CLIENT_KEY_MAX_LENGTH`（128）。哈希仍覆盖完整 scope 与主体键（如 IP+邮箱），避免截断碰撞。不信任 `X-Forwarded-For`。
 - 搜索默认按 `recommendationRank DESC, publishedAt DESC`；`latest` 必须按 `publishedAt DESC`；同值时以稳定 ID 作次级排序。
@@ -218,7 +218,7 @@ flowchart LR
 | `POST /v1/admin/auth/refresh` | 管理端 Origin + refresh session Cookie；按连接 IP 限频 | Cookie 必须未过期、未撤销，token 摘要、token family、管理员状态和 `sessionVersion` 必须匹配；轮换期间旧 token 立即失效，重放会撤销同一 family | 新 access JWT 和轮换后的 HttpOnly refresh Cookie；不返回 refresh token |
 | `POST /v1/admin/auth/logout` | 管理端 Origin + refresh session Cookie | 撤销当前 refresh session；即使 access JWT 已过期也允许退出 | 清理 refresh Cookie；管理端同时清理内存 access token |
 | `GET /v1/admin/dashboard` | 全部管理员角色 | 无写权限 | 状态计数、闸门摘要、回调积压/死信/打开的 provider 熔断、最近一次权益对账差异 |
-| `GET /v1/admin/accounts` | ADMIN | `query` 最长 100；按姓名/登录名、角色、状态分页，每页 50，最多 100 页 | 管理员账号列表 |
+| `GET /v1/admin/accounts` | ADMIN | `query` 最长 100；按姓名/登录名、角色、状态分页，`pageSize` 默认 20，可选 10/20/50/100，最多 100 页 | 管理员账号列表 |
 | `POST /v1/admin/accounts` | ADMIN + 当前管理员 OTP | 姓名、登录名必填；登录名转小写唯一（字段仍为 `email`）；不生成可用密码 | 创建待开通账号并返回 24 小时一次性开通链接（明文只出现一次） |
 | `PATCH /v1/admin/accounts/:id` | ADMIN + 当前管理员 OTP | 禁止改自己的角色；降级最后一名正常 ADMIN 禁止；EDITOR 改角色且名下有剧目时必须 `transferEditorId` | 修改姓名或角色；角色变化提升 `sessionVersion` |
 | `POST /v1/admin/accounts/:id/suspend` | ADMIN + 当前管理员 OTP + 原因 | 禁止操作自己；禁止停用最后一名正常 ADMIN；EDITOR 有剧目时必须移交 | 停用账号并立即失效旧 JWT |
@@ -232,17 +232,17 @@ flowchart LR
 | `GET /v1/admin/tags/:tagId` | 全部管理员角色 | 路径 ID | 单条词库记录，含 `usageCount` |
 | `PATCH /v1/admin/tags/:tagId` | ADMIN | 只改 `status`（`ACTIVE`/`ARCHIVED`）；停用不改已有剧的 `tagsJson` | 停用或重新启用 |
 | `DELETE /v1/admin/tags/:tagId` | ADMIN | 无引用可直接删；有引用必须 `replacementTagId`（同组、启用、不同 id）；事务内改写剧目 `tagsJson`（含已发布，不升内容审核版本）后再删词库行；替换后剧目不得变成 0 个标签；占用中且无替换返回 `CATALOG_TAG_IN_USE` | 删除词条并审计 |
-| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR/REVIEWER 只能访问授权范围；ADMIN 看全部；列表 `page` 默认 1，每页 50，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情；`tagIds` 为词库 id，`tags` 为解析后的名称 |
+| `GET /v1/admin/dramas`、`GET .../:id` | 全部管理员角色 | EDITOR/REVIEWER 只能访问授权范围；ADMIN 看全部；列表 `page` 默认 1，`pageSize` 默认 20，可选 10/20/50/100，最多 100 页；`q` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按标题和负责人邮箱过滤；超过页上限返回空结果 | 列表和详情；`tagIds` 为词库 id，`tags` 为解析后的名称 |
 | `POST /v1/admin/dramas` | EDITOR / REVIEWER / ADMIN | 创建者成为负责人；标题/简介/标签/集数有长度与数量上限；`tags` 至少 1 个且必须全部是当前启用词的 **id**；未知或已停用返回 `CATALOG_TAG_NOT_IN_LIBRARY`；管理端剧目类型写入 `category` 为 `真人剧` / `AI 剧` / `漫剧`；`recommendationRank` 0–9999（`RECOMMENDATION_RANK_MIN`/`MAX`），管理端 live 保存发送默认 `RECOMMENDATION_RANK_DEFAULT=0`，编辑页不提供该控件；版权资料走独立 rights 接口，草稿可不写；`coverUrl` 仍是剧目海报地址，推广海报尚无独立 API 字段 | 创建草稿 |
 | `PATCH /v1/admin/dramas/:id` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责且可编辑状态；ADMIN 可改未发布剧；字段上限与创建一致；更新 `tags` 时同样校验启用 id | 修改元数据 |
 | `POST .../:id/rights` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；新版本使内容回到待审链路；权利人/证号/材料键限长；`territory` 必须是 `RIGHTS_TERRITORY=CN`，管理端 live 保存发送该值，编辑页不提供地域控件；`materialDigestSha256` 必须是 64 位十六进制（`RIGHTS_MATERIAL_DIGEST_LENGTH`），管理端输入 maxlength/pattern 与之共用 | 写入不可覆盖的权利版本 |
 | `POST .../:id/media-assets`、`POST /uploads/sign` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可写任意未发布剧；禁止修改已发布内容；`UPLOAD_SIGNED` 只表示申请签名，`MEDIA_VERSION_CREATED` 表示服务端登记媒体版本；两者均写入结构化审计上下文（剧目、集号、版本/文件、阶段），不含签名 URL；`fileName` 最长 255（`UPLOAD_FILE_NAME_MAX_LENGTH`），不得含 `/` `\` 或 NUL；`size` 1–`UPLOAD_FILE_SIZE_MAX_BYTES`（5×1024³ 字节）；`contentType` 仅 `UPLOAD_CONTENT_TYPES`（mp4/quicktime/webm，空类型回退 `application/octet-stream`）；管理端选文件后先拦截再请求签名 | 登记媒体版本和获取短期上传签名 |
 | `POST .../:id/submit-review` | EDITOR / REVIEWER / ADMIN | EDITOR/REVIEWER 仅本人负责；ADMIN 可提交任意剧；材料完整 | 提交审核 |
-| `GET /v1/admin/reviews` | EDITOR / REVIEWER / ADMIN | 只返回待审内容；EDITOR/REVIEWER 只返回本人负责的剧目，ADMIN 返回全库；`page` 默认 1，每页 50，最多 100 页；无 `q`/`query`，不按标题或提交人过滤；超过页上限返回空结果 | 审核队列 |
+| `GET /v1/admin/reviews` | EDITOR / REVIEWER / ADMIN | 只返回待审内容；EDITOR/REVIEWER 只返回本人负责的剧目，ADMIN 返回全库；`page` 默认 1，`pageSize` 默认 20，可选 10/20/50/100，最多 100 页；无 `q`/`query`，不按标题或提交人过滤；超过页上限返回空结果 | 审核队列 |
 | `POST .../:id/review`、`PATCH /media-assets/:assetId/review` | EDITOR / REVIEWER / ADMIN | 允许自审；EDITOR/REVIEWER 只能处理本人负责剧目的内容和媒体审核，ADMIN 可处理全库；结论进入审计；内容审核 `notes` 可选、最长 2000（`REVIEW_NOTES_MAX_LENGTH`），退回时管理端必填；媒体审核 `notes` 仍为 6–500（`MEDIA_REVIEW_NOTES_*`），不与内容审核混用 | 内容和媒体审核 |
 | `POST .../:id/publish`、`POST .../:id/offline` | EDITOR / REVIEWER / ADMIN | 必须满足状态、权利、媒体和发布闸门；下架原因 6–300 字 | 发布与下架；权利到期后系统也会自动下架并撤销活动租约 |
-| `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，每页 50，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId`、操作人邮箱及结构化 `dramaId`/`episodeId`/`mediaAssetId` 过滤；响应保留 `detail` 并增加可选 `context`，旧记录可无 context；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联；上传/审核可追查剧目、集号、版本、阶段和状态变化 |
-| `GET/POST/PATCH /v1/admin/notifications`、`GET/DELETE .../:id`、`POST .../:id/publish`、`POST .../:id/retract` | ADMIN | 通知支持草稿/已发布/已撤回；列表按固定 20 条分页并返回标题、发布人、状态和时间，详情返回完整正文；只有草稿可编辑或删除，已发布内容不可直接修改；标题/正文纯文本且受契约长度限制；创建、删除、发布和撤回写审计 | 全量系统通知管理 |
+| `GET /v1/admin/audit-logs` | ADMIN | 只读、不可篡改；`page` 默认 1，`pageSize` 默认 20，可选 10/20/50/100，最多 100 页；`query` 最长 100（`LIST_QUERY_MAX_LENGTH`），管理端搜索框 maxlength 与之共用，按动作、目标、`requestId`、操作人邮箱及结构化 `dramaId`/`episodeId`/`mediaAssetId` 过滤；响应保留 `detail` 并增加可选 `context`，旧记录可无 context；超过页上限返回空结果 | 审计查询，可与 HTTP 访问日志关联；上传/审核可追查剧目、集号、版本、阶段和状态变化 |
+| `GET/POST/PATCH /v1/admin/notifications`、`GET/DELETE .../:id`、`POST .../:id/publish`、`POST .../:id/retract` | ADMIN | 通知支持草稿/已发布/已撤回；列表 `pageSize` 默认 20，可选 10/20/50/100，并返回标题、发布人、状态和时间，详情返回完整正文；只有草稿可编辑或删除，已发布内容不可直接修改；标题/正文纯文本且受契约长度限制；创建、删除、发布和撤回写审计 | 全量系统通知管理 |
 | `GET /v1/admin/feedback`、`GET/PATCH .../:id`、`POST .../:id/replies` | ADMIN | 按状态/关键词分页；可查看反馈、修改待处理/处理中/已解决、写内部备注和回复；回复在事务内生成用户通知；审计不保存完整反馈正文 | 用户反馈收件箱 |
 | `GET/PATCH /v1/admin/circuit-breakers...` | ADMIN | 记录范围、原因和操作者；原因 6–300 字；`targetId` 限长 191；`updatedBy` 为管理员 ID 或 `system:*` 作业标识，写入最长 `CIRCUIT_UPDATED_BY_MAX_LENGTH`（128）；自动打开的 provider 名最长 `CIRCUIT_PROVIDER_NAME_MAX_LENGTH`（32） | 全局/用户/剧目/广告位/provider 熔断 |
 | `POST /v1/admin/entitlements/compensate` | ADMIN + `Idempotency-Key`（trim、最长 128）；写 Guard 仍先占桶 | 用户/剧目 ID 限长 191，管理端表单 maxlength 与之共用；秒数 60–86400；原因 6–300 字；过期时间必须在未来 | 创建不可变补偿批次 |

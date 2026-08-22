@@ -13,6 +13,7 @@
   "dependencies": {
     "@element-plus/icons-vue": "2.3.2",
     "@microfocus/contracts": "0.1.0",
+    "@remixicon/vue": "^4.9.0",
     "element-plus": "2.14.4",
     "pinia": "^3.0.3",
     "qrcode": "^1.5.4",

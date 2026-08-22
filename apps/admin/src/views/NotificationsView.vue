@@ -3,7 +3,6 @@ import {
   AdminRole,
   SYSTEM_NOTIFICATION_BODY_MAX_LENGTH,
   SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE,
-  SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS,
   SYSTEM_NOTIFICATION_TITLE_MAX_LENGTH,
   SystemNotificationStatus,
   normalizeSystemNotificationAdminPageSize,
@@ -14,7 +13,6 @@ import {
   ElInput as ElementInput,
   ElMessage,
   ElOption as ElementOption,
-  ElPagination as ElementPagination,
   ElSelect as ElementSelect,
 } from "element-plus";
 import { Check, CopyDocument } from "@element-plus/icons-vue";
@@ -22,6 +20,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component } f
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import AdminTable from "@/components/AdminTable.vue";
+import AdminPagination from "@/components/AdminPagination.vue";
+import AdminSearchInput from "@/components/AdminSearchInput.vue";
 import PageState from "@/components/PageState.vue";
 import { useAuthStore } from "@/stores/auth";
 import type { AdminNotificationRecord } from "@/types/admin";
@@ -35,7 +35,6 @@ const ElInput = ElementInput as Component;
 const CheckIcon = Check as Component;
 const CopyDocumentIcon = CopyDocument as Component;
 const ElOption = ElementOption as Component;
-const ElPagination = ElementPagination as Component;
 const ElSelect = ElementSelect as Component;
 
 const auth = useAuthStore();
@@ -82,7 +81,7 @@ const notificationColumns: AdminTableColumn[] = [
   {
     key: "createdAt",
     label: "创建日期",
-    minWidth: 160,
+    minWidth: 190,
     formatter: (row) => dateLabel(row.createdAt),
   },
 ];
@@ -296,16 +295,15 @@ onMounted(() => {
         {{ error }}
       </div>
       <div v-if="notice" class="operation-message">{{ notice }}</div>
-      <div class="toolbar">
-        <el-button class="toolbar__new" type="primary" @click="openEditor()"
-          >新建通知</el-button
-        >
-        <el-input
+      <div class="toolbar notification-toolbar">
+        <el-button class="button button--primary toolbar__new" native-type="button" @click="openEditor()">新建通知</el-button>
+        <AdminSearchInput
           v-model="query"
-          class="toolbar__search admin-input"
+          width="220px"
+          class="toolbar__search admin-list-search"
           aria-label="搜索通知"
           placeholder="标题或正文"
-          @keyup.enter="filter"
+          @submit="filter"
         />
         <el-select
           v-model="status"
@@ -324,9 +322,6 @@ onMounted(() => {
             :value="SystemNotificationStatus.RETRACTED"
           />
         </el-select>
-        <el-button class="toolbar__action" @click="filter"
-          >搜索</el-button
-        >
       </div>
         <PageState
           v-if="loading"
@@ -379,9 +374,10 @@ onMounted(() => {
                 </button>
               </span>
             </template>
+            <template #cell-createdAt="{ row }"><span class="nowrap">{{ dateLabel(row.createdAt) }}</span></template>
             <template #actions="{ row }">
               <div class="actions">
-                <el-button size="small" text type="primary" @click="openView(row)">
+                <el-button class="admin-text-action" size="small" text type="primary" @click="openView(row)">
                   查看
                 </el-button>
                 <span
@@ -392,6 +388,7 @@ onMounted(() => {
                 >
                 <el-button
                   v-if="row.status === SystemNotificationStatus.DRAFT"
+                  class="admin-text-action"
                   size="small"
                   text
                   type="primary"
@@ -407,6 +404,7 @@ onMounted(() => {
                 >
                 <el-button
                   v-if="row.status === SystemNotificationStatus.DRAFT"
+                  class="admin-text-action"
                   size="small"
                   text
                   type="primary"
@@ -423,6 +421,7 @@ onMounted(() => {
                 >
                 <el-button
                   v-if="row.status === SystemNotificationStatus.DRAFT"
+                  class="admin-text-action"
                   size="small"
                   text
                   type="primary"
@@ -433,6 +432,7 @@ onMounted(() => {
                 </el-button>
                 <el-button
                   v-if="row.status === SystemNotificationStatus.PUBLISHED"
+                  class="admin-text-action"
                   size="small"
                   text
                   type="primary"
@@ -445,32 +445,14 @@ onMounted(() => {
             </template>
           </AdminTable>
         </div>
-        <div class="notification-pagination">
-          <div class="notification-pagination__size">
-            <span>每页显示：</span>
-            <el-select
-              :model-value="pageSize"
-              class="admin-select notification-page-size-select"
-              aria-label="每页显示条数"
-              @change="changePageSize"
-            >
-              <el-option
-                v-for="size in SYSTEM_NOTIFICATION_ADMIN_PAGE_SIZE_OPTIONS"
-                :key="size"
-                :label="String(size)"
-                :value="size"
-              />
-            </el-select>
-          </div>
-          <el-pagination
-            :current-page="page"
-            :page-size="pageSize"
-            :total="total"
-            :disabled="loading"
-            layout="prev, pager, next"
-            @current-change="go"
-          />
-        </div>
+        <AdminPagination
+          :current-page="page"
+          :page-size="pageSize"
+          :total="total"
+          :disabled="loading"
+          @page-change="go"
+          @page-size-change="changePageSize"
+        />
     </section>
     <el-drawer
       v-model="drawerOpen"
@@ -557,9 +539,11 @@ onMounted(() => {
 
 <style scoped>
 .notice-panel {
-  display: flex;
-  min-height: calc(100vh - 260px);
-  flex-direction: column;
+  min-width: 0;
+}
+.nowrap { white-space: nowrap; }
+.notice-panel > .notification-toolbar {
+  margin-bottom: var(--space-2);
 }
 .actions {
   display: flex;
@@ -588,62 +572,41 @@ onMounted(() => {
 .field--body .admin-input :deep(.el-textarea__inner) {
   min-height: 360px;
 }
-.toolbar {
-  display: grid;
-  grid-template-columns: auto minmax(240px, 0.5fr) 180px auto minmax(0, 0.5fr);
+.notification-toolbar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--space-2);
 }
 .toolbar__new {
+  flex: 0 0 auto;
   white-space: nowrap;
 }
-.toolbar__search {
-  width: 100%;
+.notification-toolbar > .toolbar__search {
+  flex: 0 0 390px;
+  width: 390px;
   min-width: 0;
-}
-.notification-status-select { width: 180px; }
-.toolbar__action {
-  white-space: nowrap;
-}
-@media (max-width: 760px) {
-  .toolbar { grid-template-columns: 1fr; }
-  .toolbar__search, .notification-status-select { width: 100%; }
 }
 .notification-status-select {
-  width: 100%;
+  flex: 0 0 180px;
+  width: 180px;
+}
+@media (max-width: 760px) {
+  .notification-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .toolbar__new,
+  .notification-toolbar > .toolbar__search,
+  .notification-status-select {
+    flex-basis: auto;
+    width: 100%;
+  }
 }
 .notice-list {
-  margin-top: var(--space-4);
-  flex: 1;
+  margin-top: 0;
   min-width: 0;
-}
-.notification-table {
-  width: 100%;
-  --el-table-header-bg-color: var(--table-head-bg-color);
-  --el-table-text-color: var(--text-color);
-  --el-table-header-text-color: var(--text-color);
-  --el-table-border-color: var(--color-border);
-  --el-table-row-hover-bg-color: var(--table-head-bg-color);
-}
-.notification-table :deep(.el-table__cell) {
-  padding: 10px 12px;
-  border-right: 0;
-  color: var(--text-color);
-  font-size: 12px;
-  font-weight: 500;
-}
-.notification-table :deep(.el-table__header-wrapper th) {
-  color: var(--text-color);
-  background: var(--table-head-bg-color);
-  font-size: 12px;
-  font-weight: 500;
-}
-.notification-table :deep(.el-table__inner-wrapper::before),
-.notification-table :deep(.el-table__fixed-right::before) {
-  display: none;
-}
-.notification-table :deep(.el-table__fixed-right) {
-  box-shadow: none;
 }
 .actions {
   justify-content: flex-start;
@@ -749,35 +712,6 @@ onMounted(() => {
   white-space: pre-wrap;
   line-height: 1.7;
 }
-.notification-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-top: 16px;
-  color: var(--text-color);
-  font-size: 12px;
-  font-weight: 500;
-}
-.notification-pagination__size {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-.notification-page-size-select {
-  width: 72px;
-}
-.notification-pagination :deep(.el-pagination) {
-  --el-pagination-font-size: 12px;
-  --el-pagination-button-size: 32px;
-}
-.notification-pagination :deep(.el-pager li),
-.notification-pagination :deep(.btn-prev),
-.notification-pagination :deep(.btn-next) {
-  font-size: 12px;
-  font-weight: 500;
-}
 .el-drawer :deep(.el-drawer__body) {
   padding: 24px;
 }
@@ -819,23 +753,10 @@ onMounted(() => {
   white-space: nowrap;
 }
 @media (max-width: 720px) {
-  .toolbar {
-    grid-template-columns: 1fr;
-  }
   .toolbar__new,
   .toolbar__search,
-  .toolbar__action {
+  .notification-status-select {
     width: 100%;
-  }
-  .notification-table :deep(.el-table__body-wrapper) {
-    overflow-x: auto;
-  }
-  .notification-pagination {
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .notification-pagination__size {
-    gap: 4px;
   }
   :global(.el-drawer) {
     width: 100% !important;

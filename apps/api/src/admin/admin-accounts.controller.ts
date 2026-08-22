@@ -57,11 +57,13 @@ export class AdminAccountsController {
     @Query("query") compatibleQuery = "",
     @Query("role") role?: string,
     @Query("status") status?: string,
-    @Query("page") page = "1"
+    @Query("page") page = "1",
+    @Query("pageSize") pageSize?: string
   ): Promise<AdminAccountListResponse> {
     return this.accounts.list({
       query: query || compatibleQuery,
       page,
+      ...(pageSize !== undefined ? { pageSize } : {}),
       ...(isAdminRole(role) ? { role } : {}),
       ...(isAdminAccountStatus(status) ? { status } : {})
     });

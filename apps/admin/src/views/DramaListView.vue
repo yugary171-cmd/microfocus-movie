@@ -1,18 +1,31 @@
 <script setup lang="ts">
-import Icon from "@/components/Icon.vue";
-import { ADMIN_LIST_PAGE_SIZE, DramaStatus, LIST_QUERY_MAX_LENGTH, isContentOperator } from "@microfocus/contracts";
-import { ElInput as ElementInput, ElOption as ElementOption, ElSelect as ElementSelect } from "element-plus";
+import {
+  DRAMA_ADMIN_PAGE_SIZE,
+  DramaStatus,
+  LIST_QUERY_MAX_LENGTH,
+  isContentOperator,
+  normalizeAdminWebPageSize,
+} from "@microfocus/contracts";
+import {
+  ElButton as ElementButton,
+  ElOption as ElementOption,
+  ElSelect as ElementSelect,
+} from "element-plus";
 import { computed, onMounted, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
+import AdminTable from "@/components/AdminTable.vue";
+import AdminPagination from "@/components/AdminPagination.vue";
+import AdminSearchInput from "@/components/AdminSearchInput.vue";
 import DramaDetailDrawer from "@/components/DramaDetailDrawer.vue";
 import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { dramaStatusLabels, formatDateTime } from "@/i18n";
 import { useAuthStore } from "@/stores/auth";
 import type { DramaRecord } from "@/types/admin";
+import type { AdminTableColumn } from "@/components/AdminTable.vue";
 
-const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
 const ElOption = ElementOption as Component;
 const ElSelect = ElementSelect as Component;
 
@@ -24,14 +37,22 @@ const total = ref(0);
 const page = ref(1);
 const query = ref("");
 const status = ref("");
+const pageSize = ref(DRAMA_ADMIN_PAGE_SIZE);
 const loading = ref(true);
 const error = ref("");
-const totalPages = computed(() => Math.ceil(total.value / ADMIN_LIST_PAGE_SIZE));
 const detailOpen = ref(false);
 const detailLoading = ref(false);
 const detailError = ref("");
 const selectedDrama = ref<DramaRecord | null>(null);
 let detailRequestId = 0;
+const dramaColumns: AdminTableColumn[] = [
+  { key: "title", label: "剧目", minWidth: 280 },
+  { key: "status", label: "状态", minWidth: 100 },
+  { key: "owner", label: "负责人", minWidth: 180 },
+  { key: "episodes", label: "集数", minWidth: 80 },
+  { key: "license", label: "许可资料", minWidth: 110 },
+  { key: "updatedAt", label: "最后更新", minWidth: 180 },
+];
 
 const toneByStatus = computed(() => ({
   [DramaStatus.DRAFT]: "neutral",
@@ -45,11 +66,19 @@ const toneByStatus = computed(() => ({
   [DramaStatus.ARCHIVED]: "neutral",
 } as const));
 
+function dramaStatusLabel(status: DramaStatus): string {
+  return dramaStatusLabels[status] || "未知状态";
+}
+
+function dramaStatusTone(status: DramaStatus): "neutral" | "info" | "warning" | "success" | "danger" {
+  return toneByStatus.value[status];
+}
+
 async function load(): Promise<void> {
   loading.value = true;
   error.value = "";
   try {
-    const result = await adminApi.listDramas(query.value, status.value, page.value);
+    const result = await adminApi.listDramas(query.value, status.value, page.value, pageSize.value);
     items.value = Array.isArray(result.items) ? result.items : [];
     total.value = Number.isFinite(result.total) ? result.total : items.value.length;
   } catch (caught) {
@@ -73,6 +102,12 @@ function reset(): void {
 
 function go(next: number): void {
   page.value = next;
+  void load();
+}
+
+function changePageSize(value: number | string): void {
+  pageSize.value = normalizeAdminWebPageSize(Number(value));
+  page.value = 1;
   void load();
 }
 
@@ -115,14 +150,13 @@ onMounted(load);
         <h1>剧目管理</h1>
         <p>维护元数据、版权许可、分集媒体与发布状态。</p>
       </div>
-      <RouterLink v-if="canCreateDrama" class="button button--primary" to="/dramas/new"><Icon name="add" />新建剧目</RouterLink>
     </header>
     <section class="panel">
-      <form class="toolbar" role="search" @submit.prevent="filter">
-        <label class="field"><span>关键词</span><el-input v-model="query" class="admin-input" type="search" :maxlength="LIST_QUERY_MAX_LENGTH" placeholder="搜索剧名或负责人" /></label>
-        <label class="field"><span>内容状态</span><el-select v-model="status" class="admin-select" aria-label="内容状态"><el-option label="全部状态" value="" /><el-option v-for="item in DramaStatus" :key="item" :label="dramaStatusLabels[item]" :value="item" /></el-select></label>
-        <button class="button button--secondary" type="submit" :disabled="loading">筛选</button>
-        <button class="button button--ghost" type="button" :disabled="loading" @click="reset">重置</button>
+      <form class="toolbar drama-toolbar" role="search" @submit.prevent="filter">
+        <RouterLink v-if="canCreateDrama" class="button button--primary drama-toolbar__new" to="/dramas/new">新建剧目</RouterLink>
+        <label class="field admin-list-search-field"><AdminSearchInput v-model="query" :maxlength="LIST_QUERY_MAX_LENGTH" aria-label="搜索剧名或负责人" placeholder="搜索剧名或负责人" @submit="filter" /></label>
+        <label class="field"><el-select v-model="status" class="admin-select" aria-label="内容状态" placeholder="请选择内容状态" @change="filter"><el-option v-for="item in DramaStatus" :key="item" :label="dramaStatusLabels[item]" :value="item" /></el-select></label>
+        <el-button class="button button--secondary" native-type="button" :disabled="loading" @click="reset">重置</el-button>
       </form>
       <PageState v-if="loading" type="loading" message="正在加载剧目列表…" />
       <PageState v-else-if="error" type="error" :message="error" @retry="load" />
@@ -135,31 +169,37 @@ onMounted(load);
         <RouterLink v-if="canCreateDrama" class="button button--primary" to="/dramas/new">新建剧目</RouterLink>
       </PageState>
       <template v-else>
-        <div class="list-summary">第 {{ page }} 页 · 共 {{ total }} 部剧目</div>
         <PageState v-if="items.length === 0" type="empty" title="这一页没有剧目" message="请返回上一页，或重新筛选。" />
-        <div v-else class="table-wrap table-wrap--sticky-actions">
-          <table>
-            <thead><tr><th>剧目</th><th>状态</th><th>负责人</th><th>集数</th><th>许可资料</th><th>最后更新</th><th><span class="sr-only">操作</span></th></tr></thead>
-            <tbody>
-              <tr v-for="drama in items" :key="drama.id">
-                <td><span class="table-title"><strong>{{ drama.title || "未命名剧目" }}</strong><small>{{ drama.category || "未分类" }} · {{ drama.summary || "暂无简介" }}</small></span></td>
-                <td><StatusBadge :label="dramaStatusLabels[drama.status]" :tone="toneByStatus[drama.status]" /></td>
-                <td>{{ drama.ownerName || "—" }}</td>
-                <td>{{ Array.isArray(drama.episodes) ? drama.episodes.length : 0 }}</td>
-                <td><StatusBadge :label="drama.licenseNumber ? '已填写' : '待补齐'" :tone="drama.licenseNumber ? 'success' : 'warning'" /></td>
-                <td>{{ formatDateTime(drama.updatedAt) }}</td>
-                <td class="drama-actions">
-                  <button class="link" type="button" @click="openDetail(drama)">查看</button>
-                  <span class="drama-actions__divider" aria-hidden="true">|</span>
-                  <RouterLink class="link" :to="`/dramas/${drama.id}`">编辑</RouterLink>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-if="totalPages > 1 || page > 1" class="pager">
-          <button class="button button--ghost" type="button" :disabled="loading || page <= 1" @click="go(page - 1)">上一页</button>
-          <button class="button button--ghost" type="button" :disabled="loading || page >= totalPages" @click="go(page + 1)">下一页</button>
+        <AdminTable v-else :rows="items" :columns="dramaColumns" table-class="drama-table" :action-width="120" action-label="">
+          <template #cell-title="{ row }">
+            <span class="table-title"><strong>{{ row.title || "未命名剧目" }}</strong><small>{{ row.category || "未分类" }} · {{ row.summary || "暂无简介" }}</small></span>
+          </template>
+          <template #cell-status="{ row }">
+            <StatusBadge :label="dramaStatusLabel(row.status)" :tone="dramaStatusTone(row.status)" />
+          </template>
+          <template #cell-owner="{ row }">{{ row.ownerName || "—" }}</template>
+          <template #cell-episodes="{ row }">{{ Array.isArray(row.episodes) ? row.episodes.length : 0 }}</template>
+          <template #cell-license="{ row }">
+            <StatusBadge :label="row.licenseNumber ? '已填写' : '待补齐'" :tone="row.licenseNumber ? 'success' : 'warning'" />
+          </template>
+          <template #cell-updatedAt="{ row }"><span class="nowrap">{{ formatDateTime(row.updatedAt) }}</span></template>
+          <template #actions="{ row }">
+            <div class="drama-actions">
+              <button class="link" type="button" @click="openDetail(row)">查看</button>
+              <span class="drama-actions__divider" aria-hidden="true">|</span>
+              <RouterLink class="link" :to="`/dramas/${row.id}`">编辑</RouterLink>
+            </div>
+          </template>
+        </AdminTable>
+        <div v-if="total > 0" class="drama-pagination">
+          <AdminPagination
+            :current-page="page"
+            :page-size="pageSize"
+            :total="total"
+            :disabled="loading"
+            @page-change="go"
+            @page-size-change="changePageSize"
+          />
         </div>
       </template>
     </section>
@@ -175,9 +215,16 @@ onMounted(load);
 </template>
 
 <style scoped>
-.list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
-.pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.drama-toolbar { gap: var(--space-2); margin-bottom: var(--space-2); }
+.drama-toolbar > .field:last-of-type { flex: 0 0 180px; }
+.drama-pagination {
+  margin-top: 0;
+}
+.nowrap { white-space: nowrap; }
 .drama-actions { white-space: nowrap; }
 .drama-actions__divider { padding: 0 8px; color: var(--sls-normal-color-7); font-size: 12px; font-weight: 500; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media (max-width: 760px) {
+  .drama-toolbar > .field:first-of-type,
+  .drama-toolbar > .field:last-of-type { flex: 0 0 auto; width: 100%; }
+}
 </style>

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { isContentOperator, type ReleaseGateStatus } from "@microfocus/contracts";
-import { ElTooltip as ElementTooltip } from "element-plus";
+import { ElButton as ElementButton, ElTooltip as ElementTooltip } from "element-plus";
 import { computed, type Component } from "vue";
 import { canOffline, canSubmitReview, publishDecision } from "@/policies/admin";
 import type { AdminUser, DramaRecord } from "@/types/admin";
 
 const ElTooltip = ElementTooltip as Component;
+const ElButton = ElementButton as Component;
 
 const props = defineProps<{
   user: AdminUser;
@@ -35,7 +36,7 @@ const offline = computed(() => canOffline(props.user, props.drama));
         trigger="hover"
       >
         <span class="action-button-tooltip-target">
-          <button class="button button--primary" type="button" :disabled="busy || !submit.allowed" @click="$emit('submit')">提交审核</button>
+          <el-button class="button button--primary" native-type="button" :disabled="busy || !submit.allowed" @click="$emit('submit')">提交审核</el-button>
         </span>
       </el-tooltip>
     </span>
@@ -49,7 +50,7 @@ const offline = computed(() => canOffline(props.user, props.drama));
         trigger="hover"
       >
         <span class="action-button-tooltip-target">
-          <button class="button button--primary" type="button" :disabled="busy || !publish.allowed" @click="$emit('publish')">发布剧目</button>
+          <el-button class="button button--primary" native-type="button" :disabled="busy || !publish.allowed" @click="$emit('publish')">发布剧目</el-button>
         </span>
       </el-tooltip>
     </span>
@@ -63,7 +64,7 @@ const offline = computed(() => canOffline(props.user, props.drama));
         trigger="hover"
       >
         <span class="action-button-tooltip-target">
-          <button class="button button--danger" type="button" :disabled="busy || !offline.allowed" @click="$emit('offline')">下架剧目</button>
+          <el-button class="button button--danger" native-type="button" :disabled="busy || !offline.allowed" @click="$emit('offline')">下架剧目</el-button>
         </span>
       </el-tooltip>
     </span>

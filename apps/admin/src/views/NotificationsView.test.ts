@@ -1,6 +1,7 @@
 import { AdminRole, SystemNotificationStatus } from "@microfocus/contracts";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import AdminSearchInput from "@/components/AdminSearchInput.vue";
 import NotificationsView from "./NotificationsView.vue";
 
 const { listNotifications, getNotification, authUser } = vi.hoisted(() => ({
@@ -67,11 +68,15 @@ describe("NotificationsView", () => {
     expect(wrapper.text()).not.toContain("今晚 22:00 进行系统维护。");
     expect(wrapper.text()).toContain("查看");
     expect(wrapper.text()).toContain("每页显示：");
-    expect(wrapper.find(".notification-page-size-select").exists()).toBe(true);
+    expect(wrapper.find(".admin-pagination__size-select").exists()).toBe(true);
     expect(wrapper.text()).toContain("2026-08-20");
     expect(wrapper.text()).toContain(":00:00");
     expect(wrapper.findAll(".toolbar .field")).toHaveLength(0);
     expect(wrapper.get('input[aria-label="搜索通知"]').attributes("placeholder")).toBe("标题或正文");
+    expect(wrapper.findComponent(AdminSearchInput).props("width")).toBe("390px");
+    expect(wrapper.find(".notification-toolbar > .toolbar__search").exists()).toBe(true);
+    expect(wrapper.find(".admin-search-input .el-input__suffix .admin-search-input__button").exists()).toBe(true);
+    expect(wrapper.find(".toolbar__action").exists()).toBe(false);
     wrapper.unmount();
   });
 

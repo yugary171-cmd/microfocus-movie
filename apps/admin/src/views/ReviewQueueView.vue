@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import Icon from "@/components/Icon.vue";
-import { ADMIN_LIST_PAGE_SIZE, isContentOperator, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
-import { computed, onMounted, reactive, ref } from "vue";
+import { ADMIN_WEB_PAGE_SIZE, isContentOperator, REVIEW_NOTES_MAX_LENGTH } from "@microfocus/contracts";
+import { ElButton as ElementButton } from "element-plus";
+import { computed, onMounted, reactive, ref, type Component } from "vue";
 import { adminApi } from "@/api/admin";
 import { toErrorMessage } from "@/api/client";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import AdminPagination from "@/components/AdminPagination.vue";
 import PageState from "@/components/PageState.vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import { formatDateTime } from "@/i18n";
@@ -12,10 +14,13 @@ import { canReview } from "@/policies/admin";
 import { useAuthStore } from "@/stores/auth";
 import type { ReviewItem } from "@/types/admin";
 
+const ElButton = ElementButton as Component;
+
 const auth = useAuthStore();
 const items = ref<ReviewItem[]>([]);
 const total = ref(0);
 const page = ref(1);
+const pageSize = ref(ADMIN_WEB_PAGE_SIZE);
 const loading = ref(true);
 const error = ref("");
 const notice = ref("");
@@ -23,7 +28,6 @@ const busy = ref(false);
 const selected = ref<ReviewItem | null>(null);
 const dialog = reactive<{ decision: "approve" | "reject" | null }>({ decision: null });
 const allowed = computed(() => Boolean(auth.user && isContentOperator(auth.user.role)));
-const totalPages = computed(() => Math.ceil(total.value / ADMIN_LIST_PAGE_SIZE));
 
 async function load(): Promise<void> {
   if (!allowed.value) {
@@ -33,13 +37,13 @@ async function load(): Promise<void> {
   loading.value = true;
   error.value = "";
   try {
-    let result = await adminApi.listReviews(page.value);
+    let result = await adminApi.listReviews(page.value, pageSize.value);
     let nextItems = Array.isArray(result.items) ? result.items : [];
     let nextTotal = Number.isFinite(result.total) ? result.total : nextItems.length;
-    const pages = Math.ceil(nextTotal / ADMIN_LIST_PAGE_SIZE);
+    const pages = Math.ceil(nextTotal / pageSize.value);
     if (nextItems.length === 0 && nextTotal > 0 && page.value > 1 && pages >= 1 && page.value > pages) {
       page.value = pages;
-      result = await adminApi.listReviews(page.value);
+      result = await adminApi.listReviews(page.value, pageSize.value);
       nextItems = Array.isArray(result.items) ? result.items : [];
       nextTotal = Number.isFinite(result.total) ? result.total : nextItems.length;
     }
@@ -54,6 +58,12 @@ async function load(): Promise<void> {
 
 function go(next: number): void {
   page.value = next;
+  void load();
+}
+
+function changePageSize(next: number): void {
+  pageSize.value = next;
+  page.value = 1;
   void load();
 }
 
@@ -101,7 +111,7 @@ onMounted(load);
   <div>
     <header class="page-header">
       <div><p class="eyebrow">REVIEW WORKSPACE</p><h1>审核队列</h1><p>审核内容与版权信息；审核结论不替代媒体平台状态。</p></div>
-      <button v-if="allowed" class="button button--secondary" type="button" :disabled="loading" @click="load">刷新队列</button>
+      <el-button v-if="allowed" class="button button--secondary" native-type="button" :disabled="loading" @click="load">刷新队列</el-button>
     </header>
     <PageState v-if="!allowed" type="forbidden" message="当前角色不能访问审核队列。" />
     <PageState v-else-if="loading" type="loading" message="正在加载待审内容…" />
@@ -109,7 +119,6 @@ onMounted(load);
     <template v-else>
       <div v-if="error" class="review-message review-message--error" role="alert">{{ error }}</div>
       <div v-if="notice" class="review-message" role="status">{{ notice }}</div>
-      <div v-if="total > 0" class="list-summary">第 {{ page }} 页 · 共 {{ total }} 条待审</div>
       <PageState
         v-if="items.length === 0"
         type="empty"
@@ -135,17 +144,22 @@ onMounted(load);
           </div>
           <div class="review-card__actions">
             <template v-if="reviewDecision(item).allowed">
-              <button class="button button--secondary" type="button" @click="openDecision(item, 'reject')">拒绝并退回</button>
-              <button class="button button--primary" type="button" @click="openDecision(item, 'approve')">审核通过</button>
+              <el-button class="button button--secondary" native-type="button" @click="openDecision(item, 'reject')">拒绝并退回</el-button>
+              <el-button class="button button--primary" native-type="button" @click="openDecision(item, 'approve')">审核通过</el-button>
             </template>
             <small v-else>{{ reviewDecision(item).reason }}</small>
           </div>
         </article>
       </div>
-      <div v-if="totalPages > 1 || page > 1" class="pager">
-        <button class="button button--ghost" type="button" :disabled="loading || page <= 1" @click="go(page - 1)">上一页</button>
-        <button class="button button--ghost" type="button" :disabled="loading || page >= totalPages" @click="go(page + 1)">下一页</button>
-      </div>
+      <AdminPagination
+        v-if="total > 0"
+        :current-page="page"
+        :page-size="pageSize"
+        :total="total"
+        :disabled="loading"
+        @page-change="go"
+        @page-size-change="changePageSize"
+      />
     </template>
     <ConfirmDialog
       :open="dialog.decision === 'approve'"
@@ -173,8 +187,6 @@ onMounted(load);
 </template>
 
 <style scoped>
-.list-summary { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 12px; }
-.pager { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
 .review-list { display: grid; gap: var(--space-3); }
 .review-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4); }
 .review-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }

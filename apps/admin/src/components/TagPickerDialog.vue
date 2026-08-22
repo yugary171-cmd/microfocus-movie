@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { CATALOG_TAG_GROUPS, DRAMA_TAG_MAX_COUNT, DRAMA_TAG_MAX_LENGTH } from "@microfocus/contracts";
-import { ElInput as ElementInput } from "element-plus";
+import { ElButton as ElementButton } from "element-plus";
 import { computed, nextTick, ref, watch, type Component } from "vue";
 import Icon from "./Icon.vue";
+import AdminSearchInput from "./AdminSearchInput.vue";
 
-const ElInput = ElementInput as Component;
+const ElButton = ElementButton as Component;
 
 interface TagPickerOption {
   id: string;
@@ -111,11 +112,9 @@ function confirm(): void {
         </div>
         <label class="field">
           <span class="visually-hidden">搜索标签</span>
-          <el-input
+          <AdminSearchInput
             ref="searchInput"
             v-model="query"
-            class="admin-input"
-            type="search"
             placeholder="搜索标签，如：都市、重生、男频"
             :maxlength="DRAMA_TAG_MAX_LENGTH"
           />
@@ -155,8 +154,8 @@ function confirm(): void {
           </div>
         </div>
         <div class="dialog__actions">
-          <button class="button button--ghost" type="button" @click="emit('close')">取消</button>
-          <button class="button button--primary" type="button" :disabled="Boolean(customTags.length)" @click="confirm">完成</button>
+          <el-button class="button button--ghost" native-type="button" @click="emit('close')">取消</el-button>
+          <el-button class="button button--primary" native-type="button" :disabled="Boolean(customTags.length)" @click="confirm">完成</el-button>
         </div>
       </section>
     </div>

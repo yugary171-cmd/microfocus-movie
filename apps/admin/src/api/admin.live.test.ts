@@ -80,19 +80,20 @@ describe("live admin API adapter", () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(success({ items: [], total: 0 }))
       .mockResolvedValueOnce(success({ items: [], total: 0 }))
+      .mockResolvedValueOnce(success({ items: [], total: 0 }))
       .mockResolvedValueOnce(success({ items: [], total: 0 }));
     const { adminApi } = await import("./admin");
 
-    await adminApi.listDramas("微焦", "DRAFT", 2);
-    await adminApi.listReviews(2);
-    await adminApi.listAuditLogs("request-9", 2);
+    await adminApi.listDramas("微焦", "DRAFT", 2, 20);
+    await adminApi.listReviews(2, 50);
+    await adminApi.listAuditLogs("request-9", 2, 100);
 
     expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe(
-      "http://api.test/v1/admin/dramas?status=DRAFT&q=%E5%BE%AE%E7%84%A6&page=2",
+      "http://api.test/v1/admin/dramas?status=DRAFT&q=%E5%BE%AE%E7%84%A6&page=2&pageSize=20",
     );
-    expect(String(vi.mocked(fetch).mock.calls[1]?.[0])).toBe("http://api.test/v1/admin/reviews?page=2");
+    expect(String(vi.mocked(fetch).mock.calls[1]?.[0])).toBe("http://api.test/v1/admin/reviews?page=2&pageSize=50");
     expect(String(vi.mocked(fetch).mock.calls[2]?.[0])).toBe(
-      "http://api.test/v1/admin/audit-logs?query=request-9&page=2",
+      "http://api.test/v1/admin/audit-logs?query=request-9&page=2&pageSize=100",
     );
   });
 
@@ -161,10 +162,10 @@ describe("live admin API adapter", () => {
       .mockResolvedValueOnce(success(null));
     const { adminApi } = await import("./admin");
 
-    const list = await adminApi.listAccounts("王", AdminRole.REVIEWER, AdminAccountStatus.PENDING_SETUP, 2);
+    const list = await adminApi.listAccounts("王", AdminRole.REVIEWER, AdminAccountStatus.PENDING_SETUP, 2, 50);
     expect(list).toMatchObject({ total: 1, items: [{ id: "account-1" }] });
     expect(String(vi.mocked(fetch).mock.calls[0]?.[0])).toBe(
-      "http://api.test/v1/admin/accounts?query=%E7%8E%8B&role=REVIEWER&status=PENDING_SETUP&page=2",
+      "http://api.test/v1/admin/accounts?query=%E7%8E%8B&role=REVIEWER&status=PENDING_SETUP&page=2&pageSize=50",
     );
 
     const setupLink = await adminApi.createAccount({
