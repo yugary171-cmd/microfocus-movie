@@ -1,0 +1,46 @@
+:root {
+  --admin-body-font-size: 12px;
+  --admin-control-outer-shadow: -3px 0 7px -4px rgba(16, 24, 40, 0.2),
+    3px 0 7px -4px rgba(16, 24, 40, 0.2),
+    0 4px 8px -4px rgba(16, 24, 40, 0.2);
+  --admin-control-active-shadow: 0 0 0 1px var(--color-primary) inset,
+    var(--admin-control-outer-shadow);
+  --el-font-size-extra-small: 12px;
+  --el-font-size-small: 12px;
+  --el-font-size-base: 12px;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; background: var(--color-bg); }
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--color-text);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  font-size: var(--admin-body-font-size);
+  line-height: 1.55;
+}
+button, input, select, textarea { color: inherit; font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.58; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, p { margin-top: 0; }
+h1 { margin-bottom: var(--space-2); font-size: clamp(24px, 3vw, 31px); line-height: 1.25; letter-spacing: -0.025em; }
+h2 { margin-bottom: var(--space-2); font-size: 18px; line-height: 1.4; }
+h3 { margin-bottom: var(--space-1); font-size: 15px; }
+small { color: var(--color-muted); }
+:focus-visible { outline: 3px solid rgba(41, 82, 204, 0.3); outline-offset: 2px; }
+input[type="radio"]:focus-visible,
+input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(41, 82, 204, 0.28); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

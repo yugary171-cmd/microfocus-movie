@@ -1,10 +1,10 @@
 # 管理端界面规范
 
-本规范约束 PC 管理后台（`apps/admin`）的通用视觉与布局。实现以 `apps/admin/src/styles/tokens.css` 和 `apps/admin/src/styles/global.css` 为准；页面不得再复制一套颜色、气泡或操作列定位。
+本规范约束 PC 管理后台（`apps/admin`）的通用视觉与布局。实现以 `apps/admin/src/styles/tokens.css`、`base.scss`、`shared.scss`、`element-plus-overrides.scss` 以及各 feature/shared 的 `*.module.scss` 为准；页面不得再复制一套颜色、气泡或操作列定位。
 
 ## 气泡 / Tooltip
 
-截断文本需要展示完整内容时，使用全局 `.tooltip`，不要用浏览器原生 `title`，也不要临时写深色浮层。
+截断文本需要展示完整内容时，使用所属布局或组件 module 中的 tooltip 样式，不要用浏览器原生 `title`，也不要临时写深色浮层。
 
 - 容器加 `.has-tooltip`；气泡加 `.tooltip`，向上弹出再加 `.tooltip--above`。
 - 外观：白底（`--color-surface`）、灰色描边（`--color-border`）、正文色文字、轻阴影。宽度按内容撑开，上限 `min(90vw, 420px)`，单行不换行。

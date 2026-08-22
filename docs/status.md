@@ -3,6 +3,8 @@
 - 更新日期：2026-08-22
 - 本文是实现进度的唯一说明；PRD、架构和 API 文档描述目标规则，不代表代码已经具备全部能力
 
+- 2026-08-22：继续收口 Web 管理端全局样式边界：基础 reset/排版迁移到 `styles/base.scss`，跨页面公共业务原语迁移到 `styles/shared.scss`，Element Plus 控件覆盖迁移到 `styles/element-plus-overrides.scss`；`tokens.css` 继续作为运行时 CSS Variables 入口，`shared/styles/index.scss` 负责组织全局 SCSS。旧 `global.css` 和共享样式 CSS 入口已移入 `旧内容/admin-styles-legacy/`，未删除。管理端 typecheck/build 通过，测试和登录后的视觉验收未运行。
+
 - 2026-08-22：Web 管理端局部样式改为语义化 CSS Modules：业务页面、AppShell、共享分页/搜索/表格/状态/弹窗组件及剧目详情相关组件使用 `*.module.scss`，模板通过 `$style` 绑定；全局 tokens、reset、Element Plus 覆盖和通用控件规则继续保留在全局样式。加入 admin `sass` 依赖，旧业务 CSS 通过重命名迁移而非删除，页面测试改用语义查询、ARIA 或 `data-testid`。admin typecheck/build 与 `git diff --check` 通过；未运行测试套件，登录后的桌面/390px 视觉验收仍待完成。
 
 - 2026-08-22：启动管理端与 uni-app 的分阶段前端结构化重构。管理端新增 `app/features/shared/infrastructure` 导入边界，路由改由 `app/router.ts` 组织；公共组件、标签/格式化方法、分页/剪贴板 composables、规则常量和 12 个页面样式已通过兼容入口接入，剧目/审核/账号/审计列表开始使用 feature 常量和共享分页状态。uni-app 保留 `pages.json`、`pages/` 路由入口和 `platform/`，新增 shared API/constants/utils/styles 与 catalog/inbox/library/playback/profile feature 入口，页面引用已迁移。管理端 typecheck/build、uni-app typecheck/H5/微信小程序构建和 `git diff --check` 通过；未运行测试套件，管理端完整页面视觉验收仍受登录会话阻断。当前仍是兼容迁移阶段，旧 `views/components/services/utils` 实现尚未全部物理移动，后续需继续按业务域拆分页面逻辑并清理旧入口。
