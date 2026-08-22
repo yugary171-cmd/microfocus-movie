@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { getApi, getStoredSession } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
+import { getApi, getStoredSession } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 
 const feedback = ref("");
 const items = ref<Array<{ id: string; body: string; status: string; createdAt: string; replies: Array<{ body: string; createdAt: string }> }>>([]);

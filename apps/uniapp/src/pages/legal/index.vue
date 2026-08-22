@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onLoad } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { isMockMode } from "../../services/api";
+import { isMockMode } from "@/shared/api";
 import { wechatMiniprogramAuthSupported } from "../../platform";
-import { buildSupportPacket } from "../../utils/support-packet";
+import { buildSupportPacket } from "@/shared/utils";
 
 type LegalSection = "privacy" | "terms" | "ads" | "support" | "deletion";
 

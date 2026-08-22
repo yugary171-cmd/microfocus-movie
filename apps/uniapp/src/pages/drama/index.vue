@@ -5,9 +5,9 @@ import { onLoad, onShareAppMessage, onShow } from "@dcloudio/uni-app";
 import { nextTick, computed, ref } from "vue";
 import { createRewardedVideoAd } from "../../platform/ads";
 import RewardUnlockSheet from "../../components/reward-unlock-sheet/index.vue";
-import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
-import { dramaInLibraryPages, setDramaLibraryFlag } from "../../services/library";
-import { trackFunnelEvent } from "../../services/telemetry";
+import { ensureSession, getApi, getStoredSession, isMockMode } from "@/shared/api";
+import { dramaInLibraryPages, FAVORITE_TAB, setDramaLibraryFlag } from "@/features/library";
+import { trackFunnelEvent } from "@/services/telemetry";
 import {
   createRewardDependencies,
   describeRewardResult,
@@ -16,14 +16,10 @@ import {
   type PendingRewardConfirmation,
   type RewardFlowDependencies,
   type RewardResult
-} from "../../services/reward";
-import { getDeviceId } from "../../utils/device";
-import { canStartEpisode } from "../../utils/episode";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { episodeDurationsFromDrama, formatRewardUnlockCopy } from "../../utils/format";
-import { playerUrlFromEpisode } from "../../utils/player-navigation";
-import { buildDramaShareCard } from "../../utils/drama-share";
-import { FAVORITE_TAB } from "../../utils/inbox-view";
+} from "@/features/playback";
+import { getDeviceId, toFriendlyErrorMessage, episodeDurationsFromDrama, formatRewardUnlockCopy } from "@/shared/utils";
+import { canStartEpisode, playerUrlFromEpisode } from "@/features/playback";
+import { buildDramaShareCard } from "@/features/catalog";
 
 const isMock = isMockMode();
 const id = ref("");

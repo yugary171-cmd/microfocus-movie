@@ -1,7 +1,17 @@
 # 项目状态
 
-- 更新日期：2026-08-21
+- 更新日期：2026-08-22
 - 本文是实现进度的唯一说明；PRD、架构和 API 文档描述目标规则，不代表代码已经具备全部能力
+
+- 2026-08-22：启动管理端与 uni-app 的分阶段前端结构化重构。管理端新增 `app/features/shared/infrastructure` 导入边界，路由改由 `app/router.ts` 组织；公共组件、标签/格式化方法、分页/剪贴板 composables、规则常量和 12 个页面样式已通过兼容入口接入，剧目/审核/账号/审计列表开始使用 feature 常量和共享分页状态。uni-app 保留 `pages.json`、`pages/` 路由入口和 `platform/`，新增 shared API/constants/utils/styles 与 catalog/inbox/library/playback/profile feature 入口，页面引用已迁移。管理端 typecheck/build、uni-app typecheck/H5/微信小程序构建和 `git diff --check` 通过；未运行测试套件，管理端完整页面视觉验收仍受登录会话阻断。当前仍是兼容迁移阶段，旧 `views/components/services/utils` 实现尚未全部物理移动，后续需继续按业务域拆分页面逻辑并清理旧入口。
+
+- 2026-08-22：继续完成管理端第二阶段结构化迁移。12 个真实页面实现已进入语义化 `features/*/pages`，剧目/工作台专属组件进入对应 feature，公共 Element Plus 组件进入 `shared/components`；旧 `views/` 与 `components/` 仅保留兼容包装。测试文件、setup 和 fixtures 集中到 `apps/admin/tests/`，按 app/shared/features/policies/integration 分层，Vitest、Vite 与 TypeScript 别名同步更新。每个管理端业务域新增独立 API 文件，页面不再直接依赖 monolithic `adminApi`；底层 `src/api/admin.ts` 暂作为兼容 façade，后续可在不改变页面调用契约的情况下继续物理拆分 HTTP 实现。第二批重复动作提示、状态文案和账号错误映射已收口到 feature 常量/错误模块。管理端 typecheck/build 与 `git diff --check` 通过；测试套件和登录后的完整页面视觉验收仍未运行。
+
+- 2026-08-22：确认旧 `apps/admin/src/views/*.vue` 均为无业务逻辑的兼容包装，且仓库内已无旧路径引用，已移入 `旧内容/admin-views-legacy/` 归档；正式页面统一从 `features/*/pages` 加载。
+
+- 2026-08-22：调整管理端测试布局：页面测试与页面源码同目录，业务组件测试与组件源码同目录；API 集成、基础设施、policy、setup 和 fixtures 继续集中在 `apps/admin/tests/`，避免页面维护时在两个目录之间跳转。
+
+- 2026-08-22：进一步统一测试目录：页面和业务组件测试放入各自源码目录下的 `__tests__/`，例如 `features/accounts/pages/__tests__/AdminAccountsPage.test.ts`；集中测试边界保持不变。
 
 - 2026-08-21：剧目编辑页桌面双栏布局调整为左侧基础信息、右侧剧集与媒体及版权许可；版权模块位于剧集模块下方，窄屏恢复基础信息→剧集与媒体→版权与许可的单栏顺序。未改变编辑 API 或发布闸门。
 - 2026-08-21：海报与分集上传接入真实直传边界：剧目/推广海报使用 COS 短期预签名 PUT，服务端完成对象 HEAD 校验后登记 URL；分集使用腾讯云 VOD Web SDK 签名，上传完成后以 fileId + UploadSession 幂等登记 PROCESSING 媒体，READY 仍只由回调状态机推进。新增 promoCoverUrl、上传能力检查和配置/部署说明；发布闸门、VOD 播放签名和微信激励广告验证仍保持 fail-closed。contracts、Prisma 生成、API/admin typecheck/build 及本地 Mock 浏览器验收通过，Vitest 与真实 COS/VOD staging 未运行。
@@ -293,3 +303,5 @@
 - 2026-08-22：为系统通知工具栏增加独立的 `notification-toolbar` 布局类，显式固定左对齐和 8px 间距，避免通用 `.toolbar` 或旧网格样式把状态选择器推到右侧；本地开发服务重新加载后应硬刷新页面确认新 CSS 已生效。管理端 typecheck/build 通过，浏览器路由仍被本地 Mock 登录页阻断，Vitest 未运行。
 - 2026-08-19：新建/编辑剧目草稿的版权与许可改为选填；标签改为目录筛选项多选且至少 1 个。提交审核与发布仍须版权资料齐全。必填星号使用危险色。
 - 2026-08-19：剧目编辑把原分类改为剧目类型（真人/数字真人/漫剧，分别写入真人剧/AI 剧/漫剧）；标签改为分类弹窗+搜索；封面 URL 改为剧目海报，并增加选填推广海报。海报文件当时仅 Mock 本地预览；后续已补 COS Live 直传与完成确认。推广海报只存在管理端记录，观看端卡片仍只用 coverUrl。
+- 2026-08-22：管理端审核、审计、剧目列表与编辑、反馈、标签库、系统通知、账号管理和运营控制页面的状态、接口调用、筛选分页、上传、弹窗及事件处理按业务域迁入 `features/*/composables/use*Page.ts`；页面 SFC 主要保留模板组合、Element Plus 注册、列配置和纯展示计算。管理端 typecheck/build 与 `git diff --check` 通过，测试套件未运行；工作台与认证页仍保留较小的页面级逻辑，后续可按相同边界收口。
+- 2026-08-22：完成管理端长期维护型拆分阶段：工作台、登录、账号初始化页分别使用 feature composable；`apps/admin/src/api/admin.ts` 收缩为保留 `mode/baseUrl` 的兼容 façade，认证、工作台、账号、剧目、审核、标签、通知、反馈、审计和运营实现按领域迁入 `src/api/domains/`，上传 transport 独立到 `src/api/shared/upload.ts`。新增 façade 公共方法面测试文件但未运行测试套件；管理端 typecheck/build 与静态检查通过，uni-app、后端和 contracts 未修改。

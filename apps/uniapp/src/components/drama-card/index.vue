@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { publicDramaTags, type DramaCard, type HomeFilterOptions } from "@microfocus/contracts";
 import { computed, ref } from "vue";
-import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
-import { toFriendlyErrorMessage } from "../../utils/errors";
+import { resolveDirectPlaybackUrl } from "@/features/catalog";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 
 const props = defineProps<{
   drama?: DramaCard;

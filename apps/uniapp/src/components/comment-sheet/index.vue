@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { CommentView } from "@microfocus/contracts";
-import { ACTION_ICONS } from "../../constants/icons";
-import { getApi } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
+import { ACTION_ICONS } from "@/shared/constants";
+import { getApi } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 import {
   cloneLocalComments,
   type LocalComment

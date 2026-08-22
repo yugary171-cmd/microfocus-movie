@@ -1,5 +1,5 @@
 import { DramaStatus, isContentOperator, isOwnedContentRole, isRightsMaterialDigest, MediaStatus, type ReleaseGateStatus } from "@microfocus/contracts";
-import type { AdminUser, DramaRecord, ReviewItem } from "@/types/admin";
+import type { AdminUser, DramaRecord, ReviewItem } from "@/shared/types";
 
 export interface ActionDecision {
   allowed: boolean;

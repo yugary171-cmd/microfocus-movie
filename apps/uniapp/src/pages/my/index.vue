@@ -2,7 +2,7 @@
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { LIST_QUERY_MAX_LENGTH } from "@microfocus/contracts";
-import { NAV_ICONS } from "../../constants/icons";
+import { NAV_ICONS } from "@/shared/constants";
 import { wechatMiniprogramAuthSupported } from "../../platform";
 import {
   ensureSession,
@@ -10,12 +10,11 @@ import {
   getStoredSession,
   isMockMode,
   saveProfile
-} from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { getMockHistoryCards } from "../../mocks/history-state";
-import { loadFavoriteCards, loadLikedDramaCards } from "../../services/library";
-import { loadInboxItems } from "../../services/inbox";
-import { resolveHistoryPlayerUrl, toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
+} from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
+import { getMockHistoryCards } from "@/mocks/history-state";
+import { loadFavoriteCards, loadLikedDramaCards, resolveHistoryPlayerUrl, toHistoryCardViews, type HistoryCardView } from "@/features/library";
+import { loadInboxItems } from "@/features/inbox";
 import {
   cloneHistorySheetFilter,
   DEFAULT_HISTORY_SHEET_FILTER,
@@ -31,7 +30,7 @@ import {
   type HistoryFormatId,
   type HistorySheetFilter,
   type HistoryTimeId
-} from "../../utils/history-filter";
+} from "@/features/library";
 import {
   FAVORITE_TAB,
   INBOX_MOCK_LABEL,
@@ -42,7 +41,7 @@ import {
   cloneInboxItems,
   isFormatLibraryTab,
   parseLibraryGridTab
-} from "../../utils/inbox-view";
+} from "@/features/inbox";
 
 type UserView = { displayName: string; microfocusId: string; initial: string; avatarUrl: string };
 

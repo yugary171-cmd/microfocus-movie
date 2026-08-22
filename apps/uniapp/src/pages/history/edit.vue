@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { getApi, getStoredSession, isMockMode } from "../../services/api";
-import { loadFavoriteCards, loadLikedDramaCards, removeLibraryItems } from "../../services/library";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { toHistoryCardViews, type HistoryCardView } from "../../utils/history-view";
+import { getApi, getStoredSession, isMockMode } from "@/shared/api";
+import { loadFavoriteCards, loadLikedDramaCards, removeLibraryItems, toHistoryCardViews, type HistoryCardView } from "@/features/library";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 import {
   FAVORITE_TAB,
   HISTORY_TAB,
@@ -12,7 +11,7 @@ import {
   LIBRARY_EDIT_COPY,
   parseLibraryGridTab,
   type LibraryGridTab
-} from "../../utils/inbox-view";
+} from "@/features/library";
 
 const isMock = isMockMode();
 const libraryTab = ref<LibraryGridTab>(HISTORY_TAB);

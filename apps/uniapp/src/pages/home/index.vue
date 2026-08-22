@@ -3,12 +3,10 @@ import type { DramaCard, HomeFilterOptions } from "@microfocus/contracts";
 import { publicDramaTags } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { HOME_PRIMARY_CHANNELS, HOME_RECOMMEND_CHANNEL } from "../../constants/runtime";
-import { NAV_ICONS } from "../../constants/icons";
-import { getApi, isMockMode } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
-import { buildHomeChannels, searchCategoryParam } from "../../utils/home-channels";
+import { HOME_PRIMARY_CHANNELS, HOME_RECOMMEND_CHANNEL, NAV_ICONS } from "@/shared/constants";
+import { getApi, isMockMode } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
+import { buildHomeChannels, resolveDirectPlaybackUrl, searchCategoryParam } from "@/features/catalog";
 
 type PosterTone = "mist" | "rose" | "gold" | "jade" | "violet" | "night";
 type HomeDrama = {

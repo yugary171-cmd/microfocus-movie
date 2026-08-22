@@ -2,14 +2,14 @@
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
 import { wechatMiniprogramAuthSupported } from "../../platform";
-import { getStoredSession, loadProfile, saveProfile } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
+import { getStoredSession, loadProfile, saveProfile } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 import {
   formatMicrofocusId,
   GENDER_OPTIONS,
   genderDisplayLabel,
   type ProfileGender
-} from "../../utils/profile";
+} from "@/features/profile";
 
 const displayName = ref("");
 const avatarUrl = ref("");

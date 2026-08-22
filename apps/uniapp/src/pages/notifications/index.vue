@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { getApi } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
+import { getApi } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 
 const items = ref<Array<{ id: string; title: string; body: string; createdAt: string; readAt?: string | null }>>([]);
 const loading = ref(true);

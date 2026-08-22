@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { clearStoredSession } from "../../services/api";
+import { clearStoredSession } from "@/shared/api";
 
 function openProfile() {
   uni.navigateTo({ url: "/pages/profile/edit" });

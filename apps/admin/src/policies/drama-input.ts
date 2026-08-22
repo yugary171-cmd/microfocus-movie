@@ -22,7 +22,7 @@ import {
   normalizeDramaTypeCategory,
   resolveUploadContentType,
 } from "@microfocus/contracts";
-import type { DramaInput } from "@/types/admin";
+import type { DramaInput } from "@/shared/types";
 
 export function uploadFileNameError(fileName: string): string {
   if (isAllowedUploadFileName(fileName)) return "";

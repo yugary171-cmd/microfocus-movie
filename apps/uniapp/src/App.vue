@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onLaunch } from "@dcloudio/uni-app";
-import { isMockMode } from "./services/api";
+import { isMockMode } from "./shared/api";
 
 onLaunch(() => {
   if (!isMockMode()) return;
@@ -13,5 +13,5 @@ onLaunch(() => {
 </script>
 
 <style>
-@import "./uni.scss";
+@import "./shared/styles/index.scss";
 </style>

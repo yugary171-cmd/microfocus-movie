@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref, watch } from "vue";
-import { saveProfile, getStoredSession } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { boundNickname, canSaveNickname, clipNicknameInput, NICKNAME_MAX_LENGTH } from "../../utils/profile";
+import { saveProfile, getStoredSession } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
+import { boundNickname, canSaveNickname, clipNicknameInput, NICKNAME_MAX_LENGTH } from "@/features/profile";
 
 const original = ref("");
 const nickname = ref("");

@@ -2,16 +2,16 @@
 import { computed, nextTick, onMounted, reactive, ref } from "vue";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
-import { ACTION_ICONS, NAV_ICONS } from "../../constants/icons";
+import { ACTION_ICONS, NAV_ICONS } from "@/shared/constants";
 import { RUNTIME_CONFIG } from "../../config/runtime";
 import { getClientPlatform } from "../../platform/env";
-import { shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
+import { shareDramaText, shareIfExternallyAllowed } from "@/shared/utils";
 import {
   holdBoostRate,
   isCurrentTheaterVideoId,
   restoreHoldRate,
   theaterVideoId
-} from "../../utils/playback-gesture";
+} from "@/features/playback";
 
 type TheaterAction = "favorite" | "comment" | "like" | "share";
 type TheaterVideo = {

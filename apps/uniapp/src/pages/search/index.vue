@@ -2,11 +2,10 @@
 import { boundListQuery, LIST_QUERY_MAX_LENGTH, type CatalogResponse, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom, onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { SEARCH_PLACEHOLDER } from "../../constants/search";
-import { NAV_ICONS } from "../../constants/icons";
-import { getApi } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { pickGuessQueries } from "../../utils/search-discovery";
+import { NAV_ICONS, SEARCH_PLACEHOLDER } from "@/shared/constants";
+import { getApi } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
+import { pickGuessQueries } from "@/features/catalog";
 
 const query = ref("");
 const searchPlaceholder = ref(SEARCH_PLACEHOLDER);

@@ -1,13 +1,10 @@
 <script setup lang="ts">
-withDefaults(
-  defineProps<{
-    label: string;
-    tone?: "neutral" | "info" | "warning" | "success" | "danger";
-  }>(),
-  { tone: "neutral" },
-);
+import StatusBadge from "@/shared/components/StatusBadge.vue";
+
+defineOptions({ inheritAttrs: false });
 </script>
 
 <template>
-  <span class="status-badge" :class="`status-badge--${tone}`">{{ label }}</span>
+  <!-- @vue-ignore -->
+  <component :is="StatusBadge" v-bind="$attrs" />
 </template>

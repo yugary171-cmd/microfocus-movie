@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref, watch } from "vue";
-import { getStoredSession, saveProfile } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { boundSignature, canSaveSignature, SIGNATURE_MAX_LENGTH } from "../../utils/profile";
+import { getStoredSession, saveProfile } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
+import { boundSignature, canSaveSignature, SIGNATURE_MAX_LENGTH } from "@/features/profile";
 
 const original = ref("");
 const signature = ref("");

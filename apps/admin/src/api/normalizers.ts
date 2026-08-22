@@ -32,7 +32,7 @@ import type {
   ReviewItem,
   UploadSignature,
   PageResult,
-} from "@/types/admin";
+} from "@/shared/types";
 
 type UnknownRecord = Record<string, unknown>;
 

@@ -1,0 +1,115 @@
+.tag-library__notice {
+  margin: 0 0 var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.tag-library__groups {
+  display: grid;
+  gap: var(--space-4);
+}
+.tag-library__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+.tag-library__heading h2,
+.tag-library__heading p {
+  margin: 0;
+}
+.tag-library__heading h2 {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+.tag-library__heading p {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.tag-library__empty {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.tag-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tag-chip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.tag-chip {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: #344054;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.tag-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.tag-chip--active {
+  border-color: #c9d7ee;
+  background: #eef4ff;
+  color: var(--color-primary);
+  font-weight: 650;
+}
+.tag-chip--archived {
+  color: var(--color-muted);
+  background: var(--color-surface-soft);
+}
+.tag-chip__remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-muted);
+  transform: translate(4px, -4px);
+  opacity: 0;
+  pointer-events: none;
+}
+.tag-chip-wrap:hover .tag-chip__remove,
+.tag-chip-wrap:focus-within .tag-chip__remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tag-chip__remove:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.tag-library__choices {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.tag-library__choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 12px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

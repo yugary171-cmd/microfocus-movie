@@ -2,9 +2,9 @@
 import type { DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { getApi, isMockMode } from "../../services/api";
-import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
-import { toFriendlyErrorMessage } from "../../utils/errors";
+import { getApi, isMockMode } from "@/shared/api";
+import { resolveDirectPlaybackUrl } from "@/features/catalog";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 
 const NEW_DRAMA_WINDOW_DAYS = 20;
 const publishedAfter = new Date(Date.now() - NEW_DRAMA_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();

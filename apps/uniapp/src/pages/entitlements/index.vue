@@ -2,8 +2,8 @@
 import type { EntitlementGrantView, EntitlementSummary } from "@microfocus/contracts";
 import { onLoad, onPullDownRefresh } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { getApi, isMockMode } from "../../services/api";
-import { toFriendlyErrorMessage } from "../../utils/errors";
+import { getApi, isMockMode } from "@/shared/api";
+import { toFriendlyErrorMessage } from "@/shared/utils";
 import {
   ENTITLEMENT_INCOMPLETE_AD_LABEL,
   ENTITLEMENT_SCOPE_LABEL,
@@ -12,7 +12,7 @@ import {
   formatDateTime,
   formatRemainingTime,
   formatRewardUnlockCopy
-} from "../../utils/format";
+} from "@/shared/utils";
 
 interface GrantView extends EntitlementGrantView {
   sourceLabel: string;

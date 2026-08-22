@@ -62,7 +62,7 @@ import type {
   AdminNotificationRecord,
   AdminFeedbackRecord,
   FeedbackStatus,
-} from "@/types/admin";
+} from "@/shared/types";
 import { isRightsActive } from "@/policies/admin";
 import { dramaDraftError } from "@/policies/drama-input";
 

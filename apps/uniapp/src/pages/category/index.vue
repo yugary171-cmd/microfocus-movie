@@ -2,17 +2,17 @@
 import { SEARCH_PAGE_SIZE, publicDramaTags, type DramaCard } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { getApi } from "../../services/api";
-import { NAV_ICONS } from "../../constants/icons";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
+import { getApi } from "@/shared/api";
+import { NAV_ICONS } from "@/shared/constants";
+import { toFriendlyErrorMessage } from "@/shared/utils";
+import { resolveDirectPlaybackUrl } from "@/features/catalog";
 import {
   DEFAULT_DISCOVER_FILTERS,
   rankingHeatLabel,
   sortDiscoverItems,
   visibleDiscoverSections,
   type DiscoverFilterKey
-} from "../../utils/discover";
+} from "@/features/catalog";
 
 const results = ref<DramaCard[]>([]);
 const page = ref(1);

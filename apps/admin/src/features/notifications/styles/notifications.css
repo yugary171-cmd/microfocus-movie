@@ -1,0 +1,224 @@
+.notice-panel {
+  min-width: 0;
+}
+.nowrap { white-space: nowrap; }
+.notice-panel > .notification-toolbar {
+  margin-bottom: var(--space-2);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.drawer-description {
+  margin: 0 0 var(--space-4);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.field span {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.field > .admin-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.field--body .admin-input :deep(.el-textarea__inner) {
+  min-height: 360px;
+}
+.notification-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+.toolbar__new {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.notification-toolbar > .toolbar__search {
+  flex: 0 0 390px;
+  width: 390px;
+  min-width: 0;
+}
+.notification-status-select {
+  flex: 0 0 180px;
+  width: 180px;
+}
+@media (max-width: 760px) {
+  .notification-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .toolbar__new,
+  .notification-toolbar > .toolbar__search,
+  .notification-status-select {
+    flex-basis: auto;
+    width: 100%;
+  }
+}
+.notice-list {
+  margin-top: 0;
+  min-width: 0;
+}
+.actions {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+.actions .el-button {
+  padding: 0;
+}
+.actions__divider {
+  padding: 0 8px;
+  color: var(--sls-normal-color-7);
+  font-size: 12px;
+  font-weight: 500;
+}
+.notification-cell {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+.notification-cell__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notification-copy {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: color var(--transition), background var(--transition), opacity var(--transition);
+}
+.notification-copy :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+.notification-cell:hover .notification-copy,
+.notification-copy:focus-visible {
+  opacity: 1;
+  visibility: visible;
+}
+.notification-copy:hover {
+  background: rgba(41, 82, 204, 0.08);
+  color: var(--primary-color);
+}
+.notification-copy:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 1px;
+}
+.notice-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notice-publisher,
+.notice-status {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.operation-message {
+  margin-bottom: 12px;
+  color: var(--color-success);
+}
+.operation-message--error {
+  color: var(--color-danger);
+}
+.notice-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 0 0 28px;
+}
+.notice-meta div {
+  min-width: 0;
+}
+.notice-meta dt,
+.notice-body > span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.notice-meta dd {
+  margin: 4px 0 0;
+}
+.notice-body {
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+.notice-body p {
+  margin: 12px 0 0;
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+.el-drawer :deep(.el-drawer__body) {
+  padding: 24px;
+}
+.el-drawer :deep(.el-drawer__footer) {
+  padding: 16px 24px;
+}
+:global(.el-message.copy-success-message) {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: 120px;
+  height: 41px;
+  min-height: 41px;
+  box-sizing: border-box;
+  margin-top: 12px;
+  overflow: hidden;
+  padding: 0 8px 0 12px;
+  border: 1px solid #c9cdd3;
+  border-left: 7px solid #009b45;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
+  color: #242933;
+  font-size: 12px;
+  font-weight: 400;
+}
+:global(.el-message.copy-success-message .el-message__icon) {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  color: #009b45;
+  font-size: 18px;
+}
+:global(.el-message.copy-success-message .el-message__content) {
+  min-width: 0;
+  overflow: hidden;
+  color: #242933;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .toolbar__new,
+  .toolbar__search,
+  .notification-status-select {
+    width: 100%;
+  }
+  :global(.el-drawer) {
+    width: 100% !important;
+  }
+}

@@ -1,6 +1,6 @@
 import { AdminRole, API_ROUTES } from "@microfocus/contracts";
 import type { ApiError, ApiSuccess } from "@microfocus/contracts";
-import type { AdminUser } from "@/types/admin";
+import type { AdminUser } from "@/shared/types";
 import { isAdminSessionInvalidCode } from "./account-errors";
 
 const SESSION_TOKEN_KEY = "microfocus.admin.access-token";

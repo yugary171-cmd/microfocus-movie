@@ -2,17 +2,17 @@
 import type { DramaCard, HomeFilterOptions } from "@microfocus/contracts";
 import { onLoad, onReachBottom } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { getApi } from "../../services/api";
-import { NAV_ICONS } from "../../constants/icons";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { resolveDirectPlaybackUrl } from "../../utils/direct-playback";
+import { getApi } from "@/shared/api";
+import { NAV_ICONS } from "@/shared/constants";
+import { toFriendlyErrorMessage } from "@/shared/utils";
+import { resolveDirectPlaybackUrl } from "@/features/catalog";
 import {
   RANKING_TABS,
   RANKING_TYPES,
   rankingHeatLabel,
   rankingUpdatedCopy,
   sortRankingItems
-} from "../../utils/discover";
+} from "@/features/catalog";
 
 const emptyFilters = { subject: "", setting: "", background: "" };
 const tabs = RANKING_TABS;

@@ -6,14 +6,14 @@ import { createRewardedVideoAd } from "../../platform/ads";
 import CommentSheet from "../../components/comment-sheet/index.vue";
 import PlayerActions from "../../components/player-actions/index.vue";
 import RewardUnlockSheet from "../../components/reward-unlock-sheet/index.vue";
-import { ACTION_ICONS } from "../../constants/icons";
+import { ACTION_ICONS } from "@/shared/constants";
 import {
   createVideoContext,
   getNetworkType,
   offNetworkStatusChange,
   onNetworkStatusChange
 } from "../../platform/media";
-import { ensureSession, getApi, getStoredSession, isMockMode } from "../../services/api";
+import { ensureSession, getApi, getStoredSession, isMockMode } from "@/shared/api";
 import {
   createRewardDependencies,
   describeRewardResult,
@@ -22,18 +22,10 @@ import {
   type PendingRewardConfirmation,
   type RewardFlowDependencies,
   type RewardResult
-} from "../../services/reward";
-import { dramaInLibraryPages, setDramaLibraryFlag } from "../../services/library";
-import { restoreOrCreatePlaybackLease } from "../../services/playback-session";
-import { PlaybackHeartbeatController } from "../../services/playback-controller";
-import { getDeviceId } from "../../utils/device";
-import { toFriendlyErrorMessage } from "../../utils/errors";
-import { episodeDurationsFromDrama, formatApproximateRemainingEpisodes } from "../../utils/format";
-import { canStartEpisode } from "../../utils/episode";
-import { getAdjacentEpisode } from "../../utils/episode-feed";
-import { formatEngagementCount, shareDramaText, shareIfExternallyAllowed } from "../../utils/engagement";
-import { FAVORITE_TAB, LIKE_TAB } from "../../utils/inbox-view";
-import { holdBoostRate, restoreHoldRate } from "../../utils/playback-gesture";
+} from "@/features/playback";
+import { dramaInLibraryPages, FAVORITE_TAB, LIKE_TAB, setDramaLibraryFlag } from "@/features/library";
+import { getDeviceId, toFriendlyErrorMessage, episodeDurationsFromDrama, formatApproximateRemainingEpisodes, formatEngagementCount, shareDramaText, shareIfExternallyAllowed } from "@/shared/utils";
+import { canStartEpisode, getAdjacentEpisode, holdBoostRate, restoreHoldRate, PlaybackHeartbeatController, restoreOrCreatePlaybackLease } from "@/features/playback";
 
 const isMock = isMockMode();
 const dramaId = ref("");

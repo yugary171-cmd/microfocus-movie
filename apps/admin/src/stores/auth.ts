@@ -1,9 +1,9 @@
 import { AdminRole } from "@microfocus/contracts";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { adminApi } from "@/api/admin";
+import { authApi } from "@/features/auth/api";
 import { clearSessionToken, getSessionUser, setSessionToken, setSessionUser } from "@/api/client";
-import type { AdminUser } from "@/types/admin";
+import type { AdminUser } from "@/shared/types";
 
 const SESSION_USER_KEY = "microfocus.admin.user";
 
@@ -13,12 +13,12 @@ function readUser(): AdminUser | null {
 
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<AdminUser | null>(readUser());
-  const isAuthenticated = computed(() => Boolean(user.value && adminApi.hasSession()));
+  const isAuthenticated = computed(() => Boolean(user.value && authApi.hasSession()));
   let restorePromise: Promise<void> | null = null;
   let restored = false;
 
   async function login(email: string, password: string, otp: string, role: AdminRole): Promise<void> {
-    const session = await adminApi.login(email, password, otp, role);
+    const session = await authApi.login(email, password, otp, role);
     setSessionToken(session.accessToken);
     setSessionUser(session.user);
     user.value = session.user;
@@ -30,9 +30,9 @@ export const useAuthStore = defineStore("auth", () => {
     if (restorePromise) return restorePromise;
     restorePromise = (async () => {
       restored = true;
-      if (adminApi.mode === "mock") return;
+      if (authApi.mode === "mock") return;
       try {
-        const session = await adminApi.refresh();
+        const session = await authApi.refresh();
         setSessionToken(session.accessToken);
         setSessionUser(session.user);
         user.value = session.user;
@@ -51,7 +51,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function logout(): Promise<void> {
     try {
-      await adminApi.logout();
+      await authApi.logout();
     } finally {
       clearSessionToken();
       sessionStorage.removeItem(SESSION_USER_KEY);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ACTION_ICONS } from "../../constants/icons";
+import { ACTION_ICONS } from "@/shared/constants";
 
 defineProps<{
   favorited?: boolean;
