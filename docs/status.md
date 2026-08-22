@@ -3,6 +3,8 @@
 - 更新日期：2026-08-22
 - 本文是实现进度的唯一说明；PRD、架构和 API 文档描述目标规则，不代表代码已经具备全部能力
 
+- 2026-08-22：继续按业务域收口 Web 管理端结构：`api/mock.ts` 与 `api/normalizers.ts` 保留兼容 façade，内部分别拆为 Mock 状态/存储/fixtures/helpers/领域实现和 primitives/领域 normalizer；剧目编辑页拆为元数据、海报、版权组件及状态/数据/上传/动作 composables；运营控制拆为五类操作面板和对应 composables；账号页拆为筛选栏、表格、操作菜单、账号弹窗、开通链接弹窗；通知页拆为工具栏、表格、编辑抽屉和查看抽屉。保持现有路由、API 方法签名、Mock/Live 闸门、权限和业务语义。管理端 typecheck/build 与 `git diff HEAD --check` 通过；测试套件和已登录浏览器视觉验收未运行。
+
 - 2026-08-22：继续收口 Web 管理端全局样式边界：基础 reset/排版迁移到 `styles/base.scss`，跨页面公共业务原语迁移到 `styles/shared.scss`，Element Plus 控件覆盖迁移到 `styles/element-plus-overrides.scss`；`tokens.css` 继续作为运行时 CSS Variables 入口，`shared/styles/index.scss` 负责组织全局 SCSS。旧 `global.css` 和共享样式 CSS 入口已移入 `旧内容/admin-styles-legacy/`，未删除。管理端 typecheck/build 通过，测试和登录后的视觉验收未运行。
 
 - 2026-08-22：Web 管理端局部样式改为语义化 CSS Modules：业务页面、AppShell、共享分页/搜索/表格/状态/弹窗组件及剧目详情相关组件使用 `*.module.scss`，模板通过 `$style` 绑定；全局 tokens、reset、Element Plus 覆盖和通用控件规则继续保留在全局样式。加入 admin `sass` 依赖，旧业务 CSS 通过重命名迁移而非删除，页面测试改用语义查询、ARIA 或 `data-testid`。admin typecheck/build 与 `git diff --check` 通过；未运行测试套件，登录后的桌面/390px 视觉验收仍待完成。
