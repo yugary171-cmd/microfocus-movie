@@ -26,17 +26,17 @@ withDefaults(
     columns: AdminTableColumn[];
     actionWidth?: string | number;
     actionLabel?: string;
-    tableClass?: string;
+    tableClass?: string | undefined;
   }>(),
   { actionWidth: 230, actionLabel: "操作" },
 );
 </script>
 
 <template>
-  <div :class="['admin-table-wrap', tableClass]">
+  <div data-testid="admin-table-wrap" :class="[$style['admin-table-wrap'], tableClass]">
     <el-table
       :data="rows"
-      class="admin-table"
+      :class="$style['admin-table']"
       table-layout="fixed"
       fit
       width="100%"
@@ -64,7 +64,7 @@ withDefaults(
         :width="actionWidth"
       >
         <template #default="{ row }">
-          <div class="admin-table__actions">
+          <div data-testid="admin-table-actions" :class="$style['admin-table__actions']">
             <slot name="actions" :row="row" />
           </div>
         </template>
@@ -73,55 +73,4 @@ withDefaults(
   </div>
 </template>
 
-<style scoped>
-.admin-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  background: #fff;
-}
-.admin-table {
-  min-width: 100%;
-  --el-table-header-bg-color: var(--table-head-bg-color);
-  --el-table-text-color: var(--text-color);
-  --el-table-header-text-color: var(--text-color);
-  --el-table-border-color: var(--color-border);
-  --el-table-row-hover-bg-color: var(--table-head-bg-color);
-}
-.admin-table :deep(.el-table__cell) {
-  padding: 10px 12px;
-  border-right: 0;
-  color: var(--text-color);
-  font-size: 12px;
-  font-weight: 500;
-}
-.admin-table :deep(.el-table__header-wrapper th) {
-  color: var(--text-color);
-  background: var(--table-head-bg-color);
-  font-size: 12px;
-  font-weight: 500;
-}
-.admin-table :deep(.el-table__inner-wrapper::before),
-.admin-table :deep(.el-table__fixed-right::before) {
-  display: none;
-}
-.admin-table :deep(.el-table__fixed-right) {
-  box-shadow: none;
-}
-.admin-table :deep(.el-table__fixed-right .el-table__cell) {
-  background: #fff;
-}
-.admin-table :deep(.el-table__fixed-right .el-table__header-wrapper th) {
-  background: var(--table-head-bg-color);
-}
-.admin-table :deep(.el-table__fixed-right .el-table__body tr:hover > td) {
-  background: var(--table-head-bg-color);
-}
-.admin-table :deep(.el-table__body tr:last-child td) {
-  border-bottom: 0;
-}
-.admin-table__actions {
-  display: flex;
-  gap: var(--space-2);
-  white-space: nowrap;
-}
-</style>
+<style module lang="scss" src="./AdminTable.module.scss"></style>

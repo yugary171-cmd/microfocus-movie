@@ -189,32 +189,32 @@ onUnmounted(() => {
       </div>
       <el-button class="button button--secondary" native-type="button" @click="openDrawer">管理剧集</el-button>
     </div>
-    <div v-if="dramasApi.mode === 'mock'" class="upload-mode" role="status">
+    <div v-if="dramasApi.mode === 'mock'" :class="$style['upload-mode']" role="status">
       <strong>模拟直传</strong> 进度和处理状态仅用于演示，不代表云端已收到或完成转码。
     </div>
-    <div v-else-if="props.uploadReady !== false" class="upload-mode" role="status">
+    <div v-else-if="props.uploadReady !== false" :class="$style['upload-mode']" role="status">
       <strong>真实直传</strong> 文件由浏览器直传腾讯云 VOD，处理和审核状态由回调更新。
     </div>
-    <div v-else class="upload-mode upload-mode--blocked" role="alert">
+    <div v-else :class="[$style['upload-mode'], $style['upload-mode--blocked']]" role="alert">
       <strong>真实上传未配置</strong> {{ props.uploadReason || "腾讯云 VOD 上传能力尚未配置" }}
     </div>
-    <p class="episode-summary">{{ summaryText }}</p>
+    <p :class="$style['episode-summary']">{{ summaryText }}</p>
   </section>
 
-  <div v-if="drawerOpen" class="episode-drawer-backdrop" @click.self="requestClose" />
+  <div v-if="drawerOpen" :class="$style['episode-drawer-backdrop']" @click.self="requestClose" />
   <aside
     v-if="drawerOpen"
-    class="episode-drawer"
+    :class="$style['episode-drawer']"
     role="dialog"
     aria-modal="true"
     aria-labelledby="episode-drawer-title"
   >
-    <div class="episode-drawer__header">
+    <div :class="$style['episode-drawer__header']">
       <div>
         <h2 id="episode-drawer-title">管理剧集</h2>
         <p>{{ summaryText }}，最多 {{ DRAMA_EPISODE_MAX_COUNT }} 集。</p>
       </div>
-      <div class="episode-drawer__actions">
+      <div :class="$style['episode-drawer__actions']">
         <el-button
           v-if="!readonly"
           class="button button--secondary"
@@ -229,13 +229,13 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-    <div v-if="sortedEpisodes.length === 0" class="episode-empty" role="status">
+    <div v-if="sortedEpisodes.length === 0" :class="$style['episode-empty']" role="status">
       <Icon name="add" />
       <strong>尚未添加剧集</strong>
       <small>{{ readonly ? "当前没有可查看的剧集。" : "添加后可填写标题、时长并选择视频文件。" }}</small>
     </div>
-    <div v-else class="episode-table-wrap table-wrap table-wrap--sticky-actions">
-      <table class="episode-table">
+    <div v-else :class="[$style['episode-table-wrap'], 'table-wrap', 'table-wrap--sticky-actions']">
+      <table :class="$style['episode-table']">
         <thead>
           <tr>
             <th>集数</th>
@@ -247,10 +247,10 @@ onUnmounted(() => {
         </thead>
         <tbody>
           <tr v-for="episode in sortedEpisodes" :key="episode.id">
-            <td class="episode-number-cell">{{ String(episode.episodeNumber).padStart(2, "0") }}</td>
+            <td :class="$style['episode-number-cell']">{{ String(episode.episodeNumber).padStart(2, "0") }}</td>
             <td>
               <el-input
-                class="admin-input episode-title-input"
+                :class="['admin-input', $style['episode-title-input']]"
                 type="text"
                 :value="episode.title"
                 :disabled="readonly"
@@ -259,10 +259,10 @@ onUnmounted(() => {
                 @input="update(episode.id, { title: ($event.target as HTMLInputElement).value })"
               />
             </td>
-            <td class="episode-duration-cell">
-              <div class="episode-duration">
+            <td :class="$style['episode-duration-cell']">
+              <div :class="$style['episode-duration']">
                 <el-input
-                  class="admin-input episode-duration-input"
+                  :class="['admin-input', $style['episode-duration-input']]"
                   :value="episode.durationSeconds || ''"
                   :disabled="readonly"
                   type="number"
@@ -275,19 +275,19 @@ onUnmounted(() => {
                 <span>{{ formatDuration(episode.durationSeconds) }}</span>
               </div>
             </td>
-            <td class="episode-status-cell">
+            <td :class="$style['episode-status-cell']">
               <StatusBadge :label="mediaStatusLabels[episode.mediaStatus]" :tone="statusTone(episode.mediaStatus)" />
               <template v-if="uploads[episode.id]">
                 <div
                   v-if="uploads[episode.id]?.state === 'uploading' || uploads[episode.id]?.state === 'signing'"
-                  class="upload-progress"
+                  :class="$style['upload-progress']"
                   role="status"
                   aria-live="polite"
                 >
                   <span><i :style="{ width: `${uploads[episode.id]?.progress ?? 0}%` }" /></span>
                   <small>{{ uploads[episode.id]?.state === "signing" ? "正在获取签名…" : `上传 ${uploads[episode.id]?.progress ?? 0}%` }}</small>
                 </div>
-                <div v-else-if="uploads[episode.id]?.state === 'success'" class="upload-success" role="status">
+                <div v-else-if="uploads[episode.id]?.state === 'success'" :class="$style['upload-success']" role="status">
                   <span>{{ dramasApi.mode === "mock" ? "已完成模拟直传，等待媒体处理" : "已上传，等待媒体处理" }}</span>
                   <button
                     v-if="dramasApi.mode === 'mock' && episode.mediaStatus !== MediaStatus.READY"
@@ -298,7 +298,7 @@ onUnmounted(() => {
                     模拟处理完成并通过审核
                   </button>
                 </div>
-                <div v-else-if="uploads[episode.id]?.state === 'error'" class="upload-error" role="alert">
+                <div v-else-if="uploads[episode.id]?.state === 'error'" :class="$style['upload-error']" role="alert">
                   <span>{{ uploads[episode.id]?.error }}</span>
                   <button class="link" type="button" @click="startUpload(episode)">重试上传</button>
                 </div>
@@ -306,7 +306,7 @@ onUnmounted(() => {
             </td>
             <td v-if="!readonly">
               <div class="table-actions">
-                <label class="button button--secondary button--small upload-button">
+                <label :class="['button', 'button--secondary', 'button--small', $style['upload-button']]">
                   选择视频
                   <input type="file" :accept="UPLOAD_FILE_ACCEPT" @change="chooseFile(episode, $event)" />
                 </label>
@@ -337,105 +337,4 @@ onUnmounted(() => {
   />
 </template>
 
-<style scoped>
-.panel__header p:last-child { margin: var(--space-1) 0 0; color: var(--color-muted); font-size: 12px; }
-.upload-mode { margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid #f1d18e; border-radius: 8px; color: #71450a; background: #fff8e8; font-size: 12px; }
-.upload-mode--blocked { border-color: #f0c0c8; color: var(--color-danger); background: var(--color-danger-soft); }
-.episode-summary { margin: 0; color: var(--color-muted); font-size: 12px; font-weight: 400; }
-.episode-drawer-backdrop {
-  position: fixed;
-  z-index: 90;
-  inset: 0;
-  background: rgba(13, 21, 35, 0.42);
-}
-.episode-drawer {
-  position: fixed;
-  z-index: 91;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  width: max(50vw, 720px);
-  max-width: 100vw;
-  flex-direction: column;
-  background: #fff;
-  box-shadow: var(--shadow-md);
-}
-.episode-drawer__header {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-}
-.episode-drawer__header h2 { margin-bottom: var(--space-1); }
-.episode-drawer__header p { margin: 0; color: var(--color-muted); font-size: 12px; }
-.episode-drawer__actions { display: flex; align-items: center; gap: var(--space-2); }
-.episode-empty {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  margin: var(--space-4);
-  border: 1px dashed #cbd4e0;
-  border-radius: 10px;
-  color: var(--color-muted);
-  background: #fafbfd;
-}
-.episode-empty :deep(.app-icon) { margin-bottom: var(--space-2); }
-.episode-table-wrap {
-  flex: 1;
-  min-height: 0;
-  margin: var(--space-4);
-  overflow: auto;
-}
-.episode-table { min-width: 720px; }
-.episode-table th,
-.episode-table td {
-  padding: var(--space-1) var(--space-2);
-  vertical-align: middle;
-}
-.episode-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-}
-.episode-table-wrap.table-wrap--sticky-actions thead th:last-child { z-index: 5; }
-.episode-number-cell { width: 48px; color: var(--color-primary); font-weight: 800; }
-.episode-title-input { min-width: 120px; }
-.episode-duration-cell { width: 148px; }
-.episode-duration {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.episode-duration-input {
-  width: 80px;
-  flex: 0 0 80px;
-  min-width: 80px;
-}
-.episode-duration span {
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 400;
-  white-space: nowrap;
-}
-.episode-status-cell { min-width: 148px; }
-.episode-table input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(41, 82, 204, 0.12); }
-.upload-button { position: relative; overflow: hidden; cursor: pointer; }
-.upload-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.upload-progress { display: flex; width: 100%; flex-direction: column; gap: var(--space-1); margin-top: var(--space-1); }
-.upload-progress > span { display: block; width: 100%; height: 4px; overflow: hidden; border-radius: 99px; background: #e7ebf0; }
-.upload-progress i { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); transition: width .15s ease; }
-.upload-success, .upload-error { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-1); font-size: 12px; font-weight: 400; }
-.upload-success { color: var(--color-success); }
-.upload-error { color: var(--color-danger); }
-.upload-error .link, .upload-success .link { width: fit-content; font-size: 12px; }
-@media (max-width: 720px) {
-  .episode-drawer { width: 100vw; min-width: 0; }
-}
-</style>
+<style module lang="scss" src="./EpisodeTable.module.scss"></style>

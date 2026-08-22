@@ -1,7 +1,7 @@
 .audit-toolbar { align-items: center; gap: var(--space-2); }
 .audit-toolbar__search { flex: 0 1 var(--admin-list-search-width); width: var(--admin-list-search-width); min-width: 0; }
 .nowrap { white-space: nowrap; }
-.audit-table :deep(.el-table) { min-width: 1400px; }
+.audit-table :global(.el-table) { min-width: 1400px; }
 code { padding: var(--space-1) var(--space-2); border-radius: 5px; color: #445269; background: #f1f3f6; font-size: 12px; }
 .audit-context { display: block; margin-top: 3px; color: var(--color-muted); line-height: 1.4; }
 @media (max-width: 760px) {

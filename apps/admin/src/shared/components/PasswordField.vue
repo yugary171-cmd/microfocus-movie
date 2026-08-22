@@ -24,7 +24,7 @@ const visible = ref(false);
 </script>
 
 <template>
-  <div class="password-field">
+  <div :class="$style['password-field']">
     <el-input
       v-model="model"
       class="admin-input"
@@ -35,7 +35,7 @@ const visible = ref(false);
       :required="required"
     />
     <button
-      class="icon-button password-toggle"
+      :class="['icon-button', $style['password-toggle']]"
       type="button"
       :aria-pressed="visible"
       :aria-label="visible ? '隐藏密码' : '显示密码'"
@@ -45,3 +45,4 @@ const visible = ref(false);
     </button>
   </div>
 </template>
+<style module lang="scss" src="./PasswordField.module.scss"></style>

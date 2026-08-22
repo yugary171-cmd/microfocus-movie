@@ -42,11 +42,11 @@ describe("TagLibraryPage", () => {
     expect(wrapper.text()).toContain("维护启用词");
     expect(wrapper.text()).toContain("1 启用");
     expect(wrapper.text()).toContain("1 停用");
-    expect(wrapper.findAll(".tag-chip__remove")).toHaveLength(2);
-    const urban = wrapper.findAll(".tag-chip").find((chip) => chip.text() === "都市");
-    const audience = wrapper.findAll(".tag-chip").find((chip) => chip.text() === "男频");
-    expect(urban?.classes()).toContain("tag-chip--active");
-    expect(audience?.classes()).toContain("tag-chip--archived");
+    expect(wrapper.findAll('button[aria-label^="处理"]')).toHaveLength(2);
+    const urban = wrapper.findAll("button").find((chip) => chip.text() === "都市");
+    const audience = wrapper.findAll("button").find((chip) => chip.text() === "男频");
+    expect(urban?.attributes("aria-pressed")).toBe("true");
+    expect(audience?.attributes("aria-pressed")).toBe("false");
     await audience?.trigger("click");
     await flushPromises();
     expect(document.body.textContent).toContain("启用标签");
@@ -67,7 +67,7 @@ describe("TagLibraryPage", () => {
     });
     const wrapper = mount(TagLibraryPage, { attachTo: document.body });
     await flushPromises();
-    await wrapper.get(".tag-chip__remove").trigger("click");
+    await wrapper.get('button[aria-label^="处理"]').trigger("click");
     await flushPromises();
     expect(getCatalogTag).toHaveBeenCalledWith("1");
     expect(document.body.textContent).toContain("标签使用中");

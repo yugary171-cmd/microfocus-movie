@@ -165,11 +165,11 @@ describe("EpisodeTable Mock upload path", () => {
     });
 
     expect(wrapper.text()).toContain("已添加 1 集");
-    expect(wrapper.find(".episode-table").exists()).toBe(false);
+    expect(wrapper.find("table").exists()).toBe(false);
 
     await openDrawer(wrapper);
 
-    expect(wrapper.find(".episode-table").exists()).toBe(true);
+    expect(wrapper.find("table").exists()).toBe(true);
     expect(wrapper.get('[role="dialog"]').text()).toContain("管理剧集");
     wrapper.unmount();
   });

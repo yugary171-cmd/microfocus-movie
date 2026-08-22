@@ -1,0 +1,11 @@
+.gate-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.gate-checks li { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border-radius: 9px; background: var(--color-surface-soft); }
+.gate-checks__mark { display: grid; width: 27px; height: 27px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: var(--color-danger); background: var(--color-danger-soft); font-weight: 800; }
+.gate-checks__mark.is-ready { color: var(--color-success); background: var(--color-success-soft); }
+.gate-checks li > span:last-child { display: flex; flex-direction: column; }
+.gate-blockers { margin-top: var(--space-3); padding: var(--space-2) var(--space-3); border-left: 3px solid var(--color-danger); border-radius: 6px; color: #7a2736; background: var(--color-danger-soft); }
+.gate-blockers ul { margin: var(--space-1) 0 0; padding-left: var(--space-4); }
+
+@media (max-width: 640px) {
+  .gate-checks { grid-template-columns: 1fr; }
+}

@@ -65,10 +65,10 @@ const {
   <div>
     <header class="page-header">
       <div>
-        <RouterLink class="back-link" to="/dramas">← 返回剧目列表</RouterLink>
+        <RouterLink :class="$style['back-link']" to="/dramas">← 返回剧目列表</RouterLink>
         <p class="eyebrow">{{ isNew ? "NEW CONTENT" : "CONTENT DETAIL" }}</p>
         <h1>{{ isNew ? "新建剧目" : drama?.title || "剧目详情" }}</h1>
-        <div v-if="drama" class="title-meta">
+        <div v-if="drama" :class="$style['title-meta']">
           <StatusBadge
             :label="dramaStatusLabels[drama.status]"
             :tone="
@@ -120,30 +120,30 @@ const {
     <template v-else>
       <div
         v-if="error"
-        class="inline-message inline-message--error"
+        :class="[$style['inline-message'], $style['inline-message--error']]"
         role="alert"
       >
         {{ error }}
       </div>
       <div
         v-if="notice"
-        class="inline-message inline-message--success"
+        :class="[$style['inline-message'], $style['inline-message--success']]"
         role="status"
       >
         {{ notice }}
       </div>
-      <div v-if="readonlyReason" class="inline-message" role="status">
+      <div v-if="readonlyReason" :class="$style['inline-message']" role="status">
         {{ readonlyReason }}
       </div>
       <div
         v-else-if="dramasApi.mode === 'live' && !isNew"
-        class="inline-message"
+        :class="$style['inline-message']"
         role="status"
       >
         当前 API
         仅支持更新既有剧目的元数据与新增版权版本；分集标题、时长和媒体保持只读。
       </div>
-      <div class="editor-grid" @input="inputChanged" @change="inputChanged">
+      <div :class="$style['editor-grid']" @input="inputChanged" @change="inputChanged">
         <section class="panel" aria-labelledby="metadata-title">
           <div class="panel__header">
             <div>
@@ -160,12 +160,12 @@ const {
                 :maxlength="DRAMA_TITLE_MAX_LENGTH"
                 required
             /></label>
-            <fieldset class="field drama-type" :disabled="!canEdit">
+            <fieldset :class="['field', $style['drama-type']]" :disabled="!canEdit">
               <legend>
                 剧目类型 <span class="required-mark" aria-hidden="true">*</span>
               </legend>
               <div
-                class="drama-type__options"
+                :class="$style['drama-type__options']"
                 role="radiogroup"
                 aria-label="剧目类型"
               >
@@ -182,21 +182,16 @@ const {
                   {{ option.label }}
                 </label>
               </div>
-              <div class="drama-type__hints" aria-live="polite">
+              <div :class="$style['drama-type__hints']" aria-live="polite">
                 <small
-                  class="drama-type__hint"
-                  :class="{ 'is-active': !selectedDramaType }"
+                  :class="[$style['drama-type__hint'], !selectedDramaType ? $style['is-active'] : '']"
                   :aria-hidden="Boolean(selectedDramaType)"
                   >请选择真人、数字真人或漫剧。</small
                 >
                 <small
                   v-for="option in DRAMA_TYPE_OPTIONS"
                   :key="option.category"
-                  class="drama-type__hint"
-                  :class="{
-                    'is-active':
-                      selectedDramaType?.category === option.category,
-                  }"
+                  :class="[$style['drama-type__hint'], selectedDramaType?.category === option.category ? $style['is-active'] : '']"
                   :aria-hidden="selectedDramaType?.category !== option.category"
                   >{{ option.hint }}</small
                 >
@@ -217,7 +212,7 @@ const {
               />
             </label>
             <div class="field field--wide">
-              <div class="field-head">
+              <div :class="$style['field-head']">
                 <span
                   >标签分类
                   <span class="required-mark" aria-hidden="true">*</span></span
@@ -231,12 +226,12 @@ const {
                   选择标签
                 </el-button>
               </div>
-              <div class="tag-summary">
-                <div v-if="selectedTagChips.length" class="tag-picker__chips">
+              <div :class="$style['tag-summary']">
+                <div v-if="selectedTagChips.length" :class="$style['tag-picker__chips']">
                   <button
                     v-for="tag in selectedTagChips"
                     :key="tag.id"
-                    class="tag-chip tag-chip--active"
+                    :class="[$style['tag-chip'], $style['tag-chip--active']]"
                     type="button"
                     :disabled="!canEdit"
                     @click="
@@ -249,7 +244,7 @@ const {
                     {{ tag.name }}
                   </button>
                 </div>
-                <p v-else class="tag-summary__empty">尚未选择标签</p>
+                <p v-else :class="$style['tag-summary__empty']">尚未选择标签</p>
               </div>
               <small
                 >从启用词库多选，至少 1 个，最多
@@ -257,11 +252,11 @@ const {
                 {{ DRAMA_TAG_MAX_LENGTH }} 字。弹窗内可搜索，不能随手造词。</small
               >
             </div>
-            <div class="field field--wide poster-row">
-              <div class="field-head">
+            <div :class="['field', 'field--wide', $style['poster-row']]">
+              <div :class="$style['field-head']">
                 <span>剧目海报</span>
                 <label
-                  class="button button--secondary button--small poster-file"
+                  :class="['button', 'button--secondary', 'button--small', $style['poster-file']]"
                 >
                   选择文件
                   <input
@@ -288,9 +283,9 @@ const {
                       预览
                     </el-button>
                   </template>
-                  <div class="poster-preview-popover__content">
+                  <div :class="$style['poster-preview-popover__content']">
                     <img
-                      class="poster-preview-popover__image poster-preview-popover__image--drama"
+                      :class="[$style['poster-preview-popover__image'], $style['poster-preview-popover__image--drama']]"
                       :src="form.coverUrl"
                       alt="剧目海报预览"
                     />
@@ -311,11 +306,11 @@ const {
                 10MB（建议海报尺寸 {{ DRAMA_POSTER_SIZE_HINT }}）
               </p>
             </div>
-            <div class="field field--wide poster-row">
-              <div class="field-head">
+            <div :class="['field', 'field--wide', $style['poster-row']]">
+              <div :class="$style['field-head']">
                 <span>推广海报</span>
                 <label
-                  class="button button--secondary button--small poster-file"
+                  :class="['button', 'button--secondary', 'button--small', $style['poster-file']]"
                 >
                   选择文件
                   <input
@@ -342,9 +337,9 @@ const {
                       预览
                     </el-button>
                   </template>
-                  <div class="poster-preview-popover__content">
+                  <div :class="$style['poster-preview-popover__content']">
                     <img
-                      class="poster-preview-popover__image poster-preview-popover__image--promo"
+                      :class="[$style['poster-preview-popover__image'], $style['poster-preview-popover__image--promo']]"
                       :src="form.promoCoverUrl"
                       alt="推广海报预览"
                     />
@@ -367,7 +362,7 @@ const {
             </div>
           </div>
         </section>
-        <div class="editor-grid__right">
+        <div :class="$style['editor-grid__right']">
           <EpisodeTable
             :model-value="form.episodes as EpisodeRecord[]"
             :drama-id="drama?.id ?? ''"
@@ -387,7 +382,7 @@ const {
                 :tone="rightsFilled ? 'success' : 'warning'"
               />
             </div>
-            <p class="rights-hint">
+            <p :class="$style['rights-hint']">
               草稿可暂不填写。提交审核或发布前须补齐权利方、许可、材料与全部授权范围。
             </p>
             <div class="form-grid">
@@ -454,7 +449,7 @@ const {
                   autocomplete="off"
                   placeholder="64 位十六进制摘要"
               /></label>
-              <fieldset class="rights-scope field--wide" :disabled="!canEdit">
+              <fieldset :class="[$style['rights-scope'], 'field--wide']" :disabled="!canEdit">
                 <legend>授权范围（填写版权时须逐项确认）</legend>
                 <label
                   ><input
@@ -516,4 +511,4 @@ const {
   </div>
 </template>
 
-<style scoped src="../styles/drama-editor.css"></style>
+<style module lang="scss" src="../styles/drama-editor.module.scss"></style>

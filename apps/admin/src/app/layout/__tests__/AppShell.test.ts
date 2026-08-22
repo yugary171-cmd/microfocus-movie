@@ -29,12 +29,12 @@ describe("AppShell", () => {
         stubs: { ModeBanner: true },
       },
     });
-    const name = wrapper.get(".sidebar-user__meta strong");
+    const name = wrapper.get('[data-testid="sidebar-user-meta"] strong');
     expect(name.text()).toBe("admin@example.invalid");
     expect(name.attributes("title")).toBeUndefined();
     const tooltip = wrapper.get("#sidebar-user-tooltip");
     expect(tooltip.text()).toContain("admin@example.invalid");
-    expect(tooltip.classes()).toContain("tooltip");
+    expect(tooltip.attributes("role")).toBe("tooltip");
     wrapper.get('button[aria-label="退出登录"]');
     wrapper.unmount();
   });
@@ -45,7 +45,7 @@ describe("AppShell", () => {
         stubs: { ModeBanner: true },
       },
     });
-    const icons = wrapper.findAll(".nav-item__icon .app-icon");
+    const icons = wrapper.findAll('[data-testid="nav-item-icon"] svg');
     expect(icons.length).toBeGreaterThan(1);
     const sizes = icons.map((icon) => [icon.attributes("width"), icon.attributes("height")]);
     expect(sizes.every(([width, height]) => width === "18" && height === "18")).toBe(true);

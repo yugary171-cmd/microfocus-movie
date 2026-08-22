@@ -52,7 +52,7 @@ describe("ReviewQueuePage", () => {
     expect(listReviews).toHaveBeenCalledWith(1, ADMIN_WEB_PAGE_SIZE);
     expect(wrapper.find("input[type='search']").exists()).toBe(false);
     expect(wrapper.text()).toContain("每页显示：");
-    expect(wrapper.find(".admin-pagination").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-pagination"]').exists()).toBe(true);
 
     await wrapper.get(".admin-pagination .btn-next").trigger("click");
     await flushPromises();

@@ -54,9 +54,9 @@ describe("AuditLogPage", () => {
 
     expect(listAuditLogs).toHaveBeenCalledWith("", 1, ADMIN_WEB_PAGE_SIZE);
     expect(wrapper.text()).toContain("每页显示：");
-    expect(wrapper.find(".admin-pagination").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-pagination"]').exists()).toBe(true);
 
-    await wrapper.get(".admin-pagination .btn-next").trigger("click");
+    await wrapper.get('[data-testid="admin-pagination"] .btn-next').trigger("click");
     await flushPromises();
     expect(listAuditLogs).toHaveBeenLastCalledWith("", 2, ADMIN_WEB_PAGE_SIZE);
 

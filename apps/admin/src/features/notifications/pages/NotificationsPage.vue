@@ -79,24 +79,24 @@ const {
       type="forbidden"
       message="只有系统管理员可以管理系统通知。"
     />
-    <section v-else class="panel notice-panel">
-      <div v-if="error" class="operation-message operation-message--error">
+    <section v-else :class="['panel', $style['notice-panel']]">
+      <div v-if="error" :class="[$style['operation-message'], $style['operation-message--error']]">
         {{ error }}
       </div>
-      <div v-if="notice" class="operation-message">{{ notice }}</div>
-      <div class="toolbar notification-toolbar">
-        <el-button class="button button--primary toolbar__new" native-type="button" @click="openEditor()">新建通知</el-button>
+      <div v-if="notice" :class="$style['operation-message']">{{ notice }}</div>
+      <div :class="['toolbar', $style['notification-toolbar']]">
+        <el-button :class="['button', 'button--primary', $style['toolbar__new']]" native-type="button" @click="openEditor()">新建通知</el-button>
         <AdminSearchInput
           v-model="query"
           width="220px"
-          class="toolbar__search admin-list-search"
+          :class="[$style['toolbar__search'], 'admin-list-search']"
           aria-label="搜索通知"
           placeholder="标题或正文"
           @submit="filter"
         />
         <el-select
           v-model="status"
-          class="admin-select notification-status-select"
+          :class="['admin-select', $style['notification-status-select']]"
           aria-label="通知状态"
           @change="filter"
         >
@@ -122,7 +122,7 @@ const {
           title="暂无通知"
           message="可以先创建一条通知草稿。"
         />
-        <div v-else class="notice-list">
+        <div v-else :class="$style['notice-list']">
           <AdminTable
             :rows="items"
             :columns="notificationColumns"
@@ -130,10 +130,10 @@ const {
             :action-width="260"
           >
             <template #cell-title="{ row }">
-              <span class="notification-cell notification-cell--copyable">
-                <span class="notification-cell__text">{{ row.title }}</span>
+              <span :class="$style['notification-cell']">
+                <span :class="$style['notification-cell__text']">{{ row.title }}</span>
                 <button
-                  class="notification-copy"
+                  :class="$style['notification-copy']"
                   type="button"
                   :title="copiedNotificationKey === `title:${row.id}` ? '已复制' : '复制通知标题'"
                   :aria-label="copiedNotificationKey === `title:${row.id}` ? '通知标题已复制' : '复制通知标题'"
@@ -147,10 +147,10 @@ const {
               </span>
             </template>
             <template #cell-publisher="{ row }">
-              <span class="notification-cell notification-cell--copyable">
-                <span class="notification-cell__text">{{ row.createdByAdminName || "未知管理员" }}</span>
+              <span :class="$style['notification-cell']">
+                <span :class="$style['notification-cell__text']">{{ row.createdByAdminName || "未知管理员" }}</span>
                 <button
-                  class="notification-copy"
+                  :class="$style['notification-copy']"
                   type="button"
                   :title="copiedNotificationKey === `publisher:${row.id}` ? '已复制' : '复制发布人'"
                   :aria-label="copiedNotificationKey === `publisher:${row.id}` ? '发布人已复制' : '复制发布人'"
@@ -163,15 +163,15 @@ const {
                 </button>
               </span>
             </template>
-            <template #cell-createdAt="{ row }"><span class="nowrap">{{ dateLabel(row.createdAt) }}</span></template>
+            <template #cell-createdAt="{ row }"><span :class="$style.nowrap">{{ dateLabel(row.createdAt) }}</span></template>
             <template #actions="{ row }">
-              <div class="actions">
+              <div :class="$style.actions">
                 <el-button class="admin-text-action" size="small" text type="primary" @click="openView(row)">
                   查看
                 </el-button>
                 <span
                   v-if="row.status === SystemNotificationStatus.DRAFT || row.status === SystemNotificationStatus.PUBLISHED"
-                  class="actions__divider"
+                  :class="$style['actions__divider']"
                   aria-hidden="true"
                   >|</span
                 >
@@ -187,7 +187,7 @@ const {
                 </el-button>
                 <span
                   v-if="row.status === SystemNotificationStatus.DRAFT"
-                  class="actions__divider"
+                  :class="$style['actions__divider']"
                   aria-hidden="true"
                   >|</span
                 >
@@ -204,7 +204,7 @@ const {
                 </el-button>
                 <span
                   v-if="row.status === SystemNotificationStatus.DRAFT"
-                  class="actions__divider"
+                  :class="$style['actions__divider']"
                   aria-hidden="true"
                   >|</span
                 >
@@ -250,10 +250,10 @@ const {
       size="min(640px, 92vw)"
     >
       <template v-if="drawerMode === 'editor'">
-        <p class="drawer-description">
+        <p :class="$style['drawer-description']">
           纯文本通知，发布后如需修改请新建一条。
         </p>
-        <div class="field">
+        <div :class="$style['notification-field']">
           <span>标题</span
           ><el-input
             v-model="form.title"
@@ -262,7 +262,7 @@ const {
             placeholder="通知标题"
           />
         </div>
-        <div class="field field--body">
+        <div :class="[$style['notification-field'], $style['notification-field--body']]">
           <span>正文</span
           ><el-input
             v-model="form.body"
@@ -282,7 +282,7 @@ const {
         />
         <template v-else-if="viewing">
           <h3>{{ viewing.title }}</h3>
-          <dl class="notice-meta">
+          <dl :class="$style['notice-meta']">
             <div>
               <dt>发布人</dt>
               <dd>{{ viewing.createdByAdminName || "未知管理员" }}</dd>
@@ -300,7 +300,7 @@ const {
               <dd>{{ dateLabel(viewing.publishedAt) }}</dd>
             </div>
           </dl>
-          <div class="notice-body">
+          <div :class="$style['notice-body']">
             <span>正文</span>
             <p>{{ viewing.body }}</p>
           </div>
@@ -326,4 +326,4 @@ const {
   </div>
 </template>
 
-<style scoped src="../styles/notifications.css"></style>
+<style module lang="scss" src="../styles/notifications.module.scss"></style>

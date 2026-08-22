@@ -9,5 +9,6 @@ withDefaults(
 </script>
 
 <template>
-  <span class="status-badge" :class="`status-badge--${tone}`">{{ label }}</span>
+  <span :class="[$style['status-badge'], tone === 'info' ? $style['status-badge--info'] : '', tone === 'warning' ? $style['status-badge--warning'] : '', tone === 'success' ? $style['status-badge--success'] : '', tone === 'danger' ? $style['status-badge--danger'] : '']">{{ label }}</span>
 </template>
+<style module lang="scss" src="./StatusBadge.module.scss"></style>

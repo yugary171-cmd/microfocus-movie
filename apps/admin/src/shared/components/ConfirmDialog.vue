@@ -63,15 +63,15 @@ function confirm(): void {
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="dialog-backdrop" @keydown.esc="!busy && $emit('close')">
+    <div v-if="open" :class="$style['dialog-backdrop']" @keydown.esc="!busy && $emit('close')">
       <section
-        class="dialog"
+        :class="$style.dialog"
         role="alertdialog"
         aria-modal="true"
         :aria-labelledby="`${title}-dialog-title`"
         :aria-describedby="`${title}-dialog-description`"
       >
-        <div class="dialog__icon" :class="`dialog__icon--${tone}`"><Icon :name="tone === 'danger' ? 'warning' : 'help'" /></div>
+        <div :class="[$style['dialog__icon'], tone === 'danger' ? $style['dialog__icon--danger'] : '']"><Icon :name="tone === 'danger' ? 'warning' : 'help'" /></div>
         <h2 :id="`${title}-dialog-title`">{{ title }}</h2>
         <p :id="`${title}-dialog-description`">{{ message }}</p>
         <label v-if="requireReason" class="field">
@@ -88,7 +88,7 @@ function confirm(): void {
             @keydown.ctrl.enter="confirm"
           />
         </label>
-        <div class="dialog__actions">
+        <div :class="$style['dialog__actions']">
           <el-button ref="cancelButton" class="button button--ghost" native-type="button" :disabled="busy" @click="$emit('close')">取消</el-button>
           <el-button
             class="button"
@@ -104,3 +104,4 @@ function confirm(): void {
     </div>
   </Teleport>
 </template>
+<style module lang="scss" src="./ConfirmDialog.module.scss"></style>

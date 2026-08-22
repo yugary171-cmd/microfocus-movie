@@ -1,0 +1,29 @@
+.page-state {
+  display: flex;
+  min-height: 280px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: var(--space-4);
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.page-state__icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  margin-bottom: var(--space-3);
+  border-radius: 50%;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-size: 23px;
+}
+
+.page-state--loading .page-state__icon { animation: page-state-spin 1s linear infinite; }
+.page-state--error .page-state__icon,
+.page-state--forbidden .page-state__icon { color: var(--color-danger); background: var(--color-danger-soft); }
+.page-state p { max-width: 500px; margin-bottom: var(--space-3); }
+
+@keyframes page-state-spin { to { transform: rotate(360deg); } }

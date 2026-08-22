@@ -66,7 +66,7 @@ const glyphs: Record<IconName, string[]> = {
 
 <template>
   <svg
-    class="app-icon"
+    :class="$style['app-icon']"
     :width="props.size"
     :height="props.size"
     viewBox="0 0 24 24"
@@ -81,6 +81,4 @@ const glyphs: Record<IconName, string[]> = {
   </svg>
 </template>
 
-<style scoped>
-.app-icon { display: block; overflow: visible; flex: 0 0 auto; }
-</style>
+<style module lang="scss" src="./Icon.module.scss"></style>

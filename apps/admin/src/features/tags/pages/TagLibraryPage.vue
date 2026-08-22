@@ -55,32 +55,28 @@ const {
     </header>
     <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以维护标签库。" />
     <section v-else class="panel">
-      <p v-if="notice" class="tag-library__notice">{{ notice }}</p>
+      <p v-if="notice" :class="$style['tag-library__notice']">{{ notice }}</p>
       <PageState v-if="loading" type="loading" message="正在读取标签库…" />
       <PageState v-else-if="error" type="error" :message="error" @retry="load" />
-      <div v-else class="tag-library__groups">
+      <div v-else :class="$style['tag-library__groups']">
         <article v-for="group in grouped" :key="group.id" class="tag-library__group">
-          <div class="tag-library__heading">
+          <div :class="$style['tag-library__heading']">
             <h2>{{ group.label }}</h2>
             <p v-if="group.tags.length">
               {{ group.activeCount }} 启用
               <template v-if="group.archivedCount"> / {{ group.archivedCount }} 停用</template>
             </p>
           </div>
-          <p v-if="!group.tags.length" class="tag-library__empty">本组暂无标签</p>
-          <div v-else class="tag-picker__chips">
+          <p v-if="!group.tags.length" :class="$style['tag-library__empty']">本组暂无标签</p>
+          <div v-else :class="$style['tag-picker__chips']">
             <span
               v-for="tag in group.tags"
               :key="tag.id"
-              class="tag-chip-wrap"
+              :class="$style['tag-chip-wrap']"
             >
               <button
-                class="tag-chip"
+                :class="[$style['tag-chip'], tag.status === CatalogTagStatus.ACTIVE ? $style['tag-chip--active'] : '', tag.status === CatalogTagStatus.ARCHIVED ? $style['tag-chip--archived'] : '']"
                 type="button"
-                :class="{
-                  'tag-chip--active': tag.status === CatalogTagStatus.ACTIVE,
-                  'tag-chip--archived': tag.status === CatalogTagStatus.ARCHIVED,
-                }"
                 :disabled="busy"
                 :aria-pressed="tag.status === CatalogTagStatus.ACTIVE"
                 :aria-label="chipLabel(tag)"
@@ -89,7 +85,7 @@ const {
                 {{ tag.name }}
               </button>
               <button
-                class="tag-chip__remove"
+                :class="$style['tag-chip__remove']"
                 type="button"
                 :disabled="busy"
                 :aria-label="`处理「${tag.name}」`"
@@ -145,13 +141,13 @@ const {
         <p v-else>
           「{{ inspecting.name }}」当前没有剧目使用。可以选择删除，{{ canArchive ? "或先停用。" : "删除后不可恢复。" }}
         </p>
-        <fieldset class="tag-library__choices">
-          <legend class="visually-hidden">选择操作</legend>
-          <label v-if="canArchive" class="tag-library__choice">
+        <fieldset :class="$style['tag-library__choices']">
+          <legend :class="$style['visually-hidden']">选择操作</legend>
+          <label v-if="canArchive" :class="$style['tag-library__choice']">
             <input v-model="inspectAction" type="radio" value="archive" />
             <span>停用</span>
           </label>
-          <label class="tag-library__choice">
+          <label :class="$style['tag-library__choice']">
             <input v-model="inspectAction" type="radio" value="delete" />
             <span>{{ inUse ? "替换后删除" : "删除" }}</span>
           </label>
@@ -163,7 +159,7 @@ const {
             <el-option v-for="tag in replacementOptions" :key="tag.id" :label="tag.name" :value="tag.id" />
           </el-select>
         </label>
-        <p v-if="inspectAction === 'delete' && inUse && !replacementOptions.length" class="tag-library__empty">
+        <p v-if="inspectAction === 'delete' && inUse && !replacementOptions.length" :class="$style['tag-library__empty']">
           同组没有其他启用词，无法替换删除。
         </p>
         <div class="dialog__actions">
@@ -183,4 +179,4 @@ const {
   </div>
 </template>
 
-<style scoped src="../styles/tag-library.css"></style>
+<style module lang="scss" src="../styles/tag-library.module.scss"></style>

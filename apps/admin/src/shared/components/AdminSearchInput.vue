@@ -50,7 +50,8 @@ function submit(): void {
     ref="inputRef"
     v-bind="inputAttrs"
     type="search"
-    :class="['admin-search-input', attrs.class]"
+    data-testid="admin-search-input"
+    :class="[$style['admin-search-input'], attrs.class]"
     :style="[inputStyle, attrs.style]"
     :model-value="props.modelValue"
     @update:model-value="updateValue"
@@ -58,7 +59,8 @@ function submit(): void {
   >
     <template #suffix>
       <el-button
-        class="admin-search-input__button"
+        data-testid="admin-search-submit"
+        :class="$style['admin-search-input__button']"
         native-type="button"
         aria-label="搜索"
         @click="submit"
@@ -69,76 +71,4 @@ function submit(): void {
   </el-input>
 </template>
 
-<style scoped>
-.admin-search-input {
-  display: block;
-  width: 100%;
-  min-width: 0;
-}
-
-.admin-search-input :deep(.el-input__wrapper) {
-  width: 100%;
-  flex: 1 1 auto;
-  height: var(--control-height);
-  min-height: var(--control-height);
-  padding: 0 0 0 var(--space-2);
-  border: 1px solid #cfd7e2;
-  border-radius: 2px;
-  box-sizing: border-box;
-  box-shadow: none;
-  overflow: hidden;
-}
-
-.admin-search-input :deep(.el-input__wrapper:hover),
-.admin-search-input :deep(.el-input__wrapper.is-focus) {
-  border-color: var(--color-primary);
-  box-shadow: var(--admin-control-outer-shadow);
-}
-
-.admin-search-input :deep(.el-input__inner) {
-  min-width: 0;
-  padding: 0;
-}
-
-.admin-search-input :deep(.el-input__suffix) {
-  display: flex;
-  align-items: stretch;
-  height: 100%;
-  margin-left: 0;
-}
-
-.admin-search-input :deep(.admin-search-input__button) {
-  width: calc(var(--control-height) - 2px);
-  flex: 0 0 calc(var(--control-height) - 2px);
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-left: 1px solid #cfd7e2;
-  border-radius: 0;
-  color: var(--color-icon-muted);
-  background: var(--color-control-icon-bg);
-}
-
-.admin-search-input :deep(.el-input__wrapper:hover .admin-search-input__button),
-.admin-search-input :deep(.el-input__wrapper.is-focus .admin-search-input__button) {
-  border-left-color: var(--color-primary);
-}
-
-.admin-search-input :deep(.admin-search-input__button:hover) {
-  color: var(--color-icon-muted);
-  background: var(--color-primary-soft);
-}
-
-.admin-search-input :deep(.admin-search-input__button:focus-visible) {
-  outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
-}
-
-.admin-search-input :deep(.admin-search-input__button svg) {
-  display: block;
-  width: 18px;
-  height: 18px;
-}
-</style>
+<style module lang="scss" src="./AdminSearchInput.module.scss"></style>

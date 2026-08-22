@@ -42,11 +42,11 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
 </script>
 
 <template>
-  <a class="skip-link" href="#main-content">跳到主要内容</a>
-  <div class="app-shell">
-    <aside class="sidebar" :class="{ 'is-open': menuOpen }">
-      <div class="brand">
-        <span class="brand__mark" aria-hidden="true">M</span>
+  <a :class="$style['skip-link']" href="#main-content">跳到主要内容</a>
+  <div :class="$style['app-shell']">
+    <aside :class="[$style.sidebar, menuOpen ? $style['is-open'] : '']">
+      <div :class="$style.brand">
+        <span :class="$style['brand__mark']" aria-hidden="true">M</span>
         <span><strong>微焦</strong><small>短剧管理台</small></span>
       </div>
       <nav aria-label="主导航">
@@ -54,43 +54,43 @@ onBeforeUnmount(() => window.removeEventListener("admin:unauthorized", unauthori
           v-for="item in items"
           :key="item.to"
           :to="item.to"
-          class="nav-item"
+          :class="[$style['nav-item'], isNavigationItemActive(route.path, item.to) ? $style['is-active'] : '']"
           active-class="nav-item--route-active"
           exact-active-class="nav-item--route-exact"
-          :class="{ 'is-active': isNavigationItemActive(route.path, item.to) }"
           @click="menuOpen = false"
         >
-          <span class="nav-item__icon"><component :is="navigationIcons[item.icon]" aria-hidden="true" /></span>
+          <span data-testid="nav-item-icon" :class="$style['nav-item__icon']"><component :is="navigationIcons[item.icon]" aria-hidden="true" /></span>
           <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
         </RouterLink>
       </nav>
-      <div v-if="auth.user" class="sidebar-user">
-        <span class="avatar" aria-hidden="true">{{ auth.user.name.slice(0, 1) }}</span>
-        <span class="sidebar-user__meta has-tooltip" tabindex="0" aria-describedby="sidebar-user-tooltip">
+      <div v-if="auth.user" :class="$style['sidebar-user']">
+        <span :class="$style.avatar" aria-hidden="true">{{ auth.user.name.slice(0, 1) }}</span>
+        <span data-testid="sidebar-user-meta" :class="[$style['sidebar-user__meta'], $style['has-tooltip']]" tabindex="0" aria-describedby="sidebar-user-tooltip">
           <strong>{{ auth.user.name }}</strong>
           <small>{{ roleLabels[auth.user.role] }}</small>
-          <span id="sidebar-user-tooltip" class="tooltip tooltip--above" role="tooltip">{{ auth.user.email }}</span>
+          <span id="sidebar-user-tooltip" :class="[$style.tooltip, $style['tooltip--above']]" role="tooltip">{{ auth.user.email }}</span>
         </span>
         <button class="icon-button" type="button" aria-label="退出登录" title="退出登录" @click="logout"><Icon name="logout" /></button>
       </div>
     </aside>
     <button
       v-if="menuOpen"
-      class="sidebar-scrim"
+      :class="$style['sidebar-scrim']"
       type="button"
       aria-label="关闭导航"
       @click="menuOpen = false"
     />
-    <div class="app-main">
-      <header class="topbar">
-        <button class="icon-button mobile-menu-button" type="button" :aria-expanded="menuOpen" aria-label="打开导航" @click="menuOpen = !menuOpen"><Icon name="menu" /></button>
+    <div :class="$style['app-main']">
+      <header :class="$style.topbar">
+        <button :class="['icon-button', $style['mobile-menu-button']]" type="button" :aria-expanded="menuOpen" aria-label="打开导航" @click="menuOpen = !menuOpen"><Icon name="menu" /></button>
         <div><strong>内容安全与运营中心</strong><small>全流程可审计 · 操作按角色授权</small></div>
-        <span class="environment-pill"><span aria-hidden="true" />{{ auth.user ? roleLabels[auth.user.role] : "未登录" }}</span>
+        <span :class="$style['environment-pill']"><span aria-hidden="true" />{{ auth.user ? roleLabels[auth.user.role] : "未登录" }}</span>
       </header>
       <ModeBanner />
-      <main id="main-content" class="content" tabindex="-1">
+      <main id="main-content" :class="$style.content" tabindex="-1">
         <RouterView />
       </main>
     </div>
   </div>
 </template>
+<style module lang="scss" src="./AppShell.module.scss"></style>

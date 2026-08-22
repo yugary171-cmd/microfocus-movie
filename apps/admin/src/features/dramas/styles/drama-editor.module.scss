@@ -82,7 +82,7 @@
 .field-head > span {
   line-height: 1.25;
 }
-.field-head .button {
+.field-head :global(.button) {
   flex: 0 0 auto;
   width: auto;
 }

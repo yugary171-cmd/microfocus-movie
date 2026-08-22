@@ -31,12 +31,13 @@ function changePageSize(value: number | string): void {
 </script>
 
 <template>
-  <div class="admin-pagination">
-    <div class="admin-pagination__size">
+  <div data-testid="admin-pagination" :class="$style['admin-pagination']">
+    <div :class="$style['admin-pagination__size']">
       <span>每页显示：</span>
       <el-select
         :model-value="pageSize"
-        class="admin-select admin-pagination__size-select"
+        data-testid="admin-pagination-size"
+        :class="['admin-select', $style['admin-pagination__size-select']]"
         aria-label="每页显示条数"
         @change="changePageSize"
       >
@@ -59,45 +60,4 @@ function changePageSize(value: number | string): void {
   </div>
 </template>
 
-<style scoped>
-.admin-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-top: 16px;
-  color: var(--text-color);
-  font-size: 12px;
-  font-weight: 500;
-}
-.admin-pagination__size {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-.admin-pagination__size-select { width: 72px; }
-.admin-pagination :deep(.el-pagination) {
-  --el-pagination-font-size: 12px;
-  --el-pagination-button-size: 32px;
-}
-.admin-pagination :deep(.el-pager li),
-.admin-pagination :deep(.btn-prev),
-.admin-pagination :deep(.btn-next) {
-  border-radius: 2px;
-  font-size: 12px;
-  font-weight: 500;
-}
-.admin-pagination :deep(.admin-pagination__size-select .el-select__wrapper) {
-  border-radius: 2px;
-}
-@media (max-width: 720px) {
-  .admin-pagination {
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .admin-pagination__size {
-    gap: 4px;
-  }
-}
-</style>
+<style module lang="scss" src="./AdminPagination.module.scss"></style>

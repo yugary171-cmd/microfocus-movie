@@ -93,7 +93,7 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
 </script>
 
 <template>
-  <div class="accounts-page">
+  <div :class="$style['accounts-page']">
     <header class="page-header">
       <div>
         <p class="eyebrow">ADMIN ACCOUNTS</p>
@@ -110,8 +110,8 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
       <div v-if="notice" class="operation-message" role="status">{{ notice }}</div>
       <div v-if="error && !dialogMode" class="operation-message operation-message--error" role="alert">{{ error }}</div>
       <section class="panel accounts-panel">
-        <form class="toolbar accounts-toolbar" role="search" @submit.prevent="filter">
-          <AdminSearchInput v-model="query" class="accounts-toolbar__search" :maxlength="LIST_QUERY_MAX_LENGTH" aria-label="搜索账号" :placeholder="accountFilterPlaceholders.query" @submit="filter" />
+        <form :class="['toolbar', $style['accounts-toolbar']]" role="search" @submit.prevent="filter">
+          <AdminSearchInput v-model="query" :class="$style['accounts-toolbar__search']" :maxlength="LIST_QUERY_MAX_LENGTH" aria-label="搜索账号" :placeholder="accountFilterPlaceholders.query" @submit="filter" />
           <el-select v-model="roleFilter" class="admin-select" aria-label="账号角色" :placeholder="accountFilterPlaceholders.role" @change="filter"><el-option v-for="role in Object.values(AdminRole)" :key="role" :label="roleLabels[role]" :value="role" /></el-select>
           <el-select v-model="statusFilter" class="admin-select" aria-label="账号状态" :placeholder="accountFilterPlaceholders.status" @change="filter"><el-option v-for="status in Object.values(AdminAccountStatus)" :key="status" :label="accountStatusLabels[status]" :value="status" /></el-select>
           <el-button class="button button--secondary" native-type="button" :disabled="loading" @click="resetFilters">重置</el-button>
@@ -120,14 +120,14 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
         <PageState v-else-if="error && items.length === 0" type="error" :message="error" @retry="load" />
         <PageState v-else-if="items.length === 0" type="empty" title="没有匹配的管理员账号" message="请调整筛选条件，或新增账号。" />
         <template v-else>
-          <AdminTable :rows="items" :columns="accountColumns" table-class="accounts-table" :action-width="80">
+          <AdminTable :rows="items" :columns="accountColumns" :table-class="$style['accounts-table']" :action-width="80">
             <template #cell-identity="{ row }">
               <span class="table-title">
                 <strong>{{ row.displayName }} <small v-if="row.id === auth.user?.id">（当前账号）</small></strong>
-                <span class="account-login-id">
+                  <span :class="$style['account-login-id']">
                   <small>{{ row.email }}</small>
                   <button
-                    class="icon-button copy-login-id"
+                    :class="['icon-button', $style['copy-login-id']]"
                     type="button"
                     :aria-label="copiedLoginId === row.email ? `${row.email} 已复制` : `复制登录名 ${row.email}`"
                     @click="copyLoginId(row.email, $event)"
@@ -141,11 +141,11 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
             <template #cell-status="{ row }"><StatusBadge :label="statusLabel(row.status)" :tone="statusTone(row.status)" /></template>
             <template #cell-totp="{ row }"><StatusBadge :label="row.totpEnabled ? '已绑定' : '待绑定'" :tone="row.totpEnabled ? 'success' : 'warning'" /></template>
             <template #cell-ownedDramaCount="{ row }">{{ row.ownedDramaCount }} 部</template>
-            <template #cell-lastLoginAt="{ row }"><span class="nowrap">{{ formatDateTime(row.lastLoginAt) }}</span></template>
-            <template #cell-createdAt="{ row }"><span class="nowrap">{{ formatDateTime(row.createdAt) }}</span></template>
+            <template #cell-lastLoginAt="{ row }"><span :class="$style.nowrap">{{ formatDateTime(row.lastLoginAt) }}</span></template>
+            <template #cell-createdAt="{ row }"><span :class="$style.nowrap">{{ formatDateTime(row.createdAt) }}</span></template>
             <template #actions="{ row }">
               <button
-                class="link account-actions-trigger"
+                :class="['link', $style['account-actions-trigger']]"
                 type="button"
                 :aria-expanded="actionMenuAccount?.id === row.id"
                 aria-haspopup="menu"
@@ -166,7 +166,7 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
     </template>
 
     <Teleport to="body">
-      <div v-if="actionMenuAccount" class="account-actions-menu" role="menu" :style="actionMenuStyle">
+      <div v-if="actionMenuAccount" data-testid="account-actions-menu" :class="$style['account-actions-menu']" role="menu" :style="actionMenuStyle">
           <button type="button" role="menuitem" @click="openDialog('edit', actionMenuAccount)">编辑资料/角色</button>
           <button v-if="actionMenuAccount.status === 'PENDING_SETUP'" type="button" role="menuitem" @click="openDialog('invite', actionMenuAccount)">重发开通链接</button>
           <button v-if="actionMenuAccount.status === 'ACTIVE'" type="button" role="menuitem" :disabled="actionMenuAccount.id === auth.user?.id" @click="openDialog('suspend', actionMenuAccount)">停用</button>
@@ -174,7 +174,7 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
           <button v-if="actionMenuAccount.status !== 'PENDING_SETUP'" type="button" role="menuitem" :disabled="actionMenuAccount.id === auth.user?.id" @click="openDialog('reset', actionMenuAccount)">重置登录凭据</button>
         </div>
       <div v-if="dialogMode" class="dialog-backdrop" @keydown.esc="closeDialog">
-        <form class="dialog account-dialog" role="dialog" aria-modal="true" :aria-labelledby="`${dialogMode}-title`" @submit.prevent="submit">
+        <form :class="['dialog', $style['account-dialog']]" role="dialog" aria-modal="true" :aria-labelledby="`${dialogMode}-title`" @submit.prevent="submit">
           <h2 :id="`${dialogMode}-title`">{{ dialogTitle }}</h2>
           <p v-if="selected">目标账号：{{ selected.displayName }}（{{ selected.email }}）</p>
           <template v-if="dialogMode === 'create' || dialogMode === 'edit'">
@@ -183,7 +183,7 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
           <label class="field"><span>角色 *</span><el-select v-model="form.role" class="admin-select" aria-label="账号角色" placeholder="请选择账号角色" required><el-option v-for="role in ASSIGNABLE_ADMIN_ROLES" :key="role" :label="roleLabels[role]" :value="role" /></el-select></label>
           </template>
           <label v-if="['create', 'edit', 'suspend', 'activate', 'invite', 'reset'].includes(dialogMode)" class="field"><span>操作原因 *</span><el-input v-model="form.reason" class="admin-input" type="textarea" :rows="3" :minlength="ADMIN_REASON_MIN_LENGTH" :maxlength="ADMIN_REASON_MAX_LENGTH" required /></label>
-          <div v-if="dialogMode === 'reset'" class="danger-note">重置后目标账号会立即暂停，旧密码、TOTP 和现有会话全部失效，直到本人通过新链接重新开通。</div>
+          <div v-if="dialogMode === 'reset'" :class="$style['danger-note']">重置后目标账号会立即暂停，旧密码、TOTP 和现有会话全部失效，直到本人通过新链接重新开通。</div>
           <label v-if="needsReplacement" class="field"><span>接替内容编辑（待移交 {{ selected?.ownedDramaCount }} 部剧目）*</span><el-select v-model="form.replacementEditorId" class="admin-select" aria-label="接替内容编辑" placeholder="请选择正常的内容编辑" required><el-option v-for="editor in activeEditors" :key="editor.id" :label="`${editor.displayName} · ${editor.email}`" :value="editor.id" /></el-select></label>
           <label class="field"><span>当前管理员 TOTP 验证码 *</span><el-input v-model="form.otp" class="admin-input" inputmode="numeric" autocomplete="one-time-code" :maxlength="OTP_INPUT_LENGTH" pattern="[0-9]*" required /></label>
           <div v-if="error" class="operation-message operation-message--error" role="alert">{{ error }}</div>
@@ -192,7 +192,7 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
       </div>
 
       <div v-if="setupLink" class="dialog-backdrop">
-        <section class="dialog setup-link-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-link-title">
+          <section data-testid="setup-link-dialog" :class="['dialog', $style['setup-link-dialog']]" role="dialog" aria-modal="true" aria-labelledby="setup-link-title">
           <h2 id="setup-link-title">一次性{{ setupLink.purpose === 'INVITE' ? '开通' : '凭据重置' }}链接</h2>
           <p>请把链接安全地交给 {{ setupLinkOwner }}。链接关闭后不再显示，新的链接会使旧链接失效。</p>
           <label class="field"><span>链接（仅本次显示）</span><el-input :model-value="setupLink.setupUrl" class="admin-input" type="textarea" :rows="4" readonly @focus="($event.target as HTMLTextAreaElement).select()" /></label>
@@ -204,4 +204,4 @@ function statusTone(status: AdminAccountStatus): "success" | "danger" | "warning
   </div>
 </template>
 
-<style scoped src="../styles/accounts.css"></style>
+<style module lang="scss" src="../styles/accounts.module.scss"></style>

@@ -51,16 +51,16 @@ function actorRoleLabel(role: AdminRole | undefined): string {
     <header class="page-header"><div><p class="eyebrow">AUDIT TRAIL</p><h1>审计日志</h1><p>查看关键管理动作及请求编号；日志内容不展示令牌或敏感请求体。</p></div></header>
     <PageState v-if="!allowed" type="forbidden" message="只有系统管理员可以查看全局审计日志。" />
     <section v-else class="panel">
-      <form class="toolbar audit-toolbar" role="search" @submit.prevent="filter">
-        <AdminSearchInput v-model="query" class="audit-toolbar__search" :maxlength="LIST_QUERY_MAX_LENGTH" aria-label="搜索审计记录" placeholder="请输入操作人、动作、目标或请求编号" @submit="filter" />
+      <form :class="['toolbar', $style['audit-toolbar']]" role="search" @submit.prevent="filter">
+        <AdminSearchInput v-model="query" :class="$style['audit-toolbar__search']" :maxlength="LIST_QUERY_MAX_LENGTH" aria-label="搜索审计记录" placeholder="请输入操作人、动作、目标或请求编号" @submit="filter" />
       </form>
       <PageState v-if="loading" type="loading" message="正在读取审计日志…" />
       <PageState v-else-if="error" type="error" :message="error" @retry="load" />
       <PageState v-else-if="items.length === 0 && total === 0" type="empty" title="没有匹配的审计记录" message="尝试清空关键词后重新搜索。" />
       <template v-else>
         <PageState v-if="items.length === 0" type="empty" title="这一页没有审计记录" message="请返回上一页，或重新搜索。" />
-        <AdminTable v-else :rows="items" :columns="auditColumns" table-class="audit-table">
-          <template #cell-createdAt="{ row }"><span class="nowrap">{{ formatDateTime(row.createdAt) }}</span></template>
+        <AdminTable v-else :rows="items" :columns="auditColumns" :table-class="$style['audit-table']">
+          <template #cell-createdAt="{ row }"><span :class="$style.nowrap">{{ formatDateTime(row.createdAt) }}</span></template>
           <template #cell-actor="{ row }"><span class="table-title"><strong>{{ row.actorName || "未知操作人" }}</strong><small>{{ actorRoleLabel(row.actorRole) }}</small></span></template>
           <template #cell-action="{ row }"><strong>{{ row.action }}</strong></template>
           <template #cell-target="{ row }">{{ row.target }}</template>
@@ -68,7 +68,7 @@ function actorRoleLabel(role: AdminRole | undefined): string {
           <template #cell-requestId="{ row }"><code>{{ row.requestId || "—" }}</code></template>
           <template #cell-detail="{ row }">
             <div>{{ row.detail || "—" }}</div>
-            <small v-if="contextDetail(row)" class="audit-context">{{ contextDetail(row) }}</small>
+            <small v-if="contextDetail(row)" :class="$style['audit-context']">{{ contextDetail(row) }}</small>
           </template>
         </AdminTable>
         <AdminPagination
@@ -85,4 +85,4 @@ function actorRoleLabel(role: AdminRole | undefined): string {
   </div>
 </template>
 
-<style scoped src="../styles/audit-log.css"></style>
+<style module lang="scss" src="../styles/audit-log.module.scss"></style>

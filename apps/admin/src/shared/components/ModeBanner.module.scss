@@ -1,0 +1,19 @@
+.mode-banner {
+  display: flex;
+  min-height: var(--control-height);
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid #f2d08c;
+  color: #71450a;
+  background: #fff8e8;
+  font-size: 12px;
+}
+
+.mode-banner--live { border-bottom-color: #b7dfca; color: #11613a; background: #edf9f2; }
+.mode-banner__badge { flex: 0 0 auto; padding: var(--space-1) var(--space-2); border-radius: 4px; color: #fff; background: #b26a09; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+.mode-banner--live .mode-banner__badge { background: var(--color-success); }
+
+@media (max-width: 640px) {
+  .mode-banner { align-items: flex-start; }
+}

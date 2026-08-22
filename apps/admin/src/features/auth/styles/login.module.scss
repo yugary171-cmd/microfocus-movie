@@ -14,6 +14,15 @@
 .form-error { margin: 0; padding: var(--space-2) var(--space-3); border-radius: 7px; color: var(--color-danger); background: var(--color-danger-soft); font-size: 12px; }
 .login-submit { width: 100%; height: var(--control-height); min-height: var(--control-height); margin-top: var(--space-1); }
 .login-footnote { margin: var(--space-3) 0 0; color: var(--color-muted); font-size: 12px; text-align: center; }
+.login-page :global(.admin-input) :global(.el-input__inner):-webkit-autofill,
+.login-page :global(.admin-input) :global(.el-input__inner):-webkit-autofill:hover,
+.login-page :global(.admin-input) :global(.el-input__inner):-webkit-autofill:focus,
+.login-page :global(.admin-input) :global(.el-input__inner):-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: var(--color-text);
+  box-shadow: 0 0 0 1000px #fff inset;
+  caret-color: var(--color-text);
+}
 @media (max-width: 800px) {
   .login-page { display: flex; min-height: 100vh; flex-direction: column; background: #f5f7fb; }
   .login-intro { min-height: 230px; padding: var(--space-4); }

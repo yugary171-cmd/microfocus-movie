@@ -71,7 +71,7 @@ function dramaStatusTone(value: DramaStatus): "neutral" | "info" | "warning" | "
       </div>
     </header>
     <section class="panel">
-      <form class="toolbar drama-toolbar" role="search" @submit.prevent="filter">
+      <form :class="['toolbar', $style['drama-toolbar']]" role="search" @submit.prevent="filter">
         <RouterLink v-if="canCreateDrama" class="button button--primary drama-toolbar__new" to="/dramas/new">新建剧目</RouterLink>
         <label class="field admin-list-search-field"><AdminSearchInput v-model="query" :maxlength="LIST_QUERY_MAX_LENGTH" aria-label="搜索剧名或负责人" placeholder="搜索剧名或负责人" @submit="filter" /></label>
         <label class="field"><el-select v-model="status" class="admin-select" aria-label="内容状态" placeholder="请选择内容状态" @change="filter"><el-option v-for="item in DramaStatus" :key="item" :label="dramaStatusLabels[item]" :value="item" /></el-select></label>
@@ -101,16 +101,16 @@ function dramaStatusTone(value: DramaStatus): "neutral" | "info" | "warning" | "
           <template #cell-license="{ row }">
             <StatusBadge :label="row.licenseNumber ? '已填写' : '待补齐'" :tone="row.licenseNumber ? 'success' : 'warning'" />
           </template>
-          <template #cell-updatedAt="{ row }"><span class="nowrap">{{ formatDateTime(row.updatedAt) }}</span></template>
+          <template #cell-updatedAt="{ row }"><span :class="$style.nowrap">{{ formatDateTime(row.updatedAt) }}</span></template>
           <template #actions="{ row }">
-            <div class="drama-actions">
+            <div :class="$style['drama-actions']">
               <button class="link" type="button" @click="openDetail(row)">查看</button>
-              <span class="drama-actions__divider" aria-hidden="true">|</span>
+              <span :class="$style['drama-actions__divider']" aria-hidden="true">|</span>
               <RouterLink class="link" :to="`/dramas/${row.id}`">编辑</RouterLink>
             </div>
           </template>
         </AdminTable>
-        <div v-if="total > 0" class="drama-pagination">
+        <div v-if="total > 0" data-testid="drama-pagination" :class="$style['drama-pagination']">
           <AdminPagination
             :current-page="page"
             :page-size="pageSize"
@@ -133,4 +133,4 @@ function dramaStatusTone(value: DramaStatus): "neutral" | "info" | "warning" | "
   </div>
 </template>
 
-<style scoped src="../styles/drama-list.css"></style>
+<style module lang="scss" src="../styles/drama-list.module.scss"></style>

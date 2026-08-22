@@ -24,15 +24,15 @@ const checks: Array<{ key: keyof ReleaseGateStatus; label: string; help: string 
         :tone="gate.readyForExternalTraffic ? 'success' : 'danger'"
       />
     </div>
-    <ul class="gate-checks">
+    <ul :class="$style['gate-checks']">
       <li v-for="check in checks" :key="check.key">
-        <span class="gate-checks__mark" :class="{ 'is-ready': Boolean(gate[check.key]) }" aria-hidden="true">
+        <span :class="[$style['gate-checks__mark'], Boolean(gate[check.key]) ? $style['is-ready'] : '']" aria-hidden="true">
           <Icon :name="gate[check.key] ? 'check' : 'close'" />
         </span>
         <span><strong>{{ check.label }}</strong><small>{{ check.help }}</small></span>
       </li>
     </ul>
-    <div v-if="gate.blockers.length" class="gate-blockers" role="alert">
+    <div v-if="gate.blockers.length" :class="$style['gate-blockers']" role="alert">
       <strong>当前阻断项</strong>
       <ul>
         <li v-for="blocker in gate.blockers" :key="blocker">{{ blocker }}</li>
@@ -40,3 +40,4 @@ const checks: Array<{ key: keyof ReleaseGateStatus; label: string; help: string 
     </div>
   </section>
 </template>
+<style module lang="scss" src="./ReleaseGatePanel.module.scss"></style>

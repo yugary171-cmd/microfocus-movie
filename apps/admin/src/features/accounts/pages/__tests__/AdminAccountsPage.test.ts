@@ -174,7 +174,7 @@ describe("AdminAccountsPage", () => {
     await bodyGet(".setup-link-dialog .button--secondary").trigger("click");
     expect(writeText).toHaveBeenCalledWith("http://localhost:5174/account-setup#token=only-once");
     await bodyGet(".setup-link-dialog .button--primary").trigger("click");
-    expect(document.body.querySelector(".setup-link-dialog")).toBeNull();
+    expect(document.body.querySelector('[data-testid="setup-link-dialog"]')).toBeNull();
   });
 
   it("does not submit an unchanged role when editing an account profile", async () => {
@@ -317,7 +317,7 @@ describe("AdminAccountsPage", () => {
     document.dispatchEvent(new Event("pointerdown"));
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(document.body.querySelector(".account-actions-menu")).toBeNull();
+    expect(document.body.querySelector('[data-testid="account-actions-menu"]')).toBeNull();
     wrapper.unmount();
   });
 });

@@ -1,0 +1,57 @@
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  background: #fff;
+}
+
+.admin-table {
+  min-width: 100%;
+  --el-table-header-bg-color: var(--table-head-bg-color);
+  --el-table-text-color: var(--text-color);
+  --el-table-header-text-color: var(--text-color);
+  --el-table-border-color: var(--color-border);
+  --el-table-row-hover-bg-color: var(--table-head-bg-color);
+}
+
+.admin-table :global(.el-table__cell) {
+  padding: 10px 12px;
+  border-right: 0;
+  color: var(--text-color);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin-table :global(.el-table__header-wrapper th) {
+  color: var(--text-color);
+  background: var(--table-head-bg-color);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin-table :global(.el-table__inner-wrapper::before),
+.admin-table :global(.el-table__fixed-right::before) {
+  display: none;
+}
+
+.admin-table :global(.el-table__fixed-right) { box-shadow: none; }
+.admin-table :global(.el-table__fixed-right .el-table__cell) { background: #fff; }
+.admin-table :global(.el-table__fixed-right .el-table__header-wrapper th) { background: var(--table-head-bg-color); }
+.admin-table :global(.el-table__fixed-right .el-table__body tr:hover > td) { background: var(--table-head-bg-color); }
+.admin-table :global(.el-table__body tr:last-child td) { border-bottom: 0; }
+
+.admin-table__actions {
+  display: flex;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.admin-table__actions :global(.el-button) {
+  --el-button-text-color: var(--admin-text-action-color);
+  --el-button-hover-text-color: var(--admin-text-action-hover-color);
+  --el-button-active-text-color: var(--admin-text-action-hover-color);
+  color: var(--admin-text-action-color);
+}
+
+.admin-table__actions :global(.el-button:hover:not(:disabled)) {
+  color: var(--admin-text-action-hover-color);
+}

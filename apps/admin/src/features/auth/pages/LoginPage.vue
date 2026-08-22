@@ -15,27 +15,27 @@ const { mode, email, password, otp, mockRole, busy, error, submit } = useLoginPa
 </script>
 
 <template>
-  <main class="login-page">
-    <section class="login-intro" aria-labelledby="login-title">
-      <div class="login-brand"><span aria-hidden="true">M</span><strong>微焦短剧</strong></div>
+  <main :class="$style['login-page']">
+    <section :class="$style['login-intro']" aria-labelledby="login-title">
+      <div :class="$style['login-brand']"><span aria-hidden="true">M</span><strong>微焦短剧</strong></div>
       <div>
         <p class="eyebrow">CONTENT OPERATIONS</p>
         <h1 id="login-title">每一次发布，<br />都有据可查。</h1>
         <p>连接内容生产、版权资料、媒体审核和运营安全控制的轻量工作台。</p>
       </div>
-      <ul class="login-features">
+      <ul :class="$style['login-features']">
         <li><Icon name="check" />基于角色的操作边界</li>
         <li><Icon name="check" />发布前合规闸门</li>
         <li><Icon name="check" />关键操作审计留痕</li>
       </ul>
     </section>
-    <section class="login-card" aria-label="登录表单">
+    <section :class="$style['login-card']" aria-label="登录表单">
       <div>
         <p class="eyebrow">ADMIN CONSOLE</p>
         <h2>登录管理台</h2>
         <p>使用内部账号继续</p>
       </div>
-      <div v-if="mode === 'mock'" class="login-mock-notice" role="status">
+      <div v-if="mode === 'mock'" :class="$style['login-mock-notice']" role="status">
         <strong>演示 Mock 模式</strong>
         <span>不会连接真实账号或云服务；输入任意符合格式的登录名、密码和 {{ OTP_INPUT_LENGTH }} 位验证码即可体验。登录名只是标识，不必是能收信的邮箱。</span>
       </div>
@@ -83,14 +83,14 @@ const { mode, email, password, otp, mockRole, busy, error, submit } = useLoginPa
             <el-option v-for="role in ASSIGNABLE_ADMIN_ROLES" :key="role" :label="roleLabels[role]" :value="role" />
           </el-select>
         </label>
-        <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-        <el-button class="button button--primary login-submit" native-type="submit" :disabled="busy">
+        <p v-if="error" :class="$style['form-error']" role="alert">{{ error }}</p>
+        <el-button :class="['button', 'button--primary', $style['login-submit']]" native-type="submit" :disabled="busy">
           {{ busy ? "正在验证…" : "安全登录" }}
         </el-button>
       </form>
-      <p class="login-footnote">真实模式仅接受已由部署/运维创建的管理员账号，不提供开放注册。访问行为将进入审计日志。</p>
+      <p :class="$style['login-footnote']">真实模式仅接受已由部署/运维创建的管理员账号，不提供开放注册。访问行为将进入审计日志。</p>
     </section>
   </main>
 </template>
 
-<style scoped src="../styles/login.css"></style>
+<style module lang="scss" src="../styles/login.module.scss"></style>

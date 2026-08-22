@@ -30,14 +30,14 @@ describe("AdminTable", () => {
     });
 
     const columnsInDom = wrapper.findAll(".column-stub");
-    expect(wrapper.find(".admin-table-wrap").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-table-wrap"]').exists()).toBe(true);
     expect(columnsInDom).toHaveLength(3);
     expect(columnsInDom[0]!.attributes("data-label")).toBe("通知标题");
     expect(columnsInDom[1]!.attributes("data-label")).toBe("状态");
     expect(columnsInDom[2]!.attributes("data-label")).toBe("操作");
     expect(columnsInDom[2]!.attributes("data-fixed")).toBe("right");
     expect(columnsInDom[2]!.attributes("data-width")).toBe("230");
-    expect(wrapper.find(".admin-table__actions").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-table-actions"]').exists()).toBe(true);
     expect(wrapper.text()).toContain("查看 row-1");
   });
 });

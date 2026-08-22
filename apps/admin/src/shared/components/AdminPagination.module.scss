@@ -1,0 +1,45 @@
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 16px;
+  color: var(--text-color);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin-pagination__size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.admin-pagination__size-select { width: 72px; }
+
+.admin-pagination :global(.el-pagination) {
+  --el-pagination-font-size: 12px;
+  --el-pagination-button-size: 32px;
+}
+
+.admin-pagination :global(.el-pager li),
+.admin-pagination :global(.btn-prev),
+.admin-pagination :global(.btn-next) {
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.admin-pagination :global(.el-select__wrapper) {
+  border-radius: 2px;
+}
+
+@media (max-width: 720px) {
+  .admin-pagination {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .admin-pagination__size { gap: 4px; }
+}

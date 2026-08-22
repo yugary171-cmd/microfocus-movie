@@ -90,17 +90,17 @@ describe("DramaListPage", () => {
 
     expect(listDramas).toHaveBeenCalledWith("", "", 1, DRAMA_ADMIN_PAGE_SIZE);
     expect(wrapper.find(".list-summary").exists()).toBe(false);
-    expect(wrapper.find(".drama-pagination").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="drama-pagination"]').exists()).toBe(true);
     expect(wrapper.text()).toContain("每页显示：");
-    expect(wrapper.find(".admin-pagination__size-select").exists()).toBe(true);
+    expect(wrapper.find('[data-testid="admin-pagination-size"]').exists()).toBe(true);
     expect(wrapper.find(".drama-toolbar button[type='submit']").exists()).toBe(false);
-    expect(wrapper.get(".drama-toolbar button[type='button']").classes()).toContain("button--secondary");
+    expect(wrapper.get("form button[type='button']").classes()).toContain("button--secondary");
 
-    await wrapper.get(".drama-pagination .btn-next").trigger("click");
+    await wrapper.get('[data-testid="drama-pagination"] .btn-next').trigger("click");
     await flushPromises();
     expect(listDramas).toHaveBeenLastCalledWith("", "", 2, DRAMA_ADMIN_PAGE_SIZE);
 
-    wrapper.get(".admin-pagination").findComponent({ name: "ElSelect" }).vm.$emit("change", 20);
+    wrapper.get('[data-testid="admin-pagination"]').findComponent({ name: "ElSelect" }).vm.$emit("change", 20);
     await flushPromises();
     expect(listDramas).toHaveBeenLastCalledWith("", "", 1, 20);
 
